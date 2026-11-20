@@ -1,14 +1,14 @@
+import { theDetailsAsSentences } from '@/lib/a-detail-as-a-sentence'
 import { ItsEvidence } from '@/components/gw/ItsEvidence'
 import { ThatsNotRight } from '@/components/gw/ThatsNotRight'
-import { createContext, useContext, useState, type ReactNode } from 'react'
-import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
+import { useState, type ReactNode } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { boardApi, KIND_OF_WORK_OPTIONS, type AServedWorkSection, type AServedWorkRow, type KindOfWork, type WorkItemInput } from '@/api/board'
 import { isASalesKind } from '@/lib/a-sales-kind'
 import { groundsApi } from '@/api/grounds'
 import { Link } from 'react-router-dom'
-import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack, ProofMark, Stack, Note, SubHeading, Folded } from '@/components/gw/ui'
+import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack, ProofMark, Stack, Note, SubHeading } from '@/components/gw/ui'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { useTheDirectMorning } from '@/lib/the-direct-morning'
@@ -95,7 +95,7 @@ const ITEM_KINDS_FOR_HOLDS: Record<string, { value: string; label: string }[]> =
   'commitments and decisions': [{ value: 'commitment', label: 'Commitment' }, { value: 'decision', label: 'Decision' }],
   'loans and their repayments': [{ value: 'loan', label: 'Loan' }],
   'priorities people named': [{ value: 'priority', label: 'Priority' }],
-  'subscriptions': [{ value: 'subscription', label: 'Subscription' }],
+  'subscriptions and the metrics people state': [{ value: 'subscription', label: 'Subscription' }, { value: 'metric', label: 'Metric' }],
   'deadlines': [{ value: 'deadline', label: 'Deadline' }],
   'the parties': [{ value: 'party', label: 'Party' }],
   'counties and their projects': [{ value: 'county', label: 'County' }, { value: 'project', label: 'Project' }],
@@ -174,23 +174,15 @@ const DEAL_GRID_NOTE: Partial<Record<KindOfWork, string>> = {
  * nothing said, drew both lines of a key for marks nobody has. When neither mark is on any row,
  * there is nothing to explain, so no key is drawn at all.
  */
-function DealGridKey({ rows, behindInfo }: { rows: AServedWorkRow[]; behindInfo?: boolean }) {
+function DealGridKey({ rows }: { rows: AServedWorkRow[] }) {
   const hasProven = rows.some((r) => r.mark === 'proven')
   const hasSaid = rows.some((r) => r.mark === 'said')
   if (!hasProven && !hasSaid) return null
-  const key = (
+  return (
     <div className="gwui-gap-16" style={{ display: 'flex', flexWrap: 'wrap' }}>
       {hasProven && <Note tone="muted"><ProofMark mark="proven" /> Contact with proof: a photo, a quote, a payment</Note>}
       {hasSaid && <Note tone="muted"><ProofMark mark="said" /> Contact in their words</Note>}
     </div>
-  )
-  /* The light sales board, for a team member (sales-first.md, section 1): the same key, one tap away behind ⓘ. */
-  if (!behindInfo) return key
-  return (
-    <details className="gwui-key-info">
-      <summary aria-label="What the marks mean">ⓘ</summary>
-      <div className="gwui-key-info-body">{key}</div>
-    </details>
   )
 }
 const THEMES_HEADING: Partial<Record<KindOfWork, string>> = {
@@ -348,16 +340,17 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit, ki
     ? (readerIsTheFounder && kindOfWork === "founder's own check-in"
       ? "This is your own check-in as a founder, about your own commitments and decisions."
       : KIND_OF_WORK_SENTENCE[kindOfWork])
-    : (canEdit
-      ? 'Nobody has said what kind of work this check-in is about yet. Choose one, so its board can keep the right kind of record.'
-      : 'Nobody has said what kind of work this check-in is about yet.')
+    : null
+
+  /* Nothing to read and nothing to do: nothing is drawn. */
+  if (!sentence && !canEdit) return null
 
   return (
-    <div className="gwui-gap-10 gwui-mt-8" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
-      <p className="gwui-fs-15 gwui-ink-text" style={{lineHeight: '23px'}}>{sentence}</p>
+    <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+      {sentence && <p className="gwui-fs-15 gwui-ink-text" style={{lineHeight: '23px'}}>{sentence}</p>}
       {canEdit && (
         <Button kind="quiet" size="small" onClick={() => setOpen(true)} aria-label={kindOfWork ? 'Change the kind of work' : 'Choose the kind of work'}>
-          {kindOfWork ? 'Change' : 'Choose'}
+          {kindOfWork ? 'Change' : 'Choose the kind of work'}
         </Button>
       )}
       {open && (
@@ -416,6 +409,8 @@ function WhatShowsIt({ row, leadFirstName, readerIsLead }: { row: AServedWorkRow
     return <p className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: '20px'}}>{`${addedBy} added it.`}</p>
   }
   const saidBy = row.saidBy?.trim()
+  /* "In X's words," leads into a quote. With no quote after it the line ended on a comma, so nothing is drawn. */
+  if (!row.said) return null
   return (
     <div className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: '20px'}}>
       <div>{row.saidByLine?.trim() || (saidBy ? `In ${saidBy}'s words,` : 'In the words of someone in this check-in,')}</div>
@@ -533,7 +528,7 @@ function WorkItemForm({ section, participants, editing, onClose, onSaved, onRemo
               <TextField id="work-item-field-label" value={fieldLabel} onChange={(e) => setFieldLabel(e.target.value)} placeholder="e.g. Amount" aria-label="What to call this detail" />
             </div>
             <div style={{flex: 1}}>
-              <TextField id="work-item-field-value" value={fieldValue} onChange={(e) => setFieldValue(e.target.value)} placeholder="e.g. KES 90,000" aria-label="What it is" />
+              <TextField id="work-item-field-value" value={fieldValue} onChange={(e) => setFieldValue(e.target.value)} placeholder="e.g. KSh 90,000" aria-label="What it is" />
             </div>
           </div>
         </div>
@@ -618,6 +613,7 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
   onEdit: () => void
 }) {
   const fieldEntries = Object.entries(row.fields ?? {})
+  const theDetails = theDetailsAsSentences(fieldEntries.map(([l, v]) => [l, String(v ?? '')] as [string, string]))
   const isFounder = kindOfWork === "founder's own check-in"
   return (
     <div
@@ -627,13 +623,14 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
     >
       <div>
         <DealMarkAndName row={row} />
-        {fieldEntries.map(([label, value]) => (
+        {theDetails.map((sentence) => (
           /* Board review, 30 September, item 3: a detail read as a label and a bare value stuck
-             together ("Amount KES 45,000") - now a sentence ("The amount is KES 45,000."). */
-          <div key={label} className="gwui-note gwui-mt-2">{`The ${label.toLowerCase()} is ${value}.`}</div>
+             together ("Amount KES 45,000") - now a sentence. 16 November (group 10): one owner of that sentence, so
+             "The units is 6." and "The next step by is Friday." read as sentences (a-detail-as-a-sentence). */
+          <div key={sentence} className="gwui-note gwui-mt-2">{sentence}</div>
         ))}
         <DueLine due={row.due} />
-        <ThatsNotRight line={[row.name, ...fieldEntries.map(([label, value]) => `The ${label.toLowerCase()} is ${value}.`)].join('. ')} />
+        <ThatsNotRight line={[`${row.name.replace(/[.\s]+$/, '')}.`, ...theDetails].join(' ')} />
       </div>
       <div className="gwui-fs-15 gwui-ink-text">
         {row.owner ?? (
@@ -717,8 +714,9 @@ function DealDetail({ row, groundId }: { row: AServedWorkRow; groundId: string }
   const hasDetail = !!row.groupSays || !!row.contactHistory?.length || !!row.theirRead || !!row.valueSays || !!row.evidence?.length
   if (!hasDetail) return null
   return (
-    <Folded summary="Why it’s here">
+    <div>
       <Stack gap={8}>
+        <SubHeading as="h3">Why it’s here</SubHeading>
         {row.groupSays && <p className="gwui-panel-text">{row.groupSays}</p>}
         {row.valueSays && <Note tone="muted">{row.valueSays}</Note>}
         <WhatsNext row={row} />
@@ -744,12 +742,9 @@ function DealDetail({ row, groundId }: { row: AServedWorkRow; groundId: string }
         )}
         <Link to={`/grounds/${groundId}?tab=chat`} className="gwui-plain-link">Not right? Tell the check-in</Link>
       </Stack>
-    </Folded>
+    </div>
   )
 }
-
-/** Set by the light sales board: on a phone, each deal is one short line that opens with a tap. */
-export const DealRowsAreShortOnAPhone = createContext(false)
 
 function SalesDealGridRow({ row, groundId, leadFirstName, readerIsLead, canEdit, onEdit, onClaim, claimPending }: {
   row: AServedWorkRow
@@ -763,8 +758,6 @@ function SalesDealGridRow({ row, groundId, leadFirstName, readerIsLead, canEdit,
   onClaim?: (yes: boolean) => void
   claimPending?: boolean
 }) {
-  const onAPhone = useIsAPhone()
-  const shortOnAPhone = useContext(DealRowsAreShortOnAPhone)
   /*
    * REQUEST 115 (b): THE DEAL'S OWN VALUE, where somebody said it (board-as-lead.txt: "Aisha, KES
    * 110,000"). `row.value` is the engine's own field for this now; a field typed into `fields`
@@ -782,42 +775,6 @@ function SalesDealGridRow({ row, groundId, leadFirstName, readerIsLead, canEdit,
      from the record ("On 22 September, somebody spoke about it, and proof backs what they said."),
      never a date computed here. */
   const lastContact = row.contactHistory?.[0]?.says ?? null
-  const short = shortOnAPhone && onAPhone
-  /*
-   * THE LIGHT SALES BOARD ON A PHONE (sales-first.md, section 1): "deals show as a short list (name,
-   * stage, last contact, next step)". The rest of the row (who and how much, the due date, their
-   * words, why it is here, Change) opens with a tap on the deal, never taken away.
-   */
-  if (short) {
-    return (
-      <details className="gwui-deal-short" role="row" aria-label={row.name}>
-        <summary className="gwui-deal-short-sum">
-          <span className="gwui-deal-short-top">
-            <DealMarkAndName row={row} />
-            <StageCell stage={row.stageSays ?? row.stage} />
-          </span>
-          {lastContact && <SmallSubLine text={lastContact} />}
-          <span aria-label="Next step"><NextStepCell row={row} /></span>
-        </summary>
-        <div className="gwui-deal-short-body">
-          <SmallSubLine text={repLine} />
-          {readerIsLead && row.ownerClaim && (
-            <Stack gap={4}>
-              <Note tone="muted">{row.ownerClaim.says}</Note>
-              <div className="gwui-edge-acts">
-                <Button kind="secondary" size="small" disabled={claimPending} onClick={() => onClaim?.(true)}>Yes</Button>
-                <Button kind="secondary" size="small" disabled={claimPending} onClick={() => onClaim?.(false)}>No</Button>
-              </div>
-            </Stack>
-          )}
-          <DueLine due={row.due} />
-          <WhatShowsItBlock row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} />
-          <DealDetail row={row} groundId={groundId} />
-          {canEdit && <div><Button kind="quiet" size="small" onClick={onEdit}>Change</Button></div>}
-        </div>
-      </details>
-    )
-  }
   return (
     <div
       className={WORK_ROW_CLASS}
@@ -998,7 +955,7 @@ function ThemesList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
  * nothing has come up, "not-known" says this is not something Groundwork knows, in the server's own
  * words, quieter.
  */
-function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, leadFirstName, readerIsLead, canEdit, hideStageTrack }: {
+function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, leadFirstName, readerIsLead, canEdit }: {
   groundId: string
   kindOfWork: KindOfWork | null
   section: AServedWorkSection
@@ -1006,9 +963,6 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   leadFirstName: string | null
   readerIsLead: boolean
   canEdit: boolean
-  /** Request 133: an asset loans cohort's own "The shape of the work" strip moves into the end
-      fold instead of drawing here - see the comment above where it would otherwise draw. */
-  hideStageTrack?: boolean
 }) {
   const qc = useQueryClient()
   const invalidate = () => qc.invalidateQueries({ queryKey: ['board', groundId] })
@@ -1085,8 +1039,8 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
      */
     const holdsWord = noneYetHoldsSentence(section.holds)
     const sentence = onlyYours
-      ? `None of the ${holdsWord} so far is yours. Yours appear here when you name one in a check-in${canAdd ? ', or when you add one below.' : '.'}`
-      : `No ${holdsWord} have come up yet. They appear here when someone names one in a check-in${canAdd ? ', or when you add one below.' : '.'}`
+      ? `None of the ${holdsWord} so far is yours.${canAdd ? ' You can add one below.' : ''}`
+      : `No ${holdsWord} have come up yet.${canAdd ? ' You can add one below.' : ''}`
     return (
       <Section heading={heading} note={note}>
         <p className="gwui-ink-sub gwui-fs-15" style={{lineHeight: '23px'}}>
@@ -1264,14 +1218,8 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
         readings of the same shape, under two different headings. Every other kind of work has no
         such section anywhere else on the board, so it keeps "The shape of the work" here, the
         only place it is told at all.
-
-        REQUEST 133: NOT HERE FOR AN ASSET LOANS COHORT EITHER. loans.txt does not show this strip
-        under its own table - the records table stays open for this kind
-        (`kindLayout['asset loans'].teamInFoldRecordsOpen`) while this strip alone moves into the
-        end fold; see `hideStageTrack`, passed in from BoardPage.tsx, and
-        `TheShapeOfTheWorkStrip`, exported below for the fold to draw it there instead.
       */}
-      {!!section.stages?.length && !isSalesDealGrid && !hideStageTrack && (
+      {!!section.stages?.length && !isSalesDealGrid && (
         <TheShapeOfTheWork stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
       )}
 
@@ -1370,7 +1318,7 @@ export function YourOwnRecordsSections({ groundId, kindOfWork, sections, myParti
         <Note tone="muted">{`You have no ${itemNoun}s on record yet.`}</Note>
       ) : (
         <Stack gap={12}>
-          {isSalesDeals && <DealGridKey rows={mine} behindInfo />}
+          {isSalesDeals && <DealGridKey rows={mine} />}
           <Panel pad={false}>
             <RowList label={heading}>
               {mine.map((row) => (
@@ -1410,7 +1358,7 @@ export function YourOwnRecordsSections({ groundId, kindOfWork, sections, myParti
  * rebuilt pages already use - `Section` itself carries no spacing of its own, so without this a
  * button at the foot of one section sits flush against the next section's heading.
  */
-export function WorkRecordsSections({ groundId, kindOfWork, sections, participants, leadFirstName, readerIsLead, canEdit, collapseWhenAllNotKnown, hideStageTrack }: {
+export function WorkRecordsSections({ groundId, kindOfWork, sections, participants, leadFirstName, readerIsLead, canEdit, collapseWhenAllNotKnown }: {
   groundId: string
   kindOfWork?: KindOfWork | null
   sections?: AServedWorkSection[]
@@ -1418,9 +1366,6 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
   leadFirstName: string | null
   readerIsLead: boolean
   canEdit: boolean
-  /** Request 133: passed through to each section so an asset loans cohort's own "The shape of the
-      work" strip can move into the end fold instead - see `WorkRecordSectionBlock`. */
-  hideStageTrack?: boolean
   /**
    * PROJECT BOARD REVIEW 1, FIX 3: NO KIND OF WORK, ONE SENTENCE, NOT SIX HEADED SECTIONS. A
    * check-in with no kind of work chosen at all (the DRIFT fixture, "The partnerships work has
@@ -1457,7 +1402,6 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
           leadFirstName={leadFirstName}
           readerIsLead={readerIsLead}
           canEdit={canEdit}
-          hideStageTrack={hideStageTrack}
         />
       ))}
     </div>
@@ -1476,21 +1420,6 @@ function TheShapeOfTheWork({ stages, counts, itemNoun }: { stages: string[]; cou
       <StageTrack stages={stages} counts={counts} itemNoun={itemNoun} />
     </div>
   )
-}
-
-/**
- * REQUEST 133: "THE SHAPE OF THE WORK", DRAWN ALONE, FOR THE END FOLD (loans.txt does not show
- * this strip under its own table - see `hideStageTrack`, above). Reads the same Deal grid section
- * `WorkRecordSectionBlock` would have drawn it from, so the fold shows the same stage counts, only
- * moved.
- */
-export function TheShapeOfTheWorkStrip({ kindOfWork, sections }: { kindOfWork?: KindOfWork | null; sections?: AServedWorkSection[] }) {
-  const section = (sections ?? []).find((s) => s.section === 'Deal grid')
-  if (!section || section.state === 'not-known' || !section.stages?.length) return null
-  const stageCounts: Record<string, number> = {}
-  for (const row of section.rows) { const st = row.stageSays ?? row.stage; if (st) stageCounts[st] = (stageCounts[st] ?? 0) + 1 }
-  const itemNoun = kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item'
-  return <TheShapeOfTheWork stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
 }
 
 /**

@@ -13,7 +13,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 export async function addACommitment(
   prisma: PrismaService,
-  args: { organizationId: string; personExternalId: string; subjectExternalId?: string | null; text: string; dueSaid: string | null; dueAt: Date | null; source: string },
+  args: { organizationId: string; personExternalId: string; subjectExternalId?: string | null; text: string; dueSaid: string | null; dueAt: Date | null; source: string; /** When it was said, where that is not now: a message received a few minutes ago. */ statedAt?: Date },
 ) {
   return prisma.commitment.create({
     data: {
@@ -25,6 +25,7 @@ export async function addACommitment(
       dueAt: args.dueAt,
       state: 'OPEN',
       source: args.source,
+      ...(args.statedAt ? { statedAt: args.statedAt } : {}),
     },
   });
 }

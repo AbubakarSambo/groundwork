@@ -46,7 +46,7 @@ function makeService(extractMs: number) {
   };
   const calls: { schema: string; startedAt: number; endedAt?: number }[] = [];
   const anthropic: any = {
-    respond: jest.fn(async () => 'What would you like to change in session one?'),
+    respond: jest.fn(async () => 'What would you like to change in check-in one?'),
     extract: jest.fn(async (system: string) => {
       const call = { schema: system.slice(0, 40), startedAt: Date.now() } as { schema: string; startedAt: number; endedAt?: number };
       calls.push(call);
@@ -81,6 +81,6 @@ describe('Opening a session reads the brief side by side (request 44)', () => {
     expect(second.startedAt).toBeLessThan(first.endedAt!);
 
     /* The first question is what the model wrote, word for word. */
-    expect(res.reply).toBe('What would you like to change in session one?');
+    expect(res.reply).toBe('What would you like to change in check-in one?');
   });
 });

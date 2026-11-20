@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { Skeleton } from '@/components/gw/ui/Skeleton'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { opsApi, type OpsNumber } from '@/api/ops'
 import { Adder } from './OpsForm'
@@ -341,19 +342,30 @@ function WaitingOnYou() {
 }
 
 export default function OpsBoardPage() {
-  const [period, setPeriod] = useState('sept-2026-target-list')
+  /* Empty until the periods arrive, as the target companies page does: a seeded key written into the page opened a request for a period that
+     does not exist in every system, and staff read "Not found" on a board that was fine (end-to-end check of 16 November, M-9).
+     `periods()` returns the period holding today first. */
+  const [period, setPeriod] = useState('')
   const [chosen, setChosen] = useState<string | null>(null)
 
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
   const listing = useQuery({ queryKey: ['ops', 'boards'], queryFn: opsApi.boards, retry: false })
   const periods = useQuery({ queryKey: ['ops', 'periods'], queryFn: opsApi.periods, retry: false })
+  useEffect(() => {
+    if (!period && (periods.data ?? []).length > 0) setPeriod(periods.data![0].key)
+  }, [period, periods.data])
 
   const boardKey = chosen ?? listing.data?.lands ?? null
   const board = useQuery({
     queryKey: ['ops', 'board', boardKey, period],
     queryFn: () => opsApi.board(boardKey as string, period),
-    enabled: Boolean(boardKey),
+    enabled: Boolean(boardKey) && period !== '',
   })
+
+  /* Nothing to wait for is said, never left as "Loading" with no request sent (end-to-end check of 17 November, staff My board). */
+  const noBoardForYou = listing.isSuccess && !boardKey
+  const noPeriodYet = periods.isSuccess && (periods.data ?? []).length === 0
+  const theBoardCannotBeAsked = noBoardForYou || noPeriodYet || listing.isError || periods.isError
 
   if (me.isError) {
     return (
@@ -372,8 +384,17 @@ export default function OpsBoardPage() {
       <header style={{ marginBottom: 18 }}>
         <p style={LABEL}>The team's operating system</p>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
-          {board.data?.name ?? 'Loading'}
+          {board.data?.name ?? 'Your board'}
         </h1>
+        {theBoardCannotBeAsked && !board.data && (
+          <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: 0 }}>
+            {noBoardForYou
+              ? 'There is no board set up for you yet, so there is nothing to show here. Ask the person who runs the team’s operating system to give you one.'
+              : noPeriodYet
+                ? 'No period has been set up yet, so there is no board to show. Ask the person who runs the team’s operating system to add one.'
+                : 'I could not load your board just now. Please refresh the page and try again.'}
+          </p>
+        )}
         <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: 0 }}>{board.data?.answers}</p>
       </header>
 
@@ -422,7 +443,7 @@ export default function OpsBoardPage() {
       )}
       {board.data?.personalPanels?.includes('your-todos') && me.data && <YourTodos personKey={me.data.key} />}
 
-      {board.isLoading && <p style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Working it out…</p>}
+      {board.isLoading && <Skeleton what="Getting this board" shape="lines" count={2} />}
 
       {board.data && (
         <>

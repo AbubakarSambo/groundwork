@@ -53,7 +53,7 @@ export function confidenceInThePicture(scoredSessions: number, meanLevel: number
     if ((also.failed ?? 0) > 0) {
       return {
         band: 'nothing yet',
-        line: 'The scoring did not run for the sessions here, so this part of the picture has not been read. That is a fault on my side, not a fact about anybody.',
+        line: 'The scoring did not run for the check-ins here, so this part of the picture has not been read. That is a fault on my side, not a fact about anybody.',
       };
     }
     return {
@@ -72,7 +72,7 @@ export function confidenceInThePicture(scoredSessions: number, meanLevel: number
     return {
       band: 'partly covered',
       line: scoredSessions < 2 && meanLevel >= WELL_COVERED_AT
-        ? `One session is not a picture. What it holds could be checked; more sessions would make this well covered. ${WHERE_IT_WAS_READ_FROM}`
+        ? `One check-in is not a picture. What it holds could be checked; more check-ins would make this well covered. ${WHERE_IT_WAS_READ_FROM}`
         : `Part of this picture rests on things that could be checked and part does not. Read the specifics, not the summary. ${WHERE_IT_WAS_READ_FROM}`,
     };
   }
@@ -103,7 +103,7 @@ export interface Provenance {
 }
 
 export function provenanceLine(p: Provenance): string {
-  const where = p.firstSeenSession ? ` (session ${p.firstSeenSession})` : '';
+  const where = p.firstSeenSession ? ` (check-in ${p.firstSeenSession})` : '';
 
   if (p.contradicted) {
     return `People said different things about this${where}.`;
@@ -148,7 +148,7 @@ export interface SelfContradiction {
 }
 
 export function selfContradictionLine(c: SelfContradiction): string {
-  return `In session ${c.earlier.session} this was described one way and in session ${c.later.session} another. Changing your mind is not a problem; the question is whether anybody else knows it changed.`;
+  return `In check-in ${c.earlier.session} this was described one way and in check-in ${c.later.session} another. Changing your mind is not a problem; the question is whether anybody else knows it changed.`;
 }
 
 /**

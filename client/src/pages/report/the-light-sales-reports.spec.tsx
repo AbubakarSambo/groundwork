@@ -11,12 +11,10 @@ vi.mock('@/stores/auth', () => ({ useAuthStore: (pick: any) => pick({ user: me }
 vi.mock('@/components/gw/TheCheckInYouJustFinished', () => ({ TheCheckInYouJustFinished: () => null }))
 vi.mock('@/components/gw/WhatWasTakenFromWhatYouSaid', () => ({ WhatWasTakenFromWhatYouSaid: () => null }))
 
-import { conversationApi } from '@/api/conversation'
 import { reportsApi } from '@/api/reports'
 import { groundsApi } from '@/api/grounds'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import WeeklyReportPage from './WeeklyReportPage'
-import SessionReportPage from './SessionReportPage'
 
 /**
  * THE LIGHT SALES REPORTS, AS EACH READER READS THEM (docs/light-rebuild/sales-first.md, section 2;
@@ -48,7 +46,7 @@ function renderReport(payload: any) {
 
 describe('the team report, light', () => {
   it('Wairimu, who runs it, reads one Share button with both ways inside, then In short, One question to answer and More in this report', async () => {
-    renderReport({ ...SESSION, releaseThisSession: { sessionNumber: 23, saying: 'This shares the team’s picture of session 23 with everyone in the check-in.' } })
+    renderReport({ ...SESSION, releaseThisSession: { sessionNumber: 23, saying: 'This shares the team’s picture of check-in 23 with everyone in the check-in.' } })
     expect(await screen.findByRole('heading', { name: 'In short' })).toBeTruthy()
     const share = screen.getByText('Share').closest('details') as HTMLElement
     expect(within(share).getByRole('button', { name: 'Share with the team' })).toBeTruthy()
@@ -121,26 +119,4 @@ describe('the weekly report, light', () => {
   })
 })
 
-describe('the lead’s own report, when there isn’t one', () => {
-  it('keeps "Own reports are private" and offers Check in yourself and Add context, never "still being written"', async () => {
-    me = { id: 'u-wairimu' }
-    vi.mocked(conversationApi.sessionReport).mockResolvedValue({ groundId: 'g1', sessionNumber: 23, report: null, finishedAt: null } as any)
-    vi.mocked(reportsApi.sessionReport).mockResolvedValue({ correctable: true } as any)
-    vi.mocked(reportsApi.get).mockResolvedValue({} as any)
-    vi.mocked(groundsApi.get).mockResolvedValue({ id: 'g1', initiatorId: 'u-wairimu', status: 'ACTIVE', participants: [{ userId: 'u-wairimu', partyType: 'INITIATOR' }] } as any)
-    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    render(
-      <QueryClientProvider client={qc}>
-        <MemoryRouter initialEntries={['/checkin/c1/report']}>
-          <Routes><Route path="/checkin/:checkInId/report" element={<SessionReportPage />} /></Routes>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    )
-    expect(await screen.findByRole('heading', { name: 'Own reports are private' })).toBeTruthy()
-    expect(screen.getByText('Each person’s own report is theirs alone. Yours appears here after your own check-in.')).toBeTruthy()
-    expect(screen.getAllByRole('button', { name: 'Check in yourself' })).toHaveLength(1)
-    expect(screen.getAllByRole('button', { name: 'Add context' })).toHaveLength(1)
-    expect(screen.getByText('Your check-ins here are optional. Check in when you want your own view in the picture.')).toBeTruthy()
-    expect(document.body.textContent).not.toContain('Your report is still being written')
-  })
-})
+/* "The lead's own report, when there isn't one" went with the separate report page (batch 2, group 5): a person's own report is drawn in My work now (your-report-lives-in-my-work.spec.tsx). */

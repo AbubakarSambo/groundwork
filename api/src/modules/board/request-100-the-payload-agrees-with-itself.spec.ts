@@ -1,4 +1,5 @@
 import { boardAs, answered, A_RELEASED_REPORT, AMINA, BARAKA, RUKIA, JUMA, SETUP_ADMIN } from './the-switchboards-sections-harness';
+import { KINDS_OF_WORK } from './the-kind-of-work';
 
 /**
  * REQUEST 100: TWO SCREEN CHECKS FROM THE REVIEW OF 1 OCTOBER, AS EACH READER IS SENT THEM.
@@ -46,10 +47,11 @@ describe('request 100 (2): the kind of work is a key, never a sentence', () => {
   it.each(everyone)('%s reads no sentence that quotes "sales org"', async (_who, reader) => {
     const b = await boardAs({ ...withAgreementsOnly, kindOfWork: 'sales org' } as any, ...(reader as readonly [string, string]));
     /* kindsOffered is, like kindOfWork, a list of keys the dialog chooses from, never read as a sentence. */
-    const { kindOfWork, kindsOffered, ...rest } = b as any;
+    /* `switchboard.drawnAs` is the same key again (15 November 2026: every board is on, so the board names the board its kind picks), never read as a sentence. */
+    const { kindOfWork, kindsOffered, switchboard: _theKeyAgain, ...rest } = b as any;
     expect(kindOfWork).toBe('sales org');
     /* Only whoever can choose the kind is served the list. */
-    if (kindsOffered !== undefined) expect(kindsOffered).toEqual(['sales team', 'sales org', 'engineering release']);
+    if (kindsOffered !== undefined) expect(kindsOffered).toEqual([...KINDS_OF_WORK]); /* every kind is offered, 15 November 2026 */
     expect(JSON.stringify(rest).toLowerCase()).not.toContain('sales org');
   });
 });

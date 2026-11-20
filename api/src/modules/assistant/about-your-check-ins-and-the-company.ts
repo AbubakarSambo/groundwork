@@ -1,10 +1,11 @@
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
 import { theBriefAsTheLeadReadsIt, theirOwnFirstNameAsYour } from '../grounds/what-a-participant-is-told-about-this';
 import { askName } from './ask-name';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
-import { peersAreNamedByDefaultOn } from '../reports/peers-are-named';
+import { whoCanReadWhatYouSay } from '../grounds/who-may-read-this-check-in';
 import { readTheCompanyPage, NOT_YOUR_COMPANY } from '../grounds/company.service';
 
 /**
@@ -38,7 +39,21 @@ async function theirCheckIns(prisma: any, organizationId: string, userId: string
 
 /** Said of a check-in the person is in but holds no seat for yet. No part of the check-in itself is told. */
 export const noSeatYetSays = (label: string) =>
-  `You are in "${label}", but there is no seat for you on the plan yet, so you cannot answer a new session. What you have already said is still yours, and you will get your invitation as soon as there is a seat.`;
+  `You are in "${label}", but there is no seat for you on the plan yet, so you cannot answer a new check-in. What you have already said is still yours, and you will get your invitation as soon as there is a seat.`;
+
+/**
+ * WHEN A CHECK-IN OPENS, SAID THE WAY THE CHECK-IN ITSELF SAYS IT (channel test, 20 November 2026, W27): "today at 8am", "tomorrow at 8am",
+ * "on Friday 27 November at 8am", in the organisation's own day. Ask said "opens on 26 November 2026" while the check-in said "opens on
+ * Friday 27 November at 12am" for the same session: Ask counted the day in another zone and gave no hour. The screen's sentence is the owner
+ * (client/src/lib/what-the-end-of-a-check-in-can-say.ts, theNextOne); this says the same.
+ */
+export function whenItOpensSaid(opens: Date, now: Date, zone: string): string {
+  const time = whenItWas(opens, 'hourOfDay', zone).replace(/\s/g, '').replace(':00', '').toLowerCase();
+  const day = (d: Date) => whenItWas(d, 'day', zone);
+  if (day(opens) === day(now)) return `today at ${time}`;
+  if (day(opens) === day(new Date(now.getTime() + 86_400_000))) return `tomorrow at ${time}`;
+  return `on ${whenItWas(opens, 'weekdayAndDay', zone)} at ${time}`;
+}
 
 export async function whenIsMyNextCheckIn(prisma: any, organizationId: string, userId: string | null, now = new Date()): Promise<string> {
   const none = 'You have no check-in waiting for you right now. When one is coming up for you, I will tell you when it opens.';
@@ -57,11 +72,13 @@ export async function whenIsMyNextCheckIn(prisma: any, organizationId: string, u
   }).catch(() => []);
   if (!rows.length) return noSeat.length ? noSeat.slice(0, 3).map((g: any) => noSeatYetSays(g.label)).join('\n') : none;
   const label = (id: string) => mine.find((g) => g.id === id)?.label ?? 'your check-in';
+  /* The organisation's own day, whichever door asked (WhatsApp has no signed-in request to set it). */
+  const zone = (await theOrganisationsZone(prisma, organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE;
   const lines = rows.slice(0, 3).map((r) => {
     if (r.status === 'IN_PROGRESS') return `You have started your check-in in "${label(r.groundId)}", and you can carry on with it now.`;
     const opens = r.availableFrom ? new Date(r.availableFrom) : null;
     if (!opens || opens.getTime() <= now.getTime()) return `Your check-in in "${label(r.groundId)}" is waiting for you now.`;
-    return `Your next check-in in "${label(r.groundId)}" opens on ${whenItWas(opens, 'full')}.`;
+    return `Your next check-in in "${label(r.groundId)}" opens ${whenItOpensSaid(opens, now, zone)}.`;
   });
   if (rows.length > 3) lines.push(`There ${rows.length - 3 === 1 ? 'is 1 more' : `are ${rows.length - 3} more`} after those.`);
   for (const g of noSeat.slice(0, 3)) lines.push(noSeatYetSays((g as any).label));
@@ -95,9 +112,9 @@ export async function theCompanysPriorities(prisma: any, grounds: any, reader: {
   if (!reader.userId) return 'I need your sign-in to say what the company is working on.';
   let page: any;
   try { page = await readTheCompanyPage(prisma, grounds, { userId: reader.userId, email: reader.email ?? '', organizationId: reader.organizationId, role: reader.role }); }
-  catch (err: any) { return err?.status === 403 ? NOT_YOUR_COMPANY : 'I could not read the company page just now. Please ask me again in a moment.'; }
+  catch (err: any) { return err?.status === 403 ? NOT_YOUR_COMPANY : 'I could not read the Desk just now. Please ask me again in a moment.'; }
   const priorities: any[] = page.priorities ?? [];
-  if (!priorities.length) return 'The company has not set any priorities here yet. When it does, they will be on the Company page and I will tell you them.';
+  if (!priorities.length) return 'The company has not set any priorities here yet. When it does, they will be on the Desk and I will tell you them.';
   const lines = priorities.map((p) => `${p.number}. ${p.title}${p.owner ? `, owned by ${p.owner}` : ''}`);
   return [page.strategy?.says ? `${page.strategy.says}` : null, `The company's priorities right now are:`, ...lines].filter(Boolean).join('\n');
 }
@@ -106,7 +123,7 @@ export async function isTheStrategyMoving(prisma: any, grounds: any, reader: { u
   if (!reader.userId) return 'I need your sign-in to say how the strategy is moving.';
   let page: any;
   try { page = await readTheCompanyPage(prisma, grounds, { userId: reader.userId, email: reader.email ?? '', organizationId: reader.organizationId, role: reader.role }); }
-  catch (err: any) { return err?.status === 403 ? NOT_YOUR_COMPANY : 'I could not read the company page just now. Please ask me again in a moment.'; }
+  catch (err: any) { return err?.status === 403 ? NOT_YOUR_COMPANY : 'I could not read the Desk just now. Please ask me again in a moment.'; }
   const priorities: any[] = page.priorities ?? [];
   if (!priorities.length) return 'The company has not set any priorities here yet, so there is no strategy to say anything about.';
   const read = priorities.filter((p) => p.reading?.says);
@@ -115,7 +132,7 @@ export async function isTheStrategyMoving(prisma: any, grounds: any, reader: { u
   }
   const lines = read.map((p) => `Priority ${p.number}, "${p.title}". ${String(p.reading.says).trim()}`);
   const notReaching = (page.notReaching ?? []).length;
-  if (notReaching) lines.push(`The Company page also shows ${notReaching === 1 ? 'one place' : `${notReaching} places`} where the strategy is not reaching the work.`);
+  if (notReaching) lines.push(`The Desk also shows ${notReaching === 1 ? 'one place' : `${notReaching} places`} where the strategy is not reaching the work.`);
   return lines.join('\n');
 }
 
@@ -139,12 +156,9 @@ export function howToAskForLeaveOrSpending(on: { leave: boolean; spend: boolean 
 export function whoReadsWhatAMemberSays(g: { label: string; scenario?: any; peersVisibleToEachOther?: boolean | null; organization?: { name?: string | null } | null }, leadsFirstName: string): string {
   const ask = askName(g.organization?.name ?? null);
   const lead = (leadsFirstName ?? '').trim();
-  const together = g.peersVisibleToEachOther ?? peersAreNamedByDefaultOn(g as any);
   const admins = !g.scenario || isEvaluationCheckIn(g.scenario) ? '' : ' Admins can read its board and reports.';
-  const who = together
-    ? `The people in "${g.label}", including ${lead ? `${lead}, who runs it,` : 'the person who runs it,'} can see what you say in it.`
-    : `${lead || 'The person who runs it'} runs "${g.label}" and can see what you say in it. The other people taking part do not see what you say.`;
-  return `${who}${admins} Your own report and your questions to ${ask} stay private.`;
+  /* Who reads what you say is one sentence with one owner (grounds/who-may-read-this-check-in.ts). */
+  return `${whoCanReadWhatYouSay(g, lead)}${admins} Your questions to ${ask} stay private.`;
 }
 
 

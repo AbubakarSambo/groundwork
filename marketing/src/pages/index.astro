@@ -1,5 +1,7 @@
 ---
 import Nav from '../components/Nav.astro';
+/* How long a check-in takes, from its one owner (api/src/common/how-long-a-check-in-takes.ts), never a copy (issue 16). */
+import { ABOUT_HOW_LONG } from '../../../api/src/common/how-long-a-check-in-takes';
 const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 ---
 <!DOCTYPE html>
@@ -527,7 +529,7 @@ details.more>summary::marker{color:var(--gw-muted)}
   <div class="w">
     <h2>Start with something that matters.</h2>
     <!-- The one drawn mark on the dark ground: an arrow at the thing somebody is deciding on. -->
-    <p><span class="gw-drawn-arrow" style="margin-right:8px;transform:rotate(8deg)" aria-hidden="true"></span>Teams of fewer than 20 people get their first month free. Each check-in takes about ten minutes.</p>
+    <p><span class="gw-drawn-arrow" style="margin-right:8px;transform:rotate(8deg)" aria-hidden="true"></span>Teams of fewer than 20 people get their first month free. Each check-in takes {ABOUT_HOW_LONG}.</p>
     <div class="ctas">
       <a class="btn" href={`${APP_URL}/start`}>Start a check-in for your team</a>
       <a class="btn-2" href="/how-it-works">See how it works</a>

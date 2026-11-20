@@ -6,10 +6,14 @@ import { whatYouCanAskSaid } from './what-you-can-ask-here';
  * that one yet"). The help lists only what answers, and "what should I talk about next" does.
  */
 describe('what Ask says a lead can ask', () => {
-  const help = whatYouCanAskSaid({ checkInsYouAreIn: 2, checkInsYouRun: 2, leaveIsOn: false, spendingIsOn: false, hoursAreOn: false, waitingForYou: 0 });
+  /* The help is now read from the one guide (Batch S, S5), so the lead's sentence changed; what is checked is unchanged: each thing it names answers. */
+  const help = whatYouCanAskSaid({ isAGuest: false, takesPartInOne: true, hasOneToUse: true, runsOne: true, leaveIsOn: false, spendingIsOn: false, hoursAreOn: false, contextIsHere: true, waitingForYou: 0 });
   it('names only what answers', () => {
-    expect(help).toContain('You run 2 check-ins, so you can also ask who needs you this week, what is stuck, and what to talk about next.');
+    expect(help).toContain('You can ask how your team is doing. For example, say "How is my team doing?"');
+    expect(help).toContain('You can ask who has not checked in yet. For example, say "Who has not checked in?"');
     expect(help).not.toContain('what people said');
+    expect(route('How is my team doing?').lane).toBe('how_is_the_team');
+    expect(route('Who has not checked in?').lane).toBe('who_has_not_checked_in');
   });
   it('answers each one it names', () => {
     expect(route('what should I talk about next').lane).toBe('what_should_we_talk_about');

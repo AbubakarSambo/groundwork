@@ -50,8 +50,8 @@ function getAs(userId: string, role: string, over: any = {}) {
 const THE_CLOCK = {
   currentSession: 1,
   plannedSessions: 12,
-  says: 'Session 1 of 12.',
-  whileOpen: 'Session 2 has started for some people, while session 1 is still open.',
+  says: 'Check-in 1 of 12.',
+  whileOpen: 'Check-in 2 has started for some people, while check-in 1 is still open.',
 };
 
 describe('request 101 (f): the check-in\'s header counts with the board\'s clock', () => {
@@ -82,6 +82,6 @@ describe('request 101 (f): the check-in\'s header counts with the board\'s clock
   it('once Zawadi has done session 1, the header moves on and the second line goes', async () => {
     const caughtUp = CHECK_INS.map((c) => (c.participantId === 'p-zawadi' ? row('p-zawadi', 1, 'COMPLETED', '30') : c));
     const got = await getAs(LEAD, 'MEMBER', { checkIns: caughtUp });
-    expect(got.sessionClock).toEqual({ currentSession: 2, plannedSessions: 12, says: 'Session 2 of 12.', whileOpen: null });
+    expect(got.sessionClock).toEqual({ currentSession: 2, plannedSessions: 12, says: 'Check-in 2 of 12.', whileOpen: null });
   });
 });

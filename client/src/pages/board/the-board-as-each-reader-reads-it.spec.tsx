@@ -72,7 +72,8 @@ const AS_AN_ADMIN = {
   objectives: [TEAM_TARGET, AISHAS],
 }
 
-const LAST_UPDATED = /^Last updated on Wednesday 23 September at \d{1,2}(:\d\d)?(am|pm)\. The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system\.$/
+/* Changed in batch 2, group 6 (Hafsah, 4 November, issue 40): the status line stays, its explanation goes for everybody. */
+const LAST_UPDATED = /^Last updated on Wednesday 23 September at \d{1,2}(:\d\d)?(am|pm)\.$/
 
 function renderBoard(payload: any) {
   ;(boardApi.get as any).mockResolvedValue(payload)
@@ -211,10 +212,12 @@ describe('the board, as each reader reads it', () => {
     expect(screen.getByText('Your check-in')).toBeTruthy()
   })
 
-  it('with no time on record yet, it still says the board only changes when something new comes in', async () => {
+  /* Changed in batch 2, group 6 (Hafsah, 4 November, issue 40): the status line stays, its explanation goes for everybody. */
+  it('with no time on record yet, it says nothing about how the board works', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard({ ...AS_THE_LEAD, lastChangedAt: null })
-    expect(await screen.findByText('The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.')).toBeTruthy()
+    await screen.findByRole('tab', { name: 'Check-in' })
+    expect(screen.queryByText(/The board only changes/)).toBeNull()
   })
 
   /*
@@ -224,7 +227,7 @@ describe('the board, as each reader reads it', () => {
    */
   const ALIGNMENT = [{
     managerParticipantId: 'p-lead', managerName: 'Wairimu Kamau', pattern: 'SETUP_NEVER_SAID',
-    pole: 'NEITHER', label: 'Setup, never said', gap: 'Two sessions read this differently.',
+    pole: 'NEITHER', label: 'Setup, never said', gap: 'Two check-ins read this differently.',
     note: 'Neither read is called wrong.', periods: 2,
   }]
   it('the lead reads How the leading is landing while patterns are off, with no count the record cannot bear', async () => {
@@ -232,7 +235,7 @@ describe('the board, as each reader reads it', () => {
     renderBoard({ ...AS_THE_LEAD, sections: ['objectives'], phaseSpine: { ...(AS_THE_LEAD as any).phaseSpine, currentSession: 1 }, managerAlignment: ALIGNMENT })
     await screen.findByText(LAST_UPDATED)
     expect(screen.getByText('How the leading is landing')).toBeTruthy()
-    expect(screen.getByText('Two sessions read this differently.')).toBeTruthy()
+    expect(screen.getByText('Two check-ins read this differently.')).toBeTruthy()
     expect(screen.queryByText(/seen across/i)).toBeNull()
   })
   it('a participant never reads How the leading is landing, patterns on or off', async () => {
@@ -240,7 +243,7 @@ describe('the board, as each reader reads it', () => {
     renderBoard({ ...AS_MIRIAM, sections: ['objectives', 'patterns'], managerAlignment: ALIGNMENT })
     await screen.findByText(LAST_UPDATED)
     expect(screen.queryByText('How the leading is landing')).toBeNull()
-    expect(screen.queryByText('Two sessions read this differently.')).toBeNull()
+    expect(screen.queryByText('Two check-ins read this differently.')).toBeNull()
   })
   it('an admin who only reads never reads it either', async () => {
     me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
@@ -287,7 +290,7 @@ describe('seenAcross', () => {
     expect(seenAcross(2, 1)).toBeNull()
     expect(seenAcross(1, 5)).toBeNull()
     expect(seenAcross(3, null)).toBeNull()
-    expect(seenAcross(3, 4)).toBe('Seen across 3 sessions.')
+    expect(seenAcross(3, 4)).toBe('Seen across 3 check-ins.')
   })
 })
 
@@ -407,10 +410,11 @@ describe('what keeps coming up', () => {
   it('an admin who only reads sees nobody else’s pattern, even though the payload carries one', async () => {
     me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
     renderBoard({ ...AS_AN_ADMIN, sections: ['objectives', 'patterns'], patterns: [miriamsPattern, aishasPattern], eachPerson: AS_THE_LEAD.eachPerson })
-    await screen.findByText('What keeps coming up')
-    const card = cardAfter('What keeps coming up')
-    expect(within(card).queryByText('Miriam Wanjiku')).toBeNull()
-    expect(within(card).queryByText('Aisha Otieno')).toBeNull()
+    /* 15 November 2026: with nothing of anybody's to show, the section is not drawn at all (no heading over nothing). Nobody else's pattern is anywhere on the page. */
+    await screen.findByText('What needs you in this check-in').catch(() => null)
+    expect(screen.queryByText('What keeps coming up')).toBeNull()
+    expect(screen.queryByText('Leads the team on buying dates')).toBeNull()
+    expect(screen.queryByText('Her qualified deals often don’t have a buying date')).toBeNull()
   })
 
   it('“The team today” carries what keeps coming up under each person’s own line, lead only', async () => {

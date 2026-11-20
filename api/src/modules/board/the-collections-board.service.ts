@@ -1,3 +1,4 @@
+import { mayReadTheLine, EVERYBODY } from '../conversation/who-may-read-a-line';
 import { theRelease3InvoicesIsOn, thePeopleWhoMayRaise, whoRaisesInvoices, theOrganisationsBills, theRaisingPattern, theInvoicesToRaise, whatIsLateToRaise } from './raising-invoices-on-time';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { theCollectionsStallRuleIn } from '../grounds/collect-whats-owed';
@@ -73,10 +74,10 @@ async function thePaymentsSaidElsewhere(prisma: any, groundId: string, items: an
   const others = ((await Promise.resolve(prisma?.ground?.findMany?.({ where: { organizationId: g.organizationId }, select: { id: true, label: true } })).catch(() => [])) ?? []) as any[];
   const otherIds = others.map((x) => x.id).filter((id) => id !== groundId);
   if (!otherIds.length) return out;
-  const lines = ((await Promise.resolve(prisma?.recordEntry?.findMany?.({
+  const lines = (((await Promise.resolve(prisma?.recordEntry?.findMany?.({
     where: { participant: { groundId: { in: otherIds } }, disputedAt: null, type: 'PROGRESS' },
-    select: { id: true, text: true, participantId: true, createdAt: true, participant: { select: { groundId: true } } },
-  })).catch(() => [])) ?? []) as any[];
+    select: { id: true, text: true, participantId: true, createdAt: true, aboutParticipantId: true, standing: true, participant: { select: { groundId: true } } },
+  })).catch(() => [])) ?? []) as any[]).filter((l) => mayReadTheLine(l, EVERYBODY));
   const firstWord = (c: string) => String(c ?? '').trim().split(/\s+/)[0]?.toLowerCase() ?? '';
   const clientOf = (b: any) => String(b.fields?.[F.client] ?? '').trim();
   for (const l of lines) {

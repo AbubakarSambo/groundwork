@@ -43,8 +43,8 @@ export function aDayPeopleRead(d: Date, now = new Date()): string {
 }
 
 export function theHeaderSays(openRound: number, planned: number | null, allFinished: boolean): string {
-  if (planned && allFinished) return openRound > planned ? `Session ${openRound}, finished.` : `Session ${planned} of ${planned}, finished.`;
-  return planned && planned >= openRound ? `Session ${openRound} of ${planned}.` : `Session ${openRound}.`;
+  if (planned && allFinished) return openRound > planned ? `Check-in ${openRound}, finished.` : `Check-in ${planned} of ${planned}, finished.`;
+  return planned && planned >= openRound ? `Check-in ${openRound} of ${planned}.` : `Check-in ${openRound}.`;
 }
 
 /** `handOn`: Release 1's reading (a finished round hands the count on); false reads as the board did before it (release-one-sales-board). */
@@ -58,10 +58,10 @@ export function whatEachSessionSays(n: number, rows: ASessionRow[], openRound: n
   const openedOn = came ?? firstStart;
   if (n < openRound || allDone) {
     const lastDone = forSession.map((r) => asDate(r.completedAt)).filter((d): d is Date => !!d).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
-    return { says: lastDone ? `Session ${n} finished on ${aDayPeopleRead(lastDone, now)}.` : `Session ${n} is finished.`, openedOn };
+    return { says: lastDone ? `Check-in ${n} finished on ${aDayPeopleRead(lastDone, now)}.` : `Check-in ${n} is finished.`, openedOn };
   }
   if (n === openRound) {
-    return { says: openedOn ? `Session ${n} opened on ${aDayPeopleRead(openedOn, now)}, and it is still open.` : `Session ${n} is open now.`, openedOn };
+    return { says: openedOn ? `Check-in ${n} opened on ${aDayPeopleRead(openedOn, now)}, and it is still open.` : `Check-in ${n} is open now.`, openedOn };
   }
   /*
    * A SESSION THESE ROWS SAY IS FINISHED IS NEVER "STILL OPEN" (Drop Access short run, item 14). Mercy's board read "Session 3
@@ -71,11 +71,11 @@ export function whatEachSessionSays(n: number, rows: ASessionRow[], openRound: n
    */
   const openOne = rows.filter((r) => r.sessionNumber === openRound);
   const theOpenOneIsDone = openOne.length > 0 && openOne.every((r) => r.status === 'COMPLETED' || r.status === 'DECLINED');
-  if (handOn && theOpenOneIsDone && (came || started)) return { says: openedOn ? `Session ${n} opened on ${aDayPeopleRead(openedOn, now)}, and it is still open.` : `Session ${n} is open now.`, openedOn };
-  if (started) return { says: `Session ${n} has started for some people, while session ${openRound} is still open.`, openedOn };
-  if (came) return { says: `Session ${n} opened on ${aDayPeopleRead(came, now)}, while session ${openRound} is still open.`, openedOn };
-  if (opensLater) return { says: `Session ${n} opens on ${aDayPeopleRead(opensLater, now)}.`, openedOn: null };
-  return { says: `Session ${n} has not opened yet.`, openedOn: null };
+  if (handOn && theOpenOneIsDone && (came || started)) return { says: openedOn ? `Check-in ${n} opened on ${aDayPeopleRead(openedOn, now)}, and it is still open.` : `Check-in ${n} is open now.`, openedOn };
+  if (started) return { says: `Check-in ${n} has started for some people, while check-in ${openRound} is still open.`, openedOn };
+  if (came) return { says: `Check-in ${n} opened on ${aDayPeopleRead(came, now)}, while check-in ${openRound} is still open.`, openedOn };
+  if (opensLater) return { says: `Check-in ${n} opens on ${aDayPeopleRead(opensLater, now)}.`, openedOn: null };
+  return { says: `Check-in ${n} has not opened yet.`, openedOn: null };
 }
 
 

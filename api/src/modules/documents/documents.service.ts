@@ -273,6 +273,22 @@ export class DocumentsService {
    * model's transcription, hidden the same way before anything else reads it. See
    * bank-details-are-never-kept.
    */
+  /**
+   * THE TEXT OF A FILE THAT HAS NO CHECK-IN TO GO IN (executive-onboarding: what a senior person forwards before anything is open). It is read by
+   * the same code an upload is, so bank details are left out here as they are there, and a file that cannot be read says why in plain words
+   * and never throws. The original is kept by the caller, never here.
+   */
+  async readForMaterial(file: { originalname: string; mimetype: string; buffer: Buffer }): Promise<{ text: string } | { unreadable: string }> {
+    try {
+      const text = (await this.extractContent(file as Express.Multer.File)).trim();
+      if (!text || /^\[Attached: /.test(text)) return { unreadable: 'it is a kind of file I cannot read the words of yet' };
+      return { text };
+    } catch {
+      /* The exception's own words are written for the screen that uploaded the file, not for the middle of a sentence. */
+      return { unreadable: 'it would not open' };
+    }
+  }
+
   private async extractContent(file: Express.Multer.File): Promise<string> {
     return withoutBankDetails(await this.readTheText(file));
   }

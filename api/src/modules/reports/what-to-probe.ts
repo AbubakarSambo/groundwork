@@ -129,8 +129,8 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
 
   if (!i.answeredThisSession) {
     probe.push(i.startedThisSession
-      ? `${He} ${has} started this session and not finished it yet, so nothing below is from this round.`
-      : `${He} ${has} not answered this session, so nothing below is from this round.`);
+      ? `${He} ${has} started this check-in and not finished it yet, so nothing below is from this round.`
+      : `${He} ${has} not answered this check-in, so nothing below is from this round.`);
   }
 
   /*

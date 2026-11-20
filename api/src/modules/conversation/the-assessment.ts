@@ -45,12 +45,19 @@ export type HowItEnded = 'finished by the person' | 'closed by the clock' | 'dec
  *   - 'the people in this check-in': what a person says in a check-in can be shown word for word to the people in it.
  *   - 'the lead only': the lead's private notes on each person, the team as the lead described it, risks the lead named,
  *     observations and role and focus reads (a participant never reads the lead's judgement).
- *   - 'the person only': nothing yet; kept for the person's own report.
+ *   - 'the person only': something about the speaker's wellbeing rather than their work (their health, their family, grief, distress:
+ *     "My mum is in hospital"). Read by the speaker alone: never a record line, a board line, a report line or Today, and never the
+ *     lead's (Hafsah, batch 2: distress is never a work line).
+ *   - 'the lead and whom it is about': what the lead says about a named person's work, figures or performance, in her own check-ins or
+ *     in her update in setup. Read by the lead and that person only, never the rest of the team, in every reader (Hafsah, batch 2,
+ *     item 1). Whom it is about is the item's `aboutParticipantId`; when the name cannot be matched to one person, nobody but the lead.
  *   - 'the person and who hears a complaint': what a team member said against the person who runs the check-in, and everything
  *     read from the same messages (Hafsah, 3 November 2026). Never the lead; the person, and the admin or HR person who hears it
  *     (a-complaint-about-the-lead.ts).
  */
-export type WhoMaySee = 'the people in this check-in' | 'the lead only' | 'the person only' | 'the person and who hears a complaint';
+export type WhoMaySee = 'the people in this check-in' | 'the lead only' | 'the person only' | 'the person and who hears a complaint' | 'the lead and whom it is about';
+/** What the lead says about a named person's work: the lead and that person only. */
+export const THE_LEAD_AND_WHOM_IT_IS_ABOUT: WhoMaySee = 'the lead and whom it is about';
 /** Who may see a complaint about the lead and what came with it. */
 export const KEPT_FROM_THE_LEAD: WhoMaySee = 'the person and who hears a complaint';
 
@@ -246,9 +253,44 @@ export function theColumnWith(assessment: TheAssessment, columnBefore: unknown):
  */
 const THE_LEADS_ONLY: ReadonlySet<string> = new Set(['observations', 'roleSignals', 'areas', 'compared.disagreements']);
 
-export function whoMaySee(section: string): WhoMaySee {
+/**
+ * THE ONE RULE FOR WHO MAY SEE AN ITEM: by what it is and whom it is about, not only the section it sits in (Hafsah, batch 2, item 1).
+ * What it is about is the read's (rule 4): `wellbeing` and `aboutWhom` on the item. Who may then read it is fixed here, because it is
+ * privacy.
+ */
+export function whoMaySee(section: string, item?: { wellbeing?: unknown; aboutWhom?: unknown }, speakerIsTheLead = false): WhoMaySee {
   if (section === 'aboutTheLead') return KEPT_FROM_THE_LEAD;
-  return section.startsWith('setup.') || THE_LEADS_ONLY.has(section) ? 'the lead only' : 'the people in this check-in';
+  if (item?.wellbeing === true) return 'the person only';
+  if (section.startsWith('setup.') || THE_LEADS_ONLY.has(section)) return 'the lead only';
+  if (speakerIsTheLead && typeof item?.aboutWhom === 'string' && item.aboutWhom.trim()) return THE_LEAD_AND_WHOM_IT_IS_ABOUT;
+  return 'the people in this check-in';
+}
+
+/**
+ * AN AIM HELD BY A NAMED PERSON IS ABOUT THAT PERSON, NOT THE TEAM'S (run 9, 23 November). Lucy's setup line "Mary wants to aim higher on her own" was
+ * read as an aim and kept as a team aim with nobody's name on it, so every person's read was given it as "the team's priorities" and said it back in
+ * Sam's, Asha's and Amani's recap. What a lead says about a named person's aim stays between her and that person, so it is never kept as a shared
+ * aim: it stays on the lead's own assessment, where its `whose` is the person and only she and that person read it. `whose` is the read's: "The team",
+ * or the first name of whoever holds it. Nothing here is a word list: it asks only whether the holder is somebody other than the team or the speaker.
+ */
+export function anAimHeldByAnotherPerson(t: { whose?: unknown; target?: unknown }, speaker: string | null | undefined): boolean {
+  const whose = String(t?.whose ?? '').trim().split(/\s+/)[0]?.toLowerCase() ?? '';
+  const me = String(speaker ?? '').trim().split(/\s+/)[0]?.toLowerCase() ?? '';
+  /* One with a number keeps the road it always had: the targets set for a person, which the owner rules already carry. */
+  return !!whose && whose !== 'the' && whose !== me && typeof t.target !== 'number';
+}
+
+/**
+ * WHOM EACH ITEM IS ABOUT, AS A PERSON ON THE CHECK-IN. The read names them as the speaker did ("remy Rep"); `match` finds the one
+ * person (whoTheyMeant, which refuses a name two people share). An item the lead said about somebody gets their id; when nobody can be
+ * matched it stays null, so only the lead reads it.
+ */
+export function withWhomEachItemIsAbout<T extends Pick<TheAssessment, AnItemSection | 'setup' | 'comparedWithLastTime'>>(parts: T, match: (name: string) => string | null): T {
+  for (const i of everyItemIn(parts)) {
+    if (i.whoMaySee !== THE_LEAD_AND_WHOM_IT_IS_ABOUT) continue;
+    i.aboutParticipantId = match(String(i.aboutWhom ?? '')) ?? null;
+  }
+  return parts;
 }
 
 /** What "taken further" means, the one wording: the assessment reads it into each wait, and a live check-in reads it from what was said. */
@@ -267,10 +309,13 @@ export const THE_ASSESSMENT_PROMPT = [
   'FOR EVERY ITEM:',
   '  - `words` is the person\'s own words, copied exactly from their messages, as short as still makes sense. Never your paraphrase. Keep their punctuation and quotation marks.',
   '  - `from` is the number of every message the item came from.',
-  '  - Write any other field in plain, short English that a colleague with basic English understands.',
-  '  - `cannotBeTrue`: on any item, a short plain reason when what they say cannot be true as they said it, read from their words, what you know of their work and the day of the conversation: far more than one person could do in the time they gave ("10,000 freezers sold by one sales rep in one day"), or a promise for a day that had already passed when they said it ("deliver on 20 October", said on 4 November). Otherwise leave it out. It is not doubt: an ordinary claim with no proof yet is "said", not this.',
+  '  - Write any other field in plain, short English that a colleague with basic English understands. Where their words say "it", "that", "they", "him", "her" or "their buyer", write the other fields with what it stands for, by name, from the conversation ("the buyer at Naivas Sarit", "the Kasarani Foods submissions draft"), so the item reads right on its own. Never leave a bare pronoun in a field other than `words`.',
+  '  - THREE THINGS ARE SAID IN `marks`, NOT ON THE ITEM: `aboutWhom`, `wellbeing` and `cannotBeTrue`. Add one entry to `marks` for an item that needs one of them, with that item\'s `words` copied exactly and the fields that apply. Most items need no entry.',
+  '  - `aboutWhom`: for any item, the name of the one person it is about, as they named them, when it is about the work, the figures or the performance of somebody other than the person speaking ("Remy has sold 5 units this month" is about Remy). Leave it out when it is about the speaker\'s own work, the team as a whole, or a customer.',
+  '  - `wellbeing`: true for any item about how somebody is in themselves rather than their work: their health, their family, grief, fear, distress or safety ("My mum is in hospital", "I am not coping"). It is never a work item, a claim or a blocker, and it is never in the summary.',
+  '  - `cannotBeTrue`: for any item, a short plain reason when what they say cannot be true as they said it, read from their words, what you know of their work and the day of the conversation: far more than one person could do in the time they gave ("10,000 freezers sold by one sales rep in one day"), or a promise for a day that had already passed when they said it ("deliver on 20 October", said on 4 November). Otherwise leave it out. It is not doubt: an ordinary claim with no proof yet is "said", not this.',
   '',
-  'EVERY MESSAGE IS ACCOUNTED FOR. Each message number must appear in the `from` of at least one item, or in `nothingToRecord` when it holds nothing to record (a greeting, "ok", a remark about Groundwork itself). When unsure, record it under everythingElse rather than leave it out.',
+  'EVERY MESSAGE IS ACCOUNTED FOR. Each message number must appear in the `from` of at least one item, or in `nothingToRecord` when it holds nothing to record (a greeting, "ok", a remark about Groundwork itself, or a polite answer to a polite question). Read each message together with the question it answered: "No, nothing is wrong" after "Is anything in the way?" or "Anything else?" is a courtesy that says nothing about the work, and it is never a claim, a position or a fact about any topic (it is not "nothing is wrong with sales progress"). Where somebody says plainly that a named thing is fine or on track, that is a claim; where they only close a question, it is nothing to record. The same holds for a message that only says they are done, that a summary is right, or that there is nothing to add ("That\'s right, finish", "That is all", "No, that is right", "Nothing else"), however it is worded: it is nothing to record and never goes under everythingElse. Where a message holds something about the work and you cannot tell which part it belongs to, record it under everythingElse rather than leave it out.',
   '',
   'THE SECTIONS:',
   '  - summary: two or three plain sentences on what this conversation established.',
@@ -328,7 +373,6 @@ const anItem = (props: Record<string, any>) => ({
     properties: {
       words: { type: 'string', description: 'Their own words, copied exactly.' },
       from: { type: 'array', items: { type: 'integer' }, description: 'The message numbers it came from.' },
-      cannotBeTrue: S('Only when it cannot be true as said: far more than one person could do in the time given, or a promise for a day already past when it was said. The plain reason.'),
       ...props,
     },
     required: ['words', 'from'],
@@ -342,6 +386,29 @@ export const THE_ASSESSMENT_SCHEMA = {
     type: 'object',
     properties: {
       summary: { type: 'string', description: 'Two or three plain sentences.' },
+      /*
+       * THE THREE FIELDS NO ITEM NEEDS BY DEFAULT ARE SAID ONCE, HERE, AND NOT ON EVERY ITEM OF EVERY SECTION (fix plan 16 November, group 1).
+       * On 4 and 7 November `aboutWhom`, `wellbeing` and `cannotBeTrue` were added to the shape every one of the 33 sections shares, which
+       * put 99 more fields into one request of 306 and 36,000 characters. From then on every read of every conversation in the
+       * 15 November end-to-end run was refused by the model as "Request contains an invalid argument" (400 INVALID_ARGUMENT) and no
+       * conversation was read at all. Said here, the request is 99 fields smaller and the model says them only for the items that
+       * need them. `withTheMarksOnTheItems` puts each back on its item before anything reads it, so whoMaySee, whom an item is about
+       * and what cannot be true as said are read exactly as before.
+       */
+      marks: {
+        type: 'array',
+        description: 'One entry for each item that is about somebody else, about how somebody is, or cannot be true as said. Most items need none.',
+        items: {
+          type: 'object',
+          properties: {
+            words: { type: 'string', description: 'The words of the item, copied exactly from the item.' },
+            aboutWhom: S('The name of the one person it is about, when it is about the work, figures or performance of somebody other than the speaker.'),
+            wellbeing: { type: 'boolean', description: 'True when it is about how somebody is in themselves (health, family, grief, distress), not their work.' },
+            cannotBeTrue: S('Only when it cannot be true as said: far more than one person could do in the time given, or a promise for a day already past when it was said. The plain reason.'),
+          },
+          required: ['words'],
+        },
+      },
       workUpdates: anItem({ work: S('The piece of work.'), area: S('Its area.'), stage: S('Its stage.'), value: S('Its value, with the unit.'), dates: S('Its dates, as said.'), nextStep: S('The next step.'), nextStepDay: S('The day of the next step, as said.'), nextStepOwner: S('Who owns the next step.') }),
       claims: anItem({ claim: S('What they say is true or done.'), proof: { type: 'string', enum: ['proved', 'said'] }, proofIs: S('What the proof is.'), needsProof: { type: 'boolean', description: 'True when it is something done or true that proof could show; false for something not done, a plan or a feeling.' }, proofAsked: { type: 'boolean', description: 'True when Groundwork asked for proof of it, or they said they would send it.' }, previousItem: S('The id of the same claim in their previous assessment.') }),
       promises: anItem({
@@ -389,7 +456,7 @@ export const THE_ASSESSMENT_SCHEMA = {
           disagreements: anItem({ what: S('What they said.'), otherSays: S('What the record or someone else says.') }),
         },
       },
-      targets: anItem({ aim: S('The aim as one plain, full sentence about whoever holds it, by first name, or "The team".'), target: { type: ['number', 'null'], description: 'The number aimed at, only where they said one.' }, unit: S('What it counts.'), by: S('By when, in their words.'), whose: S('Whose aim: a first name, or "The team".') }),
+      targets: anItem({ aim: S('The aim as one plain, full sentence about whoever holds it, by first name, or "The team".'), target: { type: ['number', 'null'], description: 'The number aimed at, only where they said one.' }, unit: S('What it counts.'), by: S('By when, in their words.'), whose: S('Whose aim: a first name, or "The team".'), reportsWhatIsDone: { type: 'boolean', description: 'True when the number is what they say they have already done or got ("I sold 24 last week"), reported against an aim, and not a number they are aiming at.' } }),
       stillOpen: anItem({ question: S('What to ask next time.') }),
       everythingElse: anItem({ what: S('What it is about.') }),
       aboutTheLead: anItem({ what: S('What they say against the person who leads this check-in, in plain words.') }),
@@ -399,6 +466,29 @@ export const THE_ASSESSMENT_SCHEMA = {
     required: ['summary', 'nothingToRecord'],
   },
 } as const;
+
+/**
+ * THE SCHEMA FOR THIS CONVERSATION: ONLY THE SECTIONS THAT CAN APPLY TO IT (fix plan 17 November, group A).
+ *
+ * THE CAUSE OF THE 400 INVALID_ARGUMENT ON THE READ, FOUND ON THE REAL MODEL. The refusal is the model's own, not the request's size: the
+ * same full schema (19,284 characters) was accepted 20 of 20 times with one short message and refused in 7 of 20 with a conversation of
+ * sixteen messages and a previous assessment, on the same instructions and the same material each time. It is the length of what the model
+ * writes under a schema this large, so it is not a fixed fraction of requests and not a function of the request's length. The same
+ * conversation with the sections that cannot apply left out of the schema (setup's nine, the lead's complaint, the lead's own update)
+ * was refused 0 of 13 times. Earlier, taking 99 fields out of every item (306 to 215 fields) moved 100 percent to about a third; this is the
+ * same cause, so the answer is the same: ask for what applies and no more.
+ *
+ * What applies is what `thePartsFrom` already reads: setup's sections and the lead's own update only in setup; the comparison only where
+ * there is an earlier assessment or an open promise to compare against; what is said against the lead only by somebody who is not the lead.
+ * A section left out is a section nothing reads for that conversation, so nothing downstream changes.
+ */
+export function theAssessmentSchemaFor(o: { hasSetup: boolean; compares: boolean; isTheLead: boolean }): typeof THE_ASSESSMENT_SCHEMA {
+  const props: Record<string, unknown> = { ...THE_ASSESSMENT_SCHEMA.input_schema.properties };
+  if (!o.hasSetup) { delete props.setup; delete props.herUpdate; }
+  if (!o.compares) delete props.comparedWithLastTime;
+  if (o.isTheLead) delete props.aboutTheLead;
+  return { ...THE_ASSESSMENT_SCHEMA, input_schema: { ...THE_ASSESSMENT_SCHEMA.input_schema, properties: props as any } } as any;
+}
 
 /* ---------------------------------------------------------------------------------------------------------------------
  * THE MATERIAL GIVEN TO THE READ.
@@ -472,7 +562,7 @@ export function theMaterialAsText(m: TheMaterial): string {
 /** The material for the second read: only the messages the first left unmatched, with the question each answered. */
 export function theUnmatchedAsText(m: TheMaterial, unmatched: number[]): string {
   const want = new Set(unmatched);
-  const out: string[] = [`The person: ${m.who}.`, '', 'THESE MESSAGES WERE NOT YET RECORDED. Record everything in them, or mark a message as nothing to record:'];
+  const out: string[] = [`The person: ${m.who}.`, '', 'THESE MESSAGES WERE NOT YET RECORDED. Record what is about the work in each, and mark a message that only answers a polite question, closes a question or says they are done as nothing to record:'];
   let asked = '';
   for (const t of m.turns) {
     if (t.role === 'groundwork') { asked = t.content; continue; }
@@ -489,7 +579,7 @@ export function theUnmatchedAsText(m: TheMaterial, unmatched: number[]): string 
 const squash = (s: string) => s.toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim();
 
 /** The items of one section of the model's answer, each with an id, its numbers checked and who may see it. */
-export function theItems(raw: unknown, section: string, idPrefix: string, said: Map<number, string>): AnItem[] {
+export function theItems(raw: unknown, section: string, idPrefix: string, said: Map<number, string>, speakerIsTheLead = false): AnItem[] {
   if (!Array.isArray(raw)) return [];
   const out: AnItem[] = [];
   raw.forEach((r: any, i: number) => {
@@ -504,7 +594,7 @@ export function theItems(raw: unknown, section: string, idPrefix: string, said: 
     }
     if (!words && !Object.keys(rest).length) return;
     const wordForWord = !!words && from.some((n) => squash(said.get(n) ?? '').includes(squash(words)));
-    out.push({ ...rest, id: `${idPrefix}.${i}`, words, from, whoMaySee: whoMaySee(section), saidWordForWord: wordForWord });
+    out.push({ ...rest, id: `${idPrefix}.${i}`, words, from, whoMaySee: whoMaySee(section, rest, speakerIsTheLead), saidWordForWord: wordForWord });
   });
   return out;
 }
@@ -526,23 +616,49 @@ export type TheReadParts = Pick<TheAssessment, AnItemSection | 'setup' | 'compar
   herUpdate?: number[];
 };
 
-export function thePartsFrom(answer: any, said: Map<number, string>, opts: { hasSetup: boolean; previous: { checkInId: string; on: string | null } | null; givenRole: string | null; read: number; compares?: boolean }): TheReadParts {
-  const a = answer && typeof answer === 'object' ? answer : {};
+/**
+ * EACH MARK BACK ON ITS ITEM. The read says `aboutWhom`, `wellbeing` and `cannotBeTrue` once, in `marks`, by the item's own words; here they
+ * are put on every item (in any section) whose words are those, so nothing downstream knows they were said apart.
+ */
+export function withTheMarksOnTheItems(answer: any): any {
+  const marks = Array.isArray(answer?.marks) ? (answer.marks as any[]).filter((m) => m && typeof m.words === 'string' && m.words.trim()) : [];
+  if (!marks.length) return answer;
+  const byWords = new Map<string, any>(marks.map((m) => [squash(m.words), m]));
+  const mark = (items: any): any => (Array.isArray(items)
+    ? items.map((it) => {
+      const m = it && typeof it.words === 'string' ? byWords.get(squash(it.words)) : null;
+      if (!m) return it;
+      const { words: _w, ...fields } = m;
+      return { ...fields, ...it };
+    })
+    : items);
+  const out: any = { ...answer };
+  for (const k of Object.keys(out)) {
+    if (k === 'marks') continue;
+    if (Array.isArray(out[k])) out[k] = mark(out[k]);
+    else if (out[k] && typeof out[k] === 'object') out[k] = Object.fromEntries(Object.entries(out[k]).map(([kk, v]) => [kk, mark(v)]));
+  }
+  return out;
+}
+
+export function thePartsFrom(answer: any, said: Map<number, string>, opts: { hasSetup: boolean; previous: { checkInId: string; on: string | null } | null; givenRole: string | null; read: number; compares?: boolean; isTheLead?: boolean }): TheReadParts {
+  const a = answer && typeof answer === 'object' ? withTheMarksOnTheItems(answer) : {};
   const p = (s: string) => `r${opts.read}.${s}`;
   const parts: any = {
     summary: typeof a.summary === 'string' ? a.summary.trim() : '',
     nothingToRecord: Array.isArray(a.nothingToRecord) ? [...new Set(a.nothingToRecord.map(Number).filter((n: number) => said.has(n)))] : [],
     herUpdate: opts.hasSetup && Array.isArray(a.herUpdate) ? [...new Set(a.herUpdate.map(Number).filter((n: number) => said.has(n)))] : [],
   };
-  for (const s of THE_ITEM_SECTIONS) parts[s] = theItems(a[s], s, p(s), said);
+  const lead = opts.isTheLead === true;
+  for (const s of THE_ITEM_SECTIONS) parts[s] = theItems(a[s], s, p(s), said, lead);
   parts.aboutTheLead = theItems(a.aboutTheLead, 'aboutTheLead', p('aboutTheLead'), said);
   parts.setup = opts.hasSetup
-    ? Object.fromEntries(THE_SETUP_SECTIONS.map((s) => [s, theItems(a.setup?.[s], `setup.${s}`, p(`setup.${s}`), said)]))
+    ? Object.fromEntries(THE_SETUP_SECTIONS.map((s) => [s, theItems(a.setup?.[s], `setup.${s}`, p(`setup.${s}`), said, lead)]))
     : null;
   parts.comparedWithLastTime = {
     previousCheckInId: opts.previous?.checkInId ?? null,
     previousOn: opts.previous?.on ?? null,
-    ...Object.fromEntries(THE_COMPARED_SECTIONS.map((s) => [s, opts.previous || opts.compares ? theItems(a.comparedWithLastTime?.[s], `compared.${s}`, p(`compared.${s}`), said) : []])),
+    ...Object.fromEntries(THE_COMPARED_SECTIONS.map((s) => [s, opts.previous || opts.compares ? theItems(a.comparedWithLastTime?.[s], `compared.${s}`, p(`compared.${s}`), said, lead) : []])),
   };
   const r = a.roleAgainstGiven;
   parts.roleAgainstGiven = r && typeof r === 'object' && (r.playing || r.fits)

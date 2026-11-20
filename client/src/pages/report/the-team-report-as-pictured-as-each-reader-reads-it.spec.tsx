@@ -1,3 +1,4 @@
+/* S18 (staging check, 4 November): how often is said in the one wording every page uses (howOftenTheTeamChecksIn); "Weekly, Mondays." was a second wording. */
 import { it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -19,7 +20,7 @@ vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
 vi.mock('@/api/board', () => ({ boardApi: { get: vi.fn() } }))
 vi.mock('@/api/reports', async (orig) => ({ ...(await orig() as any), reportsApi: { ...((await orig() as any).reportsApi), sessionReport: vi.fn(), sendToEveryone: vi.fn(), sharing: vi.fn(async () => ({ sessionNumber: 38, shared: false, held: false, at: '6:30pm', says: 'It is usually shared by 6:30pm. You’ll get an email when it is.' })) } }))
 vi.mock('@/components/gw/TheSessionsReport', () => ({ TheSessionsReport: () => <p>The report as before.</p> }))
-vi.mock('@/components/gw/TheCheckInHeader', () => ({ TheCheckInHeader: () => null }))
+vi.mock('./TheReportHeader', () => ({ TheReportHeader: () => null }))
 
 const GROUND = {
   id: 'g1', label: 'Sales team, Q3', initiatorId: 'u-w', cadence: 'DAILY', participants: [
@@ -62,7 +63,7 @@ it('Wairimu reads the team’s report as pictured, and may share it named or wit
   me = { id: 'u-w', firstName: 'Wairimu', lastName: 'Kamau', role: 'LEAD' }
   renderIt()
   expect(await screen.findByText('The team’s report, Wednesday 23 September')).toBeTruthy()
-  expect(screen.getByText('Session 38. 1 of 2 people checked in. Omar had not checked in by 6pm.')).toBeTruthy()
+  expect(screen.getByText('Check-in 38. 1 of 2 people checked in. Omar had not checked in by 6pm.')).toBeTruthy()
   expect(screen.getByText('Only you can see this until you share it')).toBeTruthy()
   expect(screen.getByText('Share without names')).toBeTruthy()
   expect(screen.getByText('Share with the team')).toBeTruthy()
@@ -105,7 +106,7 @@ it('Wairimu reads a shared session by its number, with no share choices left (on
   me = { id: 'u-w', firstName: 'Wairimu', lastName: 'Kamau', role: 'LEAD' }
   ;(reportsApi.sessionReport as any).mockResolvedValue({ ...REPORT, released: true })
   renderIt()
-  expect(await screen.findByText('Session 38', { selector: 'h1' })).toBeTruthy()
+  expect(await screen.findByText('Check-in 38', { selector: 'h1' })).toBeTruthy()
   expect(screen.getByText('Shared with the team')).toBeTruthy()
   expect(screen.queryByText('Share with the team')).toBeNull()
 })
@@ -118,7 +119,7 @@ it('Wairimu reads, before anybody has checked in, the check-in’s header with �
   renderIt()
   expect(await screen.findByText('The first team report')).toBeTruthy()
   expect(screen.getByText('It’s written once everyone has checked in, and only you see it until you share it.')).toBeTruthy()
-  expect(screen.getByText('2 people. Weekly, Mondays.')).toBeTruthy()
+  expect(screen.getByText('2 people. Every Monday.')).toBeTruthy()
   expect(screen.getByRole('link', { name: 'Your check-in' }).getAttribute('href')).toBe('/grounds/g1')
   /* The third tab is "References and resources" for everybody since Release 1B's switch went (eb43a349d). */
   for (const tab of ['Board', 'Check-in', 'References and resources', 'My work', 'People and setup']) expect(screen.getByText(tab)).toBeTruthy()
@@ -142,7 +143,7 @@ it('a sales team reads “What each person did”, and a sales organisation of t
 it('Wairimu reads what Groundwork does not know yet, before what each person said, and what it will do next', async () => {
   me = { id: 'u-w', firstName: 'Wairimu', lastName: 'Kamau', role: 'LEAD' }
   ;(reportsApi.sessionReport as any).mockResolvedValue({ ...REPORT, whatIDontKnowYet: [
-    { title: '“What is getting in the way now?”', says: 'Groundwork asked Samuel this in session 35 and once more since, and Samuel has not answered it yet. Next: Groundwork will not ask again, so that Samuel is not pressed. You could ask Samuel yourself.' },
+    { title: '“What is getting in the way now?”', says: 'Groundwork asked Samuel this in check-in 35 and once more since, and Samuel has not answered it yet. Next: Groundwork will not ask again, so that Samuel is not pressed. You could ask Samuel yourself.' },
   ] })
   renderIt()
   const heading = await screen.findByText('What I don’t know yet')

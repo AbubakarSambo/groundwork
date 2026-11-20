@@ -59,13 +59,21 @@ describe('request 112 (b): what Bisi, who runs it, can do about each item', () =
     });
   });
 
-  it('a wait on a colleague: "Ask Kwame", on the Context page, where a question for his next check-in is kept', async () => {
+  it('a wait on a colleague: "Ask Kwame", under References and resources, where a question for his next check-in is kept', async () => {
     const b = await boardAs(RUN, ...BISI);
-    expect(decision(b, 'Ngozi Eze is waiting on Kwame Mensah for the signed forms')).toEqual({
+    expect(decision(b, 'Ngozi Eze says the work is waiting on Kwame Mensah for the signed forms')).toEqual({
       label: 'Ask Kwame',
-      says: "Tell Groundwork on the Context page what to ask Kwame Mensah, and it will ask in Kwame Mensah's next check-in.",
+      says: "Tell Groundwork under References and resources what to ask Kwame Mensah, and it will ask in Kwame Mensah's next check-in.",
       goesTo: 'context',
     });
+  });
+
+  it('a wait only Ngozi claims is said as her account on the lead\'s line, and is never put to Kwame as his fault', async () => {
+    const b = await boardAs(RUN, ...BISI);
+    const line = (b.decisions ?? []).find((d: any) => d.question.startsWith('Ngozi Eze says the work is waiting on Kwame Mensah'));
+    expect(line.question).toBe('Ngozi Eze says the work is waiting on Kwame Mensah for the signed forms for Ikeja Bakery.');
+    expect(line.why).toBe('That is what Ngozi Eze said, and Kwame Mensah has not said it is theirs to give.');
+    expect(JSON.stringify(line)).not.toMatch(/cannot move until it comes/);
   });
 
   it('a yes-or-no question she wrote down: "Yes" and "No", each with the route that keeps it', async () => {
@@ -82,7 +90,7 @@ describe('request 112 (b): what Bisi, who runs it, can do about each item', () =
   it('a question with two answers of her own is not turned into choices nobody wrote', async () => {
     const b = await boardAs(RUN, ...BISI);
     expect(decision(b, 'Whether the 120m')).toEqual({
-      label: 'Open the Context page', says: 'Write down what you decided on the Context page, and close this line there.', goesTo: 'context',
+      label: 'Open References and resources', says: 'Write down what you decided under References and resources, and close this line there.', goesTo: 'context',
     });
   });
 
@@ -157,7 +165,7 @@ describe('request 112 (b): the lead\'s answer to a question she wrote down', () 
 
   it('a question with two answers of her own is refused in a sentence', async () => {
     const { svc } = service({ ...LINE, id: 'ci-either', text: 'Whether the 120m counts what was approved or what was disbursed.' });
-    await expect(svc.answerADecision('g-1', 'ci-either', 'u-bisi', true)).rejects.toThrow('This is not a question with a yes or a no. Write down what you decided on the Context page.');
+    await expect(svc.answerADecision('g-1', 'ci-either', 'u-bisi', true)).rejects.toThrow('This is not a question with a yes or a no. Write down what you decided under References and resources.');
   });
 
   it('a question already answered is not answered twice', async () => {

@@ -9,8 +9,8 @@ import { isASalesKind } from '@/lib/a-sales-kind'
 import { theCountOf } from '@/lib/the-one-count'
 import { useAuthStore } from '@/stores/auth'
 import { plannedSessionsFor } from '@/lib/sessionCount'
-import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
-import { checkInHeaderTabs } from '@/pages/grounds/ground-tabs'
+import { TheReportHeader } from './TheReportHeader'
+import { Page } from '@/components/gw/ui'
 import { GroundGone } from '@/components/gw/GroundGone'
 
 /**
@@ -78,36 +78,37 @@ export default function RoundReportPage() {
 
   return (
     <TheDirectMorning on={direct}>
-    <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 60px' }}>
+    <Page>
       {/*
         U.10 PICTURE-CHECK ROUND 6, ITEM I: THE SAME SHARED HEADER EVERY CHECK-IN PAGE NOW USES.
         This page has no `phaseSpine` (that is board-specific data this read does not fetch), so
         the cadence line says the rhythm and the planned-session count but not "Session N of M" -
         nothing here is invented to fill that in. "Report" is not one of the prototype's five tabs
-        (see TheCheckInHeader.tsx); kept reachable as a sixth. "← Every session" became the Report
+        (see TheReportHeader.tsx); kept reachable as a sixth. "← Every session" became the Report
         tab itself, since that is exactly what it opens.
       */}
       {id && (
-        <TheCheckInHeader
+        <TheReportHeader
           id={id}
           title={(ground as any)?.label ?? 'Check-in'}
           cadence={(ground as any)?.cadence ?? null}
           cadenceDays={(ground as any)?.cadenceDays ?? null}
+          workingDays={(ground as any)?.workingDays ?? null}
+          cadenceAnchorDay={(ground as any)?.cadenceAnchorDay ?? null}
           plannedSessions={plannedSessions}
           canRunThisCheckIn={canRunThisCheckIn}
           isAParty={isAParty}
           active="report"
-          tabs={checkInHeaderTabs({ id, canRunThisCheckIn, isAParty, ground: ground as any })}
         />
       )}
 
-      <div style={{ marginTop: 20 }}>
+      <div>
         <button
           onClick={() => navigate(`/grounds/${id}?tab=report`)}
           className="gwui-tap-44"
           style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14 }}
         >
-          &larr; Every session
+          &larr; Every check-in
         </button>
         {/*
           U.9: "What everyone said, for this session. It never quotes anyone." is gone. Its second
@@ -115,7 +116,7 @@ export default function RoundReportPage() {
           people in the check-in (docs/decisions.md, rule 4). The report below says how many people
           checked in, as the prototype's session page does.
         */}
-        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Session {n}</div>
+        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Check-in {n}</div>
         {!!id && Number.isFinite(n) && (
           <TheSessionsReport
             groundId={id}
@@ -125,7 +126,7 @@ export default function RoundReportPage() {
           />
         )}
       </div>
-    </div>
+    </Page>
     </TheDirectMorning>
   )
 }

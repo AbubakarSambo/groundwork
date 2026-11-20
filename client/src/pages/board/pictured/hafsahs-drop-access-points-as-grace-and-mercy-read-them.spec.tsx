@@ -44,7 +44,7 @@ it('Grace reads each person\'s line from today, and "Not in yet" only for somebo
     patterns: [],
   }
   wrap(<TheTeamToday b={b} deals={{ rows: [] }} today="2026-10-15" groundId="g1" />)
-  const rowOf = (name: string) => screen.getByText(name).closest('.pb-row') as HTMLElement
+  const rowOf = (name: string) => screen.getByText(name).closest('tr') as HTMLElement
   expect(rowOf('Mercy').textContent).toContain('Greenfield Supermarket ordered 25 units')
   expect(rowOf('Mercy').textContent).not.toContain('Not in yet')
   expect(rowOf('Omar').textContent).toContain('Hasn’t checked in today.')

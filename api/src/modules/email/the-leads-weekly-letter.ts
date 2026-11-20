@@ -1,3 +1,5 @@
+import { whenACheckInBegan } from '../grounds/a-round-that-could-be-answered';
+import { whenTheseOrganisationsPaused, thePausesThatAreOver } from '../billing/the-trial-grace';
 import { rebuildThePersonsRecords } from '../board/the-persons-record-store';
 import { theFeeNotesThatFellDueOnAnEvent } from '../board/a-fee-note-that-fell-due-said-to-the-lead';
 import { NOT_A_QUIET_CLOSE } from '../grounds/an-answer-includes-a-refusal';
@@ -19,6 +21,7 @@ import { everyLineTheFinalCheckPasses } from '../conversation/the-final-check';
 import { whatTheRecordHolds } from '../conversation/what-the-record-holds';
 import { dedupeDependencies, theSameThingInOtherWords } from '../board/reads';
 import { theirClosedSessions } from '../grounds/missed-check-ins';
+import { leaveOfThePeopleOn, type Stretch } from '../suites/who-is-away';
 import { theDirectMorningFor, theStoredRecords } from '../engagement/the-direct-morning';
 import { whatMovedWithProof, whoNeedsYouThisWeek, type AKindOfCheckIn } from '../board/what-the-lead-reads-about-each-person';
 import { isASalesKind, oneOfTheKinds } from '../board/the-kind-of-work';
@@ -333,10 +336,10 @@ const WEEK = 7 * 86_400_000;
  * Counts one check-in's last seven days. Reads nothing anybody said: only who finished, counts of
  * commitments and handoffs, and first names.
  */
-export async function theWeekOf(prisma: any, g: { id: string; label: string; initiatorId: string; cadence?: string | null }, now: Date): Promise<AWeekInOneCheckIn> {
+export async function theWeekOf(prisma: any, g: { id: string; label: string; initiatorId: string; cadence?: string | null; organizationId?: string | null }, now: Date): Promise<AWeekInOneCheckIn> {
   const since = new Date(now.getTime() - WEEK);
   const [people, finished, saidNext, done, waiting, doneRows, waitingRows] = await Promise.all([
-    prisma.groundParticipant.findMany({ where: { groundId: g.id }, select: { id: true, userId: true, email: true, managingOnly: true, nameGiven: true, lastNudgedAt: true, ...WHAT_SAYS_SOMEBODY_JOINED, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
+    prisma.groundParticipant.findMany({ where: { groundId: g.id, leftAt: null }, select: { id: true, userId: true, email: true, managingOnly: true, nameGiven: true, lastNudgedAt: true, joinedAt: true, ...WHAT_SAYS_SOMEBODY_JOINED, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
     /* A session the clock closed with nothing said is not a check-in made (night quality run 1: "all four people checked in" with Jared missing). */
     prisma.checkIn.findMany({ where: { groundId: g.id, status: CheckInStatus.COMPLETED, completedAt: { gte: since, lte: now }, AND: [NOT_A_QUIET_CLOSE] }, select: { participantId: true } }),
     prisma.groundCommitment.findMany({ where: { groundId: g.id, participantId: { not: null }, createdAt: { gte: since, lte: now } }, select: { participantId: true } }),
@@ -407,6 +410,11 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
     .map((p) => nameToCall(p))
     .filter((n: string) => !!n);
   const saidNextBy = new Set((saidNext as any[]).map((r) => r.participantId).filter((id: string) => countedIds.has(id)));
+  const checkInBeganAt = whenACheckInBegan(sessions as any[]);
+  const pausedFrom = (await whenTheseOrganisationsPaused(prisma, [g.organizationId ?? null], now).catch(() => new Map<string, Date>())).get(g.organizationId ?? '') ?? null;
+  /* Approved leave is no miss, as in every other count of misses (missed-check-ins.ts): the letter counted it as one (N48). */
+  const leave = await leaveOfThePeopleOn(prisma, [g.id]).catch(() => new Map<string, Stretch[]>());
+  const pausesOver = (await thePausesThatAreOver(prisma, [g.organizationId ?? null])).get(g.organizationId ?? '') ?? null;
   let checkInsDue = 0;
   let checkInsMade = 0;
   const missedBy: { name: string; missed: number; of: number }[] = [];
@@ -415,13 +423,17 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
     const theirs = (Array.isArray(sessions) ? sessions : []).filter((c) => c.participantId === p.id);
     const inTheWeek = new Set(theirs.filter((c) => { const at = new Date(c.availableFrom ?? c.createdAt); return at >= since && at <= now; }).map((c) => c.sessionNumber));
     /* On a check-in that opens each working day, a quiet session on a day they answered another is no miss: "Kevin missed one of six" (polish round 15). */
-    const closed = theirClosedSessions(theirs, [], now, { opensDaily: String(g.cadence ?? '').toUpperCase() === 'DAILY' }).filter((c) => inTheWeek.has(c.sessionNumber));
+    /* The same conditions as every other reader of a miss (grounds/a-round-that-could-be-answered): not before they joined or before anybody had said anything, and not in a pause. */
+    const closed = theirClosedSessions(theirs, leave.get(p.id) ?? [], now, { opensDaily: String(g.cadence ?? '').toUpperCase() === 'DAILY', pausedFrom: pausedFrom ?? null, pausesOver, joinedAt: (p as any).joinedAt ?? null, checkInBeganAt }).filter((c) => inTheWeek.has(c.sessionNumber));
     const missed = closed.filter((c) => c.missed).length;
     checkInsDue += closed.length;
     checkInsMade += closed.length - missed;
     if (missed) missedBy.push({ name: nameToCall(p), missed, of: closed.length });
   }
-  return { groundId: g.id, label: g.label, ofHowMany: counted.length, checkedIn: finishedIds.size, answerableIds: counted.map((p) => p.userId ?? p.id), checkedInIds: counted.filter((p) => finishedIds.has(p.id)).map((p) => p.userId ?? p.id), notYet, saidWhatNext: saidNextBy.size, done: done as number, waiting: waiting as number, closedBy, waitingOn, checkInsDue, checkInsMade, ...(missedBy.length ? { missedBy } : {}), ...(releaseOne ? { releaseOne: true } : {}), ...(claims.length ? { claims } : {}), ...(reminded.length ? { reminded } : {}) };
+  /* SOMEBODY INVITED WHO HAS NOT JOINED IS ONE OF THE PEOPLE ON THE CHECK-IN, and "five of five people checked in" was said with Ruth never having joined (run 7, mail 90). The one count
+     (reports/how-many-have-answered.ts) counts them, and the "what is new" mail already reads it; this count is the same people. They are never listed as "not yet": they have not started. */
+  const notJoinedButOnIt = (people as any[]).filter((p) => notJoined.has(p.id) && !checkedInThisWeek.has(p.id) && !p.managingOnly && owesThisSession(p) && !isNotLetInYet(p));
+  return { groundId: g.id, label: g.label, ofHowMany: counted.length + notJoinedButOnIt.length, checkedIn: finishedIds.size, answerableIds: [...counted, ...notJoinedButOnIt].map((p) => p.userId ?? p.id), checkedInIds: counted.filter((p) => finishedIds.has(p.id)).map((p) => p.userId ?? p.id), notYet, saidWhatNext: saidNextBy.size, done: done as number, waiting: waiting as number, closedBy, waitingOn, checkInsDue, checkInsMade, ...(missedBy.length ? { missedBy } : {}), ...(releaseOne ? { releaseOne: true } : {}), ...(claims.length ? { claims } : {}), ...(reminded.length ? { reminded } : {}) };
 }
 
 /**

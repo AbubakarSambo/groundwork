@@ -22,7 +22,7 @@ describe('the last tile is a sentence', () => {
   });
 
   it('nothing with a document behind it', () => {
-    expect(lastTile(0)).toMatchObject({ value: 'All from memory', sub: 'Nothing said this session has a document behind it.' });
+    expect(lastTile(0)).toMatchObject({ value: 'All from memory', sub: 'Nothing said this check-in has a document behind it.' });
   });
 
   it('nothing said yet', () => {

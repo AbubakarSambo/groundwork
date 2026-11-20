@@ -55,7 +55,8 @@ describe('the two views of a check-in are a pair', () => {
     /* The party view still says whose it is, because that is the news. The lead's line went on
        10 Sep 2026: the rail, the card and "Led by" already said it three times over. */
     expect(ADMIN).not.toContain('Everyone in it - you are running this')
-    expect(PARTY).toContain('Your own check-in. The report shows where you and the others agree, differ, and what to do next.')
+    /* Changed in batch 2 (issue 41): that sentence was an explainer and is gone; the party view says nothing about which view it is. */
+    expect(PARTY).not.toContain('The report shows where you and the others agree')
   })
 
   it('THE DOOR OUT OF THE LEAD\'S VIEW IS GONE, BECAUSE THERE IS NOWHERE IT LED', () => {
@@ -99,7 +100,7 @@ describe('the two views of a check-in are a pair', () => {
     expect(PEOPLE_AND_SETUP).toMatch(/'Their role here'/)
     expect(PEOPLE_AND_SETUP).toMatch(/a\.userId === g\?\.initiatorId \? -1/)
     expect(PEOPLE_AND_SETUP).toMatch(/Your status/)
-    expect(PEOPLE_AND_SETUP).toMatch(/Your sessions/)
+    expect(PEOPLE_AND_SETUP).toMatch(/Your check-ins/)
   })
 
   it('but the way BACK still exists, for anybody who lands on the party view and can run it', () => {

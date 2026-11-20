@@ -20,7 +20,7 @@ vi.mock('@/api/client', () => ({ apiClient: { get: vi.fn(), post: (...args: any[
 const BASE = {
   id: 'pd2', participantId: 'p-femi', heading: 'Others describe doing work they described as theirs',
   whatHappened: 'You described the Harbor Foods deal as your own, although Ngozi prepared the pricing.',
-  howOften: 'This came up in 3 of your check-ins, in sessions 1, 2 and 3.',
+  howOften: 'This came up in 3 of your check-ins, in check-ins 1, 2 and 3.',
   askThem: null, theirWords: null, canAnswer: false,
   whoSeesIt: 'Tunde will see it too.',
   talkedAbout: false, leadMark: null as 'RIGHT' | 'WRONG' | 'NOT_SURE' | null,

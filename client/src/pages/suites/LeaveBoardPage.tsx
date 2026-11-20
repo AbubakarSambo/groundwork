@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { leaveBoardApi, type LeaveWaiting } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tag, ExampleExchange, FieldLabel, TextArea } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tag, ExampleExchange, FieldLabel, TextArea, Skeleton } from '@/components/gw/ui'
 import { theDaysInFull, theDaysShort } from './the-days-someone-is-off'
 import { AskAQuestion } from './AskAQuestion'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
@@ -51,7 +51,7 @@ export function LeaveBoardPage() {
         subtitle="People ask for time off in their check-in or chat. Groundwork checks their balance and who else is off, and sends it to the right approver."
       />
 
-      {isLoading && <Note>Loading…</Note>}
+      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
           <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>
@@ -99,7 +99,7 @@ export function LeaveBoardPage() {
                 { mine: false, text: 'You have 16 days left and nobody else in your team is off then. Shall I send it to your manager?' },
               ]}
             />
-            <p className="gwui-panel-text">In their check-in, in chat, or on WhatsApp. Nobody fills in a form.</p>
+            <p className="gwui-panel-text">In their check-in, in chat, on WhatsApp, or with the Request leave form.</p>
           </Section>
 
           {(data.toldToHr ?? []).length > 0 && (

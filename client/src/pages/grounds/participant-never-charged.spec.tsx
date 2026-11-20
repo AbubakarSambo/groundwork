@@ -76,6 +76,6 @@ describe('nothing on the participant page asks them for money', () => {
     // have been told. It said "your initiator has been notified" - and nothing
     // notified the initiator. The server tells the organisation's admins, so
     // that is what is said. Never "buy a session".
-    expect(SRC).toMatch(/We have told them you are waiting/)
+    expect(SRC).toMatch(/I have told them you are waiting/) /* one voice, "I" (S15, 7 November) */
   })
 })

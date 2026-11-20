@@ -29,8 +29,11 @@ import { theGraceInForce } from '../billing/the-trial-grace';
 import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { mayChange, mayHandOver } from './the-person-who-set-this-up';
 import { colleaguesOf, A_COLLEAGUE_WITH_NO_NAME } from '../../common/colleagues';
+import { theNumberEachPersonIsReachedOn } from '../../common/the-number-each-person-is-reached-on';
 import { theInvitationsWaiting, keepThemWaiting, stopWaiting, type AnInvitationWaiting } from './invitations-waiting-for-a-seat';
-import { aLineOrNothing, wouldMakeALoop, CANNOT_REPORT_TO_THEMSELVES, THAT_WOULD_MAKE_A_LOOP, NOT_IN_THIS_ORGANISATION } from './where-they-sit';
+import { aLineOrNothing, NOT_IN_THIS_ORGANISATION } from './where-they-sit';
+import { aReportingLineToWrite } from './who-they-report-to';
+import { thePeopleHere } from '../suites/the-people-and-their-lines';
 import { groundsAViewerMayList } from '../grounds/who-may-read-this-check-in';
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
 import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS } from '../whatsapp/a-connection-that-works';
@@ -681,17 +684,19 @@ export class UsersService {
      */
     const held = page === 1
       ? await this.prisma.groundParticipant.findMany({
-        where: { awaitingSeat: true, ground: { organizationId } },
+        /* Also somebody invited by address who has no account yet and has not left (run 8, Ruth: on the check-in's People and its setup, not on this page). They hold no seat-wait; they are invited. */
+        where: { OR: [{ awaitingSeat: true }, { userId: null, leftAt: null, partyType: { not: 'INITIATOR' as any } }], ground: { organizationId } },
         orderBy: { createdAt: 'asc' },
         /* The name the lead typed beside the address (journey test, 12 October): the row read "Somebody invited by email" when a name was given. */
-        select: { id: true, email: true, createdAt: true, nameGiven: true, ground: { select: { id: true, label: true } } },
+        select: { id: true, email: true, createdAt: true, nameGiven: true, awaitingSeat: true, ground: { select: { id: true, label: true } } },
       })
       : [];
-    const heldByEmail = new Map<string, { id: string; email: string; createdAt: Date; name?: string | null; checkIns: { id: string; label: string | null; runsIt: boolean }[] }>();
+    const heldByEmail = new Map<string, { id: string; email: string; createdAt: Date; name?: string | null; seat?: boolean; checkIns: { id: string; label: string | null; runsIt: boolean }[] }>();
     for (const h of held) {
       const key = (h.email ?? '').toLowerCase();
       if (!key || idByEmail.has(key)) continue; // already a real row (an account exists after all)
-      const row = heldByEmail.get(key) ?? { id: h.id, email: h.email!, createdAt: h.createdAt, name: h.nameGiven ?? null, checkIns: [] };
+      const row = heldByEmail.get(key) ?? { id: h.id, email: h.email!, createdAt: h.createdAt, name: h.nameGiven ?? null, seat: !!h.awaitingSeat, checkIns: [] };
+      if (h.awaitingSeat) row.seat = true;
       if (!row.name?.trim() && h.nameGiven?.trim()) row.name = h.nameGiven;
       if (!row.checkIns.some((c) => c.id === h.ground.id)) row.checkIns.push({ id: h.ground.id, label: h.ground.label, runsIt: false });
       heldByEmail.set(key, row);
@@ -701,7 +706,7 @@ export class UsersService {
     for (const w of keptInvitations) {
       const key = w.email.toLowerCase();
       if (idByEmail.has(key) || heldByEmail.has(key)) continue;
-      heldByEmail.set(key, { id: `invite-${key}`, email: w.email, createdAt: new Date(w.at), name: w.name, checkIns: [] });
+      heldByEmail.set(key, { id: `invite-${key}`, email: w.email, createdAt: new Date(w.at), name: w.name, seat: true, checkIns: [] });
     }
     const heldRows = [...heldByEmail.values()].map((h) => ({
       id: `held:${h.id}`,
@@ -722,7 +727,7 @@ export class UsersService {
       notLetIn: false,
       notLetInBy: null,
       notLetInAt: null,
-      heldForASeat: true,
+      heldForASeat: h.seat === true,
       /* No account exists yet, so there is nowhere for "Open" to go. */
       noAccountYet: true,
       level: null,
@@ -769,25 +774,9 @@ export class UsersService {
 
     /* Where each person is on WhatsApp, from the record (pilots on WhatsApp, 14 October): their number, and whether it is
        connected, waiting for their first message, or not connected yet. Read by an admin of this organisation only. */
-    /*
-     * THE NUMBER EVERY SENDER USES, NOT ONLY THE ONE ON THE SIGN-IN (Drop Access, 21 October). A number a lead added on a check-in's
-     * people list, or the HR system sent, is kept on the organisation's roster, and the openings go to it; this list read the sign-in
-     * alone, so a number saved there could not be found here. The roster's number first, then the sign-in's, as the senders read it.
-     */
-    const onTheRoster = new Map<string, string>();
-    if (users.length) {
-      const entries: any[] = await Promise.resolve((this.prisma as any).person?.findMany?.({
-        where: { organizationId, phone: { not: null }, OR: [{ linkedUserId: { in: ids } }, { email: { in: users.map((u) => u.email), mode: 'insensitive' } }] },
-        orderBy: { updatedAt: 'desc' },
-        select: { phone: true, linkedUserId: true, email: true },
-      })).catch(() => []);
-      const idOf = new Map(users.map((u) => [u.email.toLowerCase(), u.id]));
-      for (const e of entries ?? []) {
-        const who = (e.linkedUserId && ids.includes(e.linkedUserId) ? e.linkedUserId : null) ?? idOf.get(String(e.email ?? '').toLowerCase());
-        if (who && e.phone && !onTheRoster.has(who)) onTheRoster.set(who, e.phone);
-      }
-    }
-    for (const u of users as any[]) u.phoneNumber = onTheRoster.get(u.id) ?? u.phoneNumber ?? null;
+    /* The number every sender uses, the roster's first (common/the-number-each-person-is-reached-on.ts, shared with the Desk's directory). */
+    const reachedOn = await theNumberEachPersonIsReachedOn(this.prisma, organizationId, users as any[]);
+    for (const u of users as any[]) u.phoneNumber = reachedOn.get(u.id) ?? null;
     const onWhatsApp = new Map<string, WhereOnWhatsApp>();
     await Promise.all(users.map(async (u) => onWhatsApp.set(u.id, await whereTheyAreOnWhatsApp(this.prisma, u.phoneNumber).catch(() => (u.phoneNumber ? 'not-connected' : 'no-number') as WhereOnWhatsApp))));
 
@@ -849,7 +838,11 @@ export class UsersService {
       where: { organizationId, userId: { in: userIds } },
       select: { userId: true, level: true, team: true, reportsToUserId: true },
     });
-    const managerIds = [...new Set(rows.map((r) => r.reportsToUserId).filter((x): x is string => !!x))];
+    /* Who they report to, and their team, as the approvals read them (Batch S, round 2, T7): the line set here, or else the staff directory's. One source. */
+    const here = new Map((await thePeopleHere(this.prisma, organizationId).catch(() => [])).map((p) => [p.userId, p]));
+    const lineOf = (r: { userId: string; reportsToUserId: string | null }) => (here.has(r.userId) ? here.get(r.userId)!.managerUserId : r.reportsToUserId);
+    const teamOf = (r: { userId: string; team: string | null }) => r.team ?? here.get(r.userId)?.team ?? null;
+    const managerIds = [...new Set(rows.map(lineOf).filter((x): x is string => !!x))];
     const managers = managerIds.length
       ? await this.prisma.user.findMany({
         where: { id: { in: managerIds }, deletedAt: null, memberships: { some: { organizationId } } },
@@ -858,12 +851,13 @@ export class UsersService {
       : [];
     const nameOf = new Map(managers.map((m) => [m.id, fullNameToCall({ user: m })]));
     for (const r of rows) {
-      const name = r.reportsToUserId ? nameOf.get(r.reportsToUserId) : undefined;
+      const to = lineOf(r);
+      const name = to ? nameOf.get(to) : undefined;
       out.set(r.userId, {
         level: r.level,
-        team: r.team,
+        team: teamOf(r),
         /* A manager who has left reads as nobody, never as a dangling id. */
-        reportsTo: r.reportsToUserId && name ? { id: r.reportsToUserId, name } : null,
+        reportsTo: to && name ? { id: to, name } : null,
       });
     }
     return out;
@@ -888,20 +882,8 @@ export class UsersService {
     const data: { level?: string | null; team?: string | null; reportsToUserId?: string | null } = {};
     if (dto.level !== undefined) data.level = aLineOrNothing(dto.level);
     if (dto.team !== undefined) data.team = aLineOrNothing(dto.team);
-    if (dto.reportsToUserId !== undefined) {
-      const managerId = aLineOrNothing(dto.reportsToUserId);
-      if (managerId) {
-        if (managerId === userId) throw new BadRequestException(CANNOT_REPORT_TO_THEMSELVES);
-        const everyone = await this.prisma.organizationMembership.findMany({
-          where: { organizationId },
-          select: { userId: true, reportsToUserId: true },
-        });
-        if (!everyone.some((m) => m.userId === managerId)) throw new BadRequestException(NOT_IN_THIS_ORGANISATION);
-        const line = new Map(everyone.map((m) => [m.userId, m.reportsToUserId]));
-        if (wouldMakeALoop(userId, managerId, line)) throw new BadRequestException(THAT_WOULD_MAKE_A_LOOP);
-      }
-      data.reportsToUserId = managerId;
-    }
+    /* The one writer of a reporting line (who-they-report-to.ts), the same checks Ask's "Amina reports to Joseph" goes through. */
+    if (dto.reportsToUserId !== undefined) data.reportsToUserId = await aReportingLineToWrite(this.prisma, organizationId, userId, aLineOrNothing(dto.reportsToUserId));
     await this.prisma.organizationMembership.update({ where: { id: membership.id }, data });
     return (await this.whereTheySit(organizationId, [userId])).get(userId) ?? { level: null, team: null, reportsTo: null };
   }
@@ -1137,6 +1119,18 @@ export class UsersService {
         throw new BadRequestException('This is the only active admin here, so make somebody else an admin first.');
       }
     }
+
+    /*
+     * REMOVED MEANS OFF THE TEAM, WHEREVER THE TEAM IS READ (fix plan 17 November, group C). Nineteen places already ask whether a person
+     * has left a check-in (`GroundParticipant.leftAt`: the mail that opens a round, the lead's morning, the board's missed rounds, the
+     * count of who is on the team), and nothing ever wrote it. Mary was removed on day 28 and for sixty more days was mailed "Your next
+     * check-in is open", counted as missing, and named in the lead's lines. Stamped here, once, in this organisation's check-ins only,
+     * so each of those readers is right without being changed; the rows and what she said stay (delete the way in, not the record).
+     */
+    await this.prisma.groundParticipant.updateMany({
+      where: { userId: id, leftAt: null, ground: { organizationId } },
+      data: { leftAt: new Date() },
+    });
 
     const elsewhere = await this.prisma.organizationMembership.findMany({
       where: { userId: id, organizationId: { not: organizationId } },

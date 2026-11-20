@@ -11,7 +11,7 @@ import { theVerdictMadeSafe, type WhatTheRecordHolds } from './a-correction-is-c
 const ORG = 'org-mu';
 const SHRUG = /^I cannot answer that one yet/;
 
-function anAsk(said: { kind: string; lane?: string }, verdict: any) {
+function anAsk(said: { kind: string; lane?: string; parts?: number }, verdict: any) {
   const updates: any[] = [];
   const prisma: any = {
     person: { findFirst: jest.fn(async () => ({ externalId: null, linkedUserId: 'u-brian', email: 'brian@muchemi.test' })) },
@@ -35,7 +35,7 @@ function anAsk(said: { kind: string; lane?: string }, verdict: any) {
   };
   const engine: any = {
     extract: jest.fn(async (_system: string, _messages: any[], tool: any) => {
-      if (tool?.name === 'what_they_mean') return { kind: said.kind, lane: said.lane ?? 'none', about: 'fee notes' };
+      if (tool?.name === 'what_they_mean') return { kind: said.kind, lane: said.lane ?? 'none', about: 'fee notes', parts: said.parts ?? 1 };
       if (tool?.name === 'the_correction_checked') return verdict;
       return null;
     }),
@@ -48,7 +48,7 @@ function anAsk(said: { kind: string; lane?: string }, verdict: any) {
     new WhatIsTrueService(prisma), {} as any, {} as any, {} as any,
   );
   const ask = async (q: string) => ((await service.respond(ORG, 'person-brian', q)) as any).blocks.filter((b: any) => b.type === 'text').map((b: any) => b.body).join('\n');
-  return { ask, updates };
+  return { ask, updates, engine };
 }
 
 describe('a correction in any words is checked like a claim', () => {
@@ -70,9 +70,23 @@ describe('a correction in any words is checked like a claim', () => {
   it('the model can never pick a lane that writes, approves or sends: it picks no lane at all (1 November 2026)', () => {
     for (const lane of ['ask_to_spend', 'ask_for_leave', 'decide_a_request', 'add_a_to_do', 'tick_off_a_to_do', 'lead_note', 'log_hours', 'start_a_check_in', 'what_is_due', 'what_you_can_see']) {
       const read = whatTheModelSaid({ kind: 'question', lane }) as any;
-      expect(read).toEqual({ kind: 'question', about: null });
+      /* parts (7 November, staging check S12): how many things a question asks, 1 unless the model says more. */
+      expect(read).toEqual({ kind: 'question', about: null, parts: 1 });
       expect('lane' in read).toBe(false);
     }
+  });
+
+  it('a two-part question goes to the whole answer from the record and the documents, never to one lane (staging check S12)', async () => {
+    const { ask, engine } = anAsk({ kind: 'question', parts: 2 }, null);
+    await ask('What did I say I would do tomorrow, and who still owes us money?');
+    const tools = engine.extract.mock.calls.map((c: any[]) => c[2]?.name);
+    expect(tools[0]).toBe('what_they_mean');
+    expect(tools).not.toContain('the_correction_checked');
+  });
+
+  it('a question that asks two things is read as two parts, so it is answered whole (staging check S12)', () => {
+    expect(whatTheModelSaid({ kind: 'question', parts: 2 })).toEqual({ kind: 'question', about: null, parts: 2 });
+    expect(whatTheModelSaid({ kind: 'question', parts: 'two' })).toEqual({ kind: 'question', about: null, parts: 1 });
   });
 
   it('only an id the check was handed can change, and only on "backed"', () => {

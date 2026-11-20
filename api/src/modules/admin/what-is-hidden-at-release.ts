@@ -41,7 +41,8 @@ export const WHATSAPP_HALFWAY_MESSAGES_KEY = 'release.whatsappHalfwayMessages';
  * new onboarding or project check-in gets its board whether or not it holds a kind. Every other kind
  * stays hidden until the screens workspace marks its board done.
  */
-export const KINDS_OFFERED_AT_RELEASE: readonly string[] = ['sales team', 'sales org', 'engineering release'];
+/* Every kind of work is offered (Hafsah, 15 November 2026: everything has a board; reverses the October hide, decisions 88 and 91). */
+export const KINDS_OFFERED_AT_RELEASE: readonly string[] = [...KINDS_OF_WORK];
 
 type Reader = { platformSetting?: { findUnique: (a: any) => Promise<{ value: unknown } | null> } } | any;
 

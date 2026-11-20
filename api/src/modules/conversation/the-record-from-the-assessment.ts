@@ -24,8 +24,13 @@
  * so none of it is here: setup's words stay in the assessment, and only the lead's own update on where things stand, which the
  * read puts in her first check-in (theTwoPartsOfSetup), becomes her lines, like anybody's. Observations, role and focus reads
  * stay in the assessment too, as they always did.
+ *
+ * WHOM A LINE IS ABOUT (Hafsah, batch 2, item 1). What the lead says about a named person's work becomes a line that carries that
+ * person's id (`aboutParticipantId`), and every reader of colleagues' lines reads it through who-may-read-a-line.ts: the lead and that
+ * person only. Where the name matched nobody it stays in the assessment, for the lead alone, and is not a line. Something about a
+ * person's wellbeing is never a line ('the person only').
  */
-import { theStandingOf, theWordsThatCannotBeTrue, type AnItem, type TheAssessment } from './the-assessment';
+import { theStandingOf, theWordsThatCannotBeTrue, THE_LEAD_AND_WHOM_IT_IS_ABOUT, type AnItem, type TheAssessment, type TheStanding } from './the-assessment';
 
 export type ARecordLineType = 'COMMITMENT' | 'PROGRESS' | 'WORRY' | 'SUCCESS_DEFINITION' | 'TIMEFRAME' | 'INTENT';
 
@@ -35,6 +40,10 @@ export interface ARecordLineFromTheAssessment {
   verifiability: 'HIGH' | 'MEDIUM' | 'LOW';
   /** The area of work it belongs to, or the earlier item it goes on from: groups lines across sessions. */
   dimensionThreadKey: string | null;
+  /** Whom it is about, when the lead said it about somebody else's work; null when everybody in the check-in may read it. */
+  aboutParticipantId: string | null;
+  /** How what was said stands, the assessment's one reading (theStandingOf): every board and report reader takes it from the line. */
+  standing: TheStanding;
 }
 
 /* In this order, so where two sections hold the same words the line takes the first one's kind: a promise is a promise
@@ -67,6 +76,9 @@ const THE_SECTIONS: { section: string; pick: (a: TheAssessment) => AnItem[]; typ
   ] as [string, (a: TheAssessment) => AnItem[], (i: AnItem) => ARecordLineType][]).map(([section, pick, type]) => ({ section, pick, type, onlyWhatIsNew: true as const })),
 ];
 
+/* Two readings of the same words stand as the doubt between them: one that cannot be true wins, then proved over said. */
+const theFirmer = (a: TheStanding, b: TheStanding): TheStanding => (a === 'cannot be true' || b === 'cannot be true' ? 'cannot be true' : a === 'proved' || b === 'proved' ? 'proved' : 'said');
+
 const squash = (s: string) => s.toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[.!?\s]+$/, '').replace(/\s+/g, ' ').trim();
 
 /**
@@ -80,9 +92,11 @@ export function theRecordLinesIn(a: TheAssessment, hasSpecifics: (text: string) 
   const candidates: (ARecordLineFromTheAssessment & { key: string; onlyWhatIsNew?: true })[] = [];
   for (const s of THE_SECTIONS) {
     for (const item of s.pick(a)) {
-      if (item.whoMaySee !== 'the people in this check-in') continue;
+      const about = item.whoMaySee === THE_LEAD_AND_WHOM_IT_IS_ABOUT ? (typeof item.aboutParticipantId === 'string' && item.aboutParticipantId ? item.aboutParticipantId : null) : null;
+      if (item.whoMaySee !== 'the people in this check-in' && !about) continue;
       if (!(item.from ?? []).some((n) => inTheCheckIn.has(n))) continue;
-      const text = String(item.words ?? '').trim();
+      /* The item as it now says: a correction that held up is the line (once fixed, it stays fixed). */
+      const text = String([...(item.history ?? [])].filter((h) => h.backed).pop()?.nowSays ?? item.words ?? '').trim();
       if (!text) continue;
       const proved = (item as any).proof === 'proved';
       candidates.push({
@@ -92,16 +106,20 @@ export function theRecordLinesIn(a: TheAssessment, hasSpecifics: (text: string) 
         text,
         verifiability: proved ? 'HIGH' : hasSpecifics(text) ? 'MEDIUM' : 'LOW',
         dimensionThreadKey: String((item as any).area ?? (item as any).previousItem ?? '').trim() || null,
+        aboutParticipantId: about,
+        standing: theStandingOf(item, cannot),
       });
     }
   }
   const kept: typeof candidates = [];
   for (const c of candidates) {
-    if (kept.some((k) => k.key.includes(c.key) || (c.onlyWhatIsNew && c.key.includes(k.key)))) continue;
+    /* Two readings of the same words are one line, read by the fewest: a line about somebody stays about them. */
+    const holder = kept.find((k) => k.key.includes(c.key) || (c.onlyWhatIsNew && c.key.includes(k.key)));
+    if (holder) { holder.aboutParticipantId = holder.aboutParticipantId ?? c.aboutParticipantId; holder.standing = theFirmer(holder.standing, c.standing); continue; }
     /* A longer line holding shorter ones kept before it takes the first one's place, and its kind. */
     const first = kept.findIndex((k) => c.key.includes(k.key));
     if (first < 0) { kept.push(c); continue; }
-    const line = { ...c, type: kept[first].type };
+    const line = { ...c, type: kept[first].type, standing: kept.filter((k) => c.key.includes(k.key)).reduce((s, k) => theFirmer(s, k.standing), c.standing), aboutParticipantId: c.aboutParticipantId ?? kept.filter((k) => c.key.includes(k.key)).map((k) => k.aboutParticipantId).find(Boolean) ?? null };
     for (let i = kept.length - 1; i >= 0; i--) if (c.key.includes(kept[i].key)) kept.splice(i, 1);
     kept.splice(Math.min(first, kept.length), 0, line);
   }

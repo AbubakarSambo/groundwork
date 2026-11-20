@@ -132,6 +132,11 @@ export const CronLock = {
   DAILY_USAGE: 920_017,
   /** The writes to the record a check-in still owes, tried again. See conversation/the-owed-writes.cron.ts. */
   OWED_WRITES: 920_018,
+  /** The minute sweep of the batches a senior person forwarded and the introductions held for WhatsApp. See executive-onboarding/executive-onboarding.service.ts. */
+  EXECUTIVE_ONBOARDING: 920_019,
+  /** The minute sweep of the standing instructions Fatima gave, and the hourly nudges that help her team. See team-loop/team-loop.service.ts. */
+  TEAM_LOOP: 920_020,
+  TEAM_LOOP_NUDGES: 920_021,
 } as const;
 
 /**

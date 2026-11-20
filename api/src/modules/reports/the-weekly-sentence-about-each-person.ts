@@ -1,3 +1,4 @@
+import { theirWordsAsSaid } from '../conversation/their-words-as-said';
 /**
  * THE WEEKLY REPORT'S SENTENCE ABOUT EACH PERSON (week 12b, decisions 11, 38, 40 and 43; what they said, 1 November 2026).
  *
@@ -22,6 +23,8 @@ export interface AWeeksLine {
   type: string;
   /** True when proof backs it. */
   documented: boolean;
+  /** True only when they typed these words word for word: only then are they put in quotation marks (their-words-as-said.ts). */
+  saidWordForWord?: boolean;
 }
 
 export interface AWeeksPerson {
@@ -71,8 +74,6 @@ const MOST_TELLING_FIRST = [
 ];
 const rankOf = (type: string) => { const i = MOST_TELLING_FIRST.indexOf(type); return i === -1 ? MOST_TELLING_FIRST.length : i; };
 
-/** Their words, as a quotation: whole, without the stop at the end, since the sentence puts its own. */
-const quoted = (t: string) => `“${t.trim().replace(/^["“”']+|["“”']+$/g, '').replace(/[\s.,;:!]+$/, '')}”`;
 
 /**
  * THE SENTENCE. The label is the subject and is swapped for a name, or for "you", when it is served.
@@ -95,7 +96,7 @@ export function theSentenceAbout(p: AWeeksPerson): string | null {
   const more = said.length - shown.length;
   const backed = said.filter((l) => l.documented).length;
   return [
-    `This week ${who} said ${shown.map((l) => quoted(l.text)).join(' and ')}.`,
+    `This week ${who} said ${shown.map((l) => theirWordsAsSaid(l.text, l.saidWordForWord)).join(' and ')}.`,
     more > 0 ? `${more === 1 ? 'One more thing' : `${more} more things`} ${who} said ${more === 1 ? 'is' : 'are'} on the record.` : '',
     backed ? `${backed === 1 ? 'One thing' : `${backed} things`} ${who} said ${backed === 1 ? 'has' : 'have'} proof behind ${backed === 1 ? 'it' : 'them'}.` : '',
   ].filter(Boolean).join(' ');

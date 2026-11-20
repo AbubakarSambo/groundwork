@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { theQuietHoursNow } from '../../common/the-clock';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { WhatsAppService } from './whatsapp.service';
 
@@ -15,7 +16,7 @@ export class HeldForTheNightCron {
   constructor(private readonly prisma: PrismaService, private readonly whatsapp: WhatsAppService) {}
 
   @Cron('*/15 * * * *', { timeZone: 'UTC' })
-  async sendWhatIsDue(now: Date = new Date()): Promise<number> {
+  async sendWhatIsDue(now: Date = theQuietHoursNow()): Promise<number> {
     let sent = 0;
     await this.prisma.withAdvisoryLock(CronLock.HELD_WHATSAPP, async () => {
       const due = await (this.prisma as any).scheduledWhatsApp.findMany({

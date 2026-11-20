@@ -72,9 +72,19 @@ describe('when a page throws while rendering', () => {
     expect(screen.queryByText(/We.?ve been told/)).toBeNull()
   })
 
-  it('and it shows the error, so there is something to paste to whoever they ask', () => {
+  /*
+   * CHANGED 15 November 2026 (Hafsah: "the error page prints the raw message under 'Something broke on this page'"). This test used to
+   * check that the technical message was shown, "so there is something to paste". A person cannot use "Cannot read properties of
+   * undefined"; the message goes to the console (componentDidCatch) and the page says only the plain line and the two ways out.
+   */
+  it('and it shows nothing technical: the message goes to the console only', () => {
+    const logged = console.error as any
     render(<PageCrash><Boom /></PageCrash>)
-    expect(screen.getByText(/Objects are not valid as a React child/)).toBeTruthy()
+    expect(screen.queryByText(/Objects are not valid as a React child/)).toBeNull()
+    expect(document.body.textContent).not.toMatch(/Objects are not valid|TypeError|Cannot read|undefined/)
+    expect(screen.getByRole('button', { name: 'Reload the page' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Go to Today' })).toBeTruthy()
+    expect(logged.mock.calls.some((c: any[]) => String(c[0]).includes('a page failed to render'))).toBe(true)
   })
 
   it('a page that renders fine is untouched', () => {

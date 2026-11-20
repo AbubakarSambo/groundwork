@@ -63,7 +63,6 @@ describe('the kind-of-work dialog, scoped to kindsOffered', () => {
   it('lists only the offered kind when the check-in has no kind yet', async () => {
     /* As the server offers sales since Release 1: a sales team, or a sales organisation of several teams. */
     renderBoard({ ...base, kindOfWork: null, kindsOffered: ['sales team', 'sales org'] })
-    await screen.findByText('Nobody has said what kind of work this check-in is about yet. Choose one, so its board can keep the right kind of record.')
     await userEvent.click(await screen.findByRole('button', { name: 'Choose the kind of work' }))
     const select = screen.getByLabelText('Kind of work') as HTMLSelectElement
     const labels = Array.from(select.options).map((o) => o.textContent)

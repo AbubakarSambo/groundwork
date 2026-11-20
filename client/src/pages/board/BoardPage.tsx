@@ -1,15 +1,14 @@
 import { SEE_WHAT_EACH_PERSON_SAID } from '@/lib/see-what-each-person-said'
 import { AddSomething } from '@/components/gw/AddSomething'
-import { RELEASE_4_ORDERS, whereItFolds, theRelease4Order } from './release-4-orders'
+import { theRelease4Order } from './release-4-orders'
 import { hasEnded, howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
 import { ThisAddsASeat } from '@/components/gw/this-adds-a-seat'
 import { useState, type ReactNode } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
-import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { useParams, useNavigate, Link, useSearchParams, Navigate } from 'react-router-dom'
 import { TheyWereNotInvited } from '@/pages/grounds/TheyWereNotInvited'
 import { SWITCHBOARD_MATRIX } from './the-switchboard-g2-table'
-import { ThatIsOnTheRecord } from '@/components/gw/ThatIsOnTheRecord'
 import { TheOtherBoardsYouAreIn } from '@/components/gw/TheOtherBoardsYouAreIn'
 import { HowItIsGoing } from '@/components/gw/how-it-is-going'
 import { WhatToSettleTogether } from '@/components/gw/what-to-settle-together'
@@ -27,6 +26,7 @@ import { toast } from 'sonner'
 // The board's own vocabulary now lives in components/gw/kit so every other page
 // can be rebuilt from it. Values unchanged: this is an extraction, not a redesign.
 import { todayApi, type Need } from '@/api/today'
+import { reportsApi } from '@/api/reports'
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { OutcomeFeedback } from '@/components/gw/OutcomeFeedback'
@@ -42,7 +42,7 @@ import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-no
 import { plainWordsByPerson, atTheStart, midSentence } from '@/lib/a-colleague'
 import { whatTheSwitchboardAllows } from './what-the-switchboard-allows'
 import { tileSentence } from '@/components/gw/TheSessionsReport'
-import { PatternPanel } from '@/components/gw/ui'
+import { PatternPanel, PartBoundary } from '@/components/gw/ui'
 import type { ServedPattern } from '@/api/patterns'
 import { WhatToWorkOnNext } from '@/components/gw/WhatToWorkOnNext'
 import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
@@ -151,7 +151,7 @@ import { WhatTheTargetAssumes } from '@/components/gw/TargetsBand'
 import { whenTheBoardLastChanged, whenTheBoardLastChangedInShort, whenItRanOutOfTime } from './when-the-board-last-changed'
 import { TheDirectMorning, useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { ThePicturedSalesBoard, theScheduleInWords, ThePicturedOwnDeals, GroundworkRecommends } from './pictured/ThePicturedSalesBoard'
-import { PROJECT_ORDER, PROJECT_FOLD_AFTER } from './release-5-orders'
+import { PROJECT_ORDER } from './release-5-orders'
 import { theSituationsOrder } from './pictured/TheSituationsSections'
 import { ThePicturedBoard, TheTemplateSection } from './pictured/ThePicturedBoard'
 import { MessageCircle } from 'lucide-react'
@@ -165,12 +165,12 @@ import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
 import { REFERENCES_AND_RESOURCES } from '@/lib/the-references-tab'
-import { Page, CheckInHeader, Section, Placed, UpdatedLine, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded, Callout, Stack, SubHeading, Note, FlexRow, Text } from '@/components/gw/ui'
+import { Page, CheckInHeader, Section, Placed, UpdatedLine, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Callout, Stack, SubHeading, Note, FlexRow, Text, Skeleton } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
-import { cadenceLabel } from '@/lib/cadence'
+import { theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
 import { theClocksSessionSaid } from '@/lib/the-one-count'
-import { KindOfWorkBanner, WorkRecordsSections, YourOwnRecordsSections, TheShapeOfTheWorkStrip, sectionHeading } from './WorkRecords'
+import { KindOfWorkBanner, WorkRecordsSections, YourOwnRecordsSections, sectionHeading } from './WorkRecords'
 import {
   RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockersSection,
   EvidenceIndexSection, BusyOrMovingSection, ObligationsSection, ForecastSection,
@@ -182,6 +182,7 @@ import {
   ByWhoTheyAreSection, WhereTheyDisagreeSection,
   WhatTheSystemsShowSection, WhereWhatWasSaidAndTheSystemsDifferSection,
 } from './TheSwitchboardsSections'
+import { theMetricsPeopleSaid } from './pictured/TheMetricsBoard'
 
 /**
  * The delivery board.
@@ -237,10 +238,10 @@ const dshort = (iso?: string | null) =>
  * account in it actually completed, so that is the fact to say, whichever day it is now.
  */
 function sessionPillSentence(s: { n: number; state: string; date: string | null; opensOn?: string | null }, groundEnded: boolean): string {
-  if (s.date) return `Session ${s.n} opened on ${dshort(s.date)}.`
-  if (s.state === 'current' && !groundEnded) return `Session ${s.n} is open now.`
-  if (s.opensOn && s.state !== 'done') return `Session ${s.n} opens on ${dshort(s.opensOn)}.`
-  return `Session ${s.n} has not opened yet.`
+  if (s.date) return `Check-in ${s.n} opened on ${dshort(s.date)}.`
+  if (s.state === 'current' && !groundEnded) return `Check-in ${s.n} is open now.`
+  if (s.opensOn && s.state !== 'done') return `Check-in ${s.n} opens on ${dshort(s.opensOn)}.`
+  return `Check-in ${s.n} has not opened yet.`
 }
 
 /**
@@ -281,7 +282,7 @@ export function whoSeesThisDifferently(positions: { who?: string }[] | undefined
 export function seenAcross(periods: number | null | undefined, sessionNow: number | null): string | null {
   if (!periods || periods < 2) return null
   if (sessionNow == null || periods > sessionNow) return null
-  return `Seen across ${periods} sessions.`
+  return `Seen across ${periods} check-ins.`
 }
 
 /** What each record type under "Who owns what" is, in a sentence rather than a bare tag. */
@@ -325,7 +326,6 @@ function whatThisItemIs(type: string, saidByTheReader: boolean, name: string): s
  * somebody meeting this board for the first time has not seen it, and that is the case the panel
  * exists for.
  */
-const HOW_TO_READ_KEY = 'gw-board-how-to-read'
 
 /**
  * THE BOARD DRAWS FOR WHICHEVER CHECK-IN IT IS GIVEN.
@@ -474,15 +474,25 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
 /** So "Today's team picture is shared." can open this fold and jump straight to it - see item 6. */
 const THE_WHOLE_CHECK_IN_ID = 'the-whole-check-in'
 
-function MaybeFolded({ fold, children }: { fold: boolean; children: ReactNode }) {
-  /* The direct morning: no note about who it is for. Who reads it is the backend's rule, the same either way. */
-  const direct = useTheDirectMorning()
-  if (!fold) return <>{children}</>
+function OverTimeSection({ groundId, viewerRunsThisCheckIn }: { groundId: string; viewerRunsThisCheckIn: boolean }) {
+  const { data } = useQuery({
+    queryKey: ['report-rounds', groundId],
+    queryFn: () => reportsApi.rounds(groundId),
+    enabled: !!groundId,
+    retry: false,
+  })
+  if (!(data?.moved ?? []).length) return null
   return (
-    <Folded id={THE_WHOLE_CHECK_IN_ID} summary="The whole check-in" note={direct ? undefined : 'Everything else from this check-in, for everyone in it.'}>
-      {children}
-    </Folded>
+    <Section heading="Over time">
+      <HowThisHasMoved groundId={groundId} viewerRunsThisCheckIn={viewerRunsThisCheckIn} />
+    </Section>
   )
+}
+
+function MaybeFolded({ fold, children }: { fold: boolean; children: ReactNode }) {
+  /* Open, never folded: everything below the participant's own view is on the page as it is for the lead (Hafsah, 13 November 2026). */
+  if (!fold) return <>{children}</>
+  return <div id={THE_WHOLE_CHECK_IN_ID}>{children}</div>
 }
 
 
@@ -586,7 +596,7 @@ function ActionButtons({ groundId, action }: { groundId: string; action?: AnActi
    * instead of rendering silence: the same two sentences this fallback already reaches for when
    * there is no `action` at all, just below, phrased for where this one actually goes.
    */
-  const label = action.label || (action.goesTo === 'context' ? 'Open the Context page' : 'Open your check-in')
+  const label = action.label || (action.goesTo === 'context' ? `Open ${REFERENCES_AND_RESOURCES}` : 'Open your check-in')
   return (
     <UIButton kind="secondary" size="small" to={`/grounds/${groundId}?tab=${action.goesTo === 'context' ? 'context' : 'chat'}`}>
       {label}
@@ -606,14 +616,9 @@ function ActionButtons({ groundId, action }: { groundId: string; action?: AnActi
  */
 function FoldEverythingElseUnless({ alreadyFolded, children }: { alreadyFolded: boolean; children: ReactNode }) {
   if (alreadyFolded) return <>{children}</>
-  return (
-    <Folded
-      summary="Everything else from this check-in"
-      note="More from this check-in, kept in full."
-    >
-      {children}
-    </Folded>
-  )
+  /* Open to begin with (Hafsah, 13 November 2026): these are lists to read. */
+  /* Not a fold at all: it started open, so it was a heading that hid nothing (Hafsah, 15 November). */
+  return <>{children}</>
 }
 
 /**
@@ -830,7 +835,7 @@ function StartingStateSentence({ children }: { children: React.ReactNode }) {
 function StartingStateBody({ startingState }: { startingState: string | StartingStateAtTheStart }) {
   if (typeof startingState === 'string') {
     return (
-      <Section heading="What was agreed at the start" note="Set when this was opened, before any check-in.">
+      <Section heading="What was agreed at the start">
         <Panel>
           <StartingStateSentence>{startingState}</StartingStateSentence>
         </Panel>
@@ -839,7 +844,7 @@ function StartingStateBody({ startingState }: { startingState: string | Starting
   }
   const { heading, rows } = startingState
   return (
-    <Section heading={heading} note="Set when this was opened, before any check-in.">
+    <Section heading={heading}>
       <Panel>
         <div className="gwui-subheading-list">
           {STARTING_STATE_STEPS.filter((step) => rows.some((row) => row.when === step)).map((step) => (
@@ -945,15 +950,17 @@ function DivergenceSectionBody({ heading, divergence, whyNothingYet, onlyOnePers
   onlyOnePersonHere: boolean
   myName: string | null
 }) {
+  /* Nothing to compare, and no real reason from the record: no section, rather than a heading over an explanation. */
+  if (divergence.items.length === 0 && divergence.agreements.length === 0 && (onlyOnePersonHere || !whyNothingYet)) return null
   return (
-    <Section heading={heading} note="Built from what each person said in their check-in.">
+    <Section heading={heading}>
       <Panel pad={false}>
         <RowList label={heading}>
         {divergence.items.length === 0 && divergence.agreements.length === 0 ? (
           /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
              more than one person has checked in" on a round where everybody had, three inches
              under a tile that said so. The server computes it from the one counter. */
-          <Row columns="1fr" inset="panel"><Text size="15" ink="muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</Text></Row>
+          <Row columns="1fr" inset="panel"><Text size="15" ink="muted">{whyNothingYet}</Text></Row>
         ) : (
           <>
             {divergence.items.map((d: any, i: number) => (
@@ -1007,8 +1014,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /* The lead's answer to a line that came close to the event a fee note waits for (Release 2), through the same gate as every board action. */
   const answerOnTheCollectionsBoard = useRunBoardAction(id ?? '')
   const [variant, setVariant] = useState<CoverageVariant | undefined>(undefined)
-  /* Closed unless opened: five paragraphs of instructions were the first screen on a phone. */
-  const [howToRead, setHowToRead] = useState(() => localStorage.getItem(HOW_TO_READ_KEY) === 'open')
 
   /*
    * THE CHECK-IN ITSELF, for one fact the board does not carry: whether the person reading is the
@@ -1024,7 +1029,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const user = useAuthStore((st) => st.user)
   const showAsk = useAskStore((s) => s.show)
   const [searchParams] = useSearchParams()
-  const justAnswered = searchParams.get('done') === '1'
   /* Whether to build the attendance grid as a grid at all. See the component it chooses. */
   const onAPhone = useIsAPhone()
   const viewerRunsThisCheckIn = !!user?.id && (groundForSignals as any)?.initiatorId === user.id
@@ -1166,8 +1170,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const [pollQ, setPollQ] = useState('')
   const [pollOpts, setPollOpts] = useState('')
   const [showPollForm, setShowPollForm] = useState(false)
-  /* U.10 item 7: "Over time" opens on ask, the same shape "How to read this board" already uses. */
-  const [showOverTime, setShowOverTime] = useState(false)
   const [pollCancelArmed, setPollCancelArmed] = useState(false)
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['board', id] })
@@ -1223,7 +1225,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /* U.20 (F4-small-states/states.txt, "Loading"/"Getting the board"): the prototype's own word
      for this wait, in place of the page's earlier, unmatched "Loading the board…". */
   if (isLoading) {
-    return <div role="status" className="gwui-pt-40 gwui-pr-40 gwui-pb-40 gwui-pl-40 gwui-ink-muted" style={{textAlign: 'center'}}>Getting the board</div>
+    return <Skeleton what="Getting the board" shape="cards" />
   }
   /*
    * PRIMARY-BUTTONS-NEVER-TOGETHER: the four `kind="primary"` buttons below ("Try again", "Read
@@ -1265,7 +1267,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
       <div className="gwui-mt-48 gwui-mr-auto gwui-mb-48 gwui-ml-auto gwui-pt-0 gwui-pr-20 gwui-pb-0 gwui-pl-20" style={{maxWidth: 620, textAlign: 'center'}}>
         <div className="gwui-fs-15 gwui-mb-6" style={{fontWeight: 700}}>{why.canRetry ? 'The board didn’t load' : 'This board could not be loaded.'}</div>
         <div className="gwui-fs-15 gwui-ink-sub gwui-mb-16">
-          {theConnection ? 'Nothing is lost. Your check-ins are saved. It is usually the connection.' : why.say}
+          {theConnection ? 'Nothing is lost. Your check-ins are saved.' : why.say}
         </div>
         <FlexRow gap={8} justify="center">
           {why.canRetry && <UIButton kind="primary" onClick={() => refetch()}>Try again</UIButton>}
@@ -1275,23 +1277,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     )
   }
 
-  // A private-mode or mood-sensing ground has NO board. Say so plainly and point
-  // at the report, rather than showing an empty page that reads as broken.
+  /*
+   * A CHECK-IN WITH NO BOARD HAS NO BOARD PAGE EITHER (Hafsah, 15 November 2026). The page that said "No shared board here" over two
+   * buttons only pointed somewhere else, so whoever lands on this address (an old link, a bookmark) goes straight to the page that
+   * holds their content: their report where there is one, the check-in otherwise. Nothing is said, and nothing is drawn in between.
+   */
   if (!data.renders) {
-    return (
-      <div className="gwui-mt-48 gwui-mr-auto gwui-mb-48 gwui-ml-auto gwui-pt-0 gwui-pr-20 gwui-pb-0 gwui-pl-20" style={{maxWidth: 620}}>
-        <Panel>
-          <div className="gwui-fs-13 gwui-ink-muted gwui-mb-8" style={{letterSpacing: '.1px', fontWeight: 700}}>
-            No shared board here
-          </div>
-          <div className="gwui-fs-14 gwui-ink-text gwui-mb-16" style={{lineHeight: '22px'}}>{data.reason}</div>
-          <div className="gwui-button-row">
-            <UIButton kind="primary" to={`/grounds/${id}/report`}>Read the report</UIButton>
-            <UIButton kind="secondary" onClick={() => navigate(`/grounds/${id}`)}>Back to the check-in</UIButton>
-          </div>
-        </Panel>
-      </div>
-    )
+    return <Navigate replace to={(groundForSignals as any)?.report ? `/grounds/${id}/report` : `/grounds/${id}`} />
   }
 
   /**
@@ -1320,7 +1312,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     )
   }
 
-  const b = data as BoardPresent
+  /* A board that lacks any list is drawn with that list empty, never with a code error: the lists every part reads are always lists. */
+  const b = { ...(data as BoardPresent), sections: ((data as any).sections ?? []) as BoardPresent["sections"] } as BoardPresent
   /* Whether the check-in is over, so the board stops drawing a clock. See lib/a-ground-that-has-ended. */
   const groundEnded = hasEnded((b as any)?.groundStatus)
   const endedSaying = howItEnded({ status: (b as any)?.groundStatus, endState: (b as any)?.endState })
@@ -1331,7 +1324,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * once ended replaced by the plain fact of how it ended, rather than left to the shared
    * CheckInHeader (which other pages use with a cadence-only subtitle) to guess at.
    */
-  const cadenceWords = (groundForSignals as any)?.cadence ? cadenceLabel((groundForSignals as any).cadence, (groundForSignals as any).cadenceDays) : null
+  /* How often, in the one wording every page uses (theRhythmInFull, staging check S18). */
+  const cadenceWords = (groundForSignals as any)?.cadence ? theRhythmInFull(groundForSignals as any, { stop: false }) : null
   const spineWords = phaseSpineSentence(
     b.phaseSpine?.currentSession ? { startsAt: null, endsAt: b.phaseSpine?.endsAt ?? null, currentSession: b.phaseSpine.currentSession } : null,
     plannedSessions ?? null,
@@ -1420,7 +1414,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     && myOpenOrNextCheckIn?.status !== 'IN_PROGRESS'
   const noSessionOpenForReaderFallback = myOpenOrNextOpensLater
   const whenTheNextSessionOpensFallback = myOpenOrNextOpensLater
-    ? `Session ${myOpenOrNextCheckIn.sessionNumber} opens on ${whenItWas(myOpenOrNextCheckIn.availableFrom, 'dayAndMonthLong')}.`
+    ? `Check-in ${myOpenOrNextCheckIn.sessionNumber} opens on ${whenItWas(myOpenOrNextCheckIn.availableFrom, 'dayAndMonthLong')}.`
     : null
   /*
    * SCREEN FAULT 6(d) (live walk, 6 October 2026), EVERY SITUATION: "START MY CHECK-IN" AFTER
@@ -1495,31 +1489,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     themesAndAreaAfterTheTeam?: boolean
     /** "Where it stands" (`howItIsGoing.latestSummary`) draws straight after the aim, out of the fold. */
     whereItStandsAtTop?: boolean
-    /**
-     * The records table, "The team today", Blockers, "Who checked in", "Over time" and "Reports"
-     * all move into the end fold. "What keeps coming up" and coaching stay open, just before
-     * "Where this is heading" - Hafsah's decision: protected, never folded.
-     */
-    teamAndRecordsInFold?: boolean
-    /**
-     * REQUEST 133: AN ASSET LOANS COHORT'S OWN SHAPE (loans.txt). "The team today", "Who checked
-     * in", "Over time" and "Reports" move into the end fold, same as `teamAndRecordsInFold` - but
-     * the records table (and its own "Support given" and "What to ask each person" coaching
-     * stays open with "What keeps coming up"; see `patternsAndCoachingSection()`, called in its
-     * usual, open place for this kind too) stays open where the prototype itself keeps it.
-     */
-    teamInFoldRecordsOpen?: boolean
-    /**
-     * THE FOUNDER'S OWN CHECK-IN BOARD'S OWN SHAPE (founder.txt). "Who checked in" moves into the
-     * end fold on its own - unlike every table above, "Over time" and "Reports" stay open, in
-     * their usual place, right where founder.txt itself draws them.
-     */
-    whoCheckedInInFold?: boolean
     /** "Where each target stands" draws beside the headline, built from `objectives` rather than
         `headline.bars`, when the headline has a question but no bars of its own. */
     targetsBesideHeadlineFromObjectives?: boolean
-    /** "Help nobody mentioned" draws only in the end fold, never in its usual place on the main board. */
-    helpNobodyMentionedInFold?: boolean
   }>> = {
     'support desk': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true, themesAndAreaAfterTheTeam: true },
     'distribution operations': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true, themesAndAreaAfterTheTeam: true },
@@ -1537,65 +1509,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     /*
      * REQUEST 132: THE GOVERNMENT PROGRAMME BOARD'S OWN SHAPE (gov.txt). The same targets-at-top,
      * folded-open-issues layout as support desk, distribution operations and trader training
-     * programme, plus two placements only this kind needs: "Where it stands" out of the fold,
-     * straight after the aim, and the records table through "Reports" moved into the end fold
-     * (see `teamAndRecordsInFold`, below, and where it is drawn).
+     * programme, plus one placement only this kind needs: "Where it stands" straight after the
+     * aim. Nothing of it is folded: the records table, the team, "Who checked in", "Over time" and
+     * "Reports" draw open in their usual places (pilot, programme family, build order 6).
      */
-    'a government programme': { targetsAtTopWithNoHeadline: true, openIssuesInFold: true, whereItStandsAtTop: true, teamAndRecordsInFold: true },
+    'a government programme': { targetsAtTopWithNoHeadline: true, openIssuesInFold: true, whereItStandsAtTop: true },
     /*
-     * REQUEST 133: AN ASSET LOANS COHORT'S OWN SHAPE (loans.txt). "Open issues" folds, the same as
-     * every other kind-of-work table above; `teamInFoldRecordsOpen` folds "The team today", "Who
-     * checked in", "Over time" and "Reports" too, but - unlike a government programme board -
-     * leaves the records table itself open, in the prototype's own place for it.
+     * THE FOUNDER'S OWN CHECK-IN BOARD (founder.txt, a one-person board) and THE MARKETVIEW Q4 BOARD (mvq4.txt): nothing is folded.
+     * The records table, "The team today", Blockers, "Who checked in", "Over time", "Reports", "Help nobody mentioned" and "Open
+     * issues" draw open in their usual places (pilot, number-tracking family, build order 7 and 8; Hafsah: no needless folds).
      */
-    'asset loans': { openIssuesInFold: true, teamInFoldRecordsOpen: true },
-    /*
-     * THE LAW FIRM MATTER BOARD'S OWN SHAPE (matter.txt). "Open issues" folds, the same as every
-     * other kind-of-work table above; `teamAndRecordsInFold` folds the records table, "The team
-     * today", "Who checked in", "Over time" and "Reports" into the end fold too, the same as a
-     * government programme board - which also puts patterns and coaching in their protected place
-     * just before "Where this is heading" (`foldTeam`, below) for free, with no change needed here.
-     */
-    'a law firm matter': { openIssuesInFold: true, teamAndRecordsInFold: true },
-    /*
-     * THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN SHAPE (mvnext.txt). "Open issues" folds, the same as
-     * every other kind-of-work table above. `teamAndRecordsInFold` would also fold the records
-     * table - the one workRecords section this kind sends ("Themes") standing in for mvnext.txt's
-     * own "Where next, ranked", which the engine does not build (see docs/answers-from-engine.md) -
-     * and mvnext.txt keeps that table open, in its own place among this kind's own four sections
-     * (see where `kindOfWorkKey === 'MarketView where next'` draws them, below), so this uses
-     * `teamInFoldRecordsOpen` instead, the same as an asset loans cohort.
-     */
-    'MarketView where next': { openIssuesInFold: true, teamInFoldRecordsOpen: true },
-    /*
-     * THE FOUNDER'S OWN CHECK-IN BOARD'S OWN SHAPE (founder.txt, a one-person board). "Open
-     * issues" folds, the same as every other kind-of-work table above; `whoCheckedInInFold` folds
-     * only "Who checked in" with it - "Over time" and "Reports" stay open, in founder.txt's own
-     * place for them.
-     */
-    "founder's own check-in": { openIssuesInFold: true, whoCheckedInInFold: true, targetsBesideHeadlineFromObjectives: true },
-    /*
-     * THE MARKETVIEW Q4 BOARD'S OWN SHAPE (mvq4.txt). "Open issues" folds, the same as every
-     * other kind-of-work table above; `teamAndRecordsInFold` folds the records table, "The team
-     * today", "Who checked in", "Over time" and "Reports" into the end fold too, the same as a
-     * government programme board or a law firm matter. `helpNobodyMentionedInFold` moves "Help
-     * nobody mentioned" into the end fold as well - mvq4.txt does not show it in its usual place,
-     * straight after "Reports", because "Reports" itself is already folded here.
-     */
-    'MarketView Q4': { openIssuesInFold: true, teamAndRecordsInFold: true, helpNobodyMentionedInFold: true },
+    "founder's own check-in": { targetsBesideHeadlineFromObjectives: true },
   }
   const layoutFor = (k: string | null) => (k ? kindLayout[k] : undefined)
   const themesAndAreaAfterTheTeam = Boolean(layoutFor(kindOfWorkKey)?.themesAndAreaAfterTheTeam)
-  const foldTeamAndRecords = Boolean(layoutFor(kindOfWorkKey)?.teamAndRecordsInFold)
-  const foldTeamKeepRecordsOpen = Boolean(layoutFor(kindOfWorkKey)?.teamInFoldRecordsOpen)
-  /** Either shape folds "The team today", "Who checked in", "Over time" and "Reports". */
-  const foldTeam = foldTeamAndRecords || foldTeamKeepRecordsOpen
-  /**
-   * THE FOUNDER'S OWN CHECK-IN BOARD: "WHO CHECKED IN" FOLDS ON ITS OWN, EVEN WHEN NOTHING ELSE
-   * ABOUT THE TEAM DOES. `foldTeam` stays false for this kind - "The team today", "Over time" and
-   * "Reports" all keep their usual, open place - so this is its own flag, not folded in with it.
-   */
-  const foldWhoCheckedIn = foldTeam || Boolean(layoutFor(kindOfWorkKey)?.whoCheckedInInFold)
   /*
    * SUPPORT DESK BOARD FIX 2: "THE SHAPE OF THE WORK" AND "BY QUEUE", RIGHT AFTER "THE TEAM
    * TODAY" - support.txt's own place for them, not the end fold both sit in today. Pulled out of
@@ -2213,15 +2140,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * person, a place, or the model?", then "Patterns named after three check-ins in a row" as its
    * note). Every other kind of work keeps the plain heading and note it already had.
    */
-  const patternsHeading = kindOfWorkKey === 'asset loans' ? 'One person, a place, or the model?' : 'What keeps coming up'
-  /*
-   * B-138, DECISION 8: "Patterns show only after three periods, whether or not they are in a row."
-   * The old note said the opposite - that three in a row were required - for both the default
-   * heading and the asset-loans cohort's own one.
-   */
-  const patternsNote = kindOfWorkKey === 'asset loans'
-    ? 'Shown only after the same thing comes up in three check-ins, in a row or not'
-    : 'Shown only after the same thing comes up in three check-ins, in a row or not. Each describes the work.'
+  const patternsHeading = 'What keeps coming up'
 
   const patternsAndCoachingSection = () => (
     <>
@@ -2234,12 +2153,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             a pattern and in what words). `visiblePatterns` is filtered again here for a colleague,
             on top of what the server already withheld: see the comment on `visiblePatterns` above.
           */}
-          <Section heading={patternsHeading} note={patternsNote}>
+          {visiblePatterns.length > 0 && (
+          <Section heading={patternsHeading}>
             <Panel pad={false}>
               <RowList label="What keeps coming up">
-              {visiblePatterns.length === 0 ? (
-                <Row columns="1fr" inset="panel"><Text size="15" ink="muted">Nothing to show here yet. A pattern appears only after the same thing comes up in three check-ins, in a row or not, and the person it is about always sees it first.</Text></Row>
-              ) : (
+              {(
                 <>
                   {/*
                     REQUEST 82 AND DECISION 67: TWO PARTS, BY EACH PATTERN'S `about`. "the work" goes
@@ -2277,13 +2195,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </>
               )}
               </RowList>
-              <div className="gwui-fs-13-5 gwui-ink-muted gwui-pt-10 gwui-pr-22 gwui-pb-10 gwui-pl-22 gwui-rule-top-dashed gwui-mt-4" style={{fontStyle: 'italic', lineHeight: 1.5}}>
-                {/* Board review, 1 October, item 4: "the lead's private report" said "the lead"
-                    even to the lead themselves reading their own board. */}
-                {direct ? 'Patterns about the work only.' : <>Patterns about the work only. Anything that would read as a judgement about a person stays in {viewerRunsThisCheckIn ? 'your' : `${(groundForSignals as any)?.leadFirstName ?? 'the lead'}’s`} private report and never appears here.</>}
-              </div>
             </Panel>
           </Section>
+          )}
         </>
       )}
 
@@ -2346,7 +2260,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
            * header.
            */
           return (
-            <Section heading="Who checked in" note="The last 10 sessions, one row each.">
+            <Section heading="Who checked in" note="The last 10 check-ins, one row each.">
               {/*
                 A GRID OF PEOPLE BY SESSIONS IS THE RIGHT SHAPE UNTIL THE SCREEN IS NARROWER THAN
                 IT IS. Measured on the running board at 375px: 1088px of table inside a 301px box,
@@ -2419,29 +2333,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
   /*
    * U.10 ITEM 7: "OVER TIME", AND "REPORTS" (board-as-lead.txt). Factored into functions, the same
-   * pattern as `whoCheckedIn`, so a government programme board can draw both inside the end fold
-   * (`teamAndRecordsInFold`) while every other kind keeps them exactly where they already were,
-   * between "Who checked in" and "Help nobody mentioned" - see where each is called, below.
+   * pattern as `whoCheckedIn`, between "Who checked in" and "Help nobody mentioned" - see where each is called, below.
    */
-  const overTimeSection = () => (
-    <Section
-      heading="Over time"
-      /* Board review, 1 October, item 8: this only opens or closes a section (a fold), drawn
-         with its own one-off classes instead of the shared `gwui-plain-link` quiet-text-link
-         class, so the button-count test counted it as a real button. */
-      action={(
-        <button
-          onClick={() => setShowOverTime((v) => !v)}
-          className="gwui-plain-link"
-          style={{ flexShrink: 0 }}
-        >
-          {showOverTime ? 'Hide' : 'Show'}
-        </button>
-      )}
-    >
-      {showOverTime ? <HowThisHasMoved groundId={id!} viewerRunsThisCheckIn={viewerRunsThisCheckIn} /> : undefined}
-    </Section>
-  )
+  /* No heading with nothing under it: "Over time" is drawn, open, only once a session has closed. */
+  const overTimeSection = () => <OverTimeSection groundId={id!} viewerRunsThisCheckIn={viewerRunsThisCheckIn} />
 
   const reportsSection = () => {
     if (!(shown.checkInGrid && sessionRows.length > 0)) return null
@@ -2455,10 +2350,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
            who is not a participant at all (an admin reading, not running, this check-in) has
            no report of their own here, so they read only about the team's. */
         note={viewerRunsThisCheckIn
-          ? "Every session has two: each person's own, and the team's once you share it."
+          ? "Every check-in has two: each person's own, and the team's once you share it."
           : isAParty
-            ? `Each session has two reports, your own and the team's, once ${(groundForSignals as any)?.leadFirstName ?? 'the person running this check-in'} shares it.`
-            : `Each session has a team report, once ${(groundForSignals as any)?.leadFirstName ?? 'the person running this check-in'} shares it.`}
+            ? `Each check-in has two reports, your own and the team's, once ${(groundForSignals as any)?.leadFirstName ?? 'the person running this check-in'} shares it.`
+            : `Each check-in has a team report, once ${(groundForSignals as any)?.leadFirstName ?? 'the person running this check-in'} shares it.`}
       >
         {/*
           U.10 (c2): FROM THE SHARED PARTS - the prototype's own list shape (board-as-lead.jpg:
@@ -2488,7 +2383,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                    Sun, 27 Sept", two commas doing the work of one. The prototype's own Reports
                    row (board-as-lead.txt: "Today, 23 Sep") is a label, a comma, a short date -
                    one comma, so this drops the weekday and keeps the short date. */
-                title={`Session ${r.sessionNumber}${r.opened ? `, ${whenItWas(r.opened, 'dayAndMonth')}` : r.opensOn ? `, opens on ${whenItWas(r.opensOn, 'dayAndMonth')}` : ''}`}
+                title={`Check-in ${r.sessionNumber}${r.opened ? `, ${whenItWas(r.opened, 'dayAndMonth')}` : r.opensOn ? `, opens on ${whenItWas(r.opensOn, 'dayAndMonth')}` : ''}`}
                 detail={checkedIn(r.answered, r.total)}
                 actions={(
                   <>
@@ -2537,7 +2432,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           rather than the prototype's wide outlined white button with a border and bold text.
         */}
         <div className="gwui-mt-10 gwui-fs-13-5 gwui-ink-sub">
-          {sessionRows.length} session{sessionRows.length === 1 ? '' : 's'} in all.
+          {sessionRows.length} check-in{sessionRows.length === 1 ? '' : 's'} in all.
         </div>
         <Link
           to={`/grounds/${id}?tab=report`}
@@ -2581,7 +2476,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           switchboard's sections further down.
         */}
         {/* Somebody who has just answered from a link lands here with ?done=1: their answer landed, and where the report goes. */}
-        {justAnswered && <ThatIsOnTheRecord groundId={id!} />}
 
         {/*
           U.10 (a): THE PROTOTYPE'S HEADER AND TABS (board-as-lead.jpg), NOT THE DARK NAVY CARD.
@@ -2620,6 +2514,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         <CheckInHeader
           crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: b.title }]}
           title={b.title}
+          updated={shortUpdatedLine ? undefined : (whenTheBoardLastChanged(b.lastChangedAt, direct) || undefined)}
           subtitle={(picturedDecision ? (() => { const n = (b.participants ?? []).length; const done = (b as any).howItIsGoing?.glance?.progress?.answeredThisRound ?? null; return `${n} people answer once.${done != null ? ` ${done} of ${n} have answered.` : ''}` })() : picturedLead || picturedReader || picturedParticipant || picturedOnboarding || picturedPlan || picturedOtherKind ? picturedCadenceLine : picturedMember ? [((b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name ? `Run by ${(b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name}.` : null), theScheduleInWords(groundForSignals as any, null), spineWords].filter(Boolean).join(' ') : cadenceLine) || undefined}
           action={(
             /*
@@ -2707,11 +2602,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {/* The light sales board: "Updated Wed 23 Sep, 6pm ⓘ", the full sentence behind the ⓘ (approved rename). */}
         {shortUpdatedLine ? (
           <UpdatedLine short={whenTheBoardLastChangedInShort(b.lastChangedAt)} full={whenTheBoardLastChanged(b.lastChangedAt, direct)} />
-        ) : whenTheBoardLastChanged(b.lastChangedAt, direct) ? (
-          /* The prototype's own size for it (t-tiny, 13px), directly under the tabs. */
-          <p className="gwui-fs-13 gwui-ink-sub gwui-mt-8" style={{lineHeight: '18px'}}>
-            {whenTheBoardLastChanged(b.lastChangedAt, direct)}
-          </p>
         ) : null}
         {/*
           OUT OF TIME, RIGHT UNDER "LAST UPDATED" (join-outoftime.txt). This is where a reader looks
@@ -2742,6 +2632,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {/* On the pictured board it is drawn after the team today, where the prototype puts the people (see `yourTeam` below); elsewhere it stays here. */}
         {!groundId && (b as any).yourTeam && id && !(!picturedCollections && !picturedMatter && (((picturedLead && picturedManyInTeams) || picturedOtherKind) || (picturedLead && !picturedManyInTeams))) && <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} />}
         {picturedCollections && b.collections && (
+          <PartBoundary>
           <TheCollectionsBoard
             board={b.collections}
             b={b}
@@ -2749,25 +2640,28 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             onAnswer={viewerRunsThisCheckIn ? (route) => answerOnTheCollectionsBoard.mutate(route) : undefined}
             answering={answerOnTheCollectionsBoard.isPending}
           />
+          </PartBoundary>
         )}
         {picturedMatter && b.matter && (
+          <PartBoundary>
           <TheMatterBoard
             board={b.matter}
             b={b}
             renderActions={viewerRunsThisCheckIn ? (action) => <ActionButtons groundId={id!} action={action} /> : undefined}
             onRecordTheDecision={viewerRunsThisCheckIn ? () => navigate(`/grounds/${id}/end`) : undefined}
           />
+          </PartBoundary>
         )}
         {!picturedCollections && !picturedMatter && ((picturedLead && picturedManyInTeams) || picturedOtherKind) && (
+          <PartBoundary>
           <ThePicturedBoard
             /* Release 4: the first screen is the headline with each target and what needs you; the rest is folded under its own heading. */
-            foldAfter={(b as any).releaseFiveProjects && (b as any).project ? PROJECT_FOLD_AFTER : (b as any).releaseFourTeams && RELEASE_4_ORDERS[(b as any).kindOfWork] ? whereItFolds((b as any).kindOfWork) : undefined}
             /* A founder's own check-in has one person in it (founder-board.jpg): no team today, no areas, no row per person. */
             order={((picturedSituation
               ? theSituationsOrder((b as any).situation, viewerRunsThisCheckIn && !isParticipantView)
               : (b as any).kindOfWork === 'a government programme'
               /* A programme across levels (gov-board.jpg): what each level understood, the visit log, the counties. */
-              ? ['eachLevel', 'visitLog', 'counties', 'heading', 'recommends']
+              ? ['opening', 'eachLevel', 'visitLog', 'counties', 'heading', 'recommends']
               : (b as any).kindOfWork === 'a law firm matter'
               /* A matter (matter-board.jpg): where it stands, what you need to decide, what changed this week. */
               ? ['matterStands', 'youNeedToDecide', 'changedThisWeek', 'heading', 'recommends']
@@ -2779,20 +2673,25 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               ? ['inShort', 'byWhoTheyAre', 'whereNextRanked', 'whereTheyDisagree', 'cantTellYou', 'heading']
               : (b as any).kindOfWork === 'asset loans'
               /* A lending cohort (loans-board.jpg): what needs you, where the cohort stands, every trader, and what keeps coming up as the cohort's own question. */
-              ? ['needsYou', 'cohortStands', 'everySale', 'personPlaceOrModel', 'supportGiven', 'heading']
+              ? ['opening', 'needsYou', 'cohortStands', 'everySale', 'personPlaceOrModel', 'supportGiven', 'heading']
               /* RELEASE 4 (release-4-teams): each team type as its kit picture. support.jpg: headline and each target, what needs you, every ticket, the team, volume and causes, by queue, who checked in, blockers, what keeps coming up, over time, reports, every session, the other boards, where this is heading. */
               /* RELEASE 5 (release-5-projects): a project, as the Check-in Reports file's "A project": the plan, money in and out, the stakeholders, what is coming up, and if it goes off track. */
               : (b as any).releaseFiveProjects && (b as any).project
               ? PROJECT_ORDER
               : (b as any).releaseFourTeams && theRelease4Order((b as any).kindOfWork, viewerRunsThisCheckIn)
               ? theRelease4Order((b as any).kindOfWork, viewerRunsThisCheckIn)!
+              : (b as any).kindOfWork === 'trader training programme'
+              /* A trader training programme (programme-board.jpg): every group, the team today, women's share and drop-off together, then by county. */
+              ? ['headlineTargets', 'needsYou', 'everySale', 'teamToday', 'womenAndDropOff', 'byTeam', 'whoCheckedIn', 'blockers', 'patterns', 'overTime', 'reports', 'everySession', 'otherBoards', 'heading', 'recommends']
               : (b as any).kindOfWork === "founder's own check-in"
-              ? ['headlineTargets', 'needsYou', 'everySale', 'reported', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'recommends']
+              ? ['headlineTargets', 'needsYou', 'everySale', 'saidVersusDone', 'founderFigures', 'reported', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'recommends']
               : ['headlineTargets', 'needsYou', 'everySale', 'teamToday', 'reported', 'themes', 'byTeam', 'whoCheckedIn', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'recommends'])
               /* With no piece of work on record yet, the kind of work's own empty table says so and offers to add one, in place of the table. */
               .flatMap((k) => (k === 'everySale' && !(b.workRecords ?? []).some((x: any) => (x.section === 'Deal grid' || x.section === 'Work plan') && (x.rows ?? []).length) ? ['kindOfWork', 'otherRecords'] : [k]))
               /* The lead's person-by-person part goes after the team today, or before where this is heading when there is no team today. */
-              .flatMap((k, _i, all) => (k === 'teamToday' ? [k, 'yourTeam'] : k === 'heading' && !all.includes('teamToday') ? ['yourTeam', k] : [k]))) as any}
+              .flatMap((k, _i, all) => (k === 'teamToday' ? [k, 'yourTeam'] : k === 'heading' && !all.includes('teamToday') ? ['yourTeam', k] : [k]))
+              /* The board's own read (api: the-boards-own-read.ts), where the server wrote one: its near-the-top pieces after the board's opening section, the rest before where this is heading. */
+              .flatMap((k, i) => (!(b as any).theBoardsOwnRead ? [k] : k === 'heading' ? ['readEnd', k] : i === 0 ? [k, 'readTop'] : [k]))) as any}
             yourTeam={!groundId && (b as any).yourTeam && id ? <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} /> : null}
             otherRecords={(
               <WorkRecordsSections
@@ -2826,8 +2725,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
             navigate={navigate}
           />
+          </PartBoundary>
         )}
         {!picturedCollections && !picturedMatter && picturedReader && (
+          <PartBoundary>
           <ThePicturedSalesBoard
             b={b}
             groundId={id!}
@@ -2841,8 +2742,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             navigate={navigate}
             readOnly
           />
+          </PartBoundary>
         )}
         {!picturedCollections && !picturedMatter && picturedLead && situationOrder && (
+          <PartBoundary>
           <ThePicturedBoard
             order={situationOrder as any}
             b={b}
@@ -2857,8 +2760,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
             navigate={navigate}
           />
+          </PartBoundary>
         )}
         {!picturedCollections && !picturedMatter && picturedLead && !picturedManyInTeams && !situationOrder && !picturedOtherKind && (
+          <PartBoundary>
           <ThePicturedSalesBoard
             b={b}
             groundId={id!}
@@ -2893,8 +2798,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               />
             )}
           />
+          </PartBoundary>
         )}
         {!picturedCollections && !picturedMatter && picturedOnboarding && (
+          <PartBoundary>
           <ThePicturedBoard
             /* Before anybody has answered (faith90-board.jpg) the board says it fills in after the first check-ins, and shows what was agreed and what is left to do. */
             order={(b.checkInGrid?.rows ?? []).length > 0 && !(b.checkInGrid?.rows ?? []).some((r: any) => Object.values(r.cells ?? {}).includes('done'))
@@ -2926,8 +2833,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
             navigate={navigate}
           />
+          </PartBoundary>
         )}
         {!picturedCollections && !picturedMatter && picturedMember && (
+          <PartBoundary>
           <ThePicturedBoard
             order={['participantNote', 'priorities', 'yourPart', 'teamReport', 'companyBoard', 'everySession', 'otherBoards']}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
@@ -2943,8 +2852,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             onRecordTheDecision={() => undefined}
             navigate={navigate}
           />
+          </PartBoundary>
         )}
         {!picturedCollections && !picturedMatter && picturedDecision && (
+          <PartBoundary>
           <ThePicturedBoard
             order={['theDecision', 'accounts', 'knownBelievedUnknown', 'everySession', 'otherBoards', 'heading', 'recommends']}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
@@ -2960,8 +2871,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
             navigate={navigate}
           />
+          </PartBoundary>
         )}
         {!picturedCollections && !picturedMatter && picturedPlan && (
+          <PartBoundary>
           <ThePicturedBoard
             /* Release 8: the switchboard's purple sections for a plan to get back on track, after the kit picture's own. */
             order={['suggestion', 'theCase', ...((b as any).releaseEight ? ['whereTimeWent', 'evidenceIndex', 'busyOrMoving', 'contradictions', 'questionsForTheLead'] : []), 'everySession', 'otherBoards', 'heading', 'recommends'] as any}
@@ -2978,6 +2891,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
             navigate={navigate}
           />
+          </PartBoundary>
         )}
         {/*
           NOTHING THE PICTURE LEAVES OUT IS LOST (screen match, 16 October). Under a board drawn as pictured, one link
@@ -3092,7 +3006,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           `TheAnchorBoardSections` and `TheMonthBoard`, and `weeklyInsight` moves into the same
           sections object rather than its own block, so there is nothing left to draw separately.
         */}
-        <TheAnchorBoardSections sections={theAnchorSections} />
+        <PartBoundary><TheAnchorBoardSections sections={theAnchorSections} /></PartBoundary>
 
         {/*
           FAULT 4 (live walk, 6 October 2026): FOR AN ANCHOR CHECK-IN, "IDEAS FROM YOUR TEAM" SITS
@@ -3150,7 +3064,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {lightLead && <TheLightNeedsYou />}
         {(b as any).headline && (
           <Stack gap={12}>
-            <HeadlineSection headline={(b as any).headline} objectives={b.objectives} glance={(b as any).howItIsGoing?.glance ?? null} waitingToBeLetIn={b.waitingToBeLetIn ?? null} targetsFromObjectivesWhenNoBars={layoutFor(kindOfWorkKey)?.targetsBesideHeadlineFromObjectives} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere && viewerChecksIn} everyTarget={light && !b.atAGlance?.lines?.deals} />
+            <PartBoundary><HeadlineSection headline={(b as any).headline} objectives={b.objectives} glance={(b as any).howItIsGoing?.glance ?? null} waitingToBeLetIn={b.waitingToBeLetIn ?? null} targetsFromObjectivesWhenNoBars={layoutFor(kindOfWorkKey)?.targetsBesideHeadlineFromObjectives} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere && viewerChecksIn} everyTarget={light && !b.atAGlance?.lines?.deals} /></PartBoundary>
           </Stack>
         )}
 
@@ -3193,7 +3107,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {(b as any).howItIsGoing?.glance && !((b as any).headline && !(b as any).headline.answer) && (
           <div className="gwui-mt-16">
-            <HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere && viewerChecksIn} theCountSays={theClocksSessionSaid(b)?.says ?? null} />
+            <PartBoundary><HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere && viewerChecksIn} theCountSays={theClocksSessionSaid(b)?.says ?? null} /></PartBoundary>
             {/* The way to what each person said, once somebody else has answered this session (round 6; GroundAdminPage says the same). */}
             {theClocksSessionSaid(b)?.othersHaveAnswered && (
               <Note>
@@ -3222,7 +3136,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {b.divergence?.centralQuestion && (
           <Placed as="What to settle together">
             <Panel>
-              <WhatToSettleTogether question={b.divergence.centralQuestion} />
+              <PartBoundary><WhatToSettleTogether question={b.divergence.centralQuestion} /></PartBoundary>
             </Panel>
           </Placed>
         )}
@@ -3236,9 +3150,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {kindOfWorkKey === 'a law firm matter' && (
           <>
-            <WhereTheMatterStandsSection data={(b as any).whereTheMatterStands} />
-            <WhatYouNeedToDecideSection data={(b as any).whatYouNeedToDecide} />
-            <WhatChangedThisWeekSection data={(b as any).whatChangedThisWeek} />
+            <PartBoundary><WhereTheMatterStandsSection data={(b as any).whereTheMatterStands} /></PartBoundary>
+            <PartBoundary><WhatYouNeedToDecideSection data={(b as any).whatYouNeedToDecide} /></PartBoundary>
+            <PartBoundary><WhatChangedThisWeekSection data={(b as any).whatChangedThisWeek} /></PartBoundary>
           </>
         )}
 
@@ -3270,8 +3184,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </Stack>
               </Section>
             )}
-            <ByWhoTheyAreSection data={(b as any).byWhoTheyAre} />
+            <PartBoundary><ByWhoTheyAreSection data={(b as any).byWhoTheyAre} /></PartBoundary>
             {(!isParticipantView || !isSalesOrg) && (
+              <PartBoundary>
               <WorkRecordsSections
                 groundId={id!}
                 kindOfWork={(b as any).kindOfWork ?? null}
@@ -3281,8 +3196,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 readerIsLead={viewerRunsThisCheckIn}
                 canEdit={b.canEditFrame}
               />
+              </PartBoundary>
             )}
-            <WhereTheyDisagreeSection data={(b as any).whereTheyDisagree} />
+            <PartBoundary><WhereTheyDisagreeSection data={(b as any).whereTheyDisagree} /></PartBoundary>
             {!!(b as any).theJudgement?.whatThisCannotTellYou?.length && (
               <Section heading="What this can’t tell you">
                 <Panel pad={false}>
@@ -3333,9 +3249,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {layoutFor(kindOfWorkKey)?.whereItStandsAtTop && (
           <>
-            <WhatEachLevelUnderstoodSection data={(b as any).whatEachLevelUnderstood} />
-            <WhatTheVisitLogShowsSection data={(b as any).whatTheVisitLogShows} />
-            <TheCountiesSection data={(b as any).theCounties} />
+            <PartBoundary><WhatEachLevelUnderstoodSection data={(b as any).whatEachLevelUnderstood} /></PartBoundary>
+            <PartBoundary><WhatTheVisitLogShowsSection data={(b as any).whatTheVisitLogShows} /></PartBoundary>
+            <PartBoundary><TheCountiesSection data={(b as any).theCounties} rows={dealGridSections.flatMap((x: any) => x.rows ?? [])} /></PartBoundary>
           </>
         )}
 
@@ -3354,7 +3270,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             {whatNeedsYouSection()}
             {groundworkRecommendsSection()}
             {viewerRunsThisCheckIn && (b as any).questionsForTheLead?.length > 0 && (
-              <QuestionsForTheLeadSection rows={(b as any).questionsForTheLead} />
+              <PartBoundary><QuestionsForTheLeadSection rows={(b as any).questionsForTheLead} /></PartBoundary>
             )}
           </>
         )}
@@ -3366,31 +3282,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {viewerRunsThisCheckIn && (
           <div className="gwui-mt-14">
-            <SuggestionsForTheLead groundId={id!} where="board" />
+            <PartBoundary><SuggestionsForTheLead groundId={id!} where="board" /></PartBoundary>
           </div>
         )}
-
-        {/*
-          A SHARED PICTURE NEEDS TWO ACCOUNTS, AND THE BOARD SAYS SO.
-
-          The check-ins list carries this as a chip and a party's report tab carries it as a note.
-          The board, which is the shared picture itself, carried nothing: with one person on the
-          ground it drew "Nothing cross-referenced yet", an empty grid and a quick read of one, and
-          left the reader to work out that no amount of waiting would change it. The rule refuses a
-          shared report below two people, so the page says the same thing the rule does, and names
-          who can change it.
-
-          NOT FOR THE FOUNDER'S OWN CHECK-IN BOARD: founder.txt's own check-in is always one
-          person, by design - "One person. Weekly check-in." is the board's own subtitle, not a
-          gap to be told about or filled by adding somebody else.
-        */}
-        {onlyOnePersonHere && kindOfWorkKey !== "founder's own check-in" && (
-          <div role="status" className="gwui-rule-amber gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-12 gwui-fs-15 gwui-ink-amber" style={{background: 'var(--gw-amber-bg)', borderRadius: 12, lineHeight: 1.6}}>
-            This board compares what people said, and there is one person on this check-in.{' '}
-            {b.canEditFrame ? 'Add somebody and it will build from the next session.' : 'It will build once the person running this check-in adds somebody.'}
-          </div>
-        )}
-
 
         {/*
           REQUEST 115 (c): "TO CLOSE THE GAP, TWO OF THESE THREE" (board-as-lead.txt), beside the
@@ -3486,8 +3380,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           every kind of work, but absent, so drawing nothing, for every kind other than MarketView
           Q4 (the engine sends neither field to any other kind).
         */}
-        <WhatTheSystemsShowSection data={(b as any).whatTheSystemsShow} />
-        <WhereWhatWasSaidAndTheSystemsDifferSection data={(b as any).whereWhatWasSaidAndTheSystemsDiffer} />
+        <PartBoundary><WhatTheSystemsShowSection data={(b as any).whatTheSystemsShow} rows={theMetricsPeopleSaid(b)} /></PartBoundary>
+        <PartBoundary><WhereWhatWasSaidAndTheSystemsDifferSection data={(b as any).whereWhatWasSaidAndTheSystemsDiffer} /></PartBoundary>
 
         {/*
           REQUEST 133: AN ASSET LOANS COHORT'S OWN "WHERE THE COHORT STANDS" (loans.txt), RIGHT
@@ -3495,7 +3389,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           absent, and so draws nothing, for every kind other than asset loans (`WhereTheCohortStandsSection`
           itself returns `null` when `data` is not sent).
         */}
-        <WhereTheCohortStandsSection data={(b as any).whereTheCohortStands} />
+        <PartBoundary><WhereTheCohortStandsSection data={(b as any).whereTheCohortStands} /></PartBoundary>
 
         {/*
           ONBOARDING BOARD FIX 1: THE PROTOTYPE'S OWN ORDER, RIGHT AFTER "WHAT NEEDS YOU"
@@ -3537,14 +3431,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               viewerRunsThisCheckIn ? (
                 <>
                   {newHireHistoryRows.length > 0 && (
-                    <PersonHistorySection rows={newHireHistoryRows} heading={newHireFirstName ? `${newHireFirstName}’s history` : undefined} />
+                    <PartBoundary><PersonHistorySection rows={newHireHistoryRows} heading={newHireFirstName ? `${newHireFirstName}’s history` : undefined} /></PartBoundary>
                   )}
                   {myOwnHistoryRows.length > 0 && (
-                    <PersonHistorySection rows={myOwnHistoryRows} heading="Your own record" />
+                    <PartBoundary><PersonHistorySection rows={myOwnHistoryRows} heading="Your own record" /></PartBoundary>
                   )}
                 </>
               ) : (
-                <PersonHistorySection rows={b.personHistory} heading="Your history" />
+                <PartBoundary><PersonHistorySection rows={b.personHistory} heading="Your history" /></PartBoundary>
               )
             )}
             {divergenceBlock('Where you both see it differently')}
@@ -3566,15 +3460,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           work's participant still reads its records here exactly as before - see the comment on
           `dealGridSections`, above.
 
-          REQUEST 132: NOT HERE FOR A GOVERNMENT PROGRAMME BOARD (`teamAndRecordsInFold`) - the
-          records table moves into the end fold instead; see `foldTeamAndRecords`, inside
-          `FoldEverythingElseUnless`, below.
-
           NOT HERE FOR THE "MARKETVIEW, WHERE NEXT" BOARD EITHER - mvnext.txt's own place for this
           table is right after "By who they are", among this kind's own four sections, where it is
           already drawn above; drawing it again here would be the same table twice on one page.
         */}
-        {!foldTeamAndRecords && kindOfWorkKey !== 'MarketView where next' && (!isParticipantView || !isSalesOrg) && (
+        {kindOfWorkKey !== 'MarketView where next' && (!isParticipantView || !isSalesOrg) && (
+          <PartBoundary>
           <WorkRecordsSections
             groundId={id!}
             kindOfWork={(b as any).kindOfWork ?? null}
@@ -3583,14 +3474,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
             readerIsLead={viewerRunsThisCheckIn}
             canEdit={b.canEditFrame}
-            hideStageTrack={foldTeamKeepRecordsOpen}
           />
+          </PartBoundary>
         )}
 
-        {!foldTeam && shown.eachPerson && (
+        {shown.eachPerson && (
           <Section
             heading="The team today"
-            note="Each person’s line, their last 10 sessions, and what keeps coming up."
+            note="Each person’s line, their last 10 check-ins, and what keeps coming up."
             /*
               BOARD REVIEW, SALES PIECE C, ITEM 10: THE PROTOTYPE'S OWN FOOTNOTE, ONLY WHEN IT IS
               TRUE. board-as-lead.txt ends this section: "These are about the work. Open anyone to
@@ -3607,7 +3498,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               ordering is unchanged, only the heading now reads as the prototype's screen does.
             */}
             {activeLineForTheLead && <Note>{activeLineForTheLead}</Note>}
-            <WhereEachPersonIs rows={eachPersonRows} squaresFor={squaresFor} />
+            <PartBoundary><WhereEachPersonIs rows={eachPersonRows} squaresFor={squaresFor} /></PartBoundary>
           </Section>
         )}
 
@@ -3616,7 +3507,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           txt's own place for both, straight after "The team today" and before "Who checked in".
           Both render in the end fold for every other kind of work still, unchanged.
         */}
-        {!foldTeamAndRecords && themesAndAreaAfterTheTeam && themesSection && (
+        {themesAndAreaAfterTheTeam && themesSection && (
+          <PartBoundary>
           <WorkRecordsSections
             groundId={id!}
             kindOfWork={kindOfWorkKey as any}
@@ -3626,26 +3518,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             readerIsLead={viewerRunsThisCheckIn}
             canEdit={b.canEditFrame}
           />
+          </PartBoundary>
         )}
-        {!foldTeamAndRecords && themesAndAreaAfterTheTeam && <ByAreaSection data={(b as any).byArea} kindOfWork={kindOfWorkKey} />}
+        {themesAndAreaAfterTheTeam && <ByAreaSection data={(b as any).byArea} kindOfWork={kindOfWorkKey} />}
 
         {/*
           BLOCKERS (board-as-lead.txt, "Blockers"; request 105 part 2 and 107 b/c): one section,
           drawn from the server's own `blockers` field - every sentence built and ordered server
           side, so this file no longer joins `blockerCheck` and `whoWaitedOnWhom` by hand.
-
-          REQUEST 132: NOT HERE FOR A GOVERNMENT PROGRAMME BOARD - folded, with "Who checked in",
-          "The team today" and "Reports".
         */}
-        {!foldWhoCheckedIn && (isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
-        {!foldTeam && <BlockersSection blockers={(b as any).blockers} />}
-        {/*
-          REQUEST 132 AND REQUEST 133: NOT HERE FOR A GOVERNMENT PROGRAMME BOARD OR AN ASSET LOANS
-          COHORT. "What keeps coming up" and coaching stay open for both kinds (Hafsah's decision:
-          protected, never folded), but move to just before "Where this is heading" - see
-          `patternsAndCoachingSection()`, called both here (every other kind) and there (these two).
-        */}
-        {!foldTeam && patternsAndCoachingSection()}
+        {(isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
+        <PartBoundary><BlockersSection blockers={(b as any).blockers} /></PartBoundary>
+        {patternsAndCoachingSection()}
 
         {/*
           REQUEST 107 (c), PART 4: "REPORTED, STAGE BY STAGE" (board-as-lead.txt: "Reported vs
@@ -3656,9 +3540,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           show this one, so it now sits in "Everything else from this check-in" instead of here,
           beside the sales ground's own "Forecast" section - see the comment on `dealGridSections`.
         */}
-        <ReportedAgainstCriteriaSection data={(b as any).reportedAgainstCriteria} kindOfWork={(b as any).kindOfWork ?? null} />
+        <PartBoundary><ReportedAgainstCriteriaSection data={(b as any).reportedAgainstCriteria} kindOfWork={(b as any).kindOfWork ?? null} /></PartBoundary>
 
-        {!foldWhoCheckedIn && !(isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
+        {!(isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
 
         {/*
           U.10 ITEM 7: "OVER TIME" MOVES OUT OF THE FOLD, TO THE PROTOTYPE'S OWN PLACE
@@ -3667,25 +3551,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           does not show at all - but the prototype draws "Over time" itself, right here, so it
           belongs with the sections above it rather than folded away under them.
 
-          REQUEST 132: NOT HERE FOR A GOVERNMENT PROGRAMME BOARD - folded; see `overTimeSection()`
-          and where it is called inside the fold, below.
         */}
-        {!foldTeam && overTimeSection()}
+        {overTimeSection()}
 
-        {!foldTeam && reportsSection()}
+        {reportsSection()}
 
         {/*
           REQUEST 115 (c): "HELP NOBODY MENTIONED" (board-as-lead.txt: "You see the help, not who
           said it."), right after "Reports", in the prototype's own place for it. Sent only to
           whoever runs the check-in - one person's work, read across other people's check-ins, so
           no colleague and no read-only admin reads it. Never who said it, and never what they said.
-
-          THE MARKETVIEW Q4 BOARD'S OWN SHAPE (mvq4.txt): NOT HERE. mvq4.txt does not show this
-          section in its usual place, because "Reports" itself is already folded for this kind -
-          it moves into the end fold instead (`helpNobodyMentionedInFold`; see where it draws
-          there, below).
         */}
-        {!layoutFor(kindOfWorkKey)?.helpNobodyMentionedInFold && (b as any).helpNobodyMentioned && (
+        {(b as any).helpNobodyMentioned && (
           <Section heading="Help nobody mentioned" note={(b as any).helpNobodyMentioned.why}>
             <Stack gap={6}>
               {(b as any).helpNobodyMentioned.lines.map((l: string, i: number) => <Note key={i} tone="muted">{l}</Note>)}
@@ -3729,14 +3606,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         </div>
 
         {/*
-          REQUEST 132 AND REQUEST 133: "WHAT KEEPS COMING UP" AND COACHING, OPEN, JUST BEFORE
-          "WHERE THIS IS HEADING" - a government programme board's and an asset loans cohort's own
-          place for them (Hafsah's decision: protected, never folded). Every other kind already
-          drew these, in their usual place, above - see `foldTeam` beside `patternsAndCoachingSection()`.
-        */}
-        {foldTeam && patternsAndCoachingSection()}
-
-        {/*
           "WHERE THIS IS HEADING" (request 108 d; board-as-lead.txt). Sent to whoever runs the
           check-in only.
 
@@ -3751,10 +3620,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           click closer than the card it used to open onto.
         */}
         {(b as any).whereThisIsHeading && (
+          <PartBoundary>
           <WhereThisIsHeadingSection
             data={(b as any).whereThisIsHeading}
             onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
           />
+          </PartBoundary>
         )}
 
         {/*
@@ -3772,69 +3643,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           legend.
         */}
         <FoldEverythingElseUnless alreadyFolded={participantFoldsWhole || light}>
-        {/*
-          REQUEST 132: THE RECORDS TABLE, "THE TEAM TODAY", BLOCKERS, "WHO CHECKED IN", "OVER TIME"
-          AND "REPORTS", FOLDED HERE ON A GOVERNMENT PROGRAMME BOARD (`teamAndRecordsInFold`) - see
-          the comment where each would otherwise have drawn, above. "What keeps coming up" and
-          coaching are NOT here - Hafsah's decision keeps them open, just before "Where this is
-          heading" (see `patternsAndCoachingSection()`, called there for this kind).
-
-          REQUEST 133: NOT THE RECORDS TABLE ON AN ASSET LOANS COHORT (`teamInFoldRecordsOpen`) -
-          its table stays open, above, where loans.txt itself draws it; only "The shape of the
-          work" strip under that table moves here instead (loans.txt does not show it at all) -
-          see `TheShapeOfTheWorkStrip`, and `hideStageTrack` on the open table, above.
-        */}
-        {foldTeamAndRecords && (!isParticipantView || !isSalesOrg) && (
-          <WorkRecordsSections
-            groundId={id!}
-            kindOfWork={(b as any).kindOfWork ?? null}
-            sections={dealGridSections}
-            participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
-            leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
-            readerIsLead={viewerRunsThisCheckIn}
-            canEdit={b.canEditFrame}
-          />
-        )}
-        {foldTeamKeepRecordsOpen && <TheShapeOfTheWorkStrip kindOfWork={kindOfWorkKey as any} sections={dealGridSections} />}
-        {foldTeam && (
-          <>
-            {shown.eachPerson && (
-              <Section
-                heading="The team today"
-                note="Each person’s line, their last 10 sessions, and what keeps coming up."
-                foot="These are about the work."
-              >
-                {activeLineForTheLead && <Note>{activeLineForTheLead}</Note>}
-                <WhereEachPersonIs rows={eachPersonRows} squaresFor={squaresFor} />
-              </Section>
-            )}
-            <BlockersSection blockers={(b as any).blockers} />
-            {whoCheckedIn()}
-            {overTimeSection()}
-            {reportsSection()}
-            {/*
-              THE MARKETVIEW Q4 BOARD'S OWN SHAPE: "HELP NOBODY MENTIONED" HERE, RIGHT AFTER
-              "REPORTS", FOLDED TOGETHER WITH THE REST OF THE TEAM AND RECORDS
-              (`helpNobodyMentionedInFold`) - see the comment where it would otherwise have drawn,
-              above.
-            */}
-            {layoutFor(kindOfWorkKey)?.helpNobodyMentionedInFold && (b as any).helpNobodyMentioned && (
-              <Section heading="Help nobody mentioned" note={(b as any).helpNobodyMentioned.why}>
-                <Stack gap={6}>
-                  {(b as any).helpNobodyMentioned.lines.map((l: string, i: number) => <Note key={i} tone="muted">{l}</Note>)}
-                </Stack>
-              </Section>
-            )}
-          </>
-        )}
-
-        {/*
-          THE FOUNDER'S OWN CHECK-IN BOARD: "WHO CHECKED IN" FOLDS HERE ON ITS OWN
-          (`whoCheckedInInFold`) - "The team today", "Over time" and "Reports" all stay open,
-          above, in founder.txt's own place for them; only this one table moves.
-        */}
-        {!foldTeam && layoutFor(kindOfWorkKey)?.whoCheckedInInFold && whoCheckedIn()}
-
         {/*
           PROJECT BOARD REVIEW 1, FIX 11: "OPEN ISSUES", FOLDED HERE ON THESE BOARDS - see the
           comment where it would otherwise have drawn, above.
@@ -3865,7 +3673,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         />
         </Placed>
 
-        <Placed as="The sessions so far">
+        <Placed as="The check-ins so far">
         {has('phaseSpine') && b.phaseSpine && (
           <div className="gwui-mt-10">
             <FlexRow gap={10} wrap>
@@ -3924,65 +3732,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         </Placed>
 
         {/*
-          THE INSTRUCTIONS WERE BIGGER THAN THE THING THEY EXPLAINED. W-UX-7.
-
-          Her audit note: "The 'how to read this board' box is bigger than the board." Seen on the
-          running page and it was true - four lines of dark panel above a board whose first section
-          had not been reached yet.
-
-          NOT DELETED, and the wording is not touched. This framing is what keeps the board a mirror
-          rather than a weapon, and somebody meeting it for the first time should read it. What was
-          wrong is that it was read AT them again on every single visit.
-
-          So: the load-bearing sentence stays on the page always; the rest opens on ask, and the
-          choice is remembered. A returning person gets the board they came for and the reminder
-          within one click.
-        */}
-        <Placed as="How to read this board">
-        {/* The direct morning: no explanation of how to read the board, and no "It’s not a verdict." */}
-        {!direct && (
-        <div className="gwui-mt-12">
-          <p className="gwui-fs-15 gwui-ink-sub gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: '23px'}}>
-            {/*
-              THE FOUNDER'S OWN CHECK-IN BOARD, AND ANY OTHER ONE-PERSON CHECK-IN: "each person
-              shared in their private check-in" talks about a team that does not exist here - there
-              is one person, and the reader is them. "Built from what you shared in your private
-              check-in." says the same true thing about this board instead.
-            */}
-            {onlyOnePersonHere
-              ? 'Built from what you shared in your private check-in. Use it to see what’s going on and guide the conversation. It’s not a verdict.'
-              : 'Built from what each person shared in their private check-in. Use it to see what’s going on and guide the conversation. It’s not a verdict.'}
-          </p>
-          {howToRead && (
-            <>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: '23px'}}>
-                If something doesn&rsquo;t feel right, raise it in your next check-in. The board updates as people share more.
-              </p>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: '23px'}}>
-                Each person is shown in the context of their own role, not scored against everyone else.
-              </p>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: '23px'}}>
-                This is the shared picture from this round of check-ins. It can change as the picture changes.
-              </p>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: '23px'}}>
-                Where people see things differently or progress has stalled, you can see what each person shared and support them.
-              </p>
-            </>
-          )}
-          {/* Board review, 1 October, item 8: this only opens or closes a section (a fold), drawn
-              with its own one-off classes instead of the shared `gwui-plain-link` quiet-text-link
-              class, so the button-count test counted it as a real button. */}
-          <button
-            onClick={() => setHowToRead(v => { localStorage.setItem(HOW_TO_READ_KEY, v ? 'closed' : 'open'); return !v })}
-            className="gwui-plain-link gwui-mt-6"
-          >
-            {howToRead ? 'Show less' : 'How to read this board'}
-          </button>
-        </div>
-        )}
-        </Placed>
-
-        {/*
           BOARD REVIEW, SALES PIECE C, ITEMS 4 AND 5: A SALES GROUND'S OWN "FORECAST", AND "BY
           AREA" - NEITHER IN THE PROTOTYPE'S OWN SALES BOARD. The deal grid is not drawn again for
           a participant (item 4: her own records are already shown, above), but "Forecast" is about
@@ -3997,6 +3746,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           nothing left to withhold.
         */}
         {restOfWorkRecordSectionsToShow.length > 0 && (
+          <PartBoundary>
           <WorkRecordsSections
             groundId={id!}
             kindOfWork={(b as any).kindOfWork ?? null}
@@ -4007,6 +3757,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             canEdit={b.canEditFrame}
             collapseWhenAllNotKnown={workRecordsAllNotKnownSameWhy}
           />
+          </PartBoundary>
         )}
         {/* SUPPORT DESK BOARD FIX 2: ALREADY DRAWN ABOVE, RIGHT AFTER "THE TEAM TODAY" - never twice. */}
         {!themesAndAreaAfterTheTeam && <ByAreaSection data={(b as any).byArea} />}
@@ -4113,7 +3864,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {(shown.objectives || shown.divergence) && (
           <Section heading="What success looks like">
             <Panel>
-              <WhatSuccessLooksLikeFor groundId={id!} yourName={myName} headingIsTheCallers />
+              <PartBoundary><WhatSuccessLooksLikeFor groundId={id!} yourName={myName} headingIsTheCallers /></PartBoundary>
             </Panel>
           </Section>
         )}
@@ -4241,7 +3992,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                               : (<><b className="gwui-ink-dark">{o.count.toLocaleString('en-GB')}</b>{` of ${o.target.toLocaleString('en-GB')}.`}</>)}
                           </div>
                           <div className={`gwui-fs-13 ${o.delta > 0 ? 'gwui-ink-green' : 'gwui-ink-muted'}`} style={{fontWeight: 700, minWidth: 92, textAlign: 'right'}}>
-                            {o.delta > 0 ? `Up ${o.delta.toLocaleString('en-GB')} this session.` : 'No change.'}
+                            {o.delta > 0 ? `Up ${o.delta.toLocaleString('en-GB')} this check-in.` : 'No change.'}
                           </div>
                         </>
                       ) : (
@@ -4435,7 +4186,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {shown.whatTheRoomIsAbout && (
-          <Section heading="What people are after, and where" note="Built from what everybody said.">
+          <Section heading="What people are after, and where">
             {b.whatTheRoomIsAboutNote && (
               <Panel><Text size="15" ink="sub">{b.whatTheRoomIsAboutNote}</Text></Panel>
             )}
@@ -4506,7 +4257,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               wording, so this falls back to "How far the record bears this out." instead, which
               is still true of one person's own report.
             */
-            note={onlyOnePersonHere ? 'How far the record bears this out.' : 'How much the team agrees, and how much the report can rely on.'}
+            
           >
             {/*
               FOUR TILES BECOME FOUR SCREENS-FULL WHEN THE GRID COLLAPSES TO ONE COLUMN.
@@ -4600,13 +4351,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           timescale.
         */}
         {(b as any).overTime && (
-          <Section heading="What the record shows" note="Read across every session so far.">
-            <WhatTheRecordShows it={(b as any).overTime} />
+          <Section heading="What the record shows">
+            <PartBoundary><WhatTheRecordShows it={(b as any).overTime} /></PartBoundary>
           </Section>
         )}
 
         {((b as any).whatTheAnswersSay || (b as any).theJudgement) && (
-          <Section heading="What the answers say" note="Built from everybody who has answered so far.">
+          <Section heading="What the answers say">
             {/*
               THE JUDGEMENT FIRST, THEN WHAT PEOPLE SAID.
 
@@ -4618,7 +4369,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               U.10 (c1): the heading above is the shared Section's; TheJudgement and WhatTheNetworkSaid
               are the engine's own synthesis components and are left exactly as they render today.
             */}
-            <TheJudgement it={(b as any).theJudgement} hideWhatThisCannotTellYou={kindOfWorkKey === 'MarketView where next'} />
+            <PartBoundary><TheJudgement it={(b as any).theJudgement} hideWhatThisCannotTellYou={kindOfWorkKey === 'MarketView where next'} /></PartBoundary>
             {(b as any).whatTheAnswersSay && <WhatTheNetworkSaid picture={(b as any).whatTheAnswersSay} />}
           </Section>
         )}
@@ -4648,8 +4399,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   <Text size="16" ink="dark" as="span">
                     {g.says ?? (
                       g.certain
-                        ? `In session ${g.sinceRound}, ${g.who} was asked, "${g.what}" ${g.who} has not answered it yet.`
-                        : `In session ${g.sinceRound}, ${g.who} was asked, "${g.what}" Nothing on record can confirm the answer yet.`
+                        ? `In check-in ${g.sinceRound}, ${g.who} was asked, "${g.what}" ${g.who} has not answered it yet.`
+                        : `In check-in ${g.sinceRound}, ${g.who} was asked, "${g.what}" Nothing on record can confirm the answer yet.`
                     )}
                   </Text>
                 </div>
@@ -4666,7 +4417,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           here, exactly as before.
         */}
         {shown.decisions && b.decisions && !viewerRunsThisCheckIn && (
-          <Section heading="Decisions needed" note="Raised by what people see differently, or what is stuck.">
+          <Section heading="Decisions needed">
             <Panel pad={false}>
               {b.decisions.map((d, i) => (
                 <div key={i} className="gwui-panel-row">
@@ -4705,7 +4456,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           /* AN UPDATE HAS NO OWNERSHIP TO READ. Its per-person cards are the answers to the lead's one line. */
           <Section
             heading={b.family === 'UPDATE' ? 'What each person said' : 'Who owns what'}
-            note={b.family === 'UPDATE' ? 'Their own answers to the question, in their words.' : 'Read from what people said in their check-ins.'}
+            
           >
             <div className="gwui-gap-14" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(320px,100%),1fr))'}}>
               {b.whoOwnsWhat.map((p) => (
@@ -4759,7 +4510,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           {b.family !== 'UPDATE' && !it.itsKindIsSaid && whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name)) && (
                             <Text size="13" ink="sub" as="span">{whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name))}</Text>
                           )}
-                          {it.sessionNumber && <Text size="13" ink="muted" as="span">Said in session {it.sessionNumber}.</Text>}
+                          {it.sessionNumber && <Text size="13" ink="muted" as="span">Said in check-in {it.sessionNumber}.</Text>}
                         </FlexRow>
                       </div>
                     )) })()}
@@ -4771,7 +4522,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {shown.dependencies && b.dependencies && (
-          <Section heading="Waiting on" note="Handoffs between people, read from their check-ins.">
+          <Section heading="Waiting on">
             {/*
               U.10: ONE CARD PER BLOCKER, THE PROTOTYPE'S LAYOUT (board-as-lead.jpg, "Blockers").
               Each blocker there is its own white card: a bold title, an outlined status pill top
@@ -4789,7 +4540,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               for it. W8-24.
             */}
             {b.dependencies.length === 0 ? (
-              <Panel><Text size="15" ink="sub" lineHeight={1.6}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</Text></Panel>
+              <Panel><Text size="15" ink="sub" lineHeight={1.6}>Nothing here yet.</Text></Panel>
             ) : (
               <Stack gap={10}>
                 {b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d) => {
@@ -4876,7 +4627,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {shown.contribution && b.contribution && (
-          <Section heading="Contribution against role" note="Measured against each person’s own role.">
+          <Section heading="Contribution against role">
             <Panel>
               <Stack gap={10}>
                 <div className="gwui-fs-15 gwui-ink-sub gwui-pt-6 gwui-pr-0 gwui-pb-2 gwui-pl-0">
@@ -4981,7 +4732,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         </FlexRow>
                       )}
                       <div className={`gwui-mt-8 gwui-fs-15 gwui-pt-6 gwui-pr-10 gwui-pb-6 gwui-pl-10 ${c.ownVoice ? 'gwui-ownvoice' : 'gwui-ownvoice-none'}`} style={{lineHeight: 1.4, borderRadius: 9, fontStyle: c.ownVoice ? 'normal' : 'italic'}}>
-                        {c.ownVoice ?? (isReader ? 'No note. You can add your own context through your next check-in.' : 'No note. This person can add their own context through their next check-in.')}
+                        {c.ownVoice ?? (isReader ? 'No note.' : 'No note.')}
                       </div>
                     </>
                   )}
@@ -4997,7 +4748,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {shown.coverage && b.coverage && (
-          <Section heading="Where work is landing" note="Whose work is landing where.">
+          <Section heading="Where work is landing">
             <Panel>
               <div className="gwui-fs-15 gwui-ink-sub gwui-pt-6 gwui-pr-0 gwui-pb-2 gwui-pl-0">
                 {/* Board review, 30 September, item 7: this section lists everyone's coverage, not
@@ -5087,7 +4838,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           </div>
                         )}
                         <div data-testid="coverage-percent-says">
-                          <Text size="14" ink="sub">{`${percent}% of ${whose} work is landing in what other people describe as theirs.`}</Text>
+                          <Text size="14" ink="sub">{`${percent}% of ${whose} work is on other people’s tasks.`}</Text>
                         </div>
                       </Stack>
                     </div>
@@ -5127,7 +4878,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   {r.basis && <Note tone="muted">{r.basis}</Note>}
 
                   <div className="gwui-mt-7 gwui-fs-15 gwui-rule-dashed gwui-pt-6 gwui-pr-10 gwui-pb-6 gwui-pl-10 gwui-ink-muted" style={{lineHeight: 1.4, borderRadius: 9, fontStyle: 'italic'}}>
-                    {r.ownVoice ?? (isReader ? 'No note. You can add context through your next check-in.' : 'No note. This person can add context through their next check-in.')}
+                    {r.ownVoice ?? ('No note.')}
                   </div>
                 </div>
                 )
@@ -5167,7 +4918,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
          * sessions have actually happened here.
          */}
         {viewerRunsThisCheckIn && b.managerAlignment && b.managerAlignment.length > 0 && (
-          <Section heading="How the leading is landing" note="Two sides of the same leadership.">
+          <Section heading="How the leading is landing">
             <Panel pad={false}>
               <div className="gwui-fs-15 gwui-ink-sub gwui-pt-16 gwui-pr-22 gwui-pb-2 gwui-pl-22">
                 Where one person's read of how this team is being led differs from another's. Neither is called wrong.
@@ -5215,7 +4966,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           here and no branch for one.
         */}
         {shown.hiddenContributors && b.hiddenContributors && (
-          <Section heading="Named here, and not in this check-in" note="Built from what people said.">
+          <Section heading="Named here, and not in this check-in">
             <Panel pad={false}>
               {b.hiddenContributors.rows.map((r, i) => (
                 <HiddenContributorRow
@@ -5236,7 +4987,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {/* ---------------------------------------------- logistics */}
         {has('poll') && (
-          <Section heading="Find a time" note={b.canEditFrame ? 'The only thing on this board you set up yourself.' : `${(groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'} can set up a poll to find a time.`}>
+          <Section heading="Find a time" note={b.canEditFrame ? undefined : `${(groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'} can set up a poll to find a time.`}>
             <Panel>
               {b.canEditFrame && (
                 <div className={`gwui-pt-8 gwui-pr-0 gwui-pb-8 gwui-pl-0 ${b.poll ? 'gwui-rule-bottom' : 'gwui-rule-bottom-none'}`}>
@@ -5457,25 +5208,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           produced. It is for the person who wants to know where a line came from, and that person
           goes looking after they have read it, not before.
         */}
-        <Placed as="How this board is put together">
-        <details className="gw-legend gwui-mt-28">
-          <summary className="gwui-fs-13-5 gwui-ink-sub" style={{cursor: 'pointer'}}>How this board is put together</summary>
-          <div className="gwui-mt-10">
-            <Stack gap={12}>
-              {[
-                { h: 'What is open, first', p: 'It leads with what is still unresolved and what everyone already agrees on. The read across everything people said follows it.' },
-                { h: 'Each gap names both sides', p: "Every disagreement carries each person's position in their own words, and what is at stake if it holds. The most significant comes first." },
-                { h: 'Honest closes', p: 'Decisions rarely finish clean, so it names what is aligned, what is open, and the question the whole thing turns on. It never gives a verdict on a person.' },
-              ].map((cell, i) => (
-                <Stack key={i} gap={4}>
-                  <div className="gwui-fs-13-5 gwui-ink-muted" style={{letterSpacing: '.1px', fontWeight: 700}}>{cell.h}</div>
-                  <Text size="15" ink="sub" lineHeight={1.55}>{cell.p}</Text>
-                </Stack>
-              ))}
-            </Stack>
-          </div>
-        </details>
-        </Placed>
         </FoldEverythingElseUnless>
 
 

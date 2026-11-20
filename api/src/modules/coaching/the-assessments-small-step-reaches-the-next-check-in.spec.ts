@@ -15,7 +15,7 @@ const QUESTION = 'Which of the things you said you would do since last time is s
 
 const aStep = (o: Partial<AnIntervention> = {}): AnIntervention => ({
   key: 'slipping-promises', participantId: 'p1', ladder: 'work', rung: 0, step: 'a coaching question', forWhom: 'the person', theLeadDecides: false,
-  says: QUESTION, because: 'Promises Amani made were not kept, or not mentioned, when they came due. Seen in 3 check-ins: session 1, "I will call Westgate".',
+  says: QUESTION, because: 'Promises Amani made were not kept, or not mentioned, when they came due. Seen in 3 check-ins: check-in 1, "I will call Westgate".',
   state: 'open', startedIn: { checkInId: 'ci3', sessionNumber: 3 }, followedUp: [], ...o,
 });
 

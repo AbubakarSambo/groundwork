@@ -38,7 +38,7 @@ const base = {
 
 const YOURS = {
   aboutYou: [], showingUp: null,
-  whyItMatters: 'This is session 2 of sales and expansion work. Nothing repeats yet, which is normal this early.',
+  whyItMatters: 'This is check-in 2 of sales and expansion work. Nothing repeats yet, which is normal this early.',
   beforeNextTime: ['You will put the price list in writing to Rukia Otieno, with the date you need it by.'],
   general: true,
   role: {
@@ -82,7 +82,7 @@ describe('coaching is drawn for each reader', () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(AS_THE_LEAD)
     expect(await screen.findByText('What to work on next')).toBeTruthy()
-    expect(screen.getByText(/This is session 2 of sales and expansion work/)).toBeTruthy()
+    expect(screen.getByText(/This is check-in 2 of sales and expansion work/)).toBeTruthy()
     expect(screen.getByText('What to ask each person')).toBeTruthy()
     expect(screen.getByText('Aisha Otieno')).toBeTruthy()
     expect(screen.getByText(/Waiting for 4 days on you for the price list/)).toBeTruthy()
@@ -92,7 +92,7 @@ describe('coaching is drawn for each reader', () => {
     me = { id: 'u-aisha', firstName: 'Aisha', role: 'MEMBER' }
     renderBoard(AS_A_PARTICIPANT)
     expect(await screen.findByText('What to work on next')).toBeTruthy()
-    expect(screen.getByText(/This is session 2 of sales and expansion work/)).toBeTruthy()
+    expect(screen.getByText(/This is check-in 2 of sales and expansion work/)).toBeTruthy()
     expect(screen.queryByText('What to ask each person')).toBeNull()
     expect(screen.queryByText(/Waiting for 4 days on you for the price list/)).toBeNull()
   })

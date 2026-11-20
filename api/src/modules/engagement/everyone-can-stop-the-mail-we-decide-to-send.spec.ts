@@ -88,7 +88,7 @@ describe('what the link asks, as each reader reads it', () => {
     const q: any = await w.controller.whatWouldStop(t);
     expect(q.title).toBe('Do you want to stop the emails Groundwork decides to send?');
     expect(q.says).toEqual([LEAD_LOSES, THE_TEAM_CONSEQUENCE, WHAT_STILL_ARRIVES]);
-    expect(LEAD_LOSES).toBe("If you turn these emails off, you won't receive Groundwork's email insights about team progress, stalled engagement, emerging differences, people who may need attention, positive contributions or recommendations for what to do next, and reminders that your check-in is open or running out of time. You can still access Groundwork directly.");
+    expect(LEAD_LOSES).toBe("If you turn these emails off, you won't receive Groundwork's email insights about team progress, stalled engagement, emerging differences, positive contributions or recommendations for what to do next, and reminders that your check-in is open or running out of time. You can still access Groundwork directly.");
     expect([q.keepLabel, q.stopLabel]).toEqual(['Keep email insights', 'Turn off email insights']);
     expect(q.stopped).toBe(false);
     expect(await w.stops.stoppedFromAMail('lena@x.test')).toBe(false);

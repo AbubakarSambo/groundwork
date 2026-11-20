@@ -143,7 +143,8 @@ describe('Wairimu, the lead who approves, reads the leave board', () => {
     const how = await screen.findByRole('region', { name: 'How people ask' })
     expect(within(how).getByText('I need next Thursday and Friday off.')).toBeInTheDocument()
     expect(within(how).getByText('You have 16 days left and nobody else in your team is off then. Shall I send it to your manager?')).toBeInTheDocument()
-    expect(within(how).getByText('In their check-in, in chat, or on WhatsApp. Nobody fills in a form.')).toBeInTheDocument()
+    /* Batch S, round 2 (W16): there is a form beside it, so the page no longer says nobody fills one in. */
+    expect(within(how).getByText('In their check-in, in chat, on WhatsApp, or with the Request leave form.')).toBeInTheDocument()
     expect(how.textContent).not.toContain('Wairimu')
   })
 

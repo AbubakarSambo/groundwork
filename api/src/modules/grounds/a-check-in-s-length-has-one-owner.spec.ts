@@ -31,7 +31,8 @@ const WHAT_THE_WHATSAPP_TEMPLATES_SAY = [
   "'Hi {{1}}, your check-in for {{2}} closes at {{3}}. It takes about ten minutes, and you can answer right here.'",
 ];
 
-const ROOTS = [join(__dirname, '..', '..'), join(__dirname, '..', '..', '..', '..', 'client', 'src')];
+/* The marketing site's pages too (issue 16, 7 November 2026): its copy reads the one owner. */
+const ROOTS = [join(__dirname, '..', '..'), join(__dirname, '..', '..', '..', '..', 'client', 'src'), join(__dirname, '..', '..', '..', '..', 'marketing', 'src')];
 const LEFT_AS_THEY_ARE = ['modules/whatsapp/a-message-outside-the-window.ts'];
 const THE_ONE_OWNER = 'common/how-long-a-check-in-takes.ts';
 const NUMBER = '(?:a few|one|two|three|four|five|six|seven|eight|nine|ten|fifteen|twenty|\\d+(?:\\s+to\\s+\\d+)?)';
@@ -43,7 +44,7 @@ function filesUnder(dir: string, out: string[] = []): string[] {
   for (const f of readdirSync(dir)) {
     const p = join(dir, f);
     if (statSync(p).isDirectory()) { if (f !== 'node_modules' && f !== '__fixtures__') filesUnder(p, out); continue; }
-    if (/\.(ts|tsx)$/.test(f) && !/\.(spec|test)\./.test(f)) out.push(p);
+    if (/\.(ts|tsx|astro)$/.test(f) && !/\.(spec|test)\./.test(f)) out.push(p);
   }
   return out;
 }

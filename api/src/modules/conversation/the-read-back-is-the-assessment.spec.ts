@@ -1,56 +1,99 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { theReadBack, THE_READ_BACK_WAS_GIVEN } from './the-read-back';
+import { theReadBackFrom, theReadBackKeptOn, theLinesReadBackIn, THE_READ_BACK_WAS_GIVEN } from './the-read-back';
+import { thePartsFrom } from './the-assessment';
+import { withTheReplyToTheReadBack, keepTheCorrectionOnItsItem } from './a-correction-is-kept-on-its-item';
+import { theFactsIn } from './the-facts-on-record';
+import { theRecordLinesIn } from './the-record-from-the-assessment';
+import { theVerdictMadeSafe } from '../assistant/a-correction-is-checked-like-a-claim';
 
 /**
- * THE READ-BACK AT THE END OF A CHECK-IN, AS THE PERSON READS IT (F4 item 2, 3 November 2026; changed after plan round 32). What Mercy
- * reads at the end of her check-in is what she said, in her own words, from the conversation's own notes. It used to wait for the full
- * assessment (52 seconds, a 56-second reply); the assessment is now written at the close, with any correction in it, and every page
- * reads that. The file keeps its name, which the specs list knows it by.
+ * THE READ-BACK AT THE END OF A CHECK-IN, AS RITA READS IT (batch 2, group 4; staging S5 and S6, item 5). Rewritten in batch 2: the
+ * read-back is built from the conversation's assessment, the one reading every page reads, not from the working notes, so the old spec of
+ * the notes' read-back went with that path. Rita said she will call Naivas Sarit's buyer at 10am, and that she is on leave Monday 16 and
+ * Tuesday 17; the assessment first read only Tuesday. Her read-back holds her promise, comes once with no question in it, and "That's not
+ * right, it's two days" is answered on the line it names, kept on that item, and read by every page.
  */
-const claim = (id: string, kind: string, said: string) => ({ id, kind, said });
-const mercysNotes = {
-  claims: [
-    claim('c1', 'FACT', 'Kilele Hotel paid KES 40,000 on Monday.'),
-    claim('c2', 'PLAN', 'I will send the Westgate quote on Friday'),
-    claim('c3', 'FACT', 'Still waiting for Joseph to send the samples.'),
-    claim('c4', 'FACT', 'kilele hotel paid KES 40,000 on Monday.'),
-  ],
-  contradictions: [],
+const said = new Map<number, string>([
+  [1, 'I will call the Naivas Sarit buyer at 10am tomorrow.'],
+  [2, 'I am off on Monday 16 and Tuesday 17.'],
+]);
+const read = thePartsFrom({
+  summary: 'Rita will call Naivas and is off next week.',
+  nothingToRecord: [],
+  promises: [{ words: 'I will call the Naivas Sarit buyer at 10am tomorrow.', from: [1], byThePerson: true, clear: 'Call the buyer at Naivas Sarit at 10am', when: 'tomorrow' }],
+  dates: [{ words: 'off on Tuesday 17', from: [2], when: 'Tuesday 17', what: 'leave' }],
+}, said, { hasSetup: false, previous: null, givenRole: null, read: 1, isTheLead: false });
+const ritas: any = {
+  kind: 'assessment', version: 1,
+  about: { checkInId: 'c-rita', groundId: 'g', participantId: 'p-rita', who: 'Rita Rep', isTheLead: false, sessionNumber: 1, endedAt: '2026-11-12T10:00:00Z' },
+  messages: [{ n: 1, turnId: 't1', where: 'check-in', at: null }, { n: 2, turnId: 't2', where: 'check-in', at: null }],
+  ...read,
 };
 
-describe('the read-back at the end of a check-in', () => {
-  it('Mercy reads what she said, in her own words, each thing once', () => {
-    expect(theReadBack(mercysNotes as any)).toBe([
+describe('the read-back is the assessment, said once', () => {
+  const back = theReadBackFrom(ritas)!;
+  it('Rita reads each line once, her promise in it, her own words quoted only where she typed them', () => {
+    expect(back.text).toBe([
       'Here’s what I recorded.',
-      'You said “Kilele Hotel paid KES 40,000 on Monday.”',
-      'You said “I will send the Westgate quote on Friday.”',
-      'You said “Still waiting for Joseph to send the samples.”',
+      'You said “I will call the Naivas Sarit buyer at 10am tomorrow”.',
+      'Off on Tuesday 17.',
       'Is anything wrong? Tell me and I will put it right.',
     ].join('\n'));
   });
-
-  it('nothing of theirs to say back means no read-back, and the close goes on as before', () => {
-    expect(theReadBack({ claims: [], contradictions: [] } as any)).toBeNull();
-    expect(theReadBack(null)).toBeNull();
+  it('every line keeps the item it came from, so a correction can name it', () => {
+    expect(back.lines.map((l) => l.id)).toEqual(['c-rita#r1.promises.0', 'c-rita#r1.dates.0']);
+    expect(theLinesReadBackIn(theReadBackKeptOn(ritas, back.lines))).toEqual(back.lines);
   });
-
-  it('plain full sentences, no colon joining pieces', () => {
-    for (const line of theReadBack(mercysNotes as any)!.split('\n')) expect(line).not.toMatch(/^[^“]*:\s/);
+  it('nothing of theirs means no read-back', () => {
+    expect(theReadBackFrom({ ...ritas, promises: [], dates: [] })).toBeNull();
+    expect(theReadBackFrom(null)).toBeNull();
   });
-
-  it('it waits for this turn\'s note and not for an assessment; the close is held once, and the next turn is told a fix is a claim', () => {
-    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    const at = src.indexOf('const readBack = theReadBack(notes);');
-    expect(at).toBeGreaterThan(-1);
-    const before = src.slice(src.lastIndexOf('if (sessionComplete && !(checkIn as any).isSelfCorrection', at), at);
-    expect(before).toContain('await this.theNoteFromTheLastTurnLands(checkIn.id);');
-    expect(before).not.toContain('assessTheConversation');
-    expect(src.indexOf('this.noteWhatTheySaid(checkIn.id, message)')).toBeLessThan(at);
-    expect(src).toContain("data: { closeHeldAt: new Date() }");
-    expect(src).toContain("(r?.closeHeldAt ? THE_READ_BACK_WAS_GIVEN : '')");
-    expect(THE_READ_BACK_WAS_GIVEN).toMatch(/a correction is a claim like any other/);
-    expect(THE_READ_BACK_WAS_GIVEN).toMatch(/ask for it once, naturally, without accusing anybody/);
+  it('the read-back is the whole message, with no question of the model\'s beside it, and is never read back again', () => {
+    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(src).toContain('const readBack = theReadBackFrom(assessed);');
+    expect(src).toContain('data: { content: readBack.text }');
+    expect(src).not.toMatch(/theReadBack\(notes\)/);
     expect(THE_READ_BACK_WAS_GIVEN).toMatch(/Never read the list back again\./);
+  });
+});
+
+describe('"That\'s not right, it\'s two days" is answered on the line it names', () => {
+  const back = theReadBackFrom(ritas)!;
+  /* What the probe returns, made safe: only an id it was handed. */
+  const checked = theVerdictMadeSafe(
+    { verdict: 'backed', reply: 'You are right. I have changed it to Monday 16 and Tuesday 17.', lineId: 'c-rita#r1.dates.0', lineNowSays: 'off on Monday 16 and Tuesday 17' },
+    { promises: [], lines: [], numbers: [], documents: [], firstName: 'Rita', facts: back.lines.map((l) => ({ id: l.id, says: l.says, who: 'You', on: 'this check-in' })) },
+  )!;
+  it('the probe ties it to the leave line, and says what it changed', () => {
+    expect(checked.line).toEqual({ id: 'c-rita#r1.dates.0', nowSays: 'off on Monday 16 and Tuesday 17' });
+    expect(checked.reply).toBe('You are right. I have changed it to Monday 16 and Tuesday 17.');
+  });
+  it('kept on the item, every page reads both days, and the reply is part of the assessment so the close keeps it', async () => {
+    let column: any = theReadBackKeptOn(ritas, back.lines);
+    const prisma: any = { checkIn: { findUnique: jest.fn(async () => ({ sessionReport: column })), update: jest.fn(async ({ data }: any) => { column = data.sessionReport; }) } };
+    await keepTheCorrectionOnItsItem(prisma, { checkInId: 'c-rita', itemId: 'r1.dates.0', nowSays: checked.line!.nowSays, backed: true, by: null, where: 'check-in' });
+    column = withTheReplyToTheReadBack(column, { turnId: 't3', words: "That's not right, it's two days", at: new Date('2026-11-12T10:05:00Z'), itemId: 'r1.dates.0', nowSays: checked.line!.nowSays, backed: true });
+    const words = theFactsIn(column, { kind: 'the person', participantId: 'p-rita' }).map((f) => f.words);
+    expect(words).toContain('off on Monday 16 and Tuesday 17');
+    expect(words).not.toContain('off on Tuesday 17');
+    expect(theRecordLinesIn(column, () => true).map((l) => l.text)).toContain('off on Monday 16 and Tuesday 17');
+    expect(column.messages.map((m: any) => m.turnId)).toEqual(['t1', 't2', 't3']);
+    expect(column.readBack).toEqual(back.lines);
+  });
+});
+
+describe('every line of the read-back is a whole sentence the person can read as theirs (run 8: "You said “by 31 January 2027”.", "I want 9 a week.")', () => {
+  const { aLineAsTheyReadIt } = require('./the-read-back');
+  it('says a piece of an answer as an answer, with what it was recorded as', () => {
+    expect(aLineAsTheyReadIt({ words: 'by 31 January 2027', saidWordForWord: true, detail: 'The date is 31 January 2027' })).toBe('You answered “by 31 January 2027”, which I recorded as the date is 31 January 2027.');
+    expect(aLineAsTheyReadIt({ words: 'by 31 January 2027', saidWordForWord: true })).toBe('You answered “by 31 January 2027”.');
+  });
+  it('keeps a whole statement as what they said', () => {
+    expect(aLineAsTheyReadIt({ words: 'Nothing is blocking me', saidWordForWord: true })).toBe('You said “Nothing is blocking me”.');
+  });
+  it('never has Groundwork say "I want" for the person: words not typed word for word are read to them as "you"', () => {
+    expect(aLineAsTheyReadIt({ words: 'I want 9 a week.', saidWordForWord: false })).toBe('You want 9 a week.');
+    expect(aLineAsTheyReadIt({ words: "I'm aiming for 30", saidWordForWord: false })).toBe('You are aiming for 30.');
   });
 });

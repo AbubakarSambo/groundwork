@@ -149,7 +149,7 @@ const day = (d: Date | string | null | undefined): string | null => {
   const t = new Date(d);
   if (Number.isNaN(t.getTime())) return null;
   /* Africa/Lagos: the same clock every board date is counted in. */
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(t);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: theDayZone(), year: 'numeric', month: '2-digit', day: '2-digit' }).format(t);
 };
 
 const saidAsDate = (iso: string): string => {
@@ -398,7 +398,7 @@ export function theRisks(
       out.push({
         id: `again-${c.id}`,
         says: `${who} ${what}, and it has come up ${times} times now without anybody saying it happened.`,
-        because: `It was first said in session ${c.statedInSession ?? 'one'} and said again in ${(c.saidAgainIn ?? []).length === 1 ? 'session' : 'sessions'} ${listed((c.saidAgainIn ?? []).map(String))}.`,
+        because: `It was first said in check-in ${c.statedInSession ?? 'one'} and said again in ${(c.saidAgainIn ?? []).length === 1 ? 'check-in' : 'check-ins'} ${listed((c.saidAgainIn ?? []).map(String))}.`,
       });
     } else if (!hasATime) {
       out.push({
@@ -453,7 +453,7 @@ export function theTimeline(
     const at = firstAnswer.get(s.sessionNumber);
     if (!at || new Date(s.completedAt) < new Date(at)) firstAnswer.set(s.sessionNumber, s.completedAt);
   }
-  for (const [n, at] of firstAnswer) push(at, `The first answers for session ${n} came in.`);
+  for (const [n, at] of firstAnswer) push(at, `The first answers for check-in ${n} came in.`);
 
   for (const c of commitments) {
     if (!r.personMayBeRead(c.participantId) || !r.commitmentMayBeRead(c)) continue;
@@ -524,15 +524,15 @@ export function thePersonHistory(
     const theirCommitments = commitments.filter((c) => c.participantId === p.id);
     const theirWaits = handoffs.filter((d) => d.fromParticipantId === p.id);
     const perSession = [...done, ...gone].sort((a, b) => a.sessionNumber - b.sessionNumber).map((s) => {
-      if (missed(s)) return { n: s.sessionNumber, on: day(s.completedAt), says: `In session ${s.sessionNumber}, ${midSentence(who)} did not check in before it closed.` };
+      if (missed(s)) return { n: s.sessionNumber, on: day(s.completedAt), says: `In check-in ${s.sessionNumber}, ${midSentence(who)} did not check in before it closed.` };
       const made = theirCommitments.filter((c) => c.statedInSession === s.sessionNumber).length;
       const raised = theirWaits.filter((d) => !!s.id && d.sourceCheckInId === s.id).length;
       const bits: string[] = [];
       if (made) bits.push(`made ${plural(made, 'commitment', 'commitments')}`);
       if (raised) bits.push(`named ${plural(raised, 'thing', 'things')} the work was waiting on`);
       const says = bits.length
-        ? `In session ${s.sessionNumber}, ${midSentence(who)} ${bits.join(' and ')}.`
-        : `In session ${s.sessionNumber}, ${midSentence(who)} answered, and the record holds no new commitment or wait from it.`;
+        ? `In check-in ${s.sessionNumber}, ${midSentence(who)} ${bits.join(' and ')}.`
+        : `In check-in ${s.sessionNumber}, ${midSentence(who)} answered, and the record holds no new commitment or wait from it.`;
       return { n: s.sessionNumber, on: day(s.completedAt), says };
     });
     const total = theirCommitments.length;
@@ -542,12 +542,12 @@ export function thePersonHistory(
     /* How many were kept is the person's own (decision 24): only they are told the tally, never whoever runs the check-in. */
     const theirOwn = !!r.meId && p.id === r.meId;
     const summary = total
-      ? `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')} and made ${plural(total, 'commitment', 'commitments')}.${theirOwn ? ` ${theTallySaid(doneCount, notDone, open)}` : ''}`
+      ? `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'check-in', 'check-ins')} and made ${plural(total, 'commitment', 'commitments')}.${theirOwn ? ` ${theTallySaid(doneCount, notDone, open)}` : ''}`
       /* The name once (run-25): "Kwame Mensah has answered 1 session, and the record holds no commitment from Kwame Mensah yet." */
-      : `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')}, and ${who === 'You' ? 'have' : 'has'} made no commitment on record yet.`;
+      : `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'check-in', 'check-ins')}, and ${who === 'You' ? 'have' : 'has'} made no commitment on record yet.`;
     const has = who === 'You' ? 'have' : 'has';
-    const missedToo = gone.length ? ` ${who} ${who === 'You' ? 'have' : 'has'} missed ${plural(gone.length, 'session', 'sessions')}.` : '';
-    const says = done.length ? `${summary}${missedToo}` : `${who} ${has} not answered a session yet, and ${has} missed ${plural(gone.length, 'session', 'sessions')}.`;
+    const missedToo = gone.length ? ` ${who} ${who === 'You' ? 'have' : 'has'} missed ${plural(gone.length, 'check-in', 'check-ins')}.` : '';
+    const says = done.length ? `${summary}${missedToo}` : `${who} ${has} not answered a check-in yet, and ${has} missed ${plural(gone.length, 'check-in', 'check-ins')}.`;
     out.push({ participantId: p.id, who, says, sessions: perSession });
   }
   return out;
@@ -668,12 +668,12 @@ export function theBusyOrMoving(
     const who = whoIs(r, p.id);
     /* Counts of what was said, never of how many were kept: that tally is the person's own (decision 24). */
     const parts: string[] = [];
-    if (mine.length) parts.push(`${who} has made ${plural(mine.length, 'commitment', 'commitments')} across ${plural(answeredCount, 'answered session', 'answered sessions')}.`);
+    if (mine.length) parts.push(`${who} has made ${plural(mine.length, 'commitment', 'commitments')} across ${plural(answeredCount, 'answered check-in', 'answered check-ins')}.`);
     /* "also" only after the commitments (item 21): Kwabena read "Blessing Okafor also named 1 thing ..." with nothing before it. */
     if (waits.length) {
       parts.push(mine.length
         ? `${who} also named ${plural(waits.length, 'thing', 'things')} the work was waiting on.`
-        : `${who} named ${plural(waits.length, 'thing', 'things')} the work was waiting on, across ${plural(answeredCount, 'answered session', 'answered sessions')}.`);
+        : `${who} named ${plural(waits.length, 'thing', 'things')} the work was waiting on, across ${plural(answeredCount, 'answered check-in', 'answered check-ins')}.`);
     }
     eachPerson.push({ participantId: p.id, who, says: parts.join(' ') });
   }
@@ -875,26 +875,26 @@ export function theForecast(
     if (t.direction === 'ZERO') {
       /* A count to keep at zero: none is where it should stay, and any at all is already a breach. */
       says = last.count === 0
-        ? `It has stayed at zero since session ${first.sessionNumber}. If nothing changes, it will still be zero by session ${totalSessions}.`
+        ? `It has stayed at zero since check-in ${first.sessionNumber}. If nothing changes, it will still be zero by check-in ${totalSessions}.`
         : `It is at ${read(last.count)}, and this should stay at zero, so any at all is already a breach whatever the pace.`;
     } else if (t.direction === 'RATE') {
       /* A share, carried in a straight line like a count, and never past 100%. */
       const share = Math.min(100, ends);
       says = pace === 0
-        ? `It has stayed at ${read(last.count)}% since session ${first.sessionNumber}, so if nothing changes it would still be ${read(last.count)}% by session ${totalSessions}, against an aim of ${read(target)}% or more.`
-        : `If it keeps changing at the pace it has since session ${first.sessionNumber}, it would be about ${read(share)}% by session ${totalSessions}, against an aim of ${read(target)}% or more.`;
+        ? `It has stayed at ${read(last.count)}% since check-in ${first.sessionNumber}, so if nothing changes it would still be ${read(last.count)}% by check-in ${totalSessions}, against an aim of ${read(target)}% or more.`
+        : `If it keeps changing at the pace it has since check-in ${first.sessionNumber}, it would be about ${read(share)}% by check-in ${totalSessions}, against an aim of ${read(target)}% or more.`;
     } else {
       const against = t.direction === 'LIMIT' ? `against a limit of ${read(target)}` : `against an aim of ${read(target)}`;
       says = pace === 0
-        ? `It has not moved since session ${first.sessionNumber}, so if nothing changes it would still be ${read(last.count)} by session ${totalSessions}, ${against}.`
-        : `If it keeps moving at the pace it has since session ${first.sessionNumber}, it would be about ${read(ends)} by session ${totalSessions}, ${against}.`;
+        ? `It has not moved since check-in ${first.sessionNumber}, so if nothing changes it would still be ${read(last.count)} by check-in ${totalSessions}, ${against}.`
+        : `If it keeps moving at the pace it has since check-in ${first.sessionNumber}, it would be about ${read(ends)} by check-in ${totalSessions}, ${against}.`;
     }
     const unit = t.direction === 'RATE' ? '%' : '';
     out.push({
       objectiveId: t.id,
       about: t.about.trim(),
       says,
-      restsOn: `It was ${read(first.count)}${unit} in session ${first.sessionNumber} and ${read(last.count)}${unit} in session ${last.sessionNumber}, and this check-in runs for ${totalSessions} sessions.`,
+      restsOn: `It was ${read(first.count)}${unit} in check-in ${first.sessionNumber} and ${read(last.count)}${unit} in check-in ${last.sessionNumber}, and this check-in runs for ${totalSessions} check-ins.`,
       cannotTellYou: WHAT_A_FORECAST_CANNOT_TELL_YOU,
     });
   }
@@ -1002,13 +1002,13 @@ export function theContradictions(commitments: ACommitment[], sessions: ASession
     const who = whoIs(r, c.participantId);
     const clause = clauseOf(c, r);
     const theCommitment = aCommitmentNamed(c, who, r);
-    const again = later.length === 1 ? `session ${later[0]}` : `sessions ${listed(later.map(String))}`;
+    const again = later.length === 1 ? `check-in ${later[0]}` : `check-ins ${listed(later.map(String))}`;
     out.push({
       id: `again-after-${state.replace(' ', '-')}-${c.id}`,
       commitmentId: c.id,
       participantId: c.participantId,
       who,
-      says: `${theCommitment} was marked ${state} in session ${settledSession}, and in ${again} ${midSentence(who)} said it again as something still to do.`,
+      says: `${theCommitment} was marked ${state} in check-in ${settledSession}, and in ${again} ${midSentence(who)} said it again as something still to do.`,
     });
   }
   return out;
@@ -1055,7 +1055,7 @@ export function theQuestionsForTheLead(
     out.push({
       id: `said-again-${c.id}`,
       question: `Has ${named} happened, or is it still wanted?`,
-      because: `${who} said it in sessions ${listed(said)}, and nobody has said whether it happened.`,
+      because: `${who} said it in check-ins ${listed(said)}, and nobody has said whether it happened.`,
     });
   }
 

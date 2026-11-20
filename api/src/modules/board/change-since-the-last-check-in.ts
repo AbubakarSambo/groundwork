@@ -86,20 +86,20 @@ export function changeSinceTheLastCheckIn(a: {
     const kept = settledNow.filter((c) => String(c.status).toUpperCase() === 'DONE').length;
     const notKept = settledNow.length - kept;
     const open = cs.filter((c) => !isSettled(c.status) && c.statedInSession !== null && c.statedInSession < p).length;
-    if (made) { said.push(`${who} made ${plural(made, 'commitment', 'commitments')} in session ${n}.`); moved = true; }
+    if (made) { said.push(`${who} made ${plural(made, 'commitment', 'commitments')} in check-in ${n}.`); moved = true; }
     if (kept || notKept) {
       const was = (k: number) => (k === 1 ? 'was' : 'were');
       const parts = [kept ? `${kept} ${was(kept)} marked done` : null, notKept ? `${notKept} ${was(notKept)} marked not done` : null].filter(Boolean).join(' and ');
-      said.push(`Of ${who === 'You' ? 'your' : `${who}'s`} commitments, ${parts} since session ${p}.`);
+      said.push(`Of ${who === 'You' ? 'your' : `${who}'s`} commitments, ${parts} since check-in ${p}.`);
       moved = true;
     }
-    if (open) { said.push(`${who} still ${have} ${plural(open, 'commitment', 'commitments')} open from before session ${p}.`); late = true; }
+    if (open) { said.push(`${who} still ${have} ${plural(open, 'commitment', 'commitments')} open from before check-in ${p}.`); late = true; }
   }
   if (byPerson.size) {
     rows.push({
       area: 'Commitments', kind: 'commitments',
       state: late ? 'late' : moved ? 'moved' : 'held',
-      says: said.length ? said.join(' ') : `Nothing changed in the commitments between session ${p} and session ${n}.`,
+      says: said.length ? said.join(' ') : `Nothing changed in the commitments between check-in ${p} and check-in ${n}.`,
     });
   }
 
@@ -125,7 +125,7 @@ export function changeSinceTheLastCheckIn(a: {
     rows.push({
       area: 'Waits', kind: 'waits',
       state: waitLate ? 'late' : waitMoved ? 'moved' : 'held',
-      says: waitSays.length ? waitSays.slice(0, 5).join(' ') : `Nothing changed in what anybody is waiting for between session ${p} and session ${n}.`,
+      says: waitSays.length ? waitSays.slice(0, 5).join(' ') : `Nothing changed in what anybody is waiting for between check-in ${p} and check-in ${n}.`,
     });
   }
 
@@ -141,11 +141,11 @@ export function changeSinceTheLastCheckIn(a: {
     const status = String(g.status ?? 'OPEN').toUpperCase();
     const due = theDayNumber(g.dueDate);
     let state: AChangeState = 'held';
-    let says = `Nothing has changed on this goal between session ${p} and session ${n}.`;
+    let says = `Nothing has changed on this goal between check-in ${p} and check-in ${n}.`;
     if (status !== 'OPEN' && inWindow(g.statusChangedAt)) {
       state = 'moved';
       const word = status === 'MET' ? 'met' : status === 'DROPPED' ? 'dropped' : status === 'CHANGED' ? 'changed' : status.toLowerCase();
-      says = `This goal was marked ${word} between session ${p} and session ${n}.`;
+      says = `This goal was marked ${word} between check-in ${p} and check-in ${n}.`;
     } else if (status === 'OPEN' && due !== null && today !== null && due < today) {
       state = 'late';
       says = `This goal was due on ${dateSaid(g.dueDate!)} and is still open.`;
@@ -154,5 +154,5 @@ export function changeSinceTheLastCheckIn(a: {
   }
 
   if (!rows.length) return null;
-  return { heading: 'Change since last check-in', between: `Between session ${p} and session ${n}.`, rows };
+  return { heading: 'Change since last check-in', between: `Between check-in ${p} and check-in ${n}.`, rows };
 }

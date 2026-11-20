@@ -16,7 +16,7 @@ const wanjirus = {
 
 describe('a reason is never given as a time', () => {
   it('Wanjiru reads what she said, and no time, on the Fee notes board', () => {
-    expect(aCommitmentSaid(wanjirus, 1)).toBe('In session 1, you said, "I will be stepping in to assist Aisha directly." Nobody has said yet whether it happened.');
+    expect(aCommitmentSaid(wanjirus, 1)).toBe('In check-in 1, you said, "I will be stepping in to assist Aisha directly." Nobody has said yet whether it happened.');
   });
 
   it('and the same on the work plan the board serves her', () => {
@@ -34,6 +34,6 @@ describe('a reason is never given as a time', () => {
 
   it('a time said word for word is still said: "by Friday"', () => {
     expect(aCommitmentSaid({ ...wanjirus, what: 'I will draft the reply and ensure it is filed', when: 'by Friday' }, 1))
-      .toBe('In session 1, you said, "I will draft the reply and ensure it is filed". The time you gave for it was "by Friday". Nobody has said yet whether it happened.');
+      .toBe('In check-in 1, you said, "I will draft the reply and ensure it is filed". The time you gave for it was "by Friday". Nobody has said yet whether it happened.');
   });
 });

@@ -141,8 +141,10 @@ export async function checkInsTheyMayRead(db: WhatItReads, reader: AReaderAsking
   }
 
   const viewer = { userId: reader.userId, role: reader.role, organizationId: reader.organizationId, department: departments.get(reader.userId) ?? null };
+  /* Each with the level the one rule gives this reader, so a caller reads it at that level and no wider (a report on request, S8). */
   return grounds
-    .filter((g) => whatTheyMayRead(reader.userId, viewer, { ...g, leadDepartment: g.initiatorId ? departments.get(g.initiatorId) ?? null : null }) !== null)
+    .map((g) => ({ ...g, level: whatTheyMayRead(reader.userId, viewer, { ...g, leadDepartment: g.initiatorId ? departments.get(g.initiatorId) ?? null : null }) }))
+    .filter((g) => g.level !== null)
     .slice(0, CHECK_INS_LOOKED_AT);
 }
 

@@ -20,7 +20,9 @@ const svc = (over: { doc?: any; open?: any; proposal?: any } = {}) => {
   const cards: any[] = [];
   const s = Object.create(HowWeDoItService.prototype) as any;
   s.logger = { log: () => {} };
-  s.knowledge = { put: async (_o: string, c: any) => { cards.push(c); return {}; } };
+  /* Approving goes through ingestDocument now (S7, 20 November): the one way a document is read, summarised and put on
+     the Desk. It went through put, as one whole card with no summary. */
+  s.knowledge = { ingestDocument: async (_o: string, c: any) => { cards.push(c); return {}; } };
   s.prisma = {
     groundDocument: { findFirst: async () => (over.doc === undefined ? doc : over.doc) },
     knowledgeProposal: {
@@ -80,7 +82,7 @@ describe('deciding', () => {
        fixing elsewhere. */
     const { s, cards } = svc({ proposal: { id: 'p1', document: doc } });
     const out = await s.approve('org1', 'admin', 'ADMIN', 'p1');
-    expect(cards[0].body).toBe('Legal signs every contract.');
+    expect(cards[0].text).toBe('Legal signs every contract.');
     expect(cards[0].key).toBe('how-contracting-works');
     expect(out.key).toBe('how-contracting-works');
   });

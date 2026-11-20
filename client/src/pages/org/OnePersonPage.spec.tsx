@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
@@ -157,59 +157,62 @@ describe('what Grace reads about Miriam', () => {
    */
   it('making somebody an admin asks first, and does nothing on Cancel', async () => {
     const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: {} } as any)
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     open()
     fireEvent.click(await screen.findByRole('radio', { name: /^Admin/ }))
-    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Make Miriam Wanjiku an admin'))
+    const dialog = await screen.findByRole('dialog', { name: 'Make Miriam Wanjiku an admin' })
+    expect(within(dialog).getByText('Make Miriam Wanjiku an admin of Baridi Appliances?')).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     expect(patch).not.toHaveBeenCalled()
-    confirmSpy.mockRestore()
   })
 
   it('making somebody an admin, confirmed, applies the change', async () => {
     const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: {} } as any)
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
     open()
     fireEvent.click(await screen.findByRole('radio', { name: /^Admin/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Make Miriam Wanjiku an admin' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Make an admin' }))
     await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/miriam', { role: 'ADMIN' }))
-    confirmSpy.mockRestore()
   })
 })
 
 describe('removing somebody from the organisation', () => {
   it('shows the prototype\'s sentence and a Remove button, and sends DELETE on confirmation', async () => {
     const del = vi.spyOn(apiClient, 'delete').mockResolvedValue({ data: {} } as any)
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     open()
     expect(await screen.findByRole('heading', { name: 'Remove from Baridi Appliances' })).toBeTruthy()
     expect(screen.getByText('They lose access and their seat is freed. What they shared stays in the check-ins they were part of.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Remove Miriam Wanjiku' })).getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(del).toHaveBeenCalledWith('/users/miriam'))
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Miriam Wanjiku no longer has access to Baridi Appliances.'))
   })
 
   it('says plainly that somebody in another organisation keeps their place there (Hafsah, 11 October 2026)', async () => {
     const del = vi.spyOn(apiClient, 'delete').mockResolvedValue({ data: {} } as any)
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     open('neema')
     expect(await screen.findByRole('heading', { name: 'Remove from Baridi Appliances' })).toBeTruthy()
     expect(screen.getByText('They lose access to Baridi Appliances and their seat here is freed. Their sign-in and everything in Lakeview Clinic stay as they are. What they shared stays in the check-ins they were part of here.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
-    expect(confirm).toHaveBeenCalledWith('Remove Neema Kamau from Baridi Appliances? They keep their place in Lakeview Clinic.\n\nThey lose access to Baridi Appliances and their seat here is freed. Their sign-in and everything in Lakeview Clinic stay as they are. What they shared stays in the check-ins they were part of here.')
+    const dialog = await screen.findByRole('dialog', { name: 'Remove Neema Kamau' })
+    expect(within(dialog).getByText('Remove Neema Kamau from Baridi Appliances? They keep their place in Lakeview Clinic.')).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(del).toHaveBeenCalledWith('/users/neema'))
   })
 
   it('names no other organisation for somebody who has only this one', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
-    expect(confirm).toHaveBeenCalledWith('Remove Miriam Wanjiku from Baridi Appliances?\n\nThey lose access and their seat is freed. What they shared stays in the check-ins they were part of.')
+    const dialog = await screen.findByRole('dialog', { name: 'Remove Miriam Wanjiku' })
+    expect(within(dialog).getByText('Remove Miriam Wanjiku from Baridi Appliances?')).toBeTruthy()
   })
 
   it('does nothing without confirming first', async () => {
     const del = vi.spyOn(apiClient, 'delete').mockResolvedValue({ data: {} } as any)
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Remove Miriam Wanjiku' })
+    expect(del).not.toHaveBeenCalled()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     expect(del).not.toHaveBeenCalled()
   })
 
@@ -221,9 +224,9 @@ describe('removing somebody from the organisation', () => {
 
   it('shows the server\'s refusal in plain words', async () => {
     vi.spyOn(apiClient, 'delete').mockRejectedValue({ response: { data: { message: 'This is the only active admin here - make somebody else an admin first.' } } })
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Remove Miriam Wanjiku' })).getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('This is the only active admin here - make somebody else an admin first.'))
   })
 })

@@ -47,7 +47,8 @@ describe('what the lead is asked', () => {
 
   it('tells them what was kept after the yes, and what was not after the no', () => {
     expect(iHaveKept({ kind: 'rule', text: RULE })).toBe(
-      'I have kept "Every quote over 1 million needs Amina\'s sign-off" as a rule for the whole organisation. Later check-ins and Ask Groundwork can now use it. You can see it on the Company page.',
+      /* Changed: the Company page is called the Desk now (S7; round 2, browser test row 40). */
+      'I have kept "Every quote over 1 million needs Amina\'s sign-off" as a rule for the whole organisation. Later check-ins and Ask Groundwork can now use it. You can see it on the Desk.',
     );
     expect(NOT_KEPT).toBe('I have not kept that for the organisation. It stays only on this check-in.');
   });

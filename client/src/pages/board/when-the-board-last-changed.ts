@@ -1,17 +1,5 @@
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
-/**
- * "Last updated on Wednesday 23 September at 6pm. The board only changes when something new comes
- * in, such as a check-in, a report, a decision or a number from another system." (board-as-lead.txt,
- * board-as-participant.txt, read-only-view.txt: the same line for every reader.)
- *
- * The time is the server's `lastChangedAt`, the newest thing in the record the board is built from.
- * Opening the board does not move it. Where the record holds no time yet, only the second sentence
- * is said, because it is still true.
- */
-export const THE_BOARD_ONLY_CHANGES =
-  'The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.'
-
 function atTime(d: Date | string): string {
   return whenItWas(d, 'hourOfDay').replace(':00', '').replace(/\s+/g, '').toLowerCase()
 }
@@ -33,10 +21,11 @@ export function whenTheBoardLastChangedInShort(at: string | null | undefined): s
  * With the direct morning on (lib/the-direct-morning.tsx), the day and the time alone: "Last updated on Tuesday 20 October at 8am."
  * No explanation of how the board works, and nothing at all where the record holds no time.
  */
-export function whenTheBoardLastChanged(at: string | null | undefined, direct = false): string {
-  if (!at) return direct ? '' : THE_BOARD_ONLY_CHANGES
-  const when = `Last updated on ${whenItWas(at, 'weekdayAndDay')} at ${atTime(at)}.`
-  return direct ? when : `${when} ${THE_BOARD_ONLY_CHANGES}`
+/* The status line only (Hafsah, 4 November, issue 40): "Last updated on Wednesday 4 November at 9:33am." The explanation that
+   followed it ("The board only changes when something new comes in…") is gone for everybody, whatever the switch. */
+export function whenTheBoardLastChanged(at: string | null | undefined, _direct = false): string {
+  if (!at) return ''
+  return `Last updated on ${whenItWas(at, 'weekdayAndDay')} at ${atTime(at)}.`
 }
 
 /**

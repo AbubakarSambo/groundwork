@@ -44,7 +44,7 @@ export function whatItCounts(name: string | null | undefined): WhatItCounts {
   const t = String(name ?? '');
   if (MONEY.test(t)) return { kind: 'money', things: new Set() };
   if (LEADS.test(t)) return { kind: 'leads', things: new Set() };
-  const words = t.toLowerCase().replace(/[‘’'"]/g, '').match(/[a-z]+/g) ?? [];
+  const words: string[] = t.toLowerCase().replace(/[‘’'"]/g, '').match(/[a-z]+/g) ?? [];
   /* "water dispensers" and "water dispenser" are one thing. */
   const things = new Set(words.filter((w) => w.length > 2 && !FILLER.has(w)).map((w) => w.replace(/s$/, '')));
   return { kind: 'things', things };

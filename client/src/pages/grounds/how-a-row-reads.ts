@@ -2,7 +2,7 @@ import { railAttention, openRound } from '@/lib/rail-attention'
 import { theClocksSessionSaid } from '@/lib/the-one-count'
 import { hasEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor } from '@/lib/sessionCount'
-import { timesAWeek } from '@/lib/cadence'
+import { howOftenTheTeamChecksIn } from '@/lib/the-closing-after-your-first-check-in'
 import { scenarioLabel, isEvaluationScenario } from '@/lib/scenario-catalog'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whenItRunsOut } from '@/lib/when-it-runs-out'
@@ -79,7 +79,6 @@ export interface RowReads {
   also?: string
 }
 
-const WEEKDAYS = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays']
 
 const firstName = (p?: ListRow['participants'] extends (infer T)[] | undefined ? T : never) =>
   (p?.user?.firstName ?? '').trim() || (p?.nameGiven ?? '').trim().split(/\s+/)[0] || null
@@ -95,22 +94,11 @@ export function isFinished(g: ListRow): boolean {
   return hasEnded(g.status) || !!g.closedAt || !!g.resolvedAt
 }
 
-/** "Weekly, Mondays.", "Daily, weekdays.", "One time." */
+/** "Every Monday.", "Every weekday, Monday to Friday.", "Once.": how often, in the one wording every page uses (staging check S18). */
 export function howOften(g: ListRow): string | null {
-  const c = g.cadence
-  if (!c) return null
-  if (c === 'ONE_TIME') return 'One time.'
-  if (c === 'SEQUENTIAL') return 'When the lead checks in.'
-  const often = timesAWeek(c, g.cadenceDays)
-  if (often) return `${often[0].toUpperCase()}${often.slice(1)}.`
-  const base = ({ DAILY: 'Daily', WEEKLY: 'Weekly', FORTNIGHTLY: 'Every 2 weeks', MONTHLY: 'Monthly' } as Record<string, string>)[c]
-  if (!base) return null
-  const days = [...(g.workingDays ?? [])].sort().join(',')
-  if (c === 'DAILY' && days === '1,2,3,4,5') return 'Daily, weekdays.'
-  if ((c === 'WEEKLY' || c === 'FORTNIGHTLY') && g.cadenceAnchorDay != null && WEEKDAYS[g.cadenceAnchorDay]) {
-    return `${base}, ${WEEKDAYS[g.cadenceAnchorDay]}.`
-  }
-  return `${base}.`
+  if (g.cadence === 'SEQUENTIAL') return 'When the lead checks in.'
+  const often = howOftenTheTeamChecksIn(g as any)
+  return often ? `${often[0].toUpperCase()}${often.slice(1)}.` : null
 }
 
 /** Who is in it, from the reader's side: "Kwame and you.", "6 people.", "Run by Amani Njoroge." */
@@ -190,8 +178,8 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   const allDone = !!planned && done >= planned
   const sessionLine = round > 0
     ? planned
-      ? allDone ? `Session ${planned} of ${planned}, finished.` : `Session ${round} of ${planned}.`
-      : `Session ${round}.`
+      ? allDone ? `Check-in ${planned} of ${planned}, finished.` : `Check-in ${round} of ${planned}.`
+      : `Check-in ${round}.`
     : null
   const about = [whoIsIn(g, me), howOften(g), sessionLine, g.otherOrgName ? `It belongs to ${g.otherOrgName}.` : null]
     .filter(Boolean).join(' ')
@@ -216,7 +204,7 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
    * has checked in (it shares itself at its set time unless they hold it). A one-time check-in still waits for everybody.
    */
   /* Not on a check-in about one person: there is no team to share it with, and both accounts being in is what counts there. */
-  else if (iRunIt && !allDone && !isEvaluationScenario(g.scenario) && g.cadence && g.cadence !== 'ONE_TIME' && round > 0 && aSessionReportToShare(g, round)) needs = { text: g.cadence === 'DAILY' ? 'Today’s report ready' : 'This session’s report is ready', tone: 'proven' }
+  else if (iRunIt && !allDone && !isEvaluationScenario(g.scenario) && g.cadence && g.cadence !== 'ONE_TIME' && round > 0 && aSessionReportToShare(g, round)) needs = { text: g.cadence === 'DAILY' ? 'Today’s report ready' : 'This check-in’s report is ready', tone: 'proven' }
   else if (a.kind === 'waiting' && iRunIt) {
     const byId = new Map((g.participants ?? []).map(p => [p.id, p]))
     /* Who the server's one count still waits on (api this-sessions-count.ts), never a count of the rows on the screen (Hafsah, 30 October 2026). */
@@ -243,8 +231,8 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   /* The one count's own sentence, as the server serves it to a reader shown the others: "2 of 4 have checked in; Peter and Mary haven't joined yet." */
   else if (round > 0 && said && !said.everyoneIn) stands = said.says
   else if (next) stands = `Next: ${whenItWas(next, 'dayAndMonthLong')}`
-  else if (planned) stands = `${done} of ${planned} sessions done`
-  else stands = done === 1 ? '1 session done' : `${done} sessions done`
+  else if (planned) stands = `${done} of ${planned} check-ins done`
+  else stands = done === 1 ? '1 check-in done' : `${done} check-ins done`
 
   /* AND WHAT IS HOLDING IT UP, OR THAT IT CANNOT MAKE A SHARED REPORT YET. */
   let also: string | undefined

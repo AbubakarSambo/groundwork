@@ -18,7 +18,7 @@ describe('activation', () => {
 });
 
 describe('the nudge', () => {
-  it('has one engine: remind.service keeps the policy that reads the lead\'s chase settings; the 09:00 job keeps only the reveal reminders (the activation reminder was dead and is gone, decision 109)', () => {
+  it('has one engine: remind.service keeps the policy that reads the lead\'s chase settings; the 09:00 job sends no report mail at all (the activation reminder was dead and is gone, decision 109; the reveal reminder is gone, 16 November)', () => {
     const grounds = strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.cron.ts'), 'utf8'));
     const start = grounds.indexOf('private async sendRemindersInner() {');
     const ends = ['\n  @Cron', '\n  private async '].map((m) => grounds.indexOf(m, start + 40)).filter((i) => i > start);
@@ -27,7 +27,8 @@ describe('the nudge', () => {
     expect(job).not.toContain('sendNudge(');
     /* Changed under decision 109: the activation reminder looked for a status nobody writes and never fired; the follow-up after a report is its own sweep. */
     expect(job).not.toContain('sendActivationReminder(');
-    expect(job).toContain('sendActivationRevealReminder(');
+    /* Changed 16 November (fix plan, group 6): the second "your report is ready to view" mail is gone; the report event sends one mail. */
+    expect(job).not.toContain('sendActivationRevealReminder(');
     expect(strip(readFileSync(join(__dirname, '..', 'conversation', 'remind.service.ts'), 'utf8'))).toContain('sendNudge(');
   });
 });

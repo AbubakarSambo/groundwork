@@ -132,8 +132,8 @@ export function whereThisTargetStands(
     return {
       word: null,
       says: totalSessions
-        ? 'It needs a count from two sessions before its pace can be read, so how it stands cannot be said yet.'
-        : 'This check-in has no planned last session, so its pace cannot be read against one.',
+        ? 'It needs a count from two check-ins before its pace can be read, so how it stands cannot be said yet.'
+        : 'This check-in has no planned last check-in, so its pace cannot be read against one.',
     };
   }
   const start = t.start ?? (counts.length ? [...counts].sort((a, b) => a.sessionNumber - b.sessionNumber)[0].count : 0);
@@ -142,10 +142,10 @@ export function whereThisTargetStands(
   const ends = Math.max(0, Math.round(pace.ends));
   if (pace.atTheEnd) {
     return covered >= CLOSE_MEANS_AT_LEAST
-      ? { word: 'Close', says: `The last session has been counted, and it is ${read(t.count)}, close to the aim of ${read(t.target)}.` }
-      : { word: 'Behind', says: `The last session has been counted, and it is ${read(t.count)}, short of the aim of ${read(t.target)}.` };
+      ? { word: 'Close', says: `The last check-in has been counted, and it is ${read(t.count)}, close to the aim of ${read(t.target)}.` }
+      : { word: 'Behind', says: `The last check-in has been counted, and it is ${read(t.count)}, short of the aim of ${read(t.target)}.` };
   }
-  const at = `At the pace it has kept since session ${pace.from}, it would be about ${read(ends)} by the last session`;
+  const at = `At the pace it has kept since check-in ${pace.from}, it would be about ${read(ends)} by the last check-in`;
   if (covered >= 1) return { word: 'On time', says: `${at}, which reaches the aim of ${read(t.target)}.` };
   if (covered >= CLOSE_MEANS_AT_LEAST) return { word: 'Close', says: `${at}, close to the aim of ${read(t.target)}.` };
   return { word: 'Behind', says: `${at}, short of the aim of ${read(t.target)}.` };

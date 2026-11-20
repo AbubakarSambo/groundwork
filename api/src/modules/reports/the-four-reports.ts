@@ -105,7 +105,7 @@ export const WHERE_IT_BELONGS: Record<string, Placed> = {
 
   // ── One person's own half, this session.
   myRows: { cell: 'A_SESSION', because: 'The lines taken from what they said, as rows, theirs to dispute.' },
-  howClearThisWas: { cell: 'A_SESSION', because: 'Specificity is per session and sits on the session - two-reads-not-one-grade.' },
+  howClearThisWas: { cell: 'A_SESSION', because: 'Specificity is per check-in and sits on the check-in - two-reads-not-one-grade.' },
   mySoftSpots: { cell: 'A_SESSION' },
   coaching: { cell: 'A_SESSION', because: 'Written for one person about one sitting. Across a run it becomes a standing judgement.' },
   postReportGuide: { cell: 'A_SESSION' },
@@ -115,7 +115,7 @@ export const WHERE_IT_BELONGS: Record<string, Placed> = {
   startClarification: { cell: 'A_SESSION' },
 
   // ── One person's own half, across the run.
-  rounds: { cell: 'A_RUN', because: 'Their own sessions, listed once, as the thing they can act from.' },
+  rounds: { cell: 'A_RUN', because: 'Their own check-ins, listed once, as the thing they can act from.' },
   iHaveShownMine: { cell: 'A_RUN' },
 
   // ── Placed after running the map over forty real reports, which is what it is for.
@@ -130,7 +130,7 @@ export const WHERE_IT_BELONGS: Record<string, Placed> = {
   sessionCounts: { cell: 'B_SESSION', because: 'Turns per party. Counted, never shown as a ranking.' },
   difficultyDisclosures: { cell: 'B_SESSION' },
   currentBestReading: { cell: 'B_SESSION' },
-  specificityNotes: { cell: 'A_SESSION', because: 'Own row only. Specificity is per session and stays on the person it is about.' },
+  specificityNotes: { cell: 'A_SESSION', because: 'Own row only. Specificity is per check-in and stays on the person it is about.' },
   specificityCauses: { cell: 'A_SESSION' },
   specificitySignal: { cell: 'A_SESSION' },
   recallNotes: { cell: 'A_SESSION', because: 'Own row only, filtered by label in own-reads-only.' },
@@ -141,7 +141,7 @@ export const WHERE_IT_BELONGS: Record<string, Placed> = {
 
   // ── The shared picture across the run. This is the board.
   patterns: { cell: 'B_RUN', because: 'Two periods minimum. One observation is not a pattern.' },
-  contribution: { cell: 'B_RUN', because: 'Needs several sessions before it says anything. It cannot exist in a session cell.' },
+  contribution: { cell: 'B_RUN', because: 'Needs several check-ins before it says anything. It cannot exist in a check-in cell.' },
   coverage: { cell: 'B_RUN' },
   dependencies: { cell: 'B_RUN' },
   whoOwnsWhat: { cell: 'B_RUN' },
@@ -195,7 +195,7 @@ export const EVERY_SURFACE: Record<string, Crop | NotAReport> = {
   endOfTheEntryChat: {
     cell: 'A_SESSION',
     without: {
-      whereYouAre: 'there is no movement on a first session, and it says so rather than drawing an empty block',
+      whereYouAre: 'there is no movement on a first check-in, and it says so rather than drawing an empty block',
       howMuchYouGaveIt: 'no second account to be solid against yet',
     },
   },
@@ -458,7 +458,7 @@ export const WHAT_THE_BLOCK_IS_CALLED: Record<string, string> = {
      heading names what is under it: the objective, and what each person said good looks like. */
   againstWhatGoodLooksLike: 'What everybody said good looks like',
   whereThingsStand: 'Where things stand',
-  whatPeopleSaid: 'What people said this session',
+  whatPeopleSaid: 'What people said this check-in',
   thePictureFromEverybody: 'The picture from everybody',
   notRaisedAgain: 'Not raised again',
   theConversationWorthHaving: 'The conversation worth having now',

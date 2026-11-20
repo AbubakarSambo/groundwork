@@ -1,3 +1,4 @@
+import { mayReadTheLine, thePerson } from '../conversation/who-may-read-a-line';
 import { theDaysAnOpenDailySessionWasMissed } from '../board/the-persons-record';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { NOT_A_QUIET_CLOSE } from '../grounds/an-answer-includes-a-refusal';
@@ -228,7 +229,7 @@ export class TheWeeklyReportService {
       if (!label) continue;
       const lines: AWeeksLine[] = saidThisWeek
         .filter((f) => f.participantId === p.id)
-        .map((f) => ({ text: f.words, type: f.section, documented: f.proved }));
+        .map((f) => ({ text: f.words, type: f.section, documented: f.proved, saidWordForWord: f.saidWordForWord }));
       const here = checkedIn.has(p.id);
       /* The lead who ran it and did not check in this week is not someone the week is about. */
       if (p.partyType === PartyType.INITIATOR && !here && !lines.length) continue;
@@ -416,7 +417,7 @@ export class TheWeeklyReportService {
     const onSomebody = [...new Set(clearedThisWeek.filter((d) => d.onParticipantId && !confirmedWaits.has(d.id)).map((d) => d.onParticipantId as string))];
     const theirLines: any[] = onSomebody.length ? ((await ((this.prisma as any).recordEntry?.findMany?.({
       where: { participantId: { in: onSomebody }, type: 'PROGRESS', disputedAt: null, createdAt: { lte: at } },
-      select: { participantId: true, type: true, text: true, createdAt: true },
+      select: { participantId: true, type: true, text: true, createdAt: true, aboutParticipantId: true, standing: true },
     }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[] : [];
     const namesOfParty = (pid: string) => {
       const p = parties.find((x) => x.id === pid);
@@ -429,7 +430,7 @@ export class TheWeeklyReportService {
     };
     const cleared = clearedThisWeek.map((d) => {
       const confirmed = !d.onParticipantId || confirmedWaits.has(d.id);
-      const theirSide = confirmed ? null : theirSideOfIt(namesOfParty(d.fromParticipantId), (Array.isArray(theirLines) ? theirLines : []).filter((l) => l.participantId === d.onParticipantId));
+      const theirSide = confirmed ? null : theirSideOfIt(namesOfParty(d.fromParticipantId), (Array.isArray(theirLines) ? theirLines : []).filter((l) => l.participantId === d.onParticipantId && mayReadTheLine(l, thePerson(d.fromParticipantId))));
       return {
         fromParticipantId: d.fromParticipantId, onParticipantId: d.onParticipantId ?? null, onLabel: d.onLabel ? namesOff(d.onLabel) : null, what: namesOff(d.what),
         confirmed,

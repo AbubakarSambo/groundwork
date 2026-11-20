@@ -16,7 +16,7 @@ vi.mock('@/api/reports', () => ({ reportsApi: {
     myRows: [
       { id: 'r1', type: 'PROGRESS', text: 'You added a photo of the Green Mart quote. It counts as proof.', mark: 'proven', how: null, disputedAt: null, checkInId: 'c4', sessionNumber: 38 },
       { id: 'r2', type: 'COMMITMENT', text: 'Green Mart buys in January.', mark: 'said', how: 'You said this. A message from them would prove it.', disputedAt: null, checkInId: 'c4', sessionNumber: 38 },
-      { id: 'r3', type: 'PROGRESS', text: 'A line from another session.', mark: 'said', disputedAt: null, checkInId: 'c3', sessionNumber: 37 },
+      { id: 'r3', type: 'PROGRESS', text: 'A line from another check-in.', mark: 'said', disputedAt: null, checkInId: 'c3', sessionNumber: 37 },
     ],
     coaching: { showingUp: 'The inbox wins over the important work.', whyItMatters: 'WHY-IT-MATTERS', beforeNextTime: ['Put the dates in writing.', 'What would help you get the deposit this week?'] },
   })),
@@ -42,7 +42,7 @@ describe('your own report, as pictured', () => {
     const told = screen.getByRole('region', { name: 'What you told me' })
     expect(within(told).getByText('Green Mart buys in January.')).toBeTruthy()
     expect(within(told).getByText('You said this. A message from them would prove it.')).toBeTruthy()
-    expect(screen.queryByText('A line from another session.')).toBeNull()
+    expect(screen.queryByText('A line from another check-in.')).toBeNull()
     const think = screen.getByRole('region', { name: 'One thing to think about' })
     expect(within(think).getByText('What would help you get the deposit this week?')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Something here isn’t right' })).toBeTruthy()

@@ -29,7 +29,7 @@ function LandedOnGround() {
 
 function LandedOnSession() {
   const { n } = useParams<{ n: string }>()
-  return <div>landed on session report {n}</div>
+  return <div>landed on check-in report {n}</div>
 }
 
 function renderReport() {
@@ -71,15 +71,15 @@ describe('B-222: /grounds/:id/report opens the report that is actually ready, fo
     renderReport()
     // Session 2 has a completed check-in (the old, too-loose rule would have opened it) but is not
     // released - session 1 is the newest one actually shared, so that is where this lands.
-    expect(await screen.findByText('landed on session report 1')).toBeTruthy()
-    expect(screen.queryByText('landed on session report 2')).toBeNull()
+    expect(await screen.findByText('landed on check-in report 1')).toBeTruthy()
+    expect(screen.queryByText('landed on check-in report 2')).toBeNull()
   })
 
   it('an org admin who may read it gets the same released report, not the list', async () => {
     currentUser = { id: 'admin-1', role: 'ADMIN', organizationId: 'org-1' }
     ;(groundsApi.get as any).mockResolvedValue(groundWithAReleasedAndAFormingSession)
     renderReport()
-    expect(await screen.findByText('landed on session report 1')).toBeTruthy()
+    expect(await screen.findByText('landed on check-in report 1')).toBeTruthy()
   })
 
   it('a later release is still the newest - lands on the latest released session, not the first', async () => {
@@ -94,7 +94,7 @@ describe('B-222: /grounds/:id/report opens the report that is actually ready, fo
       report: { releasedAt: '2026-01-09T00:00:00.000Z', releasedSessions: [1, 2] },
     })
     renderReport()
-    expect(await screen.findByText('landed on session report 2')).toBeTruthy()
+    expect(await screen.findByText('landed on check-in report 2')).toBeTruthy()
   })
 
   it('a participant still lands on ?tab=report, reading their own report there (B-203 unchanged)', async () => {

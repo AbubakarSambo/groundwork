@@ -102,8 +102,9 @@ describe('Release 5: a milestone accepted is an invoice to raise', () => {
   });
 
   it('reads the switch off for an organisation it cannot find', async () => {
-    expect(await theRelease5ProjectsIsOn({ organization: { findUnique: async () => null } }, 'o1')).toBe(false);
-    expect(await theRelease5ProjectsIsOn({}, null)).toBe(false);
+    /* Always on (15 November 2026): nothing is read, so a missing row or organisation no longer turns the project board off. */
+    expect(await theRelease5ProjectsIsOn({ organization: { findUnique: async () => null } }, 'o1')).toBe(true);
+    expect(await theRelease5ProjectsIsOn({}, null)).toBe(true);
   });
 });
 

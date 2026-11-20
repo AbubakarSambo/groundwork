@@ -6,7 +6,7 @@ import { inboundKeysFrom } from './one-number-per-conversation';
  * could check in on WhatsApp. Three states, each read from what happened, never set by hand:
  *   - no number:                  nothing saved for them;
  *   - not connected:              a number is saved, and nothing has been sent there or come from it;
- *   - waiting for their first message: an opening (or another message) went there, and they have not written back;
+ *   - waiting: an opening (or another message) went there, and they have not written back;
  *   - connected:                  they have written to Groundwork from that number.
  */
 export type WhereOnWhatsApp = 'no-number' | 'not-connected' | 'waiting' | 'connected';
@@ -14,7 +14,7 @@ export type WhereOnWhatsApp = 'no-number' | 'not-connected' | 'waiting' | 'conne
 export const WHERE_ON_WHATSAPP_SAYS: Record<WhereOnWhatsApp, string> = {
   'no-number': 'No WhatsApp number yet.',
   'not-connected': 'Not connected yet. Nothing has been sent to this number.',
-  waiting: 'Waiting for their first message on WhatsApp.',
+  waiting: 'They have not written on WhatsApp yet.',
   connected: 'Connected. They can check in on WhatsApp.',
 };
 

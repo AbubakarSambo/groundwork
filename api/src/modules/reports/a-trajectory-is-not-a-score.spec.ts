@@ -53,7 +53,8 @@ describe('what it is not', () => {
   it('carries no score, tier or direction', () => {
     const moved = howThisHasMoved([round({ round: 1 }), round({ round: 2 })]);
     const keys = Object.keys(moved[0]).sort();
-    expect(keys).toEqual(['amended', 'differences', 'round', 'says', 'takenAt']);
+    /* Changed 19 November (cycle 11): `sessionNumber` is served beside `round`, the name every page reads; the page wrote "On 4 December" for a row without it. Still no score, tier or arrow. */
+    expect(keys).toEqual(['amended', 'differences', 'round', 'says', 'sessionNumber', 'takenAt']);
     /* The moment this renders an arrow it has started rating people. */
     expect(JSON.stringify(moved)).not.toMatch(/improv|worse|better|trend|score|tier/i);
   });

@@ -25,14 +25,17 @@ const AN_INVITATION = /invite|invitation|your-view-matters|would-like-your-take/
 /** Words of an apology that something on our side failed. */
 const AN_APOLOGY = /could not be reached|cannot continue this minute|a problem on my side/i;
 
-export function theOutboxKey(m: { channel: AChannel; to: string; kind?: string | null; about?: string | null; text?: string | null; at?: Date }): string | null {
+export function theOutboxKey(m: { channel: AChannel; to: string; kind?: string | null; about?: string | null; text?: string | null; answering?: string | null; at?: Date }): string | null {
   const to = String(m.to ?? '').trim().toLowerCase();
   if (!to) return null;
   const at = m.at ?? new Date();
   const text = String(m.text ?? '');
   if (AN_APOLOGY.test(text)) return `${m.channel}|${to}|apology|${bucket(at, 30 * 60_000)}`;
   const kind = String(m.kind ?? '').trim();
-  if (!kind || /^reply$/i.test(kind)) return `${m.channel}|${to}|reply|${hash(text)}|${bucket(at, 60_000)}`;
+  if (!kind || /^reply$/i.test(kind)) return `${m.channel}|${to}|reply|${hash(`${m.answering ?? ''}|${text}`)}|${bucket(at, 60_000)}`;
+  /* A reply is to something somebody said: two replies to two messages are two replies, even in the same words (Fatima typed her list twice and was told nothing the second time, Fatima round 1, I-16). `answering` is the id of what is being answered. */
+  /* The year-end files go once for one job, version and person, however many days later it is asked: the key carries no day. */
+  if (kind === 'year-end-files' && m.about) return `${m.channel}|${to}|year-end-files|${m.about}`;
   if (AN_INVITATION.test(kind)) return `${m.channel}|${to}|invitation|${bucket(at, DAY)}`;
   return `${m.channel}|${to}|${kind}|${m.about ? m.about : hash(text)}|${bucket(at, DAY)}`;
 }

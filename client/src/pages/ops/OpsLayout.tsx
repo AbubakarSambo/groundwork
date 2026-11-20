@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation } from 'react-router-dom'
@@ -162,7 +163,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
   if (me.isPending) {
     return (
       <section style={{ padding: 40 }}>
-        <p style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Opening the back office…</p>
+        <Skeleton what="Opening the back office" shape="lines" count={1} />
       </section>
     )
   }

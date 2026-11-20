@@ -16,12 +16,12 @@ const ROWS = [
 
 describe('a finished session is never said to be still open', () => {
   it('Mercy reads "Session 3 finished on 14 October." and "Session 4 opened on 15 October, and it is still open."', () => {
-    expect(whatEachSessionSays(3, ROWS, 3, NOW).says).toBe('Session 3 finished on 14 October.');
-    expect(whatEachSessionSays(4, ROWS, 3, NOW).says).toBe('Session 4 opened on 15 October, and it is still open.');
+    expect(whatEachSessionSays(3, ROWS, 3, NOW).says).toBe('Check-in 3 finished on 14 October.');
+    expect(whatEachSessionSays(4, ROWS, 3, NOW).says).toBe('Check-in 4 opened on 15 October, and it is still open.');
   });
   it('where somebody has not finished session 3, the lead still reads that it is open', () => {
     const rows = [...ROWS, { sessionNumber: 3, status: 'NOT_STARTED', availableFrom: '2026-10-14T05:00:00Z' }];
-    expect(whatEachSessionSays(4, rows, 3, NOW).says).toBe('Session 4 opened on 15 October, while session 3 is still open.');
+    expect(whatEachSessionSays(4, rows, 3, NOW).says).toBe('Check-in 4 opened on 15 October, while check-in 3 is still open.');
   });
 });
 
@@ -57,17 +57,17 @@ const DROP_ROWS = [
 
 describe('the header and the session lines read one count (Drop Access, 18 October)', () => {
   for (const [name, userId] of [['Mercy', 'u-mercy'], ['Grace', 'u-grace']] as const) {
-    it(`${name} reads "Session 4 of 15." over "Session 4 opened on 15 October, and it is still open."`, async () => {
+    it(`${name} reads "Check-in 4 of 15." over "Check-in 4 opened on 15 October, and it is still open."`, async () => {
       const b = await boardAs({
         people: DROP_PEOPLE as any, initiatorId: 'u-grace', checkIns: DROP_ROWS,
         clock: { now: NOW, timelineDays: 15, cadence: 'DAILY' },
         groundRow: { timelineDays: 15, cadence: 'DAILY' }, releaseOneSalesBoard: true,
       }, userId, 'MEMBER');
-      expect(theHeaderSays(b.phaseSpine.currentSession, b.phaseSpine.plannedSessions, false)).toBe('Session 4 of 15.');
+      expect(theHeaderSays(b.phaseSpine.currentSession, b.phaseSpine.plannedSessions, false)).toBe('Check-in 4 of 15.');
       const says = b.phaseSpine.sessions.map((s: any) => s.says);
-      expect(says).toContain('Session 3 finished on 14 October.');
-      expect(says).toContain('Session 4 opened on 15 October, and it is still open.');
-      expect(JSON.stringify(b.phaseSpine)).not.toMatch(/Session 3 of 15|session 3 is still open/);
+      expect(says).toContain('Check-in 3 finished on 14 October.');
+      expect(says).toContain('Check-in 4 opened on 15 October, and it is still open.');
+      expect(JSON.stringify(b.phaseSpine)).not.toMatch(/Check-in 3 of 15|check-in 3 is still open/);
     });
   }
 
@@ -78,19 +78,19 @@ describe('the header and the session lines read one count (Drop Access, 18 Octob
       clock: { now: NOW, timelineDays: 15, cadence: 'DAILY' },
       groundRow: { timelineDays: 15, cadence: 'DAILY' },
     }, 'u-grace', 'MEMBER');
-    expect(theHeaderSays(b.phaseSpine.currentSession, b.phaseSpine.plannedSessions, false)).toBe('Session 3 of 15.');
-    expect(theHeaderSays(theSessionClock(DROP_ROWS.filter((r) => r.participantId !== 'p-grace') as any, new Set(['p-joseph', 'p-kevin', 'p-mercy']), 15, NOW, false).currentSession, 15, false)).toBe('Session 3 of 15.');
+    expect(theHeaderSays(b.phaseSpine.currentSession, b.phaseSpine.plannedSessions, false)).toBe('Check-in 3 of 15.');
+    expect(theHeaderSays(theSessionClock(DROP_ROWS.filter((r) => r.participantId !== 'p-grace') as any, new Set(['p-joseph', 'p-kevin', 'p-mercy']), 15, NOW, false).currentSession, 15, false)).toBe('Check-in 3 of 15.');
   });
 
   it("the check-in's own header counts the same session", () => {
     const clock = theSessionClock(DROP_ROWS.filter((r) => r.participantId !== 'p-grace') as any, new Set(['p-joseph', 'p-kevin', 'p-mercy']), 15, NOW);
-    expect(clock.says).toBe('Session 4 of 15.');
+    expect(clock.says).toBe('Check-in 4 of 15.');
     expect(clock.whileOpen).toBeNull();
   });
 
   it('a finished round with nothing after it that has come stays the count', () => {
     const early = new Date('2026-10-14T20:00:00Z');
     const clock = theSessionClock(DROP_ROWS.filter((r) => r.participantId !== 'p-grace') as any, new Set(['p-joseph', 'p-kevin', 'p-mercy']), 15, early);
-    expect(clock.says).toBe('Session 3 of 15.');
+    expect(clock.says).toBe('Check-in 3 of 15.');
   });
 });

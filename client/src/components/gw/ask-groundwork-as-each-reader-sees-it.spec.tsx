@@ -99,7 +99,8 @@ describe('Miriam, taking part in the sales team, opens Ask Groundwork on its boa
        real response, so that is what the rest of this test waits on. */
     await screen.findByPlaceholderText(CAPTION)
     expect(screen.getByRole('heading', { name: 'Ask Baridi' })).toBeInTheDocument()
-    expect(screen.getByText(PRIVATE)).toBeInTheDocument()
+    /* No privacy note on the panel (standards: no privacy notes in messages or screens; Batch S round 2, T11). */
+    expect(screen.queryByText(PRIVATE)).toBeNull()
     expect(screen.getByText(CAPTION)).toBeInTheDocument()
     expect(screen.getByText(ADD_LINE)).toBeInTheDocument()
     const about = screen.getByRole('combobox', { name: 'About' }) as HTMLSelectElement
@@ -216,11 +217,20 @@ describe('two check-ins on "About" share one label', () => {
 describe('the starter questions, under the greeting', () => {
   const asked = () => within(screen.getByRole('group', { name: 'Questions you could ask' })).getAllByRole('button').map(b => b.textContent)
 
-  /* Three, as the prototype's Ask (Hafsah, 25 October: the prototype wins on every detail), the first three of decision 101's order. */
-  it('Wairimu, who has asked nothing yet, reads the greeting and then the first three starters, in decision 101’s order', async () => {
+  /* Every starter the server serves (Batch S, S5, Hafsah, 19 November). The panel used to cut them to three, as the prototype's Ask did, and a lead's
+     or an admin's own lines, which come after the check-in ones, were never seen. The server now cuts the list once, short, with the role's own lines first. */
+  it('Wairimu, who has asked nothing yet, reads the greeting and then every starter she is served, in order', async () => {
     panel(WAIRIMUS, '/grounds/g-sales/board')
     await screen.findByText(WELCOME)
-    expect(asked()).toEqual(STARTERS_WITH_A_CHECK_IN.slice(0, 3))
+    expect(asked()).toEqual(STARTERS_WITH_A_CHECK_IN)
+  })
+
+  it('a lead reads her own role’s starters, which come after the third', async () => {
+    const LEADS = ['How do I set up a check-in?', 'How is my team doing?', 'Add a document or some context to my check-in.', 'Get a quarterly report.', 'What is my check-in for, and who reads it?', 'What did I say I would do?']
+    panel({ ...WAIRIMUS, starters: LEADS }, '/grounds/g-sales/board')
+    await screen.findByText(WELCOME)
+    expect(asked()).toEqual(LEADS)
+    expect(screen.getByRole('button', { name: 'Get a quarterly report.' })).toBeInTheDocument()
   })
 
   it('pressing one asks it as her own question, about the check-in she is reading, and the starters go away', async () => {
@@ -258,7 +268,8 @@ describe('somebody Ask Groundwork cannot answer yet', () => {
   it('reads why, in the server’s words, and is offered no box to type in', async () => {
     panel(TOMS, '/today')
     expect(await screen.findByText(TOMS.why!)).toBeInTheDocument()
-    expect(screen.getByText(PRIVATE)).toBeInTheDocument()
+    /* No privacy note on the panel (standards: no privacy notes in messages or screens; Batch S round 2, T11). */
+    expect(screen.queryByText(PRIVATE)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Send' })).toBeNull()
     expect(screen.queryByRole('combobox', { name: 'About' })).toBeNull()
   })

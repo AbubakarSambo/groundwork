@@ -1,6 +1,12 @@
 import { readHours, hoursSaidBack, hoursSent, hoursAsRead, soundsLikeHours } from './hours-said-in-chat';
 import { readSpending, spendingSaidBack, spendingSent } from './spend-said-in-chat';
-import { whoApprovesFor, mayApproveFor } from './who-approves';
+import { whoApprovesFor } from './who-approves';
+import { decidesIt, theOneWhoDecides, theStepsFor } from './who-may-decide';
+
+/* mayApproveFor had no caller outside the specs and is gone (Batch S, S2). The same question, asked of the one resolver. */
+const mayApproveFor = async (prisma: any, i: { organizationId: string; readerId: string; readerRole: string | null; personUserId: string }) =>
+  decidesIt(await theOneWhoDecides(prisma, theStepsFor('leave')[0], { organizationId: i.organizationId, requesterUserId: i.personUserId }), { userId: i.readerId, role: i.readerRole }, i.personUserId);
+
 
 /** Today is Thursday 1 October 2026. */
 const TODAY = new Date('2026-10-01T09:00:00Z');
@@ -110,9 +116,11 @@ describe('who approves for a person is one answer', () => {
     person: { findFirst: jest.fn(async ({ where }: any) => (where.externalId ? people[where.externalId] ?? null : { managerExternalId: where.linkedUserId === 'u-a' ? 'mgr' : where.linkedUserId === 'u-b' ? 'plain' : null })) },
     organizationMembership: { findUnique: jest.fn(async ({ where }: any) => ({ role: roles[where.userId_organizationId.userId] ?? 'MEMBER' })) },
   };
-  it('is the line manager when they can open the board, otherwise an admin', async () => {
+  /* Batch S, S2 (Hafsah, 19 November 2026): the line manager approves whatever their app role, so Pat, a member, now approves for
+     the person who reports to them. Before, Pat was skipped and the request went to an admin with nobody told. */
+  it('is the line manager, whatever their app role, otherwise an admin', async () => {
     expect(await whoApprovesFor(prisma, { organizationId: 'o', personUserId: 'u-a' })).toEqual({ kind: 'manager', userId: 'u-mgr', firstName: 'Wairimu' });
-    expect(await whoApprovesFor(prisma, { organizationId: 'o', personUserId: 'u-b' })).toEqual({ kind: 'admin' });
+    expect(await whoApprovesFor(prisma, { organizationId: 'o', personUserId: 'u-b' })).toEqual({ kind: 'manager', userId: 'u-plain', firstName: 'Pat' });
     expect(await whoApprovesFor(prisma, { organizationId: 'o', personUserId: 'u-c' })).toEqual({ kind: 'admin' });
   });
   it('is never the person themselves, and never the person who only runs the check-in', async () => {

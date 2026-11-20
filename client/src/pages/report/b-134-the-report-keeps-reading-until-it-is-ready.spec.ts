@@ -9,14 +9,13 @@ import { join } from 'path'
  * "fills in as soon as it is ready" was false until this page polls while the report has not
  * arrived yet, the same way the shared report below it already polls while it is behind.
  */
-describe('B-134: the session report keeps reading until it has arrived', () => {
-  const SRC = readFileSync(join(__dirname, 'SessionReportPage.tsx'), 'utf8')
+/* Changed in batch 2, group 5: the session report page went; your own report is drawn in My work by TheCheckInYouJustFinished,
+   which now keeps reading the session's own writing until it arrives. */
+describe('B-134: your own report keeps reading until it has arrived', () => {
+  const SRC = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheCheckInYouJustFinished.tsx'), 'utf8')
 
-  it('polls the session report while it has not come back yet', () => {
-    const queryBlock = SRC.slice(
-      SRC.indexOf("queryKey: ['session-report', checkInId]"),
-      SRC.indexOf("queryKey: ['session-report', checkInId]") + 1200,
-    )
+  it('reads the session\'s own writing again while it has not come back yet', () => {
+    const queryBlock = SRC.slice(SRC.indexOf("queryKey: ['artifact', checkInId]"), SRC.indexOf("queryKey: ['artifact', checkInId]") + 700)
     expect(queryBlock).toMatch(/refetchInterval:/)
   })
 })

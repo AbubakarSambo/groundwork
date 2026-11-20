@@ -1,6 +1,7 @@
 import { GROUNDWORKS_OWN_OFFER } from '../conversation/a-promise-is-theirs-not-ours';
 import { howManyCheckIns } from './which-check-in-it-is';
 import { wasAQuietClose } from './an-answer-includes-a-refusal';
+import { theSessionsDoneBy } from './the-sessions-done';
 import { isShut } from './a-ground-that-has-ended';
 import { whatNeedsYou, type ListedCheckIn, type Need } from './what-needs-you';
 import type { AServedPattern } from '../patterns/who-reads-a-pattern';
@@ -487,7 +488,9 @@ export function yourBoard(
          because two closed by the clock with nothing said. */
       ? (g.checkIns ?? []).filter((c) => !c.isSetup && c.participantId === me.id && c.status === 'COMPLETED' && !wasAQuietClose(c as any))
       : [];
-    const parts = [youRunIt ? 'You run this check-in.' : null, me ? sessionsLine(done.length) : null].filter(Boolean);
+    /* The number said is the one owner's (the-sessions-done): a check-in answered and then corrected is two rows and one check-in (Joel read "two" for one finished and one stopped). */
+    const doneCount = me ? theSessionsDoneBy(g.checkIns ?? [], me.id) : 0;
+    const parts = [youRunIt ? 'You run this check-in.' : null, me ? sessionsLine(doneCount) : null].filter(Boolean);
     checkIns.push({ id: g.id, label: g.label, youRunIt, line: parts.join(' '), to: `/grounds/${g.id}` });
 
     const last = [...done].sort((a, b) => time(b.completedAt) - time(a.completedAt))[0];

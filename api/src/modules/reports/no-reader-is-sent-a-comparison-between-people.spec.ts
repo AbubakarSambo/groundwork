@@ -30,6 +30,16 @@ describe('a sentence that ranks one person against others', () => {
   });
 });
 
+describe('a thing the team owns is not the team (Hafsah\u2019s run, 20 November 2026)', () => {
+  it('keeps "against the team\u2019s target", and still takes out "against the team"', () => {
+    const kept = 'People in this check-in said different things about how progress against the team\u2019s target of 40 new shops a week is described.';
+    expect(withoutComparisons(kept)).toBe(kept);
+    expect(withoutComparisons("Progress against the team's target is slow.")).toBe("Progress against the team's target is slow.");
+    expect(withoutComparisons('Amani was measured against the team. She called on 3 shops.')).toBe('She called on 3 shops.');
+    expect(withoutComparisons('Kito is behind the team. He is waiting on stock.')).toBe('He is waiting on stock.');
+  });
+});
+
 describe('a report as every reader is served it', () => {
   const report: any = {
     sharedPicture: `Five people answered. ${COMPARES[0]} The work is on track.`,

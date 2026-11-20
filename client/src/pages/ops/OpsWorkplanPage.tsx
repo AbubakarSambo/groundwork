@@ -33,7 +33,6 @@ export function OpsWorkplanPage() {
           style={{
             ...CARD,
             marginBottom: 12,
-            borderLeft: p.running ? '3px solid var(--gw-navy)' : '3px solid transparent',
           }}
         >
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline' }}>

@@ -1,4 +1,4 @@
-import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { whenItWas, theZoneDatesAreIn } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE WORDS FOR WHEN, ON TODAY (C1). The server gives moments; these say them in the reader's own
@@ -6,9 +6,9 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * "Friday", "Monday".
  */
 
-/** "Morning", "Afternoon" or "Evening", by the reader's own clock. */
+/** "Morning", "Afternoon" or "Evening", by the clock of the zone the product says its dates in (West Africa unless a surface set another), not the browser's: the server's moment must read the same hour everywhere. */
 export function partOfTheDay(now: Date = new Date()): string {
-  const h = now.getHours()
+  const h = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: theZoneDatesAreIn() }).format(now))
   if (h < 12) return 'Morning'
   if (h < 17) return 'Afternoon'
   return 'Evening'

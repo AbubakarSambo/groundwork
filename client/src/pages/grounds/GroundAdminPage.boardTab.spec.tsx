@@ -103,8 +103,8 @@ describe('finding the team board', () => {
     expect(screen.queryByRole('button', { name: 'Team board' })).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
     /** It is behind "Every session", because that is where somebody is when they want it. */
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Every session' })).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: 'Every session' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Every check-in' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Every check-in' }))
     await waitFor(() => expect(document.body.textContent).toContain('Everything so far'))
   })
 
@@ -115,8 +115,8 @@ describe('finding the team board', () => {
 
     await waitFor(() => expect(screen.getByRole('tab', { name: 'My work' })).toBeTruthy())
     fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Every session' })).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: 'Every session' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Every check-in' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Every check-in' }))
     await waitFor(() => expect(document.body.textContent).not.toContain('Everything so far'))
   })
 
@@ -133,7 +133,7 @@ describe('finding the team board', () => {
     }
     // "Report" and "Sessions" are quiet links inside My work now, not sub-tabs - see the note above.
     fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
-    for (const label of ['Every session', 'Who has answered']) {
+    for (const label of ['Every check-in', 'Who has answered']) {
       expect(await screen.findByRole('button', { name: label })).toBeTruthy()
     }
   })

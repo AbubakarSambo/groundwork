@@ -16,16 +16,15 @@ import { boardApi } from '@/api/board'
  *    fields; see docs/answers-from-engine.md), then the three `whatANumberIsNot` sentences. Where
  *    a key repeats (weekly active users), the latest figure is the row and the earlier figure
  *    reads underneath as "Up from <value>."
- * 2. `kindLayout['MarketView Q4']` folds the records table, the team, "Who checked in", "Over
- *    time" and "Reports" into the end fold; patterns and coaching stay open, just before "Where
- *    this is heading".
- * 3. "Help nobody mentioned" moves into the end fold for this kind, with the rest of the team and
- *    records.
+ * 2. Nothing is folded for this kind any more: the records table, the team, "Who checked in", "Over
+ *    time", "Reports" and "Help nobody mentioned" draw open, in their usual places (pilot, build order 8).
  * 4. A participant reads "Your share" too, the same as a sales org participant.
  */
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: me }) }))
 vi.mock('@/api/board', () => ({ boardApi: { get: vi.fn() } }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn().mockResolvedValue({ initiatorId: 'p-lead', leadFirstName: 'Wairimu' }) } }))
+/* Changed 15 November: "Over time" is drawn only once a session has closed, so this fixture gives it one closed session. */
+vi.mock('@/api/reports', () => ({ reportsApi: { rounds: vi.fn().mockResolvedValue({ moved: [{ sessionNumber: 1, takenAt: '2026-11-01', differences: 0, says: '' }] }) } }))
 vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn().mockResolvedValue({ count: 0, line: null, comingUp: [], needs: [] }) } }))
 vi.mock('@/components/gw/HowThisHasMoved', () => ({ HowThisHasMoved: () => null }))
 vi.mock('@/components/gw/ResolutionPanel', () => ({ ResolutionPanel: () => null }))
@@ -39,11 +38,11 @@ const WHAT_THE_SYSTEMS_SHOW = {
   heading: 'What the systems show',
   state: 'filled' as const,
   numbers: [
-    { key: 'paid_subscriptions', source: 'Paystack', value: 31, unit: 'subscriptions', measuredAt: '2026-10-04', says: 'Paystack shows 31 subscriptions for paid subscriptions this quarter, against a goal of 40, as of 4 October.' },
-    { key: 'renewals_paid', source: 'Paystack', value: 7, unit: 'renewals', measuredAt: '2026-10-04', says: 'Paystack shows 7 renewals for renewals paid, of 9 due, as of 4 October.' },
-    { key: 'weekly_active_users', source: 'MarketView', value: 162, unit: 'users', measuredAt: '2026-10-04', says: 'MarketView shows 162 users for weekly active users, against a goal of 200, as of 4 October.' },
-    { key: 'reports_downloaded', source: 'MarketView', value: 418, unit: 'downloads', measuredAt: '2026-10-04', says: 'MarketView shows 418 downloads for reports downloaded this week, up 12 percent, as of 4 October.' },
-    { key: 'weekly_active_users', source: 'MarketView', value: 148, unit: 'users', measuredAt: '2026-09-27', says: 'MarketView shows 148 users for weekly active users, against a goal of 200, as of 27 September.' },
+    { key: 'paid_subscriptions', label: 'Paid subscriptions this quarter', source: 'Paystack', value: 31, unit: 'subscriptions', measuredAt: '2026-10-04', says: 'Paystack shows 31 subscriptions for paid subscriptions this quarter, against a goal of 40, as of 4 October.' },
+    { key: 'renewals_paid', label: 'Renewals paid', source: 'Paystack', value: 7, unit: 'renewals', measuredAt: '2026-10-04', says: 'Paystack shows 7 renewals for renewals paid, of 9 due, as of 4 October.' },
+    { key: 'weekly_active_users', label: 'Weekly active users', source: 'MarketView', value: 162, unit: 'users', measuredAt: '2026-10-04', says: 'MarketView shows 162 users for weekly active users, against a goal of 200, as of 4 October.' },
+    { key: 'reports_downloaded', label: 'Reports downloaded this week', source: 'MarketView', value: 418, unit: 'downloads', measuredAt: '2026-10-04', says: 'MarketView shows 418 downloads for reports downloaded this week, up 12 percent, as of 4 October.' },
+    { key: 'weekly_active_users', label: 'Weekly active users', source: 'MarketView', value: 148, unit: 'users', measuredAt: '2026-09-27', says: 'MarketView shows 148 users for weekly active users, against a goal of 200, as of 27 September.' },
   ],
   whatANumberIsNot: [
     'These came from your own systems and nobody here has checked them.',
@@ -100,19 +99,27 @@ function renderBoard(board: any, at = '/grounds/g-mvq4/board') {
 }
 
 describe('the MarketView Q4 board, as the lead', () => {
-  it('reads "What the systems show" right after "What needs you", before patterns, with the latest figure and "Up from" for a repeated key', async () => {
+  it('reads "What the systems show" right after "What needs you", before patterns, as a table with the latest figure and "Up from" for a repeated key', async () => {
     me = { id: 'p-lead', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(aBoard())
     await screen.findByRole('heading', { name: 'MarketView, Q4' })
 
     const section = screen.getByRole('region', { name: 'What the systems show' })
-    expect(within(section).getByText('Paystack shows 31 subscriptions for paid subscriptions this quarter, against a goal of 40, as of 4 October.')).toBeTruthy()
-    // The repeated key (weekly active users) draws once, as its latest figure...
-    expect(within(section).getByText('MarketView shows 162 users for weekly active users, against a goal of 200, as of 4 October.')).toBeTruthy()
-    // ...with the earlier figure read underneath, built only from the two served values.
-    expect(within(section).getByText('Up from 148.')).toBeTruthy()
-    // The earlier entry itself is not drawn as its own row.
-    expect(screen.queryByText('MarketView shows 148 users for weekly active users, against a goal of 200, as of 27 September.')).toBeNull()
+    // One open table, a row for each metric, with the latest figure of a repeated key and where it comes from.
+    const rows = within(within(section).getByRole('table')).getAllByRole('row')
+    expect(rows).toHaveLength(5)
+    const paid = rows.find((r) => (r.textContent ?? '').includes('Paid subscriptions this quarter'))!
+    expect(paid.textContent).toContain('31 subscriptions')
+    expect(paid.textContent).toContain('From Paystack, as of 4 October')
+    // The repeated key (weekly active users) draws once, as its latest figure, with the earlier figure beside it, built only from the two served values.
+    const weekly = rows.filter((r) => (r.textContent ?? '').includes('Weekly active users'))
+    expect(weekly).toHaveLength(1)
+    expect(weekly[0].textContent).toContain('162 users')
+    expect(weekly[0].textContent).toContain('Up from 148')
+    expect(section.textContent).not.toContain('27 September')
+    // No goal is read out of a sentence: nobody has stated one here, so the goal reads "Not said yet" and no bar is drawn.
+    expect(paid.textContent).toContain('Not said yet')
+    expect(within(section).queryAllByRole('img')).toHaveLength(0)
     // The three standing sentences about what a number is not.
     expect(within(section).getByText(/These came from your own systems/)).toBeTruthy()
 
@@ -147,18 +154,17 @@ describe('the MarketView Q4 board, as the lead', () => {
     expect(within(section).getByText('A document on this check-in says it differently. It says, "two paid, one invoice open."')).toBeTruthy()
   })
 
-  /* Screen match, 16 October: the lead first reads mvq4-board.jpg's own board, which has none of these; they hold, word for word, on "See every other part of this board" (?whole=1). */
-  it('folds the records table, the team, "Who checked in", "Over time", "Reports" and "Help nobody mentioned"; keeps patterns and coaching open', async () => {
+  /* Pilot, build order 8 (Hafsah: no needless folds): nothing of this board is folded, so the team, the records, who checked in, over time, reports and the help nobody mentioned all draw open, in their usual places. */
+  it('draws the team, "Help nobody mentioned" and the rest open on the whole board, with nothing folded', async () => {
     me = { id: 'p-lead', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(aBoard(), '/grounds/g-mvq4/board?whole=1')
     await screen.findByRole('heading', { name: 'MarketView, Q4' })
 
-    const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
-    expect(within(fold).getByText('The team today')).toBeTruthy()
-    expect(within(fold).getByText('Help nobody mentioned')).toBeTruthy()
-
-    const beforeFold = (document.body.textContent ?? '').slice(0, (document.body.textContent ?? '').indexOf('Everything else from this check-in'))
-    expect(beforeFold.includes('Help nobody mentioned')).toBe(false)
+    await screen.findByText('Over time')
+    const body = document.body.textContent ?? ''
+    const fold = body.indexOf('Everything else from this check-in')
+    const open = fold >= 0 ? body.slice(0, fold) : body
+    for (const heading of ['The team today', 'Help nobody mentioned', 'Over time']) expect(open.includes(heading), heading).toBe(true)
   })
 })
 

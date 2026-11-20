@@ -149,9 +149,9 @@ describe('the rule, as plain functions', () => {
   });
 
   it('says plainly what is released and what is not', () => {
-    expect(whatReleasingThisSessionDoes(2)).toBe("This shares the team's picture of session 2 with everyone in the check-in.");
-    expect(thisSessionIsNotSharedYet(2)).toBe("The team's picture of session 2 is not shared yet.");
-    expect(youAreReadingAnEarlierSession(1, 2)).toBe("You are reading the team's picture of session 1. The team's picture of session 2 is not shared yet.");
+    expect(whatReleasingThisSessionDoes(2)).toBe("This shares the team's picture of check-in 2 with everyone in the check-in.");
+    expect(thisSessionIsNotSharedYet(2)).toBe("The team's picture of check-in 2 is not shared yet.");
+    expect(youAreReadingAnEarlierSession(1, 2)).toBe("You are reading the team's picture of check-in 1. The team's picture of check-in 2 is not shared yet.");
   });
 });
 
@@ -162,8 +162,8 @@ describe('a sales check-in, two sessions answered, only session 1 released', () 
     expect(read.all).not.toMatch(SESSION_TWO_OF_THE_TEAM);
     expect(read.whole.sharedPicture).toBe('TEAM-ONE-PICTURE Nothing is signed yet.');
     expect(read.whole.agreements).toEqual(['TEAM-ONE-AGREED The target is 12 shops.']);
-    expect(read.whole.readingSession).toEqual({ sessionNumber: 1, saying: "You are reading the team's picture of session 1. The team's picture of session 2 is not shared yet." });
-    expect(read.whole.teamPicture).toEqual({ shared: false, sessionNumber: 2, says: "The team's picture of session 2 is not shared yet." });
+    expect(read.whole.readingSession).toEqual({ sessionNumber: 1, saying: "You are reading the team's picture of check-in 1. The team's picture of check-in 2 is not shared yet." });
+    expect(read.whole.teamPicture).toEqual({ shared: false, sessionNumber: 2, says: "The team's picture of check-in 2 is not shared yet." });
     expect(read.whole.releasedSessions).toEqual([1]);
     expect(read.whole).not.toHaveProperty('releaseThisSession');
     /* Session 1's own report, in full. */
@@ -172,7 +172,7 @@ describe('a sales check-in, two sessions answered, only session 1 released', () 
     expect(JSON.stringify(read.one)).toMatch(/BRIAN-ONE/);
     /* Session 2's: her own words, and the plain sentence, nothing of the team's. */
     expect(read.two.released).toBe(false);
-    expect(read.two.teamPicture).toEqual({ shared: false, sessionNumber: 2, says: "The team's picture of session 2 is not shared yet." });
+    expect(read.two.teamPicture).toEqual({ shared: false, sessionNumber: 2, says: "The team's picture of check-in 2 is not shared yet." });
     expect(JSON.stringify(read.two)).toMatch(/AMANI-OWN-TWO/);
     expect(read.two.writtenPicture).toBeFalsy();
     expect(read.rounds.rounds.map((r: any) => r.sessionNumber)).toEqual([1]);
@@ -182,11 +182,11 @@ describe('a sales check-in, two sessions answered, only session 1 released', () 
     const { svc } = serviceFor('sales');
     const read = await everythingSentTo(svc, 'u-lead');
     expect(read.whole.sharedPicture).toBe('TEAM-TWO-PICTURE The Tuskys order slipped a week.');
-    expect(read.whole.releaseThisSession).toEqual({ sessionNumber: 2, saying: "This shares the team's picture of session 2 with everyone in the check-in." });
+    expect(read.whole.releaseThisSession).toEqual({ sessionNumber: 2, saying: "This shares the team's picture of check-in 2 with everyone in the check-in." });
     expect(read.whole).not.toHaveProperty('readingSession');
     expect(read.two.writtenPicture).toBe('TEAM-TWO-PICTURE The Tuskys order slipped a week.');
     expect(JSON.stringify(read.two)).toMatch(/BRIAN-TWO/);
-    expect(read.two.releaseThisSession).toEqual({ sessionNumber: 2, saying: "This shares the team's picture of session 2 with everyone in the check-in." });
+    expect(read.two.releaseThisSession).toEqual({ sessionNumber: 2, saying: "This shares the team's picture of check-in 2 with everyone in the check-in." });
     expect(read.rounds.rounds.map((r: any) => r.sessionNumber)).toEqual([1, 2]);
   });
 
@@ -205,7 +205,7 @@ describe('a sales check-in, two sessions answered, only session 1 released', () 
     const said = await controller.release('g1', 'u-lead', 'org1');
     expect(said).toEqual({
       groundId: 'g1', releasedAt: at('15'), releasedSessions: [1, 2], sessionNumber: 2,
-      saying: "This shares the team's picture of session 2 with everyone in the check-in.",
+      saying: "This shares the team's picture of check-in 2 with everyone in the check-in.",
     });
     /* The first release's moment stays; only the session is added. */
     expect(w.report.releasedAt).toEqual(at('15'));
@@ -237,7 +237,7 @@ describe('an evaluation check-in (a performance plan), the same two sessions, on
     const before = await everythingSentTo(svc, 'u-amani');
     expect(before.all).not.toMatch(SESSION_TWO_OF_THE_TEAM);
     expect(before.whole.sharedPicture).toMatch(/TEAM-ONE-PICTURE/);
-    expect(before.two.teamPicture.says).toBe("The team's picture of session 2 is not shared yet.");
+    expect(before.two.teamPicture.says).toBe("The team's picture of check-in 2 is not shared yet.");
     expect(before.rounds.rounds.map((r: any) => r.sessionNumber)).toEqual([1]);
 
     await controller.release('g1', 'u-lead', 'org1');
@@ -272,7 +272,7 @@ describe('nothing released yet', () => {
     w.report.releasedSessions = [];
     const read = await everythingSentTo(svc, 'u-amani');
     expect(read.all).not.toMatch(/TEAM-ONE|TEAM-TWO|BRIAN-/);
-    expect(read.whole.saying).toBe("The team's picture of session 2 is not shared yet.");
+    expect(read.whole.saying).toBe("The team's picture of check-in 2 is not shared yet.");
     expect(read.whole).toHaveProperty('myRows');
     expect(read.rounds.rounds).toEqual([]);
   });

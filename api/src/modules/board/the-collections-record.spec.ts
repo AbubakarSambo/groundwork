@@ -157,23 +157,20 @@ describe('when a check-in completes', () => {
     expect(fn009.fields['Promised by']).toBe('2026-10-30');
   });
 
-  it('with Release 2 off, nothing is read for bills and no bill is written', async () => {
+  it('with the stored Release 2 switch off, bills are read all the same (15 November 2026: every board is on for every organisation, so a stored switch of false (or a row that cannot be read) no longer changes this.)', async () => {
     const world = theCollectionsWorld({ release2On: false });
     world.lines.push(lineToday);
-    const before = world.items.length;
     const prisma = thePrismaFor(world);
     const anthropic = { extract: jest.fn(async () => answer) };
-    expect(await fileTheBillsSaid({ prisma, anthropic: anthropic as any }, { groundId: 'g-muchemi-fee-notes', checkInId: 'c-njeri-4' }, THE_RECORDS_SCHEMA)).toBeNull();
-    await new BoardListener(prisma, anthropic as any).onCheckInCompleted({ checkInId: 'c-njeri-4', groundId: 'g-muchemi-fee-notes', participantId: 'p-njeri', sessionNumber: 4 });
-    expect(world.items.length).toBe(before);
-    expect(anthropic.extract).not.toHaveBeenCalled();
+    expect(await fileTheBillsSaid({ prisma, anthropic: anthropic as any }, { groundId: 'g-muchemi-fee-notes', checkInId: 'c-njeri-4' }, THE_RECORDS_SCHEMA)).not.toBeNull();
+    expect(anthropic.extract).toHaveBeenCalled();
   });
 
   it('a client\'s promise is never the person\'s commitment where Release 2 is on for a collections check-in', async () => {
     expect(aPromiseSomebodyElseMade('Jamii Clinics promised to pay FN-007 by 10 October.')).toBe(true);
     expect(aPromiseSomebodyElseMade('I will call Jamii Clinics on Thursday.')).toBe(false);
     expect(await aCollectionsCheckInWithRelease2(thePrismaFor(theCollectionsWorld()), 'g-muchemi-fee-notes')).toBe(true);
-    expect(await aCollectionsCheckInWithRelease2(thePrismaFor(theCollectionsWorld({ release2On: false })), 'g-muchemi-fee-notes')).toBe(false);
+    expect(await aCollectionsCheckInWithRelease2(thePrismaFor(theCollectionsWorld({ release2On: false })), 'g-muchemi-fee-notes')).toBe(true);
   });
 });
 

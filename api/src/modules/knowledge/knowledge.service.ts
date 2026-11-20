@@ -1,7 +1,10 @@
 import { chunk, chunkKey, chunkTitle } from './a-document-is-not-a-card';
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { KnowledgeKind, Prisma } from '@prisma/client';
+import { AnthropicService } from '../conversation/anthropic.service';
+import { forHumans } from '../presentation/outbound';
+import { WHAT_IS_IN_IT_PROMPT, MOST_CHARS_SUMMARISED, aHashOf, aSummaryAsKept } from './the-desk';
 
 export interface DocumentInput {
   /** The document's stable id in the customer's system. Chunk keys are derived from it. */
@@ -12,6 +15,10 @@ export interface DocumentInput {
   kind?: string;
   sourceRef?: string | null;
   sourceSystem?: string | null;
+  /** The summary already said back to the person who added it (Ask's say-back), kept as it was said. Written by the model when absent. */
+  summary?: string | null;
+  /** Who added it, for the Desk's "Added by Grace". Null for a customer's system. */
+  addedByUserId?: string | null;
 }
 
 export interface CardInput {
@@ -38,7 +45,11 @@ export const MAX_CHARS = 6_000;
 export class KnowledgeService {
   private readonly logger = new Logger(KnowledgeService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    /* The engine that writes a document's summary. Global (the-engine.module.ts); optional so a spec can leave it out. */
+    @Optional() private readonly engine?: AnthropicService,
+  ) {}
 
   private kindOf(raw: string): KnowledgeKind {
     const k = (raw ?? '').toUpperCase().replace(/[- ]/g, '_') as KnowledgeKind;
@@ -240,7 +251,33 @@ export class KnowledgeService {
     });
     for (const s of stale) await this.retire(organizationId, s.key);
 
-    return { key, chunks: written.length, retired: stale.length };
+    const summary = await this.keepItOnTheDesk(organizationId, key, title, input);
+    return { key, chunks: written.length, retired: stale.length, summary };
+  }
+
+  /**
+   * THE DESK'S ROW FOR A DOCUMENT (S7): its title, who added it, and a summary of two or three sentences, KEPT, so the
+   * Desk, Ask and the check-ins read the same summary and nobody waits for the model when they open the Desk. Written
+   * here because every document comes in through `ingestDocument` (the Desk, Ask, the policy board and a customer's
+   * system), so there is one way a document is read and summarised. The same words sent again keep their summary.
+   * A model that does not answer leaves the summary empty rather than holding the document back.
+   */
+  private async keepItOnTheDesk(organizationId: string, key: string, title: string, input: DocumentInput): Promise<string | null> {
+    const db = this.prisma as any;
+    if (!db.deskDocument) return null;
+    const textHash = aHashOf(input.text);
+    const before = await db.deskDocument.findUnique({ where: { organizationId_key: { organizationId, key } } }).catch(() => null);
+    const given = aSummaryAsKept(input.summary);
+    const summary = given
+      ?? (before?.textHash === textHash && before?.summary ? before.summary : null)
+      ?? aSummaryAsKept(await this.engine?.respond(WHAT_IS_IN_IT_PROMPT, [{ role: 'user', content: input.text.trim().slice(0, MOST_CHARS_SUMMARISED) }]).then((r) => forHumans(r)).catch(() => null));
+    const row = { title, summary, textHash, sourceRef: input.sourceRef ?? null };
+    await db.deskDocument.upsert({
+      where: { organizationId_key: { organizationId, key } },
+      create: { organizationId, key, ...row, addedByUserId: input.addedByUserId ?? null },
+      update: { ...row, ...(input.addedByUserId ? { addedByUserId: input.addedByUserId } : {}) },
+    }).catch((err: any) => this.logger.warn(`The Desk could not keep ${key} for ${organizationId}: ${err?.message ?? err}`));
+    return summary;
   }
 
   /**
@@ -275,7 +312,7 @@ export class KnowledgeService {
    */
   async covering(organizationId: string, said: string, limit = 3) {
     const text = (said ?? '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
-    if (text.trim().length < 20) return [];
+    if (!text.trim()) return [];
 
     /*
      * THE SAME RETRIEVAL THE ASSISTANT USES, FIRST. Title-word matching below found a card only when

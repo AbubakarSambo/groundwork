@@ -1,10 +1,14 @@
 import type { Rule, Step } from '../suites/who-may-decide';
 import { CURRENCIES, checkAnswers, suiteOf } from '../suites/the-ten-suites';
 import { changeDuties, type Duties } from '../suites/who-holds-each-duty';
-import { changeWorkflows } from '../suites/the-approval-steps';
+import { THE_LINE_STEP, changeWorkflows } from '../suites/the-approval-steps';
 import { changeLeaveRules, moreThanWorkingDays } from '../suites/the-leave-rules';
 import { changeSpendRules } from '../suites/the-spending-rules';
 import { WEEKDAYS, changeTimeRules, type Weekday } from '../suites/the-time-sheet-rules';
+import { changeForWhom, type ASetting, type ForWhom } from '../suites/who-a-rule-is-for';
+import type { APersonHere } from '../suites/the-people-and-their-lines';
+import { numbersForSomePeopleIn, theseNumbersSaid, type ANumberSaid } from './the-role-map-said-in-chat';
+import { isAPolicyKey, policyQuestions, takeAPolicyAnswer, thePolicyAsRules, thePolicySaid, type LeavePolicyPlan } from './a-leave-policy-set-up-by-talking';
 
 /**
  * SETTING A SUITE UP BY TALKING (decision 85; build step 14 of docs/suites-against-the-workflow-model.md).
@@ -57,7 +61,8 @@ const NOUNS: Record<SetUpSuite, string> = {
   reviews: String.raw`(?:(?:performance\s+)?reviews|(?:performance\s+)?appraisals|(?:performance\s+)?(?:review|appraisal)(?=\s+(?:process|processes|policy|policies|rules|system|cycle|cycles|suite)\b))`,
 };
 
-const patternFor = (s: SetUpSuite) => new RegExp(String.raw`\b${VERB}${FILLER}\s+${NOUNS[s]}${TAIL}`, 'i');
+/* Details may follow the suite ("set up reviews every 6 months", Batch S round 2, T1): the opening is read for them (readOpening). */
+const patternFor = (s: SetUpSuite) => new RegExp(String.raw`\b${VERB}${FILLER}\s+${NOUNS[s]}(?:${TAIL}|\s+(?:every|each|with|so|where|that|once|twice)\b.*$)`, 'i');
 /** The patterns the router reads, one for each suite offered, in the order of `OFFERED`. */
 export const SET_UP_A_SUITE_PATTERNS: RegExp[] = OFFERED.map(patternFor);
 
@@ -91,7 +96,18 @@ export interface WhatIsKnown {
    * are. Left out, an admin.
    */
   mayNameJobs?: boolean;
+  /** Everybody here with their job title, team and app role, for numbers set for some people (who-a-rule-is-for.ts). */
+  here?: Pick<APersonHere, 'userId' | 'name' | 'firstName' | 'title' | 'team' | 'appRole'>[];
+  /** The numbers already set for some people. */
+  forWhom?: ForWhom;
+  /** The job titles here each group named in the answer means, as the model read it (ask-understands-with-the-model.ts). */
+  titlesMeant?: Record<string, string[]>;
+  /** Leave: the policy as stored today (a-leave-policy-set-up-by-talking.ts), so nothing already set is asked again. */
+  leavePolicy?: LeavePolicyPlan;
 }
+
+/** The number each suite asks that can differ for some people (Batch S, S1). Reviews have none. */
+export const THE_SETTING_OF: Partial<Record<SetUpSuite, ASetting>> = { leave: 'leave.days', time: 'time.hoursAWeek', spend: 'spend.limit' };
 
 /** What the admin has said so far, which is what would be stored. */
 export interface Plan {
@@ -125,16 +141,24 @@ export interface Plan {
   /** Reviews: the suite's own choices. */
   every?: 'Every 6 months' | 'Every 12 months';
   writer?: 'Their manager' | 'An admin';
+  /** The numbers set for some people: days of leave, hours a week, or how much a manager approves on their own. Null when they said nobody. */
+  forSome?: ANumberSaid[] | null;
   /** Jobs the admin named in this conversation. Kept only on the yes. */
   duties: Duties;
   /** Jobs the admin said nobody holds yet: "hr", "departmentHeads:Sales". */
   skipped: string[];
   /** The question waiting for an answer. */
   asking?: string | null;
+  /** Answers the model read in what the admin said or pasted, kept until their question comes, so nothing said is asked again (a-policy-read-into-the-set-up.ts). */
+  heard?: Record<string, string>;
   /** A person named for a rule who holds no job yet: their id, and the answer to read again once their job is known. */
   pending?: { personId: string; key: string; message: string } | null;
   /** The job the admin said a person approves as, when they hold more than one. */
   chosen?: Record<string, Rule>;
+  /** Leave: the policy said so far: types of leave, the working week, holidays, offices, how annual leave builds up. */
+  policy?: LeavePolicyPlan;
+  /** Questions a written policy did not answer, passed over only while the model's reading is applied; never kept. */
+  passed?: string[];
 }
 
 export function startPlan(suite: SetUpSuite, message: string, known: WhatIsKnown): Plan {
@@ -142,9 +166,14 @@ export function startPlan(suite: SetUpSuite, message: string, known: WhatIsKnown
   const a = known.answers ?? {};
   /* What is already stored for the suite's own questions is kept, and not asked again. */
   if (suite === 'leave' && typeof a.days === 'number') plan.days = a.days;
+  if (suite === 'leave' && known.leavePolicy) plan.policy = JSON.parse(JSON.stringify(known.leavePolicy));
   if (suite === 'spend' && typeof a.currency === 'string') plan.currency = a.currency;
   if (suite === 'spend' && typeof a.limit === 'number') plan.limit = a.limit;
   if (suite === 'time' && Array.isArray(a.clients) && a.clients.length) plan.clients = a.clients.filter((c): c is string => typeof c === 'string');
+  /* Numbers already set for some people are kept, said back, and not asked again. */
+  const setting = THE_SETTING_OF[suite];
+  const kept = setting ? known.forWhom?.[setting] ?? [] : [];
+  if (setting && kept.length) plan.forSome = kept.map((e) => ({ setting, who: e.who, value: e.value }));
   /* And what the opening sentence already says. */
   return readOpening(plan, message, known);
 }
@@ -190,6 +219,7 @@ const RULE_WORDS: [Rule, RegExp][] = [
   ['chiefExecutive', /\bchief\s+executive\b|\bceo\b|\bmanaging\s+director\b|\bfounder\b/gi],
   ['finance', /\bfinance\b|\bcfo\b|\baccounts\b|\bfinancial\s+controller\b/gi],
   ['hr', /\bhr\b|\bhuman\s+resources\b|\bpeople\s+team\b/gi],
+  ['managersManager', /\b(?:their\s+|the\s+)?(?:manager|boss|supervisor)(?:'s|’s)\s+(?:manager|boss|supervisor)\b/gi],
   ['manager', /\b(?:line\s+|direct\s+)?managers?(?:'s|’s)?\b|\bboss\b|\bsupervisors?\b/gi],
   ['admin', /\badmins?\b|\badministrators?\b/gi],
 ];
@@ -290,12 +320,12 @@ function jobsOf(id: string, d: Duties): { rule: Rule; team?: string }[] {
 }
 
 const JOB_NAMES: Record<Rule, string> = {
-  manager: 'is their manager', departmentHead: 'heads a team', budgetOwner: 'holds a team’s budget', finance: 'looks after finance',
+  manager: 'is their manager', managersManager: 'is their manager’s manager', departmentHead: 'heads a team', budgetOwner: 'holds a team’s budget', finance: 'looks after finance',
   hr: 'looks after HR', chiefExecutive: 'is the chief executive', admin: 'is an admin',
 };
 /** The same jobs, said to the person who holds them. */
 const YOUR_JOB_NAMES: Record<Rule, string> = {
-  manager: 'are their manager', departmentHead: 'head a team', budgetOwner: 'hold a team’s budget', finance: 'look after finance',
+  manager: 'are their manager', managersManager: 'are their manager’s manager', departmentHead: 'head a team', budgetOwner: 'hold a team’s budget', finance: 'look after finance',
   hr: 'look after HR', chiefExecutive: 'are the chief executive', admin: 'are an admin',
 };
 
@@ -466,7 +496,7 @@ function longerLeaveIn(t: string, plan: Plan, known: WhatIsKnown, alsoByDefault:
 /** The steps longer leave takes, from what was said: after every leave request's steps, or in place of them. */
 export function longerSteps(plan: Plan): Rule[][] | null {
   if (!plan.longer?.above || !plan.longer.add?.length) return null;
-  return plan.longer.also ? [...(plan.steps ?? [['manager', 'admin']]), ...plan.longer.add] : plan.longer.add;
+  return plan.longer.also ? [...(plan.steps ?? [[...THE_LINE_STEP]]), ...plan.longer.add] : plan.longer.add;
 }
 
 // ---------------------------------------------- the questions ----------------------------------------------
@@ -476,13 +506,20 @@ export function ruleSaid(r: Rule, d: Duties, known: WhatIsKnown): string {
   if ((r === 'finance' || r === 'hr' || r === 'chiefExecutive') && isMe(known, d[r])) return 'you';
   switch (r) {
     case 'manager': return 'the person’s manager';
+    case 'managersManager': return 'their manager’s manager';
     case 'departmentHead': return 'the head of the person’s team';
     case 'budgetOwner': return 'whoever holds the team’s budget';
     case 'finance': return d.finance ? `${first(known, d.finance)}, who looks after finance` : 'whoever looks after finance';
     case 'hr': return d.hr ? `${first(known, d.hr)}, who looks after HR` : 'whoever looks after HR';
-    case 'chiefExecutive': return d.chiefExecutive ? `${first(known, d.chiefExecutive)}, the chief executive` : 'the chief executive';
+    case 'chiefExecutive': return d.chiefExecutive ? `${first(known, d.chiefExecutive)}, ${theirTitleSaid(known, d.chiefExecutive) ?? 'the chief executive'}` : 'the chief executive';
     default: return 'an admin';
   }
+}
+
+/** "the managing director": the title a person holds here, as a sentence says it, or null (round 2, T1: Grace is not "the chief executive"). */
+function theirTitleSaid(known: WhatIsKnown, id: string): string | null {
+  const t = known.here?.find((p) => p.userId === id)?.title?.trim();
+  return t ? `the ${/^[A-Z]{2,}/.test(t) ? t : `${t.charAt(0).toLowerCase()}${t.slice(1)}`}` : null;
 }
 
 /** The rule said again, shortly: "the manager", "Omar", "an admin", or "you" when the holder is the person reading. */
@@ -490,6 +527,7 @@ function ruleShort(r: Rule, d: Duties, known: WhatIsKnown): string {
   if ((r === 'finance' || r === 'hr' || r === 'chiefExecutive') && isMe(known, d[r])) return 'you';
   switch (r) {
     case 'manager': return 'the manager';
+    case 'managersManager': return 'the manager’s manager';
     case 'departmentHead': return 'the head of the team';
     case 'budgetOwner': return 'whoever holds the budget';
     case 'finance': return d.finance ? first(known, d.finance) : 'finance';
@@ -503,6 +541,7 @@ function ruleShort(r: Rule, d: Duties, known: WhatIsKnown): string {
 function nobodyFor(r: Rule): string {
   switch (r) {
     case 'manager': return 'the person has no manager in Groundwork';
+    case 'managersManager': return 'the person’s manager has no manager in Groundwork';
     case 'departmentHead': return 'nobody is named as the head of the person’s team';
     case 'budgetOwner': return 'nobody is named as holding the team’s budget';
     case 'finance': return 'nobody is named to look after finance';
@@ -518,10 +557,17 @@ const money = (currency: string | undefined, n: number) => `${currency ? `${curr
 function rulesThatNeedSomebody(plan: Plan): Rule[] {
   const rs = [...(plan.steps ?? []).flat(), ...(plan.stepsAbove ?? []).flat(), ...(plan.longer?.add ?? []).flat()];
   if (plan.suite === 'leave' && plan.tellHr) rs.push('hr');
-  return [...new Set(rs)].filter((r) => r !== 'manager' && r !== 'admin');
+  return [...new Set(rs)].filter((r) => r !== 'manager' && r !== 'managersManager' && r !== 'admin');
 }
 
 export interface AQuestion { key: string; ask: string }
+
+/** Asked once the number for everyone is known: whether anybody has a different one (Batch S, S1). */
+export const FOR_SOME_ASKS: Record<'leave' | 'time' | 'spend', string> = {
+  leave: 'Does anybody get a different number of days, by job title, team or person? For example, “managers get 25 days, field agents 18”. You can say no.',
+  time: 'Is anybody asked for a different number of hours a week, by job title, team or person? For example, “people in Sales give 45 hours”. You can say no.',
+  spend: 'Does anybody’s manager approve a different amount on their own, by job title, team or person? For example, “field agents’ managers approve up to 5,000”. You can say no.',
+};
 
 const AN_EXAMPLE: Partial<Record<Rule, string>> = { departmentHead: 'the head of the person’s team', hr: 'HR', finance: 'finance' };
 
@@ -544,6 +590,7 @@ export function nextQuestion(plan: Plan, known: WhatIsKnown): AQuestion | null {
   switch (plan.suite) {
     case 'leave':
       if (plan.days === undefined) return { key: 'days', ask: 'How many days of leave does each person have in a year?' };
+      if (plan.forSome === undefined && known.here?.length && !plan.passed?.includes('forSome')) return { key: 'forSome', ask: FOR_SOME_ASKS.leave };
       if (!plan.steps) return { key: 'approver', ask: plan.longer?.above ? `Who approves leave of up to ${upToWorkingDays(plan.longer.above)}?` : 'Who approves annual leave?' };
       if (!plan.after) return { key: 'after', ask: `Does anybody approve it after ${firstSaid}${anExampleAfter(plan, ['departmentHead', 'hr'])}? You can say no.` };
       if (plan.longer && !plan.longer.above) return { key: 'longerDays', ask: 'How long does leave need to be for that? For example, more than 10 working days.' };
@@ -554,12 +601,18 @@ export function nextQuestion(plan: Plan, known: WhatIsKnown): AQuestion | null {
       }
       if (plan.tellHr === undefined) return { key: 'tellHr', ask: 'Does HR need to see all requests?' };
       if (plan.escalateAfter === undefined) return { key: 'escalate', ask: `What happens if ${firstSaid} ${agree(firstSaid, "don't", "doesn't")} respond within two working days?` };
+      {
+        /* The leave policy (Hafsah, 20 November 2026): the types of leave and each one's details, then the calendar, the holidays and offices, and how annual leave builds up. */
+        const pq = policyQuestions(plan.policy, known).find((q) => !plan.passed?.includes(q.key));
+        if (pq) return pq;
+      }
       break;
     case 'spend':
       if (!plan.currency) return { key: 'currency', ask: 'Which currency do people spend in?' };
       if (!plan.steps) return { key: 'approver', ask: 'Who approves a request to spend?' };
       if (!plan.after) return { key: 'after', ask: `Does anybody approve it after ${firstSaid}${anExampleAfter(plan, ['finance', 'departmentHead'])}? You can say no.` };
       if (plan.limit === undefined) return { key: 'limit', ask: plan.steps.length > 1 ? 'Up to what amount does a request go this way? Above that amount, somebody else approves it.' : `What is the most ${firstSaid} may approve on ${agree(firstSaid, 'your', 'their')} own?` };
+      if (plan.forSome === undefined && known.here?.length) return { key: 'forSome', ask: FOR_SOME_ASKS.spend };
       if (!plan.stepsAbove) return { key: 'above', ask: `Who approves anything above ${money(plan.currency, plan.limit)}?` };
       if (plan.escalateAfter === undefined) return { key: 'escalate', ask: `What happens if ${firstSaid} ${agree(firstSaid, "don't", "doesn't")} respond within two working days?` };
       break;
@@ -568,6 +621,7 @@ export function nextQuestion(plan: Plan, known: WhatIsKnown): AQuestion | null {
       if (!plan.steps) return { key: 'approver', ask: 'Who approves each week’s hours?' };
       if (!plan.after) return { key: 'after', ask: `Does anybody approve the hours after ${firstSaid}${anExampleAfter(plan, ['finance', 'departmentHead'])}? You can say no.` };
       if (plan.hoursAWeek === undefined) return { key: 'hoursAWeek', ask: 'How many hours a week does each person need to give? You can say none.' };
+      if (plan.forSome === undefined && known.here?.length) return { key: 'forSome', ask: FOR_SOME_ASKS.time };
       if (plan.cutOff === undefined) return { key: 'cutOff', ask: 'When are the hours due each week? For example, Friday at 17:00. You can say there is no cut-off.' };
       if (plan.escalateAfter === undefined) return { key: 'escalate', ask: `What happens if ${firstSaid} ${agree(firstSaid, "don't", "doesn't")} respond within two working days?` };
       break;
@@ -637,6 +691,12 @@ export function takeAnswer(plan: Plan, key: string, message: string, known: What
     return { plan: then(s.ok) };
   };
 
+  if (isAPolicyKey(key)) {
+    /* The policy's own readings (a-leave-policy-set-up-by-talking.ts), on the words as said, line breaks and all. */
+    const r = takeAPolicyAnswer(p.policy, key, (message ?? '').trim(), known);
+    return 'again' in r ? { again: r.again } : { plan: { ...p, policy: r.policy } };
+  }
+
   if (key === 'job' && p.pending) {
     const job = takeAJob(p.pending.personId, t, p, known);
     if ('again' in job) return { again: job.again };
@@ -668,8 +728,15 @@ export function takeAnswer(plan: Plan, key: string, message: string, known: What
       if (longer && !('ok' in longer)) return viaSteps(longer as Read<never>, () => p);
       const withLonger = longer && 'ok' in longer ? { ...p, longer: { above: longer.ok.above, add: longer.ok.add, also: longer.ok.also } } : p;
       const words = longer && 'ok' in longer ? longer.ok.rest : t;
-      if (longer && !tokensHaveARule(words, known)) return { plan: withLonger };
-      return viaSteps(stepsFrom(words, withLonger, known), (steps) => ({ ...withLonger, steps, after: steps.length > 1 ? true : withLonger.after }));
+      /* "their manager, then Grace if it is more than 5 days": who approves after the first person is already said, so it is not asked again (round 2, T1). */
+      const saidAfter = withLonger.longer?.also && withLonger.longer.add?.length ? true : withLonger.after;
+      /* "their manager up to 50k": the amount is the most they approve on their own (round 2, T1). */
+      const upTo = p.suite === 'spend' ? /\bup\s+to\s+(?:[A-Z]{3}\s*)?([\d.,]+\s*(?:k|thousand|m|million)?)/i.exec(words) : null;
+      const amount = upTo ? aNumberIn(upTo[1]) : null;
+      const withLimit: Plan = amount != null && amount >= 0 ? { ...withLonger, limit: Math.round(amount) } : withLonger;
+      const who = upTo ? words.replace(upTo[0], ' ') : words;
+      if (longer && !tokensHaveARule(who, known)) return { plan: { ...withLimit, after: saidAfter } };
+      return viaSteps(stepsFrom(who, withLimit, known), (steps) => ({ ...withLimit, steps, after: steps.length > 1 ? true : saidAfter }));
     }
     case 'after': {
       /* "If it's more than 10 working days, the department head also approves" (decision 85): leave by length, after the first person. */
@@ -708,7 +775,7 @@ export function takeAnswer(plan: Plan, key: string, message: string, known: What
       if ('again' in s) return { again: 'Who should it go to then? For example, “the head of the person’s team”, “HR” or “an admin”. Or say it waits.' };
       if ('whichJob' in s) return { plan: { ...p, pending: { personId: s.whichJob, key, message: t } } };
       const next = s.ok.flat().filter((r) => r !== 'admin' || s.ok.flat().length === 1);
-      const steps = (p.steps ?? [['manager', 'admin']]).map((x) => [...x]);
+      const steps = (p.steps ?? [[...THE_LINE_STEP]]).map((x) => [...x]);
       const head = steps[0][0];
       steps[0] = withAnAdminLast([head, ...next.filter((r) => r !== head), ...steps[0].slice(1)]);
       return { plan: { ...p, steps, escalateAfter: n } };
@@ -730,6 +797,16 @@ export function takeAnswer(plan: Plan, key: string, message: string, known: What
       if (c === 'no time') return { again: 'At what time on that day? For example, 17:00.' };
       if (!c) return { again: 'When are the hours due? Say a day and a time, for example Friday at 17:00, or say there is no cut-off.' };
       return { plan: { ...p, cutOff: c } };
+    }
+    case 'forSome': {
+      if (NO_LIKE.test(t) || /^(?:everyone|everybody)\s+(?:is\s+)?the\s+same\b/i.test(t)) return { plan: { ...p, forSome: null } };
+      const setting = THE_SETTING_OF[p.suite];
+      const said = setting ? numbersForSomePeopleIn(t, known.here ?? [], setting, known.titlesMeant ?? {}) : null;
+      if (!said) {
+        const titles = [...new Set((known.here ?? []).map((x) => x.title).filter((x): x is string => !!x))];
+        return { again: `I did not catch a group and a number there. Say each group with its number, for example “${titles[0] ?? 'Sales executive'} gets 18 days”.${titles.length ? ` The job titles here are ${andList(titles.slice(0, 8))}${titles.length > 8 ? ', and others' : ''}.` : ''} You can also name a team or a person, or say no.` };
+      }
+      return { plan: { ...p, forSome: said.filter((n) => n.setting === setting) } };
     }
     case 'every': {
       const e = everyIn(t);
@@ -899,11 +976,14 @@ function escalationSaid(steps: Rule[][], days: number | null | undefined, d: Dut
 export function theSetUpSaid(plan: Plan, known: WhatIsKnown): string[] {
   const d = dutiesNow(plan, known);
   const out: string[] = [];
-  const steps = plan.steps ?? [['manager', 'admin']];
+  const steps = plan.steps ?? [[...THE_LINE_STEP]];
   const longer = plan.suite === 'leave' ? longerSteps(plan) : null;
   const uses = (r: Rule) => [...steps.flat(), ...(plan.stepsAbove ?? []).flat(), ...(longer ?? []).flat()].includes(r);
   if (plan.suite === 'leave') {
-    out.push(`Each person has ${plan.days} ${plan.days === 1 ? 'day' : 'days'} of leave a year.`);
+    /* With types of leave, the policy says each, annual leave first with its days a year; without, the one number, as before. */
+    if (!plan.policy?.kinds?.length) out.push(`Each person has ${plan.days} ${plan.days === 1 ? 'day' : 'days'} of leave a year.`);
+    out.push(...thePolicySaid(plan.policy, plan.days, known));
+    out.push(...forSomeSaid(plan, known));
     if (longer && plan.longer?.above) {
       /* Leave by length: up to the length, the steps every request takes; above it, its own. */
       const seen = new Set<string>();
@@ -914,11 +994,13 @@ export function theSetUpSaid(plan: Plan, known: WhatIsKnown): string[] {
     out.push(`People ask to spend in ${plan.currency}.`);
     out.push(...stepsSaid(`${WHAT.spend} of up to ${money(plan.currency, plan.limit ?? 0)}`, steps, d, known));
     if (plan.stepsAbove) out.push(...stepsSaid(`${WHAT.spend} of more than ${money(plan.currency, plan.limit ?? 0)}`, plan.stepsAbove, d, known));
+    out.push(...forSomeSaid(plan, known));
   } else if (plan.suite === 'time') {
     out.push(`People give their hours for ${andList(plan.clients ?? [])}, each week.`);
     out.push(...stepsSaid(WHAT.time, steps, d, known));
     if (plan.hoursAWeek) out.push(`Each person is asked for ${plan.hoursAWeek} hours a week.`);
     else out.push('Nobody is asked for a set number of hours.');
+    out.push(...forSomeSaid(plan, known));
     if (plan.cutOff) {
       const day = `${plan.cutOff.day.charAt(0).toUpperCase()}${plan.cutOff.day.slice(1)}`;
       out.push(`The hours for each week are due by ${day} at ${plan.cutOff.time}, Lagos time.`);
@@ -958,12 +1040,15 @@ export function theSetUpSaid(plan: Plan, known: WhatIsKnown): string[] {
   return out;
 }
 
-export const theFirstQuestionSaid = (suite: SetUpSuite, ask: string) =>
-  `I will ask you a few questions about how ${SUITE_IN_WORDS[suite]} work, one at a time, and I will not set anything until you say yes. ${ask}`;
+/** The numbers set for some people, each with who it covers today by name. */
+function forSomeSaid(plan: Plan, known: WhatIsKnown): string[] {
+  return plan.forSome?.length ? theseNumbersSaid(plan.forSome, known.forWhom ?? {}, known.here ?? [], plan.currency ?? null) : [];
+}
 
 export function theSayBack(plan: Plan, known: WhatIsKnown): string {
   const on = known.on ? `${capital(SUITE_IN_WORDS[plan.suite])} are already switched on, and this replaces how they work. ` : `${capital(SUITE_IN_WORDS[plan.suite])} will be switched on. `;
-  return `Here is how ${SUITE_IN_WORDS[plan.suite]} will work. ${on}${theSetUpSaid(plan, known).join(' ')} Shall I set it up like this? Nothing changes until you say yes.`;
+  /* A paragraph to open, one line for each rule, and the question on its own (Hafsah's screenshots, 20 November 2026: one block of text). */
+  return `Here is how ${SUITE_IN_WORDS[plan.suite]} will work. ${on.trim()}\n\n${theSetUpSaid(plan, known).map((l) => `- ${l}`).join('\n')}\n\nShall I set it up like this? Nothing changes until you say yes.`;
 }
 
 export const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
@@ -1006,6 +1091,10 @@ export interface WhatToWrite {
   timeRules: Record<string, unknown> | null;
   /** Spending: who approves, as its steps by amount, the one place that says it (the-spending-rules.ts). */
   spendRules: Record<string, unknown> | null;
+  /** The numbers for some people, each written through `SuitesService.setForWhom`. */
+  forWhom: ANumberSaid[];
+  /** Leave: the offices and the public holidays said back, written through `SuitesService.setLeavePlaces`; the yes confirms them. */
+  leavePlaces: { offices?: { name: string; country: string; people?: string[] }[]; holidays?: { office: string | null; year: number; list: { on: string; name: string; confirmed: boolean; drafted: boolean }[] }[] } | null;
 }
 
 /** The steps by amount a spending set-up says: below the limit its own steps when they are not just the manager, and above it the steps above. */
@@ -1026,11 +1115,10 @@ export function whatToWrite(plan: Plan, known: WhatIsKnown): WhatToWrite | null 
   const suite = suiteOf(plan.suite);
   if (!suite) return null;
   const people = new Set(known.people.map((p) => p.id));
-  const approver = (plan.steps?.[0]?.[0] ?? 'manager') === 'manager' ? 'Their manager' : 'An admin';
   const a = known.answers ?? {};
   let answers: Record<string, unknown>;
-  if (plan.suite === 'leave') answers = { days: plan.days, approver };
-  else if (plan.suite === 'time') answers = { clients: plan.clients, approver };
+  if (plan.suite === 'leave') answers = { days: plan.days };
+  else if (plan.suite === 'time') answers = { clients: plan.clients };
   else if (plan.suite === 'reviews') answers = { every: plan.every, writer: plan.writer };
   else {
     /*
@@ -1068,8 +1156,23 @@ export function whatToWrite(plan: Plan, known: WhatIsKnown): WhatToWrite | null 
   if (plan.suite === 'leave') {
     /* Leave by length is kept as a threshold of the leave rules; none said, none kept, so what is stored is what was said back. */
     const longer = longerSteps(plan);
-    leaveRules = { tellHr: plan.tellHr ?? null, thresholds: longer && plan.longer?.above ? [{ above: plan.longer.above, steps: longer }] : null };
+    leaveRules = { ...thePolicyAsRules(plan.policy, plan.days), tellHr: plan.tellHr ?? null, thresholds: longer && plan.longer?.above ? [{ above: plan.longer.above, steps: longer }] : null };
     if ('refused' in changeLeaveRules({}, leaveRules)) return null;
+  }
+  let leavePlaces: WhatToWrite['leavePlaces'] = null;
+  if (plan.suite === 'leave' && (plan.policy?.offices || plan.policy?.holidays?.length)) {
+    leavePlaces = {};
+    if (plan.policy.offices) leavePlaces.offices = plan.policy.offices.map((o) => ({ name: o.name, country: o.country, ...(o.people ? { people: o.people.filter((id) => people.has(id)) } : {}) }));
+    const byPlace = new Map<string, { office: string | null; year: number; list: { on: string; name: string; confirmed: boolean; drafted: boolean }[] }>();
+    for (const h of plan.policy.holidays ?? []) {
+      const year = Number(h.on.slice(0, 4));
+      const k = `${h.office ?? ''}|${year}`;
+      const e = byPlace.get(k) ?? { office: h.office, year, list: [] };
+      /* The admin read each date in the say-back and said yes: that yes confirms them. */
+      e.list.push({ on: h.on, name: h.name, confirmed: true, drafted: true });
+      byPlace.set(k, e);
+    }
+    if (byPlace.size) leavePlaces.holidays = [...byPlace.values()];
   }
   let timeRules: Record<string, unknown> | null = null;
   if (plan.suite === 'time') {
@@ -1082,7 +1185,14 @@ export function whatToWrite(plan: Plan, known: WhatIsKnown): WhatToWrite | null 
     spendRules = { thresholds: rows.length ? rows : null };
     if ('refused' in changeSpendRules({}, spendRules)) return null;
   }
-  return { answers, duties: hasDuties ? duties : null, workflows, leaveRules, timeRules, spendRules };
+  const forWhom = plan.forSome ?? [];
+  let check: ForWhom = known.forWhom ?? {};
+  for (const n of forWhom) {
+    const c = changeForWhom(check, n);
+    if ('refused' in c) return null;
+    check = c.forWhom;
+  }
+  return { answers, duties: hasDuties ? duties : null, workflows, leaveRules, timeRules, spendRules, forWhom, leavePlaces };
 }
 
 /** What the services returned after the yes, read back as a plan, so the reply says what was stored. */
@@ -1095,13 +1205,20 @@ export function planFromStored(suite: SetUpSuite, stored: {
   thresholds?: { above: number; steps: Step[] }[] | null;
   hoursAWeek?: number | null;
   cutOff?: { day: unknown; time: string } | null;
+  /** The numbers set for some people, as stored. */
+  forWhom?: ForWhom | null;
+  /** Leave: the policy as stored, read back by a-leave-policy-set-up-by-talking.ts. */
+  leavePolicy?: LeavePolicyPlan | null;
 }): Plan {
   const a = stored.answers ?? {};
   const rulesOnly = (s: Step[] | null | undefined) => (s ? s.map((x) => x.filter((r): r is Rule => typeof r === 'string')) : undefined);
   const plan: Plan = { suite, duties: {}, skipped: [], after: true };
+  const setting = THE_SETTING_OF[suite];
+  if (setting && stored.forWhom?.[setting]?.length) plan.forSome = stored.forWhom[setting]!.map((e) => ({ setting, who: e.who, value: e.value }));
   if (suite === 'leave') {
     const t = stored.thresholds?.[0];
     Object.assign(plan, { days: a.days, tellHr: stored.tellHr ?? null, longer: t ? { above: t.above, add: rulesOnly([...t.steps]), also: false } : null });
+    if (stored.leavePolicy) plan.policy = stored.leavePolicy;
   }
   if (suite === 'spend') {
     /* Read back from the steps by amount: a row at nothing is the steps below the limit, the next row the limit and the steps above it. */
@@ -1109,7 +1226,7 @@ export function planFromStored(suite: SetUpSuite, stored: {
     const base = rows.find((r) => r.above === 0);
     const above = rows.find((r) => r.above > 0);
     Object.assign(plan, { currency: a.currency, limit: above?.above ?? a.limit, stepsAbove: rulesOnly(above?.steps) });
-    Object.assign(plan, { steps: rulesOnly(base?.steps) ?? [['manager', 'admin']], escalateAfter: stored.escalateAfter ?? null });
+    Object.assign(plan, { steps: rulesOnly(base?.steps) ?? [[...THE_LINE_STEP]], escalateAfter: stored.escalateAfter ?? null });
     return plan;
   }
   if (suite === 'time') Object.assign(plan, { clients: a.clients, hoursAWeek: stored.hoursAWeek ?? null, cutOff: stored.cutOff ?? null });

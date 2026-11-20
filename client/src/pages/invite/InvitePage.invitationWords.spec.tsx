@@ -54,7 +54,7 @@ beforeEach(() => {
 describe('the invitation, drawn from invitationWords', () => {
   it('draws the engine’s own heading, lines and button when invitationWords is served', async () => {
     ;(participantsApi.preview as any).mockResolvedValue({
-      groundLabel: 'Help my team understand', initiatorName: 'Hafsah', leadFirstName: 'Hafsah',
+      groundLabel: 'Help my team understand', initiatorName: 'Hafsah', leadFirstName: 'Hafsah', whoCanReadWhatYouSay: 'You see your own report straight away. Hafsah shares a team report when it is ready. Nobody else reads your conversation.',
       scenario: 'HELP_TEAM_UNDERSTAND', alreadyAccepted: false, invitationWords,
     })
     renderInvite()
@@ -65,12 +65,13 @@ describe('the invitation, drawn from invitationWords', () => {
     expect(screen.getByRole('button', { name: invitationWords.button })).toBeTruthy()
     expect(screen.queryByText('Answer today’s check-in now')).toBeNull()
     // The prototype's own sentence about who can read this stays, unchanged.
-    expect(screen.getByText(/The people in this check-in, including your manager, can see what you say in it\./)).toBeTruthy()
+    /* 15 November 2026: the one short sentence in "Who sees your answers" (lib/who-sees-your-answers.ts); the callout is gone. */
+    expect(screen.getByText(/You see your own report straight away\./)).toBeTruthy()
   })
 
   it('prefers invitationWords over the older anchorInvitation when a reply somehow carries both', async () => {
     ;(participantsApi.preview as any).mockResolvedValue({
-      groundLabel: 'Help my team understand', initiatorName: 'Hafsah', leadFirstName: 'Hafsah',
+      groundLabel: 'Help my team understand', initiatorName: 'Hafsah', leadFirstName: 'Hafsah', whoCanReadWhatYouSay: 'You see your own report straight away. Hafsah shares a team report when it is ready. Nobody else reads your conversation.',
       scenario: 'HELP_TEAM_UNDERSTAND', alreadyAccepted: false,
       invitationWords,
       anchorInvitation: { ...invitationWords, heading: 'An older heading nobody should read any more.' },
@@ -82,7 +83,7 @@ describe('the invitation, drawn from invitationWords', () => {
 
   it('is exactly as today when invitationWords is not served', async () => {
     ;(participantsApi.preview as any).mockResolvedValue({
-      groundLabel: 'Sales targets', initiatorName: 'Hafsah', leadFirstName: 'Hafsah',
+      groundLabel: 'Sales targets', initiatorName: 'Hafsah', leadFirstName: 'Hafsah', whoCanReadWhatYouSay: 'You see your own report straight away. Hafsah shares a team report when it is ready. Nobody else reads your conversation.',
       scenario: 'NEW_PROJECT', alreadyAccepted: false,
     })
     renderInvite()

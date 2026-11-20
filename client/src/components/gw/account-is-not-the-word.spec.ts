@@ -37,7 +37,8 @@ const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
  * FIRST thing a person ever reads, so they were the worst place for it.
  */
 const WHAT_A_PARTICIPANT_READS = [
-  'GroundChat.tsx',
+  /* GroundChat.tsx was deleted on 15 November 2026 (nothing drew it); its three parts now live in MyCheckInSessions.tsx. */
+  'MyCheckInSessions.tsx',
   'SharedReportForAParty.tsx',
   'WhatSuccessLooksLike.tsx',
   'MyRecord.tsx',
@@ -47,7 +48,7 @@ const WHAT_A_PARTICIPANT_READS = [
   'WhatYouAreCarryingForward.tsx',
   'HowThisHasMoved.tsx',
   'DeliveredPanel.tsx',
-  '../../pages/report/SessionReportPage.tsx',
+  '../../pages/grounds/MyWorkPage.tsx',
   '../../pages/report/RoundReportPage.tsx',
   '../../pages/chat/ChatPage.tsx',
   '../../pages/board/BoardPage.tsx',
@@ -158,8 +159,9 @@ describe('the word account, in the sense of what somebody said', () => {
     const AUTH = readFileSync(path.join(__dirname, '../../pages/auth/AuthPage.tsx'), 'utf8')
     expect(AUTH).toContain('Create your account')
     expect(AUTH).toContain('Already have an account')
-    /* And on the billing pages, where a seat per person with a Groundwork account is the plan. */
+    /* Changed 16 November (fix plan group 11, issue N17): the pricing page no longer says "account" at all; a seat is a person on the team. */
     const BILLING = readFileSync(path.join(__dirname, '../../pages/billing/PricingPage.tsx'), 'utf8')
-    expect(BILLING).toMatch(/Groundwork account in your organisation/)
+    expect(BILLING).toContain('Every person on your team counts toward your plan.')
+    expect(BILLING).not.toMatch(/Groundwork account/)
   })
 })

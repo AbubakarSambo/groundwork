@@ -1,3 +1,4 @@
+import { thePlannedSessionsOf } from '../grounds/this-sessions-count';
 import { theInvoicesLateToRaiseFor } from '../board/raising-invoices-on-time';
 import { rebuildThePersonsRecords } from '../board/the-persons-record-store';
 import { theFeeNotesThatFellDueOnAnEvent } from '../board/a-fee-note-that-fell-due-said-to-the-lead';
@@ -24,7 +25,6 @@ import { isAWorkingDay } from '../grounds/which-days-this-team-works';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { theDayIn } from '../grounds/when-a-handoff-is-due';
-import { totalSessionsFor } from '../grounds/session-count';
 import { whereThisTargetStands, theDirectionToReadIn } from '../board/the-headline-and-where-each-target-stands';
 import { asADirection, theDayItIsDue } from '../board/an-aim-or-a-limit';
 import { aDateOnly } from '../board/the-day-in-words';
@@ -43,7 +43,7 @@ import { theEngagementMoment } from './the-engagement-release-moment';
 import { theQuietIn, quietIn } from './who-has-gone-quiet';
 import { whoHasMissedCheckIns, whatTheLeadReads, TOLD_THE_LEAD } from '../grounds/missed-check-ins';
 import { isAlreadyHeld, hasBeenToldOnce, nowToldOnce } from './a-message-sent-once';
-import { theDirectMorningFor, theParagraph, theEmailParts, theSubject, type TheDirectMorning } from './the-direct-morning';
+import { theDirectMorningFor, theMorningSaysOnlyThatNothingNeedsYou, theParagraph, theEmailParts, theSubject, type TheDirectMorning } from './the-direct-morning';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 
 /**
@@ -193,7 +193,25 @@ export function theNudgeSubject(o: WhatIsOutstanding): string {
   if (t) bits.push(`${said(t)} ${t === 1 ? 'is' : 'are'} overdue on your team`);
   if (r) bits.push(`${said(r)} ${r === 1 ? 'risk is' : 'risks are'} open`);
   const joined = bits.length < 2 ? bits.join('') : `${bits.slice(0, -1).join(', ')} and ${bits[bits.length - 1]}`;
+  const main = theMainItemInAWords(o);
+  if (main) {
+    /* The subject names the main thing, then how many others there are (run 6: "Two things need you and one risk is open" said nothing about sales). */
+    const others = n + t + r - 1;
+    return others > 0 ? `${main}, and ${said(others)} other ${others === 1 ? 'thing is' : 'things are'} open` : main;
+  }
   return capital(joined);
+}
+
+/** The first thing outstanding, in one short clause: what needs her, else what is overdue, else the first risk. Null where it is too long to be a subject. */
+function theMainItemInAWords(o: WhatIsOutstanding): string | null {
+  const first = o.needsYou[0] ?? o.overdueOnYourTeam[0] ?? o.risks[0];
+  if (!first) return null;
+  let text = String(first.text ?? '').split(THE_PLACE_FIRST).join('').split(THE_PLACE_MARK).join('').trim();
+  /* "People in this check-in said different things." says nothing by itself: the next sentence is the item. */
+  text = text.replace(/^People(?: in this check-in)? said different things\.\s+/i, '');
+  const sentenceOne = text.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? text;
+  const clause = sentenceOne.replace(/[.!?]+$/, '').split(/,\s+so\s+/i)[0].trim();
+  return clause.length >= 12 && clause.length <= 90 ? capital(clause) : null;
 }
 
 /**
@@ -516,7 +534,7 @@ export async function whatIsOutstandingFor(
     const objectives: any[] = await prisma.groundObjective.findMany({ where: { groundId: g.id, ownerParticipantId: null, isADecisionAboutAPerson: false }, select: { id: true, name: true, target: true, count: true, direction: true, dueOn: true } }).catch(() => []);
     if (!objectives.length) continue;
     const snaps: any[] = await prisma.groundObjectiveSnapshot.findMany({ where: { groundId: g.id }, select: { objectiveId: true, sessionNumber: true, count: true } }).catch(() => []);
-    const planned = totalSessionsFor(g.timelineDays, g.cadence, g.cadenceDays) ?? null;
+    const planned = thePlannedSessionsOf(g as any) ?? null;
     for (const o of objectives) {
       if (typeof o.target !== 'number' || !o.name?.trim()) continue;
       const counts = snaps.filter((s) => s.objectiveId === o.id && typeof s.sessionNumber === 'number');
@@ -868,7 +886,7 @@ export async function sendTheDirectMorningTo(
     const board = await deps.board.get(g.id, lead.userId).catch(() => null);
     if (!board) continue;
     const m = await theDirectMorningFor(prisma, { groundId: g.id, leadUserId: lead.userId, board, now }).catch(() => null);
-    if (m && m.parts.some((p) => p.lines.length)) mornings.push(m);
+    if (m && m.parts.some((p) => p.lines.length) && !theMorningSaysOnlyThatNothingNeedsYou(m)) mornings.push(m);
   }
   if (!mornings.length) return 'nothing';
   const base = (deps.frontendUrl || '').replace(/\/$/, '');

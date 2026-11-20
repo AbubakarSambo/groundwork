@@ -1,0 +1,376 @@
+{
+  "kind": "founder",
+  "title": "Founder’s own check-in",
+  "subtitle": "One person. Weekly check-in. Decisions and commitments.",
+  "leadName": "Wairimu Kamau",
+  "updated": "Last updated on Wednesday 23 September at 6pm. The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.",
+  "question": "Raise a seed round and reach KES 10 million contracted revenue by December?",
+  "headline": "KES 4.2 million is signed. 5.8 million more is needed by December",
+  "bar": 42,
+  "under": "KES 2.1 million is in deals with a signed letter of intent. The rest depends on your own view of the deals.",
+  "reported": "Sales not yet closed: KES 18 million, by his own estimate.",
+  "targets": {
+    "heading": "Where each target stands",
+    "rows": [
+      {
+        "name": "Contracted revenue",
+        "value": "KES 4.2 million of KES 10 million",
+        "status": "Behind",
+        "tone": "attention"
+      },
+      {
+        "name": "Pipeline",
+        "value": "KES 18 million of KES 30 million",
+        "status": "Behind",
+        "tone": "attention"
+      },
+      {
+        "name": "Investor meetings",
+        "value": "7 of 10",
+        "status": "Close",
+        "tone": "attention"
+      },
+      {
+        "name": "Partnerships signed",
+        "value": "2 of 5",
+        "status": "Behind",
+        "tone": "concern"
+      },
+      {
+        "name": "Runway",
+        "value": "11 months of ≥ 9 months",
+        "status": "Above floor",
+        "tone": "proven"
+      }
+    ]
+  },
+  "needs": {
+    "heading": "What needs you in this check-in",
+    "open": "Open",
+    "rows": [
+      {
+        "what": "The call with the distributor has been waiting for 2 weeks",
+        "sub": "You said it would happen by 16 September.",
+        "edge": "blue",
+        "chip": "From your commitments"
+      },
+      {
+        "what": "The legal review of the term sheet is late",
+        "sub": "It was promised for 18 September, and it has come up twice.",
+        "edge": "amber",
+        "strip": "This comes from a blocker that keeps coming back."
+      },
+      {
+        "what": "Monday calls with outside people keep moving to the next week",
+        "sub": "for 3 weeks in a row.",
+        "edge": "amber",
+        "chip": "From a pattern about you"
+      },
+      {
+        "what": "Customers did prefer to pay monthly",
+        "sub": "4 of the 5 trial customers chose to pay every month. Decide whether that becomes the normal choice.",
+        "edge": "dark",
+        "strip": "From an assumption test"
+      },
+      {
+        "what": "The data room was sent to 2 of the 3 investors",
+        "sub": "The third investor is still waiting for it.",
+        "edge": "blue",
+        "chip": "From your commitments"
+      }
+    ]
+  },
+  "items": {
+    "heading": "Every item, and what shows it",
+    "note": "Ringed is someone’s word; filled is proven. Select one for its detail",
+    "legend": [
+      "Proof shows it",
+      "Someone said it"
+    ],
+    "columns": [
+      "Item",
+      "Kind",
+      "Stage now",
+      "What shows it",
+      "Next"
+    ],
+    "rows": [
+      {
+        "name": "Send the data room to 3 investors",
+        "owner": "You",
+        "stage": "Commitment, 12 Sep",
+        "on": true,
+        "shows": "Email record",
+        "next": "Send once financials are updated",
+        "flag": "Partly",
+        "flagTone": "amber"
+      },
+      {
+        "name": "Call the distributor about pilot terms",
+        "owner": "You",
+        "stage": "Commitment, 16 Sep",
+        "on": false,
+        "shows": "None",
+        "next": "Put a date on it, or drop it",
+        "flag": "Carried 2 weeks",
+        "flagTone": "amber"
+      },
+      {
+        "name": "Hire a sales lead, not two reps",
+        "owner": "You",
+        "stage": "Decision, 15 Sep",
+        "on": true,
+        "shows": "Job post",
+        "next": "Shortlist by 30 Sep"
+      },
+      {
+        "name": "Assumption: SMEs prefer monthly billing",
+        "owner": "You",
+        "stage": "Assumption test",
+        "on": true,
+        "shows": "Signed contracts",
+        "next": "Decide: make monthly the default?",
+        "flag": "Held",
+        "flagTone": "amber"
+      },
+      {
+        "name": "Board update",
+        "owner": "You",
+        "stage": "Commitment, 20 Sep",
+        "on": true,
+        "shows": "Email record",
+        "next": "None"
+      }
+    ],
+    "detail": {
+      "title": "Send the data room to 3 investors",
+      "pairs": [
+        [
+          "Missing",
+          "Investor C: waiting on updated financials"
+        ]
+      ],
+      "next": "Send once financials are updated",
+      "button": "Not right? Tell the check-in",
+      "foot": "Something here wrong? Anyone can correct what’s about their own work in their check-in; the change and the original both show here."
+    }
+  },
+  "shape": {
+    "kind": "weeks",
+    "heading": "Said vs happened, week by week",
+    "note": "The shape of the work",
+    "weekHeading": "Said vs happened, week by week",
+    "weekColumns": [
+      "Week",
+      "Said",
+      "Done",
+      "Carried",
+      "Dropped"
+    ],
+    "weeks": [
+      [
+        "Week 36",
+        "8",
+        "6",
+        "1",
+        "1"
+      ],
+      [
+        "Week 37",
+        "9",
+        "6",
+        "2",
+        "1"
+      ],
+      [
+        "Week 38",
+        "7",
+        "4",
+        "2",
+        "1"
+      ],
+      [
+        "Week 39",
+        "6",
+        "5",
+        "1",
+        "0"
+      ]
+    ],
+    "assumeHeading": "Assumptions, tested",
+    "assumptions": [
+      {
+        "title": "SMEs prefer monthly billing",
+        "sub": "5 pilots offered both",
+        "tag": "Held: 4 of 5",
+        "tone": "proven"
+      },
+      {
+        "title": "Partners will co-sell in the first 90 days",
+        "sub": "2 partnerships",
+        "tag": "Not yet: 0 co-sold deals",
+        "tone": "attention"
+      },
+      {
+        "title": "A sales lead closes faster than two reps",
+        "sub": "Hire and compare",
+        "tag": "Too early",
+        "tone": "plain"
+      }
+    ],
+    "foot": "Said, done, carried, dropped per week. Done needs proof where it exists."
+  },
+  "blockers": {
+    "heading": "Blockers",
+    "note": "Each with its history and the one thing that would clear it",
+    "rows": [
+      {
+        "title": "Legal review of the term sheet",
+        "tag": "Blocking",
+        "tone": "concern",
+        "waiting": "Lawyer",
+        "raised": "2 times, 10 Sep to 23 Sep",
+        "affects": "Closing the seed round",
+        "proof": "No written date",
+        "clear": "Ask for a date or a second opinion. Then: The seed round can close",
+        "promised": "18 Sep (missed)"
+      },
+      {
+        "title": "Updated financials for due diligence",
+        "tag": "Waiting",
+        "tone": "attention",
+        "waiting": "Finance",
+        "raised": "2 times, 15 Sep to 22 Sep",
+        "affects": "Investor C's data room",
+        "proof": "Date given",
+        "clear": "Check in on 26 Sep. Then: Investor C gets the data room",
+        "promised": "26 Sep"
+      },
+      {
+        "title": "Distributor pilot terms",
+        "tag": "Waiting",
+        "tone": "attention",
+        "waiting": "You",
+        "raised": "3 times, 9 Sep to 23 Sep",
+        "affects": "Partnership target",
+        "proof": "Self-reported",
+        "clear": "Call their sales director this week instead. Then: The partnership target moves",
+        "promised": "16 Sep (missed)"
+      }
+    ]
+  },
+  "keeps": {
+    "heading": "What keeps coming up",
+    "note": "Named after three check-ins in a row, never after one. Each describes the work",
+    "personHeading": "About each person’s work",
+    "people": [],
+    "sayHeading": "How what people say can run ahead of what happened",
+    "say": [
+      {
+        "title": "“Waiting for them”",
+        "text": "External commitments parked with no date.",
+        "who": "You"
+      },
+      {
+        "title": "Pipeline by feel",
+        "text": "Deals counted without a letter of intent.",
+        "who": "You"
+      }
+    ],
+    "foot": "Each person sees what’s about them, and can answer it in their own words.",
+    "peoplePlain": "Nothing yet."
+  },
+  "heading": {
+    "heading": "Where this is heading",
+    "note": "Keep a read on live work",
+    "outcomesLabel": "The possible outcomes",
+    "outcomes": [
+      "Look closer at named areas",
+      "Step in",
+      "Keep watching"
+    ],
+    "signalsLabel": "The signals behind them",
+    "signals": [
+      {
+        "line": "The call with the distributor has been waiting for 2 weeks",
+        "text": "You said it would happen by 16 September.",
+        "onRecord": false
+      },
+      {
+        "line": "The legal review of the term sheet is late",
+        "text": "It was promised for 18 September, and it has come up twice.",
+        "onRecord": false
+      },
+      {
+        "line": "Monday calls with outside people keep moving to the next week",
+        "text": "for 3 weeks in a row.",
+        "onRecord": false
+      }
+    ],
+    "settleLabel": "What would settle it",
+    "settle": "KES 2.1 million is in deals with a signed letter of intent. The rest depends on your own view of the deals.",
+    "decider": "You decide.",
+    "deciderNote": "Groundwork lays out the outcomes and the proof. It doesn’t choose.",
+    "button": "Record the decision"
+  },
+  "overTime": "Over time",
+  "reports": {
+    "heading": "Reports",
+    "note": "Each person’s own, the team’s once shared, and a weekly one",
+    "open": "Open",
+    "rows": [
+      {
+        "name": "Today’s team report",
+        "text": "The day’s gaps: what moved, what didn’t, who’s missing"
+      },
+      {
+        "name": "Your own report",
+        "text": "Only you see it"
+      },
+      {
+        "name": "This week",
+        "text": "Patterns, once they’ve held for two weeks"
+      }
+    ]
+  },
+  "everySession": "Every session",
+  "others": {
+    "heading": "The other boards you’re in",
+    "rows": [
+      {
+        "name": "Sales team, Q3",
+        "tag": "Today’s report ready",
+        "tone": "proven"
+      },
+      {
+        "name": "Kwame, first 90 days",
+        "tag": "Decide how it ends",
+        "tone": "action"
+      },
+      {
+        "name": "Leadership, Q3",
+        "tag": "Your turn",
+        "tone": "action"
+      },
+      {
+        "name": "Supplier review",
+        "tag": "Waiting on Omar",
+        "tone": "sand"
+      },
+      {
+        "name": "Daniel, the next six weeks",
+        "tag": "Both accounts in",
+        "tone": "action"
+      },
+      {
+        "name": "Faith, first 90 days",
+        "tag": "Just started",
+        "tone": "action"
+      }
+    ]
+  },
+  "askBox": {
+    "placeholder": "Ask about this board, for example “Why is Green Mart next quarter?”",
+    "button": "Ask"
+  }
+}

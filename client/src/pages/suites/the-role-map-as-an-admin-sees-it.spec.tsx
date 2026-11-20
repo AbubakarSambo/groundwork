@@ -103,7 +103,9 @@ describe('Grace, an admin', () => {
 
   it('reads a plain sentence when no role is known', async () => {
     open(GRACE, { roles: [], nobody: [] })
-    expect(await screen.findByText('No roles are known yet.')).toBeInTheDocument()
+    /* Batch S, S3: the empty map now says the next step, on the People page or in Ask. */
+    expect(await screen.findByText(/^No roles are known yet\. Give each person a job title and say who they report to on the/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'People page' })).toHaveAttribute('href', '/org/members')
   })
 
   it('no label on anybody', async () => {

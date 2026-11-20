@@ -60,7 +60,7 @@ const FEE_NOTES = {
 const OFFERED = [{ type: 'invoices or fee notes', label: 'Fee notes and invoices' }, { type: 'loans', label: 'Loan repayments' }]
 const SERVED_TO_WANJIRU = {
   on: true, view: 'lead', howItRuns: '4 people answer every Monday, until you end it, on WhatsApp or here.', problems: [],
-  sessions: '1 session so far. It runs until you end it.', joinedWithTheLink: 'Nobody has answered with it yet.',
+  sessions: '1 check-in so far. It runs until you end it.', joinedWithTheLink: 'Nobody has answered with it yet.',
   kindOfWork: null, kindsOffered: ['sales team', 'sales org'],
   othersWithAccess: "The people above and the admins of Muchemi & Co (test) can see it. So can a lead in the same department, once the team's report is shared.",
   runsIt: 'Wanjiru Muchemi', organisationName: 'Muchemi & Co (test)', roleDescribed: {},

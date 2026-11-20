@@ -47,13 +47,13 @@ const base = {
 const risks = [{ id: 'r1', says: 'Rukia Mwangi cannot move on the credit terms until it comes from Finance.', because: 'It was first said on 3 September.' }]
 const workPlan = [{ id: 'w1', participantId: 'p-kwame', who: 'Kwame Mensah', says: 'Kwame Mensah committed to send the Westgate quote.', when: 'by Friday', state: 'open' as const, statedInSession: 1 }]
 const timeline = [{ on: '2026-09-10', says: 'On 10 September, Baraka Otieno’s commitment to call the Kisumu depot was marked done.' }]
-const personHistory = [{ participantId: 'p-kwame', who: 'Kwame Mensah', says: 'Kwame Mensah has answered 2 sessions and made 3 commitments.', sessions: [{ n: 1, on: '2026-09-02', says: 'In session 1, Kwame Mensah made 1 commitment.' }] }]
+const personHistory = [{ participantId: 'p-kwame', who: 'Kwame Mensah', says: 'Kwame Mensah has answered 2 check-ins and made 3 commitments.', sessions: [{ n: 1, on: '2026-09-02', says: 'In check-in 1, Kwame Mensah made 1 commitment.' }] }]
 const blockerCheck = [{ id: 'blocker-1', who: 'Kwame Mensah', says: 'Kwame Mensah is waiting on Bisi Adeyemi for the approval of five applications.', namesWhoHoldsIt: true, saidWhatWasTried: false, timeGiven: false, checks: ['Finance holds it.', 'Nobody has said what has been tried.', 'No time has been given for it.'] }]
 const evidenceIndex = [{ id: 'e1', participantId: 'p-kwame', who: 'Kwame Mensah', said: 'We paid out KES 90K to the Nyama Choma Palace account.', backedBy: 'A document Kwame Mensah added shows this.', sessionNumber: 2 }]
-const busyOrMoving = { eachPerson: [{ participantId: 'p-kwame', who: 'Kwame Mensah', says: 'Kwame Mensah has made 3 commitments across 2 answered sessions.' }], cannotTellYou: 'These are counts of what people said and what came of it.' }
+const busyOrMoving = { eachPerson: [{ participantId: 'p-kwame', who: 'Kwame Mensah', says: 'Kwame Mensah has made 3 commitments across 2 answered check-ins.' }], cannotTellYou: 'These are counts of what people said and what came of it.' }
 const leadActions = [{ id: 'l1', says: 'You need to get back to Kwame Mensah, who is waiting on you for the approval of five applications.', because: 'It was first said on 16 September.' }]
 const obligations = [{ participantId: 'p-kwame', who: 'Kwame Mensah', promised: ['Kwame Mensah committed to send the Westgate quote.'], othersWaitFor: [] }]
-const forecast = [{ objectiveId: 'o1', about: 'The team is aiming for 40 approved facilities this quarter.', says: 'If it keeps moving at the pace it has since session 1, it would be about 21 by session 4, against an aim of 40.', restsOn: 'It was 6 in session 1 and 11 in session 2.', cannotTellYou: 'This carries the pace so far forward in a straight line.' }]
+const forecast = [{ objectiveId: 'o1', about: 'The team is aiming for 40 approved facilities this quarter.', says: 'If it keeps moving at the pace it has since check-in 1, it would be about 21 by check-in 4, against an aim of 40.', restsOn: 'It was 6 in check-in 1 and 11 in check-in 2.', cannotTellYou: 'This carries the pace so far forward in a straight line.' }]
 const whoWaitedOnWhom = [{ id: 'blocker-1', says: 'Kwame Mensah has been waiting on you for the approval of five applications since 16 September, and it has not been cleared.', startedAt: '2026-09-16', clearedAt: null, days: null }]
 /*
  * REQUEST 105 PART 2 / 108: `blockers` IS NOW THE SERVER'S OWN BUILT SECTION, REPLACING THE JOIN
@@ -63,13 +63,13 @@ const whoWaitedOnWhom = [{ id: 'blocker-1', says: 'Kwame Mensah has been waiting
 const blockers = [{
   id: 'blocker-1', who: 'Kwame Mensah', name: 'the approval of five applications', state: 'blocking' as const,
   says: blockerCheck[0].says,
-  raised: { times: 1, firstRaisedAt: '2026-09-16', lastRaisedAt: '2026-09-16', says: 'This was raised once, on 16 September.', sessions: [1], inSessions: 'It was raised in session 1.' },
+  raised: { times: 1, firstRaisedAt: '2026-09-16', lastRaisedAt: '2026-09-16', says: 'This was raised once, on 16 September.', sessions: [1], inSessions: 'It was raised in check-in 1.' },
   proof: { state: 'none', says: 'Nothing on record proves it yet. It rests on what Kwame Mensah said.' },
   timeGiven: 'No time has been given for it.',
   wouldClearIt: null, wouldClearItSays: 'Nobody has said what would clear it yet.', holdingUp: null,
 }]
-const contradictions = [{ id: 'c1', commitmentId: 'cm1', participantId: 'p-kwame', who: 'Kwame Mensah', says: 'Kwame Mensah’s commitment was marked done in session 1, and in session 2 Kwame Mensah said it again as something still to do.' }]
-const questionsForTheLead = [{ id: 'q1', question: 'Has Femi Okonkwo’s commitment, "I will call them again", happened, or is it still wanted?', because: 'Femi Okonkwo said it in sessions 1, 2 and 3.' }]
+const contradictions = [{ id: 'c1', commitmentId: 'cm1', participantId: 'p-kwame', who: 'Kwame Mensah', says: 'Kwame Mensah’s commitment was marked done in check-in 1, and in check-in 2 Kwame Mensah said it again as something still to do.' }]
+const questionsForTheLead = [{ id: 'q1', question: 'Has Femi Okonkwo’s commitment, "I will call them again", happened, or is it still wanted?', because: 'Femi Okonkwo said it in check-ins 1, 2 and 3.' }]
 
 const AS_THE_LEAD = {
   ...base, myParticipantId: 'p-bisi', canEditFrame: true, readOnlyNote: null,

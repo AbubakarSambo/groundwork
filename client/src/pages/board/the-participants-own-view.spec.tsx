@@ -142,14 +142,17 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     expect(screen.queryByText(/Your share/)).toBeNull()
 
     // Everything else this reader may read is still there, just folded under one name.
-    expect(screen.getByText('The whole check-in')).toBeTruthy()
+    /* Open, with no fold and no heading to press (Hafsah, 13 November 2026): the rest sits in one plain block. */
+    expect(screen.queryByText('The whole check-in')).toBeNull()
+    expect(document.getElementById('the-whole-check-in')).toBeTruthy()
     /*
      * SECOND BOARD REVIEW, WORDING: "Everything from this check-in, as before." did not say who it
      * was from or for - it now names both ("Everything else from this check-in, for everyone in
      * it."), since this fold holds everybody's work, not only what came before.
      */
-    expect(screen.getByText('Everything else from this check-in, for everyone in it.')).toBeTruthy()
-    const whole = screen.getByText('The whole check-in').closest('details') as HTMLElement
+    /* Changed in batch 2, group 6: the fold's explainer note is gone (the sweep's list); the fold itself stays. */
+    expect(screen.queryByText('Everything else from this check-in, for everyone in it.')).toBeNull()
+    const whole = document.getElementById('the-whole-check-in') as HTMLElement
     expect(whole).toBeTruthy()
 
     /*

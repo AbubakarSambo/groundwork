@@ -35,7 +35,7 @@ describe('one mail per round', () => {
     const { service, sent } = svc();
     await service.onRoundCompleted(round as any);
     expect(sent).toHaveLength(1);
-    expect(sent[0].subject).toBe('Renewal push - session 3 is complete');
+    expect(sent[0].subject).toBe('Renewal push - check-in 3 is complete');
     expect(sent[0].body).toMatch(/4 people took part/);
     expect(sent[0].body).toMatch(/https:\/\/app\/grounds\/g1/);
     /* Changed 4 November 2026 (batch 1: the direct words for everybody): the way to stop these is in the footer every such mail carries, not said twice in the body. */

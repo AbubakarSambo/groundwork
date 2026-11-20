@@ -36,7 +36,7 @@ describe('open issues, each at its step', () => {
     expect(d.conversation).toEqual({
       heading: 'This needs a conversation',
       says: 'You and Brian have seen this differently for 3 weeks, and it has not been talked about.',
-      wayToStart: '“Brian, we see Mama Fresh differently. Can we agree on it?”',
+      wayToStart: '“Brian, you and I see Mama Fresh differently. Can you talk it through with me?”' /* S15: no "we" (7 November) */,
     });
     expect(d.action?.label).toBe('Prepare the conversation');
     expect(d.quiet?.label).toBe('Not now');
@@ -79,6 +79,18 @@ describe('a difference whose topic is a whole sentence (Drop Access, 16 October)
     } as any);
     expect(d.title).toBe('Joseph and you see this differently');
     expect(d.conversation!.says).toBe("You expect each team member to generate 10 new leads weekly, but participants' records do not show this is being tracked. You and Joseph have seen this differently, and it has not been talked about.");
-    expect(d.conversation!.wayToStart).toBe('“Joseph, we see this differently. Can we agree on it?”');
+    expect(d.conversation!.wayToStart).toBe('“Joseph, you and I see this differently. Can you talk it through with me?”');
+  });
+});
+
+describe('a difference whose topic is a short sentence with its own verb (run 4, 18 November)', () => {
+  it('is said on its own: "Mary and you see The sales target is not agreed differently" is not English', () => {
+    const [d] = theOpenIssues({
+      groundId: 'g', now,
+      differences: [{ key: '2', topic: 'The sales target is not agreed', withFirstName: 'Mary', since: null as any }],
+      stillToDecide: [], memories: [], leadPromises: [],
+    } as any);
+    expect(d.title).toBe('Mary and you see this differently');
+    expect(d.conversation!.says).toBe('The sales target is not agreed. You and Mary have seen this differently, and it has not been talked about.');
   });
 });

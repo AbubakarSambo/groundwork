@@ -68,7 +68,7 @@ describe('U.10 re-review round 4', () => {
     renderBoard()
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.getByText('now, up from 0. The aim is 12.', { exact: false })).toBeTruthy()
-    expect(screen.getByText('Up 12 this session.')).toBeTruthy()
+    expect(screen.getByText('Up 12 this check-in.')).toBeTruthy()
   })
 
   it('item 4: the session strip says what is true, never "today" for a round that only opened days ago', async () => {
@@ -76,8 +76,8 @@ describe('U.10 re-review round 4', () => {
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
     /* Board review, 30 September, item 9 (second pass): "27 Sept." beside "Tuesday 29 September"
        elsewhere on the same board was two date forms for one page - now the same long form. */
-    expect(screen.getByText('Session 1 opened on 27 September.')).toBeTruthy()
-    expect(screen.getByText('Session 2 has not opened yet.')).toBeTruthy()
+    expect(screen.getByText('Check-in 1 opened on 27 September.')).toBeTruthy()
+    expect(screen.getByText('Check-in 2 has not opened yet.')).toBeTruthy()
     expect(screen.queryByText(/is today/)).toBeNull()
   })
 

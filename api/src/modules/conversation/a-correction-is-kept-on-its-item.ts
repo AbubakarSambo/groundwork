@@ -17,7 +17,7 @@ function theItem(a: TheAssessment, itemId: string): AnItem | null {
 
 export async function keepTheCorrectionOnItsItem(
   prisma: any,
-  c: { checkInId: string; itemId: string; nowSays: string; backed: boolean; by: string | null; on?: Date },
+  c: { checkInId: string; itemId: string; nowSays: string; backed: boolean; by: string | null; on?: Date; where?: 'check-in' | 'ask' },
 ): Promise<boolean> {
   const row = await prisma.checkIn.findUnique({ where: { id: c.checkInId }, select: { sessionReport: true } }).catch(() => null);
   const a = theAssessmentIn(row?.sessionReport);
@@ -26,10 +26,26 @@ export async function keepTheCorrectionOnItsItem(
   const item = theItem(copy, c.itemId);
   if (!item || !c.nowSays.trim()) return false;
   const before = [...(item.history ?? [])].filter((h) => h.backed).pop()?.nowSays ?? item.words ?? '';
-  const step: AHistoryStep = { on: (c.on ?? new Date()).toISOString(), inCheckInId: c.checkInId, said: String(before), nowSays: c.nowSays.trim(), backed: c.backed, by: c.by, where: 'ask' };
+  const step: AHistoryStep = { on: (c.on ?? new Date()).toISOString(), inCheckInId: c.checkInId, said: String(before), nowSays: c.nowSays.trim(), backed: c.backed, by: c.by, where: c.where ?? 'ask' };
   item.history = [...(item.history ?? []), step];
-  await prisma.checkIn.update({ where: { id: c.checkInId }, data: { sessionReport: theColumnWith(copy, row?.sessionReport) as any } });
+  await prisma.checkIn.update({ where: { id: c.checkInId }, data: { sessionReport: { ...(row?.sessionReport as object), ...theColumnWith(copy, row?.sessionReport) } as any } });
   return true;
+}
+
+/**
+ * A REPLY TO THE READ-BACK THAT CORRECTS A LINE IS PART OF THE CONVERSATION'S ASSESSMENT (batch 2, group 4): its message is numbered on,
+ * and read as a correction of the item it names, so the assessment has read everything they said and the close keeps it, with the
+ * correction on its item, rather than reading the conversation again. Pure.
+ */
+export function withTheReplyToTheReadBack(column: unknown, reply: { turnId: string; words: string; at: Date; itemId: string; nowSays: string; backed: boolean }): unknown {
+  const a = theAssessmentIn(column);
+  if (!a) return column;
+  const n = Math.max(0, ...(a.messages ?? []).map((m) => m.n)) + 1;
+  const correction: AnItem = {
+    id: `readBack.${n}`, words: reply.words.trim(), from: [n], whoMaySee: 'the people in this check-in', saidWordForWord: true,
+    shouldSay: reply.nowSays, backed: reply.backed, correctsItem: reply.itemId,
+  };
+  return { ...(column as object), messages: [...(a.messages ?? []), { n, turnId: reply.turnId, where: 'check-in', at: reply.at.toISOString() }], corrections: [...(a.corrections ?? []), correction] };
 }
 
 export interface ACorrectionMade { checkInId: string; itemId: string; on: string; where: 'check-in' | 'ask'; by: string | null; before: string; after: string; heldUp: boolean }

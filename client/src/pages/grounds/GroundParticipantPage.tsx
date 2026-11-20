@@ -1,5 +1,4 @@
 import { YourPeopleAndSetup } from './YourPeopleAndSetup'
-import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
 import { howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
 import { OutOfTime } from './OutOfTime'
@@ -14,7 +13,7 @@ import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { Page } from '@/components/gw/ui/Page'
-import { Note, Empty, Button, Stack, Callout, Section } from '@/components/gw/ui'
+import { Note, Empty, Button, Stack, Callout, Skeleton } from '@/components/gw/ui'
 import { cadenceLabel } from '@/lib/cadence'
 import { peopleLabels, atTheStart } from '@/lib/utils'
 import { whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
@@ -22,12 +21,16 @@ import { useOpenSession } from '@/hooks/useOpenSession'
 import { SessionPaywallModal } from '@/components/gw/checkin/SessionPaywallModal'
 import { YourWork } from '@/components/gw/checkin/YourWork'
 import { BetweenCheckIns } from '@/components/gw/BetweenCheckIns'
+import { UntilTheNextOne } from '@/components/gw/UntilTheNextOne'
+import { NotHereCard } from '@/components/gw/NotHereCard'
+import { ChatPage } from '@/pages/chat/ChatPage'
 import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { ReferencesAndResourcesPage } from './ReferencesAndResources'
 import { MyWorkPage } from './MyWorkPage'
 import { REFERENCES_AND_RESOURCES } from '@/lib/the-references-tab'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
 
 
 
@@ -88,6 +91,8 @@ export function GroundParticipantPage() {
     const key = TO_TAB_KEY[t]
     const next = new URLSearchParams(searchParams)
     if (key) next.set('tab', key); else next.delete('tab')
+    /* Which conversation and which report are for the tab they were opened on, never the next one. */
+    next.delete('c'); next.delete('report')
     setSearchParams(next, { replace: true })
   }
   const [seenOutOfTime, setSeenOutOfTime] = useState(false)
@@ -288,6 +293,8 @@ export function GroundParticipantPage() {
   }
   useEffect(() => {
     if (tab !== 'checkin') return
+    /* A conversation named in the address is the one drawn; nothing else is opened over it. */
+    if (searchParams.get('c')) return
     if (!myOpenForAutoOpen) return
     if (sessionOpening) return
     if (checkinTabOpenAttempted.current === myOpenForAutoOpen.id) return
@@ -302,7 +309,7 @@ export function GroundParticipantPage() {
     attemptCheckinTabOpen(myOpenForAutoOpen)
   }, [tab, myOpenForAutoOpen, sessionOpening, ground])
 
-  if (isLoading) return <Page narrow><Note>Loading…</Note></Page>
+  if (isLoading) return <Page narrow><Skeleton what="Getting this check-in" shape="lines" /></Page>
   /*
    * A FAILED REQUEST WAS TELLING PEOPLE THEY HAD BEEN REMOVED.
    *
@@ -394,33 +401,22 @@ export function GroundParticipantPage() {
   if (!myParticipant) {
     if (user?.role === 'ADMIN') {
       return (
-        <Page narrow>
-          <Empty
-            title="You’re not in this check-in"
-            action={(
-              <Button kind="secondary" onClick={() => navigate(`/grounds/${id}`)}>Open the whole check-in</Button>
-            )}
-          >
-            {(ground as any)?.initiatorId === user?.id
-              ? 'You run it as an admin without giving a check-in yourself. Everything about it is on the whole check-in.'
-              : `${whoRunsThis(ground as any) ?? 'Someone else'} runs it. You can read all of it as an admin, on the whole check-in.`}
-          </Empty>
-        </Page>
+        <NotHereCard
+          title="You’re not in this check-in"
+          more={<Button kind="secondary" onClick={() => navigate(`/grounds/${id}`)}>Open the whole check-in</Button>}
+        >
+          {(ground as any)?.initiatorId === user?.id
+            ? 'You run it as an admin without giving a check-in yourself. Everything about it is on the whole check-in.'
+            : `${whoRunsThis(ground as any) ?? 'Someone else'} runs it. You can read all of it as an admin, on the whole check-in.`}
+        </NotHereCard>
       )
     }
-    /*
-     * ONLY THE LEAD'S FIRST NAME IS SENT HERE (`ground.leadFirstName`, `whoRunsThis`), not the
-     * full name the prototype's own sentence uses ("Wairimu Kamau runs it and can add you.") - the
-     * closest true sentence is drawn with what the server actually sends, and the gap (a last
-     * name too) is one the API could close.
-     */
+    /* Only the lead's first name is sent (`whoRunsThis`), so the sentence is the closest true one; a last name too is a gap the API could close. */
     const lead = whoRunsThis(ground)
     return (
-      <Page narrow>
-        <Empty title="You’re not in this check-in">
-          {lead ? `${lead} runs it and can add you.` : 'Whoever runs it can add you.'}
-        </Empty>
-      </Page>
+      <NotHereCard title="You’re not in this check-in">
+        {lead ? `${lead} runs it and can add you.` : 'Whoever runs it can add you.'}
+      </NotHereCard>
     )
   }
   const myCheckIns: any[] = (ground.checkIns ?? []).filter((ci: any) => ci.participantId === myParticipant?.id)
@@ -468,6 +464,14 @@ export function GroundParticipantPage() {
      started answering. */
   const opensLater = !!openAvailableFrom && new Date(openAvailableFrom).getTime() > Date.now() && !sessionOpening && (openCheckIn as any)?.status !== 'IN_PROGRESS'
   const dueNow = !!openCheckIn && !opensLater
+  /*
+   * A CHECK-IN THAT IS DUE IS THE CARD ALONE (audit of the check-in pages, 15 November 2026, row 2; check-in-start.txt). Someone
+   * who came to answer meets the way back, the check-in's name and the first question, not a crumb, a 30px title, a schedule line,
+   * two buttons and five tabs. The tabs are one tap away through the way back, which goes to the board. Once the check-in is
+   * finished it is no longer due, so the whole page, with its tabs, comes back.
+   */
+  const boardPath = `/grounds/${id}/board`
+  const cardAlone = tab === 'checkin' && dueNow && !sessionOpenFailed && !howItEnded(ground as any)
 
 
   // Derive the session total the same way the create wizard does
@@ -513,6 +517,28 @@ export function GroundParticipantPage() {
     return 'mywork'
   }
 
+  /*
+   * ONE SUBTITLE LINE, NEVER A ROW OF ITS OWN (Hafsah, 15 November 2026). How often it runs, where this person is in it, and what is
+   * left were a separate status row that left a band of empty space above and below it. They are one muted line under the title,
+   * in full sentences, so every tab has the same title, subtitle, tabs and first content.
+   */
+  const g: any = ground
+  const subtitleLine = [
+    g.cadence ? (theRhythmInFull(g, { untilEnded: !!g.runsUntilEnded }) ?? `${cadenceLabel(g.cadence, g.cadenceDays)}.`) : null,
+    g.guestIn ? `A guest check-in at ${g.guestIn}.` : null,
+    howItEnded(g)
+      ? (hasStalled(g.status) ? 'This check-in ran past the time it was given, so nobody can add to it for now.' : howItEnded(g))
+      : null,
+  ].filter(Boolean).join(' ') || undefined
+  /* Where this person is in it: one line that belongs to the header (PageTitle's meta), not a row of its own. */
+  const statusLine = howItEnded(g) ? undefined : [
+    opensLater
+      ? (tab !== 'checkin' ? `Your next check-in opens on ${whenItWas(openAvailableFrom, 'dayAndMonthLong')}.` : null)
+      : totalSessions != null ? `Check-in ${Math.min(mySessionNumber, totalSessions)} of ${totalSessions}.` : `Check-in ${mySessionNumber}.`,
+    g.daysLeft != null && (totalSessions == null || completedCheckIns.length < totalSessions) && g.daysLeft > 0 ? `${g.daysLeft} day${g.daysLeft === 1 ? ' is' : 's are'} left.` : null,
+    totalSessions != null && completedCheckIns.length >= totalSessions ? 'Every check-in is done.' : null,
+  ].filter(Boolean).join(' ') || undefined
+
   return (
     <div className="gwui-page-shell">
 
@@ -536,21 +562,18 @@ export function GroundParticipantPage() {
         than the real shared `Page` (components/gw/ui/Page.tsx) the board itself uses. Fixed the
         same way here.
 
-        B-231 (REVIEW 6): AND ITS OWN BOTTOM PADDING IS FOR WHEN IT IS THE LAST THING ON THE
-        SCREEN, WHICH THIS NEVER IS. `.gwui-page-main`'s large bottom padding (140px on a phone) is
-        right for a page that ends there - it never does here, since the conversation (or the
-        failure/opening note below it) always follows. At 390, that left a roughly 150px empty gap
-        above a check-in's own failure note ("The conversation could not be reached...") before a
-        single word of it: measured live, Dov's own account. `gwui-ground-header-wrap`'s own
-        narrow-screen rule (gw-ui.css, written up in docs/the-parts-against-the-prototype.md)
-        zeros it out.
+        ONE PAGE, NOT A HEADER AND A SECOND BOX (docs/spacing-audit-15-nov.md, C3 and C4). The header, its tabs and
+        the tab's body are children of the same Page, so the page's own spacing is the only spacing: one gap under
+        the tabs (--gw-space-first), no wrapper that zeroes a bottom padding, no body padding of its own. Only the
+        card-alone view (a conversation opened from an email) draws no header, and no Page either.
       */}
-      <div className="gwui-ground-header-wrap">
-      <Page>
+      <Frame alone={cardAlone}>
+      {!cardAlone && (
         <CheckInHeader
           crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: ground.label }]}
           title={ground.label}
-          subtitle={(ground as any).cadence ? (theRhythmInFull(ground as any, { untilEnded: !!(ground as any).runsUntilEnded }) ?? `${cadenceLabel((ground as any).cadence, (ground as any).cadenceDays)}.`) : undefined}
+          subtitle={subtitleLine}
+          meta={statusLine}
           action={(
             <div className="gwui-button-row">
               {/*
@@ -580,7 +603,7 @@ export function GroundParticipantPage() {
                 button is left off here; the Check-in tab is still one click away, on the tab bar
                 above, exactly where it says why.
               */}
-              {myOpenForAutoOpen && outerTabOf(tab) !== 'people' && !hasStalled((ground as any).status) && (
+              {myOpenForAutoOpen && outerTabOf(tab) !== 'people' && tab !== 'checkin' && !hasStalled((ground as any).status) && (
                 <Button
                   /*
                    * B-226 (REVIEW 5): A FAILED OPEN FROM CONTEXT OR MY WORK SHOWED NOTHING AT ALL.
@@ -611,12 +634,8 @@ export function GroundParticipantPage() {
                    * under way.
                    */
                   onClick={() => {
-                    if (tab !== 'checkin') {
-                      if (sessionOpenFailed) { retrySessionOpen(); attemptCheckinTabOpen(myOpenForAutoOpen) }
-                      goTab('checkin')
-                      return
-                    }
-                    openSession(myOpenForAutoOpen, { isFreeGround: ground?.isFreeGround, groundLabel: ground?.label, isInitiator })
+                    if (sessionOpenFailed) { retrySessionOpen(); attemptCheckinTabOpen(myOpenForAutoOpen) }
+                    goTab('checkin')
                   }}
                   disabled={sessionOpening}
                 >
@@ -644,7 +663,8 @@ export function GroundParticipantPage() {
           )}
           active={outerTabOf(tab)}
           tabs={[
-            { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
+            /* No Board tab for a check-in the server says has no board (Hafsah, 15 November 2026): nobody is sent to a page that only points elsewhere. */
+            ...((ground as any).boardRenders === false ? [] : [{ key: 'board', label: 'Board', to: `/grounds/${id}/board` }]),
             { key: 'checkin', label: 'Check-in' },
             { key: 'context', label: REFERENCES_AND_RESOURCES },
             { key: 'mywork', label: 'My work' },
@@ -657,104 +677,7 @@ export function GroundParticipantPage() {
             else if (k === 'people') goTab('settings')
           }}
         />
-
-        <div className="gwui-button-row gwui-status-row">
-          {/*
-            REVIEW ROUND 3, ITEM 2: ONE PAGE PER CHECK-IN NOW, NOT TWO.
-            This used to say which of two pages you were on, for whoever runs the check-in AND
-            gives their own account - a dash-joined fragment ("Everything about running it - the
-            sessions, who has answered, the setup - is on the whole check-in.") that the wording
-            rule rules out anywhere a person reads. It explained a problem that no longer exists:
-            the lead's Check-in tab opens her own conversation directly now (GroundAdminPage.tsx),
-            so she does not land here to be told apart from it. One sentence, for everyone.
-          */}
-          <span>Your own check-in. The report shows where you and the others agree, differ, and what to do next.</span>
-          {/*
-            WHOSE WORKSPACE THIS IS, WHEN IT IS NOT YOURS.
-
-            Somebody added to a check-in in another organisation can open it and nothing said
-            so. They are a guest in a workspace holding one check-in and nothing around it, and
-            the first they knew was that the rest of the product looked empty. Reported as: "I
-            was added to a check-in in one org and then didn't have a way to join the org."
-
-            Null on a reader's own check-in, because "at your own company" is not information.
-          */}
-          {(ground as any).guestIn && (
-            <span className="gwui-note-navy" style={{ fontWeight: 700 }}>
-              A guest check-in at {(ground as any).guestIn}.
-            </span>
-          )}
-          {/* Once it has ended, the clock is not the news. See lib/a-ground-that-has-ended. */}
-          {howItEnded(ground as any) ? (
-            /*
-             * B-215 (REVIEW 6): A STALLED CHECK-IN IS NOT A SUCCESS, AND GREEN SAYS IT IS. Green
-             * (`gwui-note-green`) is the colour this line uses for a check-in that genuinely ended -
-             * a decision was made. Dov's check-in has not ended; it ran out of time while everyone
-             * was still busy, and the lead can still give it more time (his own Check-in tab already
-             * offers "Ask Mira for more time"). Mira's own version of this sentence sits in an amber
-             * box ("Out of time", GroundAdminPage.tsx) - this reads the same tone here.
-             */
-            <span className={hasStalled((ground as any).status) ? 'gwui-note-amber' : 'gwui-note-green'} style={{ fontWeight: 700 }}>
-              {/* B-215 (review 5): this read the bare word "Out of time" here, with no sentence -
-                  unlike every other state this line can be in. Dov read it with nothing to tell
-                  him what it meant or what, if anything, he could do. */}
-              {hasStalled((ground as any).status)
-                ? 'This check-in ran past the time it was given, so nobody can add to it for now.'
-                : howItEnded(ground as any)}
-            </span>
-          ) : (
-            <>
-              {/* OPEN IS NOT DUE, in the header too. `opensLater` is derived above to tell the two
-                  apart, and this line numbered the not-yet-due session as current anyway. When it
-                  opens later, the date is the news; the total is printed only when it is known.
-                  FULL SENTENCES, NOT A DOT-JOINED FRAGMENT (U.8 review): "· Session 1 of 12" and
-                  "· Next session opens 4 October" are pieces of a sentence stuck onto the front of
-                  a heading with a dot, which CLAUDE.md's wording rule rules out same as anywhere
-                  else a person reads.
-
-                  "YOUR", NOT "THIS" (U.4 re-review, item 8). `mySessionNumber` is this reader's
-                  own position, staggered by when THEY personally started, never the team's shared
-                  phase (that is `phaseSpine.currentSession`, on the board, counted from sessions
-                  everybody has finished). Saying "your" makes plain which one this is, on every
-                  reader's own page, lead included.
-
-                  FAULT 3b (ESTHER, LIVE RE-WALK): THE NUMBER ITSELF WAS WRONG, NOT JUST ITS NAME.
-                  This used to read `completedCheckIns.length + 1` - a count of ROWS, which a
-                  self-correction (a second completed row for the same session) inflates past the
-                  session she was actually on. `mySessionNumber`, computed above with the shared
-                  `whichSessionAreWeOn` rule, reads the open session if there is one, else the
-                  highest session number actually completed - immune to a duplicate row, and the
-                  same rule the rest of this product already uses to answer "which session is a
-                  person on". */}
-              {/*
-                GROUP 3'S REVIEW, CONTRADICTION 5: THE SAME DATE, SAID TWICE, ONE OF THEM LESS
-                TRUE. On the Check-in tab, between sessions, this header's "Your next session opens
-                on 7 October." sat right above BetweenCheckIns' own "Your next check-in opens on
-                Wednesday 7 October at 3:30pm." - the same fact, but this one left out the weekday
-                and the time BetweenCheckIns actually has. Said once is enough, so this header skips
-                it exactly where BetweenCheckIns is about to say the fuller version; every other tab
-                still reads the date here, since nothing else on those tabs says it at all.
-              */}
-              {opensLater ? (
-                tab !== 'checkin' && <span>Your next session opens on {whenItWas(openAvailableFrom, 'dayAndMonthLong')}.</span>
-              ) : totalSessions != null ? (
-                <span>This is your session {Math.min(mySessionNumber, totalSessions)} of {totalSessions}.</span>
-              ) : (
-                <span>This is your session {mySessionNumber}.</span>
-              )}
-              {/* A finished run has nothing remaining. "0 days remaining" sat on a one-session check-in everybody
-                  had done (21 Sep 2026); the count is for a run that is still going. */}
-              {(ground as any).daysLeft != null && (totalSessions == null || completedCheckIns.length < totalSessions) && (ground as any).daysLeft > 0 && (
-                <span>{(ground as any).daysLeft} day{(ground as any).daysLeft === 1 ? ' is' : 's are'} left.</span>
-              )}
-              {totalSessions != null && completedCheckIns.length >= totalSessions && (
-                <span>Every session is done.</span>
-              )}
-            </>
-          )}
-        </div>
-      </Page>
-      </div>
+      )}
 
       {/*
         THE CHAT GETS THE WHOLE SPACE, LIKE A CHAT.
@@ -790,46 +713,41 @@ export function GroundParticipantPage() {
         * often this runs" is its own quiet link under the card, reachable without opening the note
         * box first.
         */}
-      {tab === 'checkin' && (
-        <>
-          {/*
-           * B-19: AN ENDED CHECK-IN STILL PROMISED A NEXT ONE.
-           *
-           * `BetweenCheckIns` is written for a check-in still running - "Your next check-in opens
-           * on Tuesday" - and said that, unchanged, once the ground had ended, with no outcome
-           * shown anywhere on this tab. The board is where the full ending (who decided, when, and
-           * why) is read, once it has one; this stops the false promise of a next session here.
-           */}
-          {howItEnded(ground as any) ? (
-            /* The header above already says how it ended; this says where the reason is, once (fix plan, pattern 7: Faith read the ending twice). */
-            <Callout tone="info" title="Why it ended">
-              <Link to={`/grounds/${id}/board`}>Go to the board</Link> to read how it ended and why.
-            </Callout>
-          ) : dueNow ? (
-            /*
-             * B-211: INSIDE THE PAGE COLUMN, NOT FLUSH WITH THE SIDEBAR. This sat in the same
-             * full-bleed block as the conversation itself (the "THE CHAT GETS THE WHOLE SPACE"
-             * block below `</Page>`, just above), which is right for a live conversation but left
-             * this plain note with no margin at all - x=0 against the sidebar at desktop widths,
-             * the viewport edge on a phone. A `<Page narrow>` of its own, the same wrapper this
-             * file already uses for its loading and error states above, gives it the ordinary
-             * page padding instead.
-             *
-             * A FAILED OPEN SAYS SO, WITH A WAY BACK IN - not the same "Opening…" line left
-             * standing after the attempt it describes is already over. See
-             * attemptCheckinTabOpen above.
-             *
-             * B-231 (REVIEW 6): A LARGE EMPTY GAP ABOVE THIS NOTE AT 390. `<Page narrow>` always
-             * carries `.gwui-page-main`'s own padding (B-211's own note just above), including its
-             * large bottom padding - 140px on a phone - meant for whatever Page is the LAST thing on
-             * the screen. This one is not: it sits right after the header's own `<Page>`, which
-             * already ends with that same bottom padding, so the two stacked gave this note roughly
-             * 140 + 20 = 160px of empty space above it before a single word of it. Only the narrow
-             * centred column (`.gwui-page-narrow`'s own `max-width`/`margin: 0 auto`, with none of
-             * `.gwui-page-main`'s padding) is wanted here - a bare div with that one class, not a
-             * second full `<Page>`.
-             */
-            <div className="gwui-page-narrow">
+      {/*
+        THE CHECK-IN TAB DRAWS THE CONVERSATION ITSELF (batch 2, group 5; Hafsah, items 3b and 53).
+        If a check-in is open, its conversation is here, ready to type; if not, the last one, with
+        the line about the next one and the box to add something under it. No page in between:
+        the session list, "Check in yourself" and the card in between are gone, and the tabs stay.
+      */}
+      {tab === 'checkin' && (() => {
+        const showing: string | null = searchParams.get('c') ?? (dueNow ? null : completedCheckIns[0]?.id ?? null)
+        /* Once it has ended, how it ended is the line under the last conversation, in place of the next one's. */
+        const endedNote = howItEnded(ground as any) ? (
+          <Callout tone="info" title="Why it ended">
+            <Link to={`/grounds/${id}/board`}>Go to the board</Link> to read how it ended and why.
+          </Callout>
+        ) : null
+        if (endedNote && !showing) return <div className="gwui-ci-tab-body">{endedNote}</div>
+        if (showing) {
+          return (
+            <div className="gwui-ci-tab-body">
+              <ChatPage
+                key={showing}
+                checkInId={showing}
+                groundId={id}
+                onBack={cardAlone ? () => navigate(boardPath) : undefined}
+                backTitle={ground.label}
+                settled={endedNote ?? <UntilTheNextOne groundId={id!} myCheckIns={myCheckIns} />}
+              />
+            </div>
+          )
+        }
+        if (dueNow) {
+          return (
+            <div className="gwui-ci-tab-body">
+              <p className="gwui-fine">
+                <Link to={boardPath} className="gwui-plain-link">← {ground.label}</Link>
+              </p>
               {sessionOpenFailed ? (
                 <Note>
                   {sessionOpenError}{' '}
@@ -838,10 +756,13 @@ export function GroundParticipantPage() {
                   </Button>
                 </Note>
               ) : (
-                <Note>Opening your check-in…</Note>
+                <Note>{GETTING_YOUR_FIRST_QUESTION_READY}</Note>
               )}
             </div>
-          ) : (
+          )
+        }
+        return (
+          <div className="gwui-ci-tab-body">
             <BetweenCheckIns
               groundLabel={ground.label}
               myCheckIns={myCheckIns}
@@ -849,21 +770,9 @@ export function GroundParticipantPage() {
               canChangeTheRhythm={isInitiator}
               onGoToSetup={() => goTab('settings')}
             />
-          )}
-          {/*
-           * YOUR PAST CHECK-INS, ON THE CHECK-IN TAB AGAIN (fix list, item 1, 14 October). Production shows a person their
-           * own past conversations on this tab; our build had moved them to My work only, so a finished check-in's Check-in
-           * tab showed none. Only their own words: `myTranscript` is the caller's own turns, enforced on the server.
-           */}
-          {!dueNow && (
-            <div className="gwui-page-narrow" data-testid="your-past-check-ins">
-              <Section heading="Your check-ins">
-                <MyCheckInSessions groundId={id!} />
-              </Section>
-            </div>
-          )}
-        </>
-      )}
+          </div>
+        )
+      })()}
 
       {/* READING WIDTH, EXCEPT WHERE THE PAGE ISN'T PROSE (see the-dashboard-uses-the-screen.spec.ts).
           "Report" is read, so it keeps the 600px measure the conversation itself uses - own-report.jpg
@@ -876,6 +785,7 @@ export function GroundParticipantPage() {
           and `settings` widened - the one tab this page draws from the very same `ContextPage`
           GroundAdminPage.tsx now widens, left narrower by mistake. */}
       <div
+        hidden={tab === 'checkin'}
         className={`gw-bd${(tab === 'settings' || tab === 'record' || tab === 'docs') ? '' : ' gwui-centered-column'}`}
         style={{ maxWidth: (tab === 'settings' || tab === 'record' || tab === 'docs') ? 1150 : 600, width: '100%' }}
       >
@@ -1003,6 +913,8 @@ export function GroundParticipantPage() {
         {tab === 'settings' && <YourPeopleAndSetup groundId={id ?? ''} />}
       </div>
 
+      </Frame>
+
       {/* REVIEW ROUND 3, ITEM 2: THE PAYWALL, PULLED OUT INTO A SHARED COMPONENT (see useOpenSession.ts) */}
       <SessionPaywallModal paywall={paywall} canPayHere={canPayHere} groundId={id} />
 
@@ -1013,6 +925,9 @@ export function GroundParticipantPage() {
 
 /* The same shell GroundAdminPage.tsx uses for a state that renders outside `Page` altogether
    (the ground is genuinely gone): full height, the page's own cream, nothing else. */
+/* The page that holds the header and the tab body, or nothing at all for the card-alone view. */
+const Frame = ({ alone, children }: { alone: boolean; children: React.ReactNode }) => alone ? <>{children}</> : <Page>{children}</Page>
+
 function Shell({ children }: { children: React.ReactNode }) {
   return <div className="gwui-page-shell">{children}</div>
 }

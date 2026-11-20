@@ -40,7 +40,7 @@ describe('the chat is here at all', () => {
    * ROUND 4, ITEM A STEP 3: GroundChat's INLINE MOUNT ON THIS TAB IS RETIRED.
    *
    * Its three jobs are untangled now: the session history lives on My work
-   * (MyCheckInSessions.tsx), "who is in this" lives on People and setup (WhoIsInThis.tsx), and
+   * (MyCheckInSessions.tsx), "who is in this" lives on People and setup (PeopleAndSetupAsPictured.tsx), and
    * what is left of "the chat is here at all" is that a lead who is a party is sent straight to
    * the focused conversation - not shown a read-only mount of it on this page.
    */
@@ -186,7 +186,9 @@ describe('the four things mounting it exposed', () => {
      */
     expect(CODE).not.toContain('const who = nameOfParticipant(ci.participantId)')
     expect(CODE).not.toMatch(/ci\.participantName/)
-    expect(CODE).toContain('nameOfParticipant(p.id)')
+    /* Issue 66 (7 November 2026): "who is in this" carried a name nothing read, so it is gone; the resolver is still the one the
+       sessions so far are named by. */
+    expect(CODE).toContain('theSessionsSoFar((ground.checkIns ?? []) as any[], nameOfParticipant)')
   })
 
   /**

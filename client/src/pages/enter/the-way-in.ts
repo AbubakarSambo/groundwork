@@ -17,7 +17,7 @@ import { SETUP_TAKES } from '@/lib/how-long-setup-takes'
  */
 export const THE_DOOR = {
   heading: 'What do you need updates on, or want to track?',
-  help: `A goal, a new hire, a decision. Describe it and we’ll set it up in ${SETUP_TAKES}.`,
+  help: `A goal, a new hire, a decision. Describe it and I’ll set it up in ${SETUP_TAKES}.`,
   button: 'Continue',
 } as const
 
@@ -84,7 +84,7 @@ export const THE_ONE_LINE: Record<string, string> = {
   BOARD_STRATEGY: 'Each leader’s own read before the room debates it.',
   CRISIS_ALIGNMENT: 'The honest views first, before everyone nods along.',
   TEAM_UPDATES: 'Ask one thing, get one report back.',
-  PULSE_CHECK: 'What moved, what’s stuck and what changed, every week.',
+  PULSE_CHECK: 'What moved, what’s stuck and what changed.',
   SNAPSHOT: 'One honest read from everyone, once.',
   COHORT_CHECK: 'Several people in one role, each on their own.',
   DISCOVERY: 'Ask a group what they know, once, and find a direction.',
@@ -125,7 +125,7 @@ export const FOR_EXAMPLE: Record<string, [string, string]> = {
   BOARD_STRATEGY: ['The board agreed the strategy in the room, and two of them have since told you privately they disagree.', 'Before a strategy day, you want each leader’s real view so quiet disagreement shows up early.'],
   CRISIS_ALIGNMENT: ['You are deciding this month whether to close a product line.', 'Everyone will agree in the meeting, and you expect them to argue about it again afterwards.'],
   TEAM_UPDATES: ['What shipped this week, and what slipped?', 'What is the one thing you need from me before Friday?'],
-  PULSE_CHECK: ['You want to know what your team is actually doing, every week.', 'You want a short, regular update without calling a meeting.'],
+  PULSE_CHECK: ['You want to know what your team is actually doing.', 'You want a short, regular update without calling a meeting.'],
   SNAPSHOT: ['You want one honest read from everyone this week.', 'Something feels wrong across the team and you want a read before deciding whether it needs watching.'],
   COHORT_CHECK: ['You have twenty field officers, and you only hear from the three who call.', 'You run a training group and want to see who is on track and who is stuck, without them influencing each other.'],
   COHORT_ONBOARDING: ['Six new managers started this month, each running a different branch.', 'You need to know by the second month, not the third, which new starters need help.'],

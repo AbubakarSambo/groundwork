@@ -127,7 +127,7 @@ export type DigestFacts = {
 };
 
 export function digestSubject(f: DigestFacts): string {
-  return `${f.groundLabel} - session ${f.sessionNumber} is complete`;
+  return `${f.groundLabel} - check-in ${f.sessionNumber} is complete`;
 }
 
 /**
@@ -149,9 +149,9 @@ export function digestBody(f: DigestFacts): string {
   const gave = f.accountsGiven ?? f.participantCount;
   const of = f.participantCount;
   const said = gave >= of
-    ? [`Everyone has checked in for session ${f.sessionNumber} of ${f.groundLabel}.`,
+    ? [`Everyone has checked in for check-in ${f.sessionNumber} of ${f.groundLabel}.`,
       `${of} ${of === 1 ? 'person' : 'people'} took part. ${attention}`]
-    : [`Session ${f.sessionNumber} of ${f.groundLabel} has closed.`,
+    : [`Check-in ${f.sessionNumber} of ${f.groundLabel} has closed.`,
       `${gave} of ${of} ${of === 1 ? 'person' : 'people'} checked in. ${attention}`];
   return [...said, `Read it on the check-in's board at ${f.permalink}`].join('\n');
 }

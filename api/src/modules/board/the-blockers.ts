@@ -1,3 +1,4 @@
+import { theDayZone } from '../../common/the-organisations-own-day';
 import { theWaitSaid } from './a-wait-said-in-full';
 import { inOurVoice } from '../reports/what-the-record-shows-over-time';
 import { theReaderSaidAsYou, aThingWithoutItsHolder } from './a-holder-in-their-own-words';
@@ -183,7 +184,7 @@ function namesTheThing(text: string, what: string): boolean {
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const capitalised = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const dayInFull = (d: Date) => {
-  const key = d.getUTCHours() === 0 && d.getUTCMinutes() === 0 ? d.toISOString().slice(0, 10) : new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  const key = d.getUTCHours() === 0 && d.getUTCMinutes() === 0 ? d.toISOString().slice(0, 10) : new Intl.DateTimeFormat('en-CA', { timeZone: theDayZone(), year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
   const [y, m, day] = key.split('-').map(Number);
   const W = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const M = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -327,7 +328,7 @@ export function theBlockers(
       ? {
         ...often,
         sessions,
-        inSessions: sessions.length ? `It was raised in ${sessions.length === 1 ? 'session' : 'sessions'} ${listed(sessions.map(String))}.` : null,
+        inSessions: sessions.length ? `It was raised in ${sessions.length === 1 ? 'check-in' : 'check-ins'} ${listed(sessions.map(String))}.` : null,
       }
       : null;
 
@@ -481,7 +482,7 @@ function theKitsCard(
   /* Promised: the day the one holding it gave, from the wait as it was said. */
   const due = kit.waitsAsSaid.filter((w) => w.fromParticipantId === d.fromParticipantId && w.onParticipantId === d.onParticipantId && w.dueOn).map((w) => new Date(w.dueOn as any)).sort((a, b) => b.getTime() - a.getTime())[0];
   if (due && holder && !onTheLead) {
-    const passed = due.getTime() < new Date(new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now) + 'T00:00:00Z').getTime();
+    const passed = due.getTime() < new Date(new Intl.DateTimeFormat('en-CA', { timeZone: theDayZone(), year: 'numeric', month: '2-digit', day: '2-digit' }).format(now) + 'T00:00:00Z').getTime();
     const said = readerIsTheHolder ? 'You said' : `${holder} said`;
     out.timeGiven = passed
       ? `${said} ${dayInFull(due)}. That day has passed, and nothing since says ${many ? 'they' : 'it'} came.`
@@ -499,7 +500,7 @@ function theKitsCard(
     const at = saidIn ? new Date(saidIn.createdAt) : new Date(w.createdAt);
     const day = /yesterday/i.test(m[3] ?? '') ? new Date(at.getTime() - 86_400_000) : at;
     const whom = holder && m[2].toLowerCase() === 'him' ? holder : m[2];
-    out.tried = `${waiter} ${m[1].toLowerCase()} ${whom === 'You' ? 'you' : whom} on ${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', timeZone: 'Africa/Lagos' }).format(day)}.`;
+    out.tried = `${waiter} ${m[1].toLowerCase()} ${whom === 'You' ? 'you' : whom} on ${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', timeZone: theDayZone() }).format(day)}.`;
     break;
   }
 

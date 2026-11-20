@@ -15,6 +15,9 @@
  *     judgement), and nobody else's.
  *   - 'everybody in the check-in': what is shared with all of them (the session and weekly reports, which are served on through their
  *     own wrappers): items marked for the people in the check-in, never a lead-only one.
+ *   - an item the lead said about a named person's work ('the lead and whom it is about') is read by the lead and that person only,
+ *     never by everybody in the check-in (Hafsah, batch 2, item 1). The person reads it beside their own, with who said it.
+ *   - an item about the speaker's wellbeing ('the person only') is read by the speaker alone, not even by the lead.
  *   - 'who hears a complaint': the admin or HR person a team member's complaint about the lead goes to (a-complaint-about-the-lead.ts)
  *     reads that complaint and what came with it, and nothing else. The lead never reads it, nor does anybody reading what is shared
  *     with the people in the check-in; the person who said it reads it as their own (Hafsah, 3 November 2026).
@@ -24,7 +27,7 @@
  * (10,000 freezers sold in a day, a delivery promised for a day already past) is read by the lead alone, as what was said, and by nobody
  * else: it is never offered back to the person, or shared, as fact or as something still open (Hafsah, 4 November 2026).
  */
-import { theAssessmentIn, theStandingOf, theWordsThatCannotBeTrue, THE_ITEM_SECTIONS, THE_SETUP_SECTIONS, THE_COMPARED_SECTIONS, KEPT_FROM_THE_LEAD, type AnItem, type TheAssessment, type TheStanding } from './the-assessment';
+import { theAssessmentIn, theStandingOf, theWordsThatCannotBeTrue, THE_ITEM_SECTIONS, THE_SETUP_SECTIONS, THE_COMPARED_SECTIONS, KEPT_FROM_THE_LEAD, THE_LEAD_AND_WHOM_IT_IS_ABOUT, type AnItem, type TheAssessment, type TheStanding } from './the-assessment';
 
 export type TheReader =
   | { kind: 'the lead'; judgements: boolean }
@@ -38,6 +41,8 @@ export interface AFact {
   /** The item's id in its assessment, so a correction can be kept on the very item (its history). */
   itemId: string;
   participantId: string;
+  /** Whom it is about, when the lead said it about somebody else's work: that person's id, or null. */
+  aboutParticipantId: string | null;
   /** The person's name as the assessment wrote it. Pages that store text put their label in its place. */
   who: string;
   isTheLead: boolean;
@@ -58,6 +63,8 @@ export interface AFact {
   saidWordForWord: boolean;
   /** True where it was said while setting the check-in up, not in a check-in. */
   inSetup: boolean;
+  /** How many of their messages it was read from: more than one where the record joined answers into it. */
+  fromMessages?: number;
 }
 
 /* What judges a person: read only by the lead, and only while the switch is on. */
@@ -74,8 +81,12 @@ const NOT_A_FACT = new Set(['people', 'stillOpen']);
 function mayRead(reader: TheReader, item: AnItem, section: string, participantId: string, inSetup: boolean, aboutTheirTarget: boolean): boolean {
   if (item.whoMaySee === KEPT_FROM_THE_LEAD) return reader.kind === 'who hears a complaint' || (reader.kind === 'the person' && reader.participantId === participantId);
   if (reader.kind === 'who hears a complaint') return false;
+  if (item.whoMaySee === 'the person only') return reader.kind === 'the person' && reader.participantId === participantId;
   if (reader.kind === 'the lead') return !WHAT_JUDGES_A_PERSON.has(section) || reader.judgements;
   if (item.whoMaySee === 'the lead only') return false;
+  if (item.whoMaySee === THE_LEAD_AND_WHOM_IT_IS_ABOUT) {
+    return reader.kind === 'the person' && (reader.participantId === participantId || (!!item.aboutParticipantId && reader.participantId === item.aboutParticipantId));
+  }
   if (reader.kind === 'the person') return reader.participantId === participantId;
   return item.whoMaySee === 'the people in this check-in' && !inSetup && !aboutTheirTarget;
 }
@@ -87,9 +98,10 @@ function theDetailOf(section: string, i: AnItem): string | null {
   const parts: (string | null)[] = (() => {
     switch (section) {
       case 'numbers': return [text(i.figure), text(i.measures) && `for ${text(i.measures)}`];
-      case 'promises': return [text(i.who) && `promised by ${text(i.who)}`, text(i.when) && `by ${text(i.when)}`];
+      /* The promise as one clear action, with what "it" stands for by name (batch 2, group 3; S12 "their buyer" said nobody's). */
+      case 'promises': return [text(i.clear) ?? text(i.whatItMeans), text(i.who) && `promised by ${text(i.who)}`, text(i.when) && `by ${text(i.when)}`];
       case 'workUpdates': return [text(i.work), text(i.stage) && `at ${text(i.stage)}`, text(i.value), text(i.nextStep) && `next ${text(i.nextStep)}`, text(i.nextStepDay) && `on ${text(i.nextStepDay)}`, text(i.nextStepOwner) && `by ${text(i.nextStepOwner)}`];
-      case 'blockers': return [text(i.what) && `waiting for ${text(i.what)}`, text(i.onName) ?? text(i.onLabel), text(i.dueSaid) && `due ${text(i.dueSaid)}`];
+      case 'blockers': return [text(i.what) && `waiting for ${text(i.what)}`, (text(i.onName) ?? text(i.onLabel)) && `with ${[text(i.onName), text(i.onLabel)].filter(Boolean).join(' in ')}`, text(i.dueSaid) && `due ${text(i.dueSaid)}`];
       case 'dates': return [text(i.when), text(i.what)];
       case 'decisions': return [text(i.decision), text(i.state), text(i.whoDecides) && `decided by ${text(i.whoDecides)}`];
       case 'claims': return [text(i.claim), text(i.proofIs) && `proof ${text(i.proofIs)}`];
@@ -128,8 +140,12 @@ export function theFactsIn(a: TheAssessment, reader: TheReader, whoSeesTargets: 
   const targetWords = new Set((a.targets ?? []).map((t) => squashed(t.words)).filter(Boolean));
   const cannot = theWordsThatCannotBeTrue(a);
   const out: AFact[] = [];
+  /* A read the model could not give keeps every message whole so nothing is lost, but none of them is a line of the record: a "Nothing wrong. Thanks."
+     * was listed as something the person said, and the read-back and the end card read from here (fix plan 16 November, groups 1 and 2). */
+  const unread = a.measure?.modelFailed === true;
   for (const { section, item } of everyItemWithItsSection(a)) {
     if (NOT_A_FACT.has(section)) continue;
+    if (unread && /^kept\./.test(String(item.id ?? ''))) continue;
     const standing = theStandingOf(item, cannot);
     if (standing === 'cannot be true' && reader.kind !== 'the lead') continue;
     const inSetup = (item.from ?? []).length > 0 && (item.from ?? []).every((n) => setupMessages.has(n));
@@ -138,17 +154,31 @@ export function theFactsIn(a: TheAssessment, reader: TheReader, whoSeesTargets: 
     const words = (corrected?.nowSays ?? item.words ?? '').trim();
     const detail = theDetailOf(section, item);
     if (!words && !detail) continue;
-    /* The same words read into two parts (a promise and its date) are one fact, kept where first read. */
+    /*
+     * The same words read into two parts (a promise and its date) are one fact, kept where first read. What the second part holds is kept
+     * with it (WhatsApp test, 20 November 2026, C26): Chidi's "still chasing naivas PO" was a work update and a blocker, and the blocker's
+     * "with Mercy in procurement at Naivas, due friday" was dropped with the second part, so Friday and Mercy were in no line.
+     */
     const key = `${words.toLowerCase()}|${section.startsWith('setup.') ? section : ''}`;
-    if (words && seen.has(key)) continue;
+    if (words && seen.has(key)) {
+      const kept = out.find((f) => `${f.words.toLowerCase()}|${f.section.startsWith('setup.') ? f.section : ''}` === key);
+      if (kept && detail && !(kept.detail ?? '').toLowerCase().includes(detail.toLowerCase())) {
+        kept.detail = kept.detail ? `${kept.detail}, and ${detail.charAt(0).toLowerCase()}${detail.slice(1)}` : detail;
+        kept.fromMessages = Math.max(kept.fromMessages ?? 0, (item.from ?? []).length);
+      }
+      continue;
+    }
     seen.add(key);
     out.push({
-      groundId: a.about.groundId, checkInId: a.about.checkInId, itemId: item.id, participantId: a.about.participantId, who: a.about.who,
+      groundId: a.about.groundId, checkInId: a.about.checkInId, itemId: item.id, participantId: a.about.participantId,
+      aboutParticipantId: item.whoMaySee === THE_LEAD_AND_WHOM_IT_IS_ABOUT && typeof item.aboutParticipantId === 'string' ? item.aboutParticipantId : null,
+      who: a.about.who,
       isTheLead: a.about.isTheLead, sessionNumber: a.about.sessionNumber, on: a.about.endedAt, section, words, detail,
       proved: standing === 'proved',
       standing,
       saidWordForWord: !corrected && item.saidWordForWord === true,
       inSetup,
+      fromMessages: (item.from ?? []).length,
     });
   }
   return out;
@@ -166,19 +196,28 @@ export async function theFactsOnRecord(
   /* The ground owns who sees the targets; every page reads it from there, through here. */
   const ground = await Promise.resolve(prisma.ground?.findUnique?.({ where: { id: input.groundId }, select: { whoSeesTargets: true } })).catch(() => null);
   const whoSeesTargets: WhoSeesTheTargets = ground?.whoSeesTargets === 'EVERYBODY' ? 'EVERYBODY' : 'THEIR_OWN';
-  const rows = ((await Promise.resolve(prisma.checkIn?.findMany?.({
-    where: {
-      groundId: input.groundId,
-      ...(only ? { participantId: { in: only } } : {}),
-      ...(input.since || input.until ? { completedAt: { ...(input.since ? { gte: input.since } : {}), ...(input.until ? { lte: input.until } : {}) } } : {}),
-    },
+  const when = input.since || input.until ? { completedAt: { ...(input.since ? { gte: input.since } : {}), ...(input.until ? { lte: input.until } : {}) } } : {};
+  const read = (where: Record<string, unknown>) => Promise.resolve(prisma.checkIn?.findMany?.({
+    where: { groundId: input.groundId, ...where, ...when },
     orderBy: [{ completedAt: 'asc' }, { sessionNumber: 'asc' }],
     select: { sessionReport: true },
-  })).catch(() => [])) ?? []) as { sessionReport: unknown }[];
-  return rows.flatMap((r) => {
-    const a = theAssessmentIn(r.sessionReport);
-    return a ? theFactsIn(a, input.reader, whoSeesTargets) : [];
+  })).then((r: any) => (Array.isArray(r) ? r : [])).catch(() => []) as Promise<{ sessionReport: unknown }[]>;
+  /* A person also reads what the lead said about their work (Hafsah, batch 2, item 1): the lead's check-ins are read beside their own, and
+     mayRead keeps only the items about them. */
+  const [rows, theLeads] = await Promise.all([
+    read(only ? { participantId: { in: only } } : {}),
+    input.reader.kind === 'the person' ? read({ participant: { partyType: 'INITIATOR' }, participantId: { notIn: only ?? [] } }) : Promise.resolve([]),
+  ]);
+  const all = [...rows, ...theLeads];
+  const seen = new Set<string>();
+  const assessments = all.map((r) => theAssessmentIn(r.sessionReport)).filter((a): a is TheAssessment => {
+    if (!a || seen.has(a.about.checkInId)) return false;
+    seen.add(a.about.checkInId);
+    return true;
   });
+  /* Oldest first across both reads; within one read, as it came. */
+  if (theLeads.length) assessments.sort((a, b) => String(a.about.endedAt ?? '').localeCompare(String(b.about.endedAt ?? '')));
+  return assessments.flatMap((a) => theFactsIn(a, input.reader, whoSeesTargets));
 }
 
 /**

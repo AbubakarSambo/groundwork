@@ -1,7 +1,8 @@
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { roleMapApi } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Panel, Button, Note, Empty } from '@/components/gw/ui'
+import { Page, PageTitle, Panel, Button, Note, Empty, Skeleton } from '@/components/gw/ui'
 import { SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
@@ -53,7 +54,7 @@ export function RoleMapPage() {
         subtitle="Every role, what it owns, and who holds it. It is built from your teams and people, and it shows jobs that nobody owns."
       />
 
-      {isLoading && <Note>Loading…</Note>}
+      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
           <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin can open this board.'} role={user?.role} /></Note>
@@ -65,7 +66,11 @@ export function RoleMapPage() {
         )
       )}
 
-      {data && (data.roles ?? []).length === 0 && <Empty>No roles are known yet.</Empty>}
+      {data && (data.roles ?? []).length === 0 && (
+        <Empty>
+          No roles are known yet. Give each person a job title and say who they report to on the <Link className="gwui-plain-link" to="/org/members">People page</Link>, or tell Ask, for example “Amina reports to Joseph”. What each role owns comes from what people say in their check-ins.
+        </Empty>
+      )}
       {data && (data.roles ?? []).length > 0 && (
         <>
           <Panel>

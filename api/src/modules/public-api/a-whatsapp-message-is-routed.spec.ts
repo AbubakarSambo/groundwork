@@ -1,4 +1,5 @@
-import { pickedOne, whichOneAsText, whatArrived, sessionHeader, reportAsText, languageBlock } from './a-whatsapp-message-is-routed';
+import { pickedOne, whichOneAsText, whatArrived, sessionHeader, reportAsText } from './a-whatsapp-message-is-routed';
+import { WRITE_IN_THEIR_LANGUAGE } from './the-language-they-write-in';
 
 const open = [
   { id: 'c1', status: 'IN_PROGRESS', sessionNumber: 3, label: 'September sprint' },
@@ -37,10 +38,9 @@ describe('the report as one message, and the language line', () => {
     expect(t).not.toContain('conversation worth having');
     expect(t).not.toMatch(/Scope: Clear|Worth having:|\(five pages named\)/);
   });
-  it('is empty for English and names the language otherwise', () => {
-    expect(languageBlock('en')).toBe('');
-    expect(languageBlock(null)).toBe('');
-    expect(languageBlock('ha')).toContain('HAUSA');
-    expect(languageBlock('xx')).toBe('');
+  /* Changed 20 November 2026 (WhatsApp test C1): no stored language names one for the model any more; every turn is told to follow their latest message. */
+  it('tells the model to follow their latest message, and names no language of its own', () => {
+    expect(WRITE_IN_THEIR_LANGUAGE).toContain('THE LANGUAGE OF THEIR LATEST MESSAGE');
+    expect(WRITE_IN_THEIR_LANGUAGE).not.toMatch(/SWAHILI|HAUSA/i);
   });
 });

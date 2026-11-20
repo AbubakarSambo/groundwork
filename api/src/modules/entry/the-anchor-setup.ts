@@ -145,7 +145,7 @@ Fields:
 - whyItBothersYou: why that bothers the lead, the consequence they see.
 - whatTheyDontUnderstand: what the lead thinks the group does not yet understand.
 - whatTheyWouldDoDifferently: what the lead would notice people doing differently, without being asked, if the group understood. This is only the lead's own answer to being asked what better would look like, or something the lead says plainly about it. Write one short sentence for each separate thing the lead named ("You would notice people telling you before a truck is late. You would notice dispatch phoning the shop themselves."). Never work it out from the complaint: a complaint about what people do not do is not an answer about what they would do.
-- peopleNamed: one entry per individual person the lead named. A team, a department or a company is not an entry.
+- peopleNamed: one entry per individual person the lead named. A team, a department or a company is not an entry. The lead is never an entry: when the lead says "I am Kofi" or "my name is Kofi", Kofi is the lead, who is setting this up, and not somebody to invite.
 - initial: one plain sentence, under 25 words, saying what this is about, in the lead's words.`;
 
 export const THE_EXTRACTION_TOOL = {

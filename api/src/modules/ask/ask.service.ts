@@ -1,10 +1,13 @@
-import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, ASK_ADD_LINE, ASK_ADMIN_ADD_LINE, askStarters, askStartersFor } from '../assistant/ask-name';
+import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, ASK_ADD_LINE, ASK_ADMIN_ADD_LINE, askStartersFor } from '../assistant/ask-name';
+import { readDuties, whoHolds } from '../suites/who-holds-each-duty';
 import { contextIsInAskGroundwork, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
 import { whatWasSaid } from '../assistant/what-was-said-is-what-is-kept';
 import { ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { DocumentsService } from '../documents/documents.service';
-import { ONLY_AN_ADMIN_ADDS_ONE, aTitleFor } from '../assistant/a-document-for-the-whole-organisation';
+import { NOT_YOURS_TO_ADD, aTitleFor } from '../assistant/a-document-for-the-whole-organisation';
+import { mayAddToTheDesk } from '../knowledge/the-desk';
 import { PrismaService } from '../prisma/prisma.service';
+import { ownAskTurns } from '../assistant/a-persons-own-ask-turns';
 import { AssistantService } from '../assistant/assistant.service';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
@@ -307,6 +310,7 @@ export class AskService {
           leaveIsOn: suitesOn.has('leave'),
           spendingIsOn: suitesOn.has('spend'),
           contextIsHere,
+          looksAfterHr: standing.is !== 'guest' && whoHolds(await readDuties(this.prisma as any, asker.organizationId).catch(() => ({})), 'hr') === asker.userId,
         })
       : [];
     /* Whether the old context chat on the check-in page still answers (release.oldContextChat). The screens stop drawing it when this is false. */
@@ -372,12 +376,7 @@ export class AskService {
    * about any column the database can order by.
    */
   private async turnsKeptUnder(organizationId: string, key: string): Promise<AskTurn[]> {
-    const rows = await this.prisma.assistantTurn.findMany({
-      where: { organizationId, personExternalId: key },
-      select: { role: true, content: true, createdAt: true },
-      orderBy: { createdAt: 'desc' },
-      take: TURNS_SHOWN,
-    });
+    const rows = await ownAskTurns(this.prisma, organizationId, key, { take: TURNS_SHOWN, select: { role: true, content: true, createdAt: true } });
     const askedFirst = (r: { role: string }) => (r.role === 'person' ? 0 : 1);
     return rows
       .filter((r) => (r.content ?? '').trim())
@@ -481,8 +480,8 @@ export class AskService {
     }
 
     if (question === 'purpose' || question === 'who_reads') {
-      const g: any = await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { brief: true, toldToParticipants: true, scenario: true } });
-      if (question === 'who_reads') return whoReadsWhatTheySay(ground.label, g?.scenario ?? null, await askNameOf(this.prisma, asker.organizationId));
+      const g: any = await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { brief: true, toldToParticipants: true, scenario: true, peersVisibleToEachOther: true, initiator: { select: { firstName: true } } } });
+      if (question === 'who_reads') return whoReadsWhatTheySay(ground.label, g?.scenario ?? null, await askNameOf(this.prisma, asker.organizationId), g?.peersVisibleToEachOther ?? null, g?.initiator?.firstName ?? null);
       return whatTheCheckInIsFor(ground.label, whatAParticipantIsToldAboutThis(g?.brief ?? null, [], { told: g?.toldToParticipants ?? null, readerParticipantId: participantId, scenario: g?.scenario ?? null }));
     }
 
@@ -646,20 +645,26 @@ export class AskService {
 
   /** Whether the asker is an admin of the organisation they are asking in. Read from the server, never from the screen. */
   private async isAnAdminHere(asker: Asker): Promise<boolean> {
+    return (await this.roleHere(asker)) === 'ADMIN';
+  }
+
+  /** The asker's role in the organisation they are asking in, from their membership. Read from the server, never from the screen. */
+  private async roleHere(asker: Asker): Promise<string | null> {
     const m = await this.prisma.organizationMembership.findUnique({
       where: { userId_organizationId: { userId: asker.userId, organizationId: asker.organizationId } },
       select: { role: true },
     }).catch(() => null);
-    return m?.role === 'ADMIN';
+    return m?.role ?? null;
   }
 
   /**
-   * AN ADMIN'S DOCUMENT FOR THE WHOLE ORGANISATION (fix list, item 3). The file is read and what it holds is said back
-   * with a yes and a no; nothing is added until the yes. Refused to anybody who is not an admin here, a guest included.
+   * A DOCUMENT FOR THE WHOLE ORGANISATION, FROM AN ADMIN OR A LEAD (fix list, item 3; S7, leads too). The file is read and
+   * what it holds is said back with a yes and a no; nothing is added until the yes, and then it goes on the Desk. Refused
+   * to anybody who is neither an admin nor a lead here, a guest included.
    */
   async addADocumentForTheOrganisation(asker: Asker, file: Express.Multer.File) {
     const name = (await this.prisma.organization.findUnique({ where: { id: asker.organizationId }, select: { name: true } }).catch(() => null))?.name ?? null;
-    if ((await this.isAGuest(asker)) || !(await this.isAnAdminHere(asker))) throw new ForbiddenException(ONLY_AN_ADMIN_ADDS_ONE(name));
+    if ((await this.isAGuest(asker)) || !mayAddToTheDesk(await this.roleHere(asker))) throw new ForbiddenException(NOT_YOURS_TO_ADD(name));
     if (!this.documents) throw new ConflictException('Documents cannot be read here at the moment, so try again in a little while.');
     const me = await this.whoIsAsking(asker);
     const words = await this.documents.textOutOf(file);
@@ -678,15 +683,14 @@ export class AskService {
     /* A guest's yes is for the one change to their own commitment that was said back to them, and nothing else. */
     if (await this.isAGuest(asker)) return this.answerTheGuestsYes(asker, input);
     const me = await this.whoIsAsking(asker);
+    /* The button answers the proposal it is on, not whichever is newest (Batch S round 2, W14). A document's question is who may read it, not yes or no. */
     const waiting = await this.prisma.assistantProposal.findFirst({
-      where: { organizationId: asker.organizationId, personExternalId: me.externalId, state: 'PARKED' },
-      orderBy: { createdAt: 'desc' },
+      where: { id: input.proposalId, organizationId: asker.organizationId, personExternalId: me.externalId, state: 'PARKED' },
       select: { id: true, kind: true },
     });
-    /* A document's question is who may read it, not yes or no, so a yes button cannot answer it. */
-    if (!waiting || waiting.id !== input.proposalId || waiting.kind === 'document') {
-      throw new ConflictException(NOTHING_WAITING);
-    }
-    return this.assistant.respond(asker.organizationId, me.id, input.answer);
+    if (!waiting || waiting.kind === 'document') throw new ConflictException(NOTHING_WAITING);
+    const reply = await this.assistant.answerAProposal(asker.organizationId, me.id, input.proposalId, input.answer);
+    if (!reply) throw new ConflictException(NOTHING_WAITING);
+    return reply;
   }
 }

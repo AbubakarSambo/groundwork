@@ -37,19 +37,19 @@ describe('request 117 (3): one count for the sessions', () => {
   it('Rukia\'s coaching note says the session she has done, not the round Faraji holds open', async () => {
     const svc = heldOpenByFaraji();
     const c: any = await svc.coachingForTheBoard('g1', 'u-rukia');
-    expect(c.yours.whyItMatters).toMatch(/^This is session 2 of 12 of this work\./);
+    expect(c.yours.whyItMatters).toMatch(/^This is check-in 2 of 12 of this work\./);
   });
 
   it('Amani, who has done session 2, reads session 2 in her own note', async () => {
     const svc = heldOpenByFaraji();
     const c: any = await svc.coachingForTheBoard('g1', 'u-amani');
-    expect(c.yours.whyItMatters).toMatch(/^This is session 2 of 12 of this work\./);
+    expect(c.yours.whyItMatters).toMatch(/^This is check-in 2 of 12 of this work\./);
   });
 
   it.each([['Rukia', 'u-rukia'], ['Grace, who set it up', 'u-grace']])('%s is told only Faraji has not answered this session, never Baraka or Neema', async (_who, userId) => {
     const svc = heldOpenByFaraji();
     const c: any = await svc.coachingForTheBoard('g1', userId);
-    const notAnswered = (c.eachPerson as any[]).filter((p) => p.probe.some((l: string) => /has not answered this session/.test(l))).map((p) => p.who);
+    const notAnswered = (c.eachPerson as any[]).filter((p) => p.probe.some((l: string) => /has not answered this check-in/.test(l))).map((p) => p.who);
     expect(notAnswered).toEqual(['Faraji Odhiambo']);
   });
 
@@ -74,15 +74,15 @@ describe('request 117 (3): the board says the same session to every reader', () 
     expect(board.phaseSpine.currentSession).toBe(1);
     expect(board.phaseSpine.plannedSessions).toBe(12);
     expect(board.phaseSpine.sessions.map((s: any) => s.says)).toEqual([
-      'Session 1 opened on 22 September, and it is still open.',
-      'Session 2 has started for some people, while session 1 is still open.',
+      'Check-in 1 opened on 22 September, and it is still open.',
+      'Check-in 2 has started for some people, while check-in 1 is still open.',
     ]);
   });
 
   it('the lead reads Baraka and Neema as having checked in for this round, and Faraji as not', async () => {
     const board = await boardAs(review5(), ...RUKIA_RUNS_IT);
     const says = Object.fromEntries((board.eachPerson as any[]).map((r) => [r.who, r.says]));
-    expect(says['Faraji Odhiambo']).toBe('Faraji Odhiambo has not checked in for this session yet.');
+    expect(says['Faraji Odhiambo']).toBe('Faraji Odhiambo has not checked in yet.');
     expect(says['Baraka Mwangi']).toMatch(/^Baraka Mwangi has checked in/);
     expect(says['Neema Achieng']).toMatch(/^Neema Achieng has checked in/);
   });

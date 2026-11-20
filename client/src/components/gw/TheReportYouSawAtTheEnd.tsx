@@ -210,7 +210,7 @@ export function TheReportYouSawAtTheEnd({
         {report.areasRequiringAlignment.length > 0 && (
           <Block n={next()} label="What is still open">
             {report.areasRequiringAlignment.map((a, i) => (
-              <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-amber-b)', borderRadius: 10, padding: 'var(--er-box)', marginBottom: 'var(--er-gap-sm)' }}>
+              <div key={i} style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 'var(--er-box)', marginBottom: 'var(--er-gap-sm)' }}>
                 {/* A title the server judged unusable as a heading is absent; the card stands without it. */}
                 {a.title && <div style={{ fontSize: 'var(--er-lead)', fontWeight: 700, marginBottom: 7 }}>{a.title}</div>}
                 <p style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, margin: '0 0 5px' }}>{[a.observation, a.whyItMatters].filter(Boolean).join(' ')}</p>
@@ -233,7 +233,7 @@ export function TheReportYouSawAtTheEnd({
         {report.alignmentReached.length > 0 && (
           <Block n={next()} label="Clear from what you said">
             {report.alignmentReached.map((a, i) => (
-              <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-green-b)', borderRadius: 10, padding: 'var(--er-box)', marginBottom: 'var(--er-gap-sm)' }}>
+              <div key={i} style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 'var(--er-box)', marginBottom: 'var(--er-gap-sm)' }}>
                 {a.title && <div style={{ fontSize: 'var(--er-lead)', fontWeight: 700, marginBottom: 4 }}>{a.title}</div>}
                 <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.5 }}>{a.note}</div>
               </div>
@@ -247,7 +247,7 @@ export function TheReportYouSawAtTheEnd({
             underneath already says what these people would do for the check-in. */}
         {report.suggestedParties && report.suggestedParties.length > 0 && (
           <Block n={next()} label="Who else this check-in needs">
-            <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: 'var(--er-box)', background: 'var(--gw-blue-bg)' }}>
+            <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 'var(--er-box)', background: 'var(--gw-blue-bg)' }}>
               <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                 Based on this check-in, these roles would strengthen the check-in. What they say would change or confirm what is currently on record from one side only.
               </div>

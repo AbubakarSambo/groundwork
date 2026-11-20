@@ -20,7 +20,7 @@ describe('Bubble', () => {
     expect(rule('.bub.them')).toMatch(/background:var\(--chat\)/)
     expect(rule('.bub.them')).toMatch(/border-bottom-left-radius:4px/)
     expect(rule('.bub.them')).toMatch(/align-self:flex-start/)
-    expect(rule('.bub')).toMatch(/border-radius:16px/)
+    expect(rule('.bub')).toMatch(/border-radius:12px/)
   })
 
   it('the person\'s turn: ink (not navy, which the prototype never puts a bubble on), right-aligned, bottom-right corner squared', () => {

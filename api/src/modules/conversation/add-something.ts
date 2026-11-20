@@ -14,7 +14,7 @@ export const WHAT_WOULD_YOU_LIKE_TO_ADD = 'What would you like to add?';
 export const ADD_SOMETHING_REFUSED = {
   empty: 'Write what you want to add first.',
   notInIt: 'You are not in this check-in, so nothing can be added to it here.',
-  nothingToAddTo: 'This check-in has no session open or coming up to add to.',
+  nothingToAddTo: 'This check-in has no check-in open or coming up to add to.',
 } as const;
 
 /** Their check-in to add to: the one open, else the next one waiting, else none. */

@@ -1,3 +1,5 @@
+import { whoARoundWaitsFor } from './who-a-round-waits-for';
+import { thePlannedSessionsOf } from './this-sessions-count';
 import { thePromisesOf, thePromisesCounted, whatHappenedToThePromises } from './the-promises-counted-once';
 import { whatTheRecordShowsTheLead } from '../patterns/what-the-record-shows-the-lead';
 import { theWeekdaysItMeets } from './the-check-ins-own-schedule';
@@ -46,7 +48,6 @@ import { theSessionAndItsCount, withWhoHasNotJoinedMarked } from './this-session
 import { peopleSaidDifferentThingsAbout } from '../reports/what-people-said-differently-about';
 import { titleOf } from '../reports/the-session-report';
 import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
-import { whoASessionCounts } from './the-lead-checks-in-when-they-choose';
 import { openTheLeadsCheckIn } from './check-in-yourself';
 import { theLeadAddsAWhatsAppNumber, whereEachPersonIsOnWhatsApp, theOpeningGoesToTheNumberJustAdded, theOpeningsGoToANumberJustSaved } from './the-lead-adds-a-whatsapp-number';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
@@ -57,7 +58,7 @@ import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiti
 import { whatTheDocumentsSay, stillNeedsSomethingInWriting } from './what-the-documents-say';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from '../conversation/a-prompt-that-ran-out-of-room-says-so';
 import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS } from '../whatsapp/a-connection-that-works';
-import { daysRemaining, deadlineOf, clockStartsAt } from './when-the-clock-starts';
+import { daysRemaining, deadlineOf, clockStartsAt, theLastDayOf } from './when-the-clock-starts';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
@@ -90,7 +91,6 @@ import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { theGlanceAsThisReaderMayReadIt, whatIsInTheWay } from './what-a-manager-needs-at-a-glance';
-import { totalSessionsFor } from './session-count';
 import { readPeopleAndSetup } from './people-and-setup';
 import { readReferencesAndResources, readTheEvidence, aLineToKeep, aKeyFactFrom, type EvidenceQuery } from './references-and-resources';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
@@ -106,7 +106,7 @@ import { AUTHORED_AT_SETUP, WHAT_RECORDING_IT_MEANS } from './what-setup-agreed'
 import { proposalFrom, extractionToolFor, Heard, Proposal, WHO_AND_WHAT_THEY_EXPECT, asContextThenTheSentence, confirmedSay } from './what-the-context-chat-heard';
 import { freeSeatLimitMessage } from '../billing/billing.service';
 import { isCovered, WHAT_COVER_READS } from '../../common/subscription';
-import { theGraceInForce } from '../billing/the-trial-grace';
+import { theGraceInForce, whenTheseOrganisationsPaused } from '../billing/the-trial-grace';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { howManyTheFreePlanCovers } from './a-cohort-is-not-a-payroll';
 import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-was-said';
@@ -128,7 +128,7 @@ import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-sec
 import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { theLeadsWordsAbout } from './the-leads-words-about-someone';
 import { timelineDaysForAChosenEnd } from './session-count';
-import { adminsThisOrg, askedToApproveIt, readsAsAnAdmin, readsTheLeadsPeopleNotes, maySee, groundsAViewerMayList, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from './who-may-read-this-check-in';
+import { adminsThisOrg, askedToApproveIt, readsAsAnAdmin, readsTheLeadsPeopleNotes, maySee, groundsAViewerMayList, whoCanReadWhatYouSay, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from './who-may-read-this-check-in';
 import { EVALUATION_SCENARIOS, isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whoMayConfirmSetup, confirmedByAnAdminSentence, briefChangedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
@@ -705,7 +705,7 @@ export class GroundsService {
     const named = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { label: true, timelineDays: true, cadence: true, cadenceDays: true } as any }).catch(() => null);
     const label = (named as any)?.label ?? '';
     /* One round or many, so the telling cannot promise a person a habit they were never signed up to. */
-    const rounds = totalSessionsFor((named as any)?.timelineDays, (named as any)?.cadence, (named as any)?.cadenceDays) ?? null;
+    const rounds = thePlannedSessionsOf(named as any) ?? null;
     const raw = await Promise.race([
       this.anthropic.respond(THE_TELLING_PROMPT, [{ role: 'user', content: `What this check-in is called: ${label || 'not named'}\nHow many times these people will be asked: ${rounds == null ? 'not set' : rounds <= 1 ? 'once, and only once' : `${rounds} times`}\n\nWhat the person who set this up wrote:\n\n${text}` }] as any),
       new Promise<string>((_, reject) => setTimeout(() => reject(new Error('the telling took too long')), 12_000)),
@@ -1137,7 +1137,7 @@ export class GroundsService {
    * The named lead confirms and begins. They choose whether they are ALSO
    * checking in (the common case - they get a session-1 check-in like any
    * other party) or MANAGING ONLY (they oversee the ground - see submission
-   * status and the released report - but never give their own account).
+   * status and the released report - but never say how it is going in their own words).
    *
    * managingOnly: false (default) -> unchanged behaviour, a session-1 check-in
    * is created and checkInId is returned so the client lands the lead in the
@@ -1365,6 +1365,8 @@ export class GroundsService {
         createdByUserId: true, createdAt: true,
         initiator: { select: { id: true, firstName: true, lastName: true, email: true } },
         participants: {
+          /* Nobody who has left is on the lists Today reads (fix plan 17 November, group C2). */
+          where: { leftAt: null },
           select: {
             id: true, email: true, partyType: true, roleAsDescribed: true, userId: true, managingOnly: true,
             inviteDeliveryStatus: true,
@@ -1461,7 +1463,7 @@ export class GroundsService {
          */
         /* `awaitingOrgApproval`: whether an admin has let them in yet, which every count reads (decision 77). The
            same yes or no the check-in's own read serves (SAFE_PARTICIPANT_SELECT). */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true, inviteHeldAt: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
+        participants: { where: { leftAt: null }, select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true, inviteHeldAt: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
         checkIns: {
           /** `isSetup` so a setup conversation can be kept out of every session count. GW-EXP-6. */
           /**
@@ -1545,7 +1547,7 @@ export class GroundsService {
          */
         /* `awaitingOrgApproval`: whether an admin has let them in yet, which every count reads (decision 77). The
            same yes or no the check-in's own read serves (SAFE_PARTICIPANT_SELECT). */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true, inviteHeldAt: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
+        participants: { where: { leftAt: null }, select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true, inviteHeldAt: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
             checkIns: {
               /** Must match the sibling query above: both feed the same list. GW-EXP-6. */
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true, closedReason: true, optional: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } },
@@ -1601,6 +1603,8 @@ export class GroundsService {
     for (const orgId of new Set([...orgGrounds, ...participantGrounds].map((g: any) => g.organizationId).filter(Boolean))) {
       handsOnIn.set(orgId as string, await theReleaseOneSalesBoardIsOn(this.prisma, orgId as string));
     }
+    /* When each organisation paused, if it is paused now: the one owner of when a round could be answered reads it (a-round-that-could-be-answered.ts). */
+    const pausedOn = await whenTheseOrganisationsPaused(this.prisma, [...handsOnIn.keys()], new Date()).catch(() => new Map<string, Date>());
     const setupFor = (g: any) => {
       if (userId && g.initiatorId === userId) return { leadHasLeft: false, mayChangeSetup: true };
       const lead = g.initiatorId && g.organizationId === organizationId && mayAdminHere(g) ? leadAccounts.get(g.initiatorId) : null;
@@ -1679,7 +1683,7 @@ export class GroundsService {
           participants: listedPeople, checkIns: checkIns as any, scenario: (rest as any).scenario ?? null,
           timelineDays: (rest as any).timelineDays ?? null, cadence: (rest as any).cadence ?? null, cadenceDays: (rest as any).cadenceDays ?? null, runsUntilEnded: !!(rest as any).runsUntilEnded,
         /* By name, as the check-in's page asks it: the sentence is served only to a reader shown the others (theCountAsServed). */
-        }, { handOn: handsOnIn.get((rest as any).organizationId) === true, leave: leaveOnTheList, names: { readerUserId: userId ?? null } });
+        }, { handOn: handsOnIn.get((rest as any).organizationId) === true, leave: leaveOnTheList, names: { readerUserId: userId ?? null }, pausedFrom: pausedOn.get((rest as any).organizationId) ?? null });
         const going = howACheckInIsGoing({
           /* The session the check-in's clock names, the one the board, the page and Ask count (this-sessions-count.ts). The people
              here are already marked for who has not joined and who is not let in, above. */
@@ -1848,7 +1852,7 @@ export class GroundsService {
           checkIns: checkInsShown,
           /* The one count (the-count-as-served.ts): who has answered each session, over the people this reader may see, and the clock's
              session said, to whoever is shown the others. */
-          theCount: theCountAsServed({ session: listedCount.clock.currentSession, said: listedCount.count }, listedCount.bySession, { onlyThese: hidePeers ? shown : null }),
+          theCount: theCountAsServed({ session: listedCount.clock.currentSession, said: listedCount.count, planned: listedCount.clock.plannedSessions }, listedCount.bySession, { onlyThese: hidePeers ? shown : null }),
           dependencies: dependenciesShown,
           peersVisibleEffective,
           /* Decision 17, said plainly: on a check-in about one person the switch never reaches them. */
@@ -1904,8 +1908,13 @@ export class GroundsService {
               const sides = (Array.isArray(d?.positions) ? d.positions : Array.isArray(d?.perspectives) ? d.perspectives : [])
                 .map((x: any) => String(x?.participantLabel ?? x?.who ?? '').trim().split(/\s+/)[0])
                 .filter((n: string) => !!n && !/^(participant|party|colleague)$/i.test(n));
-              const who = [...new Set(sides)] as string[];
-              if (topic && who.length >= 2) return peopleSaidDifferentThingsAbout(topic, who.length === 2 ? `${who[0]} and ${who[1]}` : `${who.slice(0, -1).join(', ')} and ${who[who.length - 1]}`);
+              /* Only people who are in the check-in and have signed in: a person who left, or was invited and never opened it, said nothing, so is not
+                 one of the people who see it differently (run 6: Joel's Today named Ruth). The reader is "You", first. */
+              const firstNameOf = (p: any) => String(p?.user?.firstName ?? p?.nameGiven ?? '').trim().split(/\s+/)[0];
+              const notThere = new Set(((allParticipants ?? []) as any[]).filter((p) => p.leftAt || !p.userId).map(firstNameOf).filter(Boolean));
+              const who = [...new Set(sides)].filter((n) => !notThere.has(n as string)) as string[];
+              const ordered = [...who.filter((n) => n === 'You'), ...who.filter((n) => n !== 'You')];
+              if (topic && ordered.length >= 2) return peopleSaidDifferentThingsAbout(topic, ordered.length === 2 ? `${ordered[0]} and ${ordered[1]}` : `${ordered.slice(0, -1).join(', ')} and ${ordered[ordered.length - 1]}`);
             }
             return null;
           })(),
@@ -2005,7 +2014,7 @@ export class GroundsService {
     let ground = await this.prisma.ground.findFirst({
       where: { id, organizationId },
       include: {
-        participants: { select: SAFE_PARTICIPANT_SELECT },
+        participants: { where: { leftAt: null }, select: SAFE_PARTICIPANT_SELECT },
         checkIns: { select: CHECKIN_SELECT },
         /* For `guestIn`: whose workspace this check-in belongs to. And whether it has a WhatsApp
            number, which is what the "where people answer this" setting needs - riding along on a
@@ -2060,7 +2069,7 @@ export class GroundsService {
         ground = await this.prisma.ground.findUnique({
           where: { id },
           include: {
-            participants: { select: SAFE_PARTICIPANT_SELECT },
+            participants: { where: { leftAt: null }, select: SAFE_PARTICIPANT_SELECT },
             checkIns: { select: CHECKIN_SELECT },
             /* Same as the primary read: this is the cross-org path, and it is the one where the
                name is actually needed. The WhatsApp connection rides along for the same reason it
@@ -2123,7 +2132,7 @@ export class GroundsService {
        header only spoke up in the last three of them. The same clock, read as a date, for every check-in. */
     /* A daily check-in nobody gave an end runs until the lead ends it: no end date and no count are shown (E2). */
     const noEnd = aDailyCheckInWithNoEndSaid(ground as any);
-    const endsOn = noEnd ? null : deadlineOf(ground as any);
+    const endsOn = noEnd ? null : theLastDayOf(ground as any);
     /*
      * ONE COUNT FOR THE SESSIONS, THE BOARD'S OWN (request 101 f). Read from every check-in row before any
      * reader's wall, because it names and counts nobody: the open round among the people who check in,
@@ -2149,6 +2158,7 @@ export class GroundsService {
         leave: await leaveOfThePeopleOn(this.prisma as any, [id]).catch(() => undefined),
         /* By name, for the reader the count is served to (thisSession is withheld from a reader walled from the others). */
         names: { readerUserId: requestingUserId ?? null },
+        pausedFrom: (await whenTheseOrganisationsPaused(this.prisma, [(ground as any).organizationId], new Date()).catch(() => new Map<string, Date>())).get((ground as any).organizationId) ?? null,
       },
     );
 
@@ -3030,6 +3040,8 @@ export class GroundsService {
       leadFirstName,
       /** Whether the lead is also a party who answers a check-in, not only someone who manages it. */
       leadAnswersToo,
+      /** The one sentence about who reads what a participant says, from its one owner (who-may-read-this-check-in.ts), so no screen words it itself. */
+      whoCanReadWhatYouSay: whoCanReadWhatYouSay(ground as any, leadFirstName),
       /** Whether more than one party answers this check-in - a yes/no, not a count. See the note above. */
       aTeamReportComes,
       /** Whether this round already has two people counted in it - a yes/no. See the note above. */
@@ -3040,7 +3052,7 @@ export class GroundsService {
        * see: on a check-in whose people do not see each other, a participant's own row alone, as the roster above, and no sentence.
        */
       theCount: theCountAsServed(
-        { session: sessionClock.currentSession, said: thisSessionsCount },
+        { session: sessionClock.currentSession, said: thisSessionsCount, planned: sessionClock.plannedSessions },
         eachSessionsCount,
         { onlyThese: hidePeers ? new Set(participantsWithCheckIns.map((p: any) => p.id)) : null },
       ),
@@ -3460,7 +3472,7 @@ export class GroundsService {
     if (gaps.length === 0 && history.length === 0) {
       return {
         reply:
-          'This check-in has what it needs: how long it runs, how often people check in, what doing well looks like, who is in it, and something in writing for everybody to work from. Nothing here needs fixing before the first session.',
+          'This check-in has what it needs: how long it runs, how often people check in, what doing well looks like, who is in it, and something in writing for everybody to work from. Nothing here needs fixing before the first check-in.',
         gaps: [],
         done: true,
       };
@@ -6675,7 +6687,7 @@ export class GroundsService {
    * anything. Reusing the token means every email ever sent to this address
    * points at the same, still-live link.
    */
-  async resendParticipantInvite(groundId: string, participantId: string, organizationId: string, userId: string, role: string): Promise<{ message: string }> {
+  async resendParticipantInvite(groundId: string, participantId: string, organizationId: string, userId: string, role: string): Promise<{ message: string; sent: boolean }> {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /*
@@ -6716,14 +6728,17 @@ export class GroundsService {
     });
 
     const initiator = await this.prisma.user.findUnique({ where: { id: ground.initiatorId } });
+    /* The mail door writes what became of the mail on the context it is given: 'suppressed' when the same mail already went today. */
+    const delivery: any = { kind: 'REMINDER', participantId: participant.id, groundId: ground.id };
     await this.email.sendTheInviteThisGroundSends(
       ground,
       participant.email,
       `${initiator?.firstName ?? 'A founder'}`,
       token,
       undefined,
-      { kind: 'REMINDER', participantId: participant.id, groundId: ground.id },
+      delivery,
     );
+    const sent = delivery.outcome !== 'suppressed';
 
     // Stamp notifiedAt only after the email succeeds so the field reliably
     // reflects actual notification, not just intent to notify.
@@ -6733,7 +6748,8 @@ export class GroundsService {
       data: { notifiedAt: new Date(), inviteHeldAt: null },
     });
 
-    return { message: 'Invite resent' };
+    /* Said to the lead as it was: sent, or already sent today (end-to-end check of 16 November, M-8: she pressed it twice and read nothing). */
+    return { message: sent ? 'Invite resent' : 'The same invite already went today', sent };
   }
 
   /**
@@ -6951,7 +6967,7 @@ export class GroundsService {
       daysOpen,
       endStateOptions,
       gapSummary,
-      note: 'This brief is for use with a facilitator. It contains structural information only, not session content.',
+      note: 'This brief is for use with a facilitator. It contains structural information only, not check-in content.',
     };
   }
 
@@ -7498,7 +7514,7 @@ export class GroundsService {
         }
       }
       if (open.length) {
-        this.logger.log(`Ground ${groundId}: working days changed, ${open.length} first-session gate(s) checked against them.`);
+        this.logger.log(`Ground ${groundId}: working days changed, ${open.length} first-check-in gate(s) checked against them.`);
       }
     }
 
@@ -7609,11 +7625,11 @@ export class GroundsService {
        * Each person's next session is made now, on the check-in's own schedule, as it would have been had it never stalled.
        */
       await this.theNextSessionsAfterReopening(groundId).catch((err: any) =>
-        this.logger.warn(`Could not open the next sessions for ${groundId} after it reopened: ${err?.message}`));
+        this.logger.warn(`Could not open the next check-ins for ${groundId} after it reopened: ${err?.message}`));
     } else if (requestedDays !== undefined && !isShut(ground.status) && await this.itNowEndsLater(groundId, ground as any)) {
       /* Given more time while still running: a session kept as the closing one is not the closing one now (Fee notes, two-week check). */
       await this.theNextSessionsAfterReopening(groundId).catch((err: any) =>
-        this.logger.warn(`Could not open the next sessions for ${groundId} after it was given more time: ${err?.message}`));
+        this.logger.warn(`Could not open the next check-ins for ${groundId} after it was given more time: ${err?.message}`));
     }
     return updated;
   }
@@ -8081,7 +8097,7 @@ export class GroundsService {
     });
     // Once a session has picked it up it is part of what was asked about, and taking it back
     // afterwards would edit the run-up to a conversation that already happened.
-    if (count === 0) throw new NotFoundException('Not found, or it has already been raised in a session.');
+    if (count === 0) throw new NotFoundException('Not found, or it has already been raised in a check-in.');
     return { deleted: true };
   }
 
@@ -8698,20 +8714,7 @@ export class GroundsService {
     /* Decision 133: the lead checks in when they choose, so a round never waits on them and counts
        them only when they answered it (the-lead-checks-in-when-they-choose.ts). */
     const active = await this.prisma.groundParticipant.findMany({
-      where: {
-        groundId,
-        AND: [whoASessionCounts(sessionNumber, AN_ANSWER)],
-        OR: [
-          { userId: { not: null } },
-          { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },
-          // Invited, not yet accepted, and the invitation has not run out.
-          {
-            userId: null,
-            invitedAt: { not: null },
-            inviteTokenExpiresAt: { gt: new Date() },
-          },
-        ],
-      },
+      where: { groundId, ...whoARoundWaitsFor(sessionNumber) },
       select: { id: true, userId: true },
     }).then(async (rows: any[]) => {
       /* Nobody an admin has not let in yet, unless they answered anyway (decision 77): the session
@@ -8906,10 +8909,10 @@ export class GroundsService {
     const confScore = Math.min(5, completedCount + (avg >= 0.5 ? 1 : 0));
     const confLabel = confScore >= 4 ? 'High' : confScore >= 2 ? 'Building' : 'Early';
     const confDesc = confScore >= 4
-      ? 'Multiple sessions cross-referenced. Your record carries strong evidential weight.'
+      ? 'Multiple check-ins cross-referenced. Your record carries strong evidential weight.'
       : confScore >= 2
-        ? 'Your record is taking shape. Each session adds depth and specificity to the picture.'
-        : 'Your record is just beginning. One more session will start to show the full picture.';
+        ? 'Your record is taking shape. Each check-in adds depth and specificity to the picture.'
+        : 'Your record is just beginning. One more check-in will start to show the full picture.';
 
     /*
      * THEIR OWN PATTERNS, AND NOBODY ELSE'S, after three periods and in plain words. See

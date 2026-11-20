@@ -51,12 +51,12 @@ describe('the board at a glance: facts from the board as served', () => {
     expect(g.lines.teamToday).toBe('2 waiting on someone; 1 has not answered');
     expect(g.lines.patterns).toBe('4 patterns about how the work is going');
     expect(g.lines.whoCheckedIn).toBe('Today: 5 of 6 checked in');
-    expect(g.lines.yourNextStep).toBe('Only you. You haven’t checked in this session');
+    expect(g.lines.yourNextStep).toBe('Only you. You haven’t checked in this check-in');
     expect(g.lines.workPlan).toBe('2 open, 1 done, 1 not done');
     expect(g.lines.blockers).toBe('2 blocking. The biggest: Price objections, raised 9 times');
     expect(g.lines.waitingOnOtherTeams).toBe('2: Operations, Finance');
     expect(g.lines.openIssues).toBe('1 thing people see differently, 2 decisions needed');
-    expect(g.lines.reports).toBe('2 sessions so far, each with its reports');
+    expect(g.lines.reports).toBe('2 check-ins so far, each with its reports');
   });
 
   it('gives each box its two most useful facts', () => {

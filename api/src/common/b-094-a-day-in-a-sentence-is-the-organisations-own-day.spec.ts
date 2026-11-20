@@ -18,7 +18,7 @@ describe('B-094: the day in a sentence', () => {
       expect(howOftenItWasRaised([{ at: HALIMA_CHECKED_IN, checkInId: null }] as any, NOW)?.says).toBe('This was raised once, on 9 October.');
       expect(theDayInWords(HALIMA_CHECKED_IN, NOW)).toBe('9 October');
       const rows = [{ sessionNumber: 2, status: 'NOT_STARTED', availableFrom: new Date('2026-10-15T22:57:00Z') }];
-      expect(whatEachSessionSays(2, rows as any, 1, NOW).says).toBe('Session 2 opens on 16 October.');
+      expect(whatEachSessionSays(2, rows as any, 1, NOW).says).toBe('Check-in 2 opens on 16 October.');
     });
     expect(theDayZone()).toBe('Africa/Lagos');
   });

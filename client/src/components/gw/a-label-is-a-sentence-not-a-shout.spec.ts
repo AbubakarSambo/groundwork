@@ -32,7 +32,6 @@ const FILES = [
   'the-shape-every-close-is-drawn-in.tsx',
   'WhatWasTakenFromWhatYouSaid.tsx',
   'TheFiveThingsThatMakeItCheckable.tsx',
-  'HowSpecificThisSessionWas.tsx',
   'WhatToProbeThemOn.tsx',
   'SharedReportForAParty.tsx',
   'the-shared-picture-a-party-reads.tsx',

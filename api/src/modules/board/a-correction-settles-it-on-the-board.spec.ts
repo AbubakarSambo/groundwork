@@ -19,10 +19,10 @@ const REPORT = {
   divergences: [{
     topic: 'The value of the signed deal with Greenfield Supermarket is reported differently in the same week.',
     atStake: 'If sales values are not consistent, the total revenue picture is unreliable.',
-    evidence: [`In one session, ${NGOZI_LABEL}'s record celebrates the Greenfield deal as being 'in the bag' for KES 120,000.`],
+    evidence: [`In one check-in, ${NGOZI_LABEL}'s record celebrates the Greenfield deal as being 'in the bag' for KES 120,000.`],
     positions: [
       { view: `${NGOZI_LABEL} first reported the Greenfield deal as 25 units for KES 120,000.`, participantLabel: NGOZI_LABEL },
-      { view: `In a later session the same week, ${NGOZI_LABEL} stated the same deal was for KES 125,000.`, participantLabel: NGOZI_LABEL },
+      { view: `In a later check-in the same week, ${NGOZI_LABEL} stated the same deal was for KES 125,000.`, participantLabel: NGOZI_LABEL },
     ],
     settledBy: 'Confirm the final amount for the Greenfield deal and update the record.',
   }],

@@ -1,7 +1,11 @@
 import { chunk } from '../knowledge/a-document-is-not-a-card';
+import { WHAT_IS_IN_IT_PROMPT, aReadableTitle } from '../knowledge/the-desk';
 import { askName, isAMadeUpWorkspaceName } from './ask-name';
 
 /**
+ * AN ADMIN OR A LEAD ADDS A DOCUMENT FOR THE WHOLE ORGANISATION THROUGH ASK (S7, 20 November 2026: leads too, and it goes
+ * on the Desk with its summary, the same way a document added on the Desk does)
+ *
  * AN ADMIN ADDS A DOCUMENT FOR THE WHOLE ORGANISATION THROUGH ASK (Hafsah's fix list, item 3, 14 October 2026:
  * "Give admins the same 'add a document' in Ask that leads have, said back before anything is kept").
  *
@@ -13,7 +17,8 @@ import { askName, isAMadeUpWorkspaceName } from './ask-name';
  * SAID BACK BEFORE ANYTHING IS KEPT. The file is read, and what it holds is said back with a yes and a no. Only the
  * yes adds it (KnowledgeService.ingestDocument, the same split into cards the developer API uses). A no, or
  * changing the subject, keeps nothing: the words held while the question waits are taken off the waiting row.
- * Only an admin of the organisation may do this, checked on the server when the file arrives and again at the yes.
+ * Only an admin or a lead of the organisation may do this (the-desk.ts, `mayAddToTheDesk`), checked on the server when the
+ * file arrives and again at the yes.
  */
 
 export const ORGANISATION_DOCUMENT_KIND = 'organisation_document';
@@ -37,24 +42,25 @@ export function theOrganisation(name?: string | null): string {
   return n && !isAMadeUpWorkspaceName(n) ? n : 'your organisation';
 }
 
-/** "Msingi Foods' handbook", "Baridi Appliances' handbook", "Kijani's handbook", "your organisation's handbook". */
-export function itsHandbook(name?: string | null): string {
+/** "Msingi Foods' Desk", "Kijani's Desk", "your organisation's Desk". */
+export function itsDesk(name?: string | null): string {
   const n = theOrganisation(name);
-  return `${n}${/s$/i.test(n) ? "'" : "'s"} handbook`;
+  return `${n}${/s$/i.test(n) ? "'" : "'s"} Desk`;
 }
 
 export const OFFER_FOR_THE_ORGANISATION = (name?: string | null): string =>
   `It will be for the whole of ${theOrganisation(name)}. When you choose the file, I will read it and tell you what is in it. Nothing is added until you say yes.`;
 
-export const ONLY_AN_ADMIN_ADDS_ONE = (name?: string | null): string =>
-  `Only an admin of ${theOrganisation(name)} can add a document for the whole organisation.`;
+export const NOT_YOURS_TO_ADD = (name?: string | null): string =>
+  `Only an admin or a lead of ${theOrganisation(name)} can add a document for the whole organisation.`;
 
 export const NO_WORDS_IN_IT = (title: string): string =>
   `I could not find any words in ${title}, so there is nothing to add. If it is a scan, try a copy that has the text in it.`;
 
 /** The title a person reads: the file's name without its ending. */
 export function aTitleFor(fileName: string): string {
-  return (fileName ?? '').replace(/\.[a-z0-9]{1,5}$/i, '').replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim() || 'The document';
+  /* Readable, not the file's slug: "msingi-leave-policy.pdf" is "Msingi leave policy" (round 2, T4). One maker, in the-desk.ts. */
+  return aReadableTitle(fileName);
 }
 
 function inAList(items: string[]): string {
@@ -74,8 +80,9 @@ export function itsParts(title: string, text: string): { count: number; headings
 }
 
 /** What the admin reads after the file is read, before anything is kept. */
-/* What is in it, said in two or three plain sentences by the model before anything else (26 October 2026: it said only how many parts). */
-export const WHAT_IS_IN_IT_PROMPT = 'Say in two or three short, plain sentences what this document holds: what it is, and the facts in it that matter. No introduction, no headings, no lists, no advice. Use "you" for the reader if you need to, never "the user".';
+/* What is in it, said in two or three plain sentences by the model before anything else (26 October 2026: it said only how many parts).
+   Kept with the document as its summary on the Desk; the prompt lives with the Desk (the-desk.ts). */
+export { WHAT_IS_IN_IT_PROMPT };
 
 export function whatTheDocumentSays(title: string, text: string, name?: string | null, whatIsInIt?: string | null): { body: string; summary: string } {
   const { count, headings } = itsParts(title, text);
@@ -87,11 +94,11 @@ export function whatTheDocumentSays(title: string, text: string, name?: string |
       ? `It has ${count} parts. They cover ${inAList(more > 0 ? [...shown, `${more} more`] : shown)}.`
       : `It has ${count} parts.`;
   const inIt = String(whatIsInIt ?? '').replace(/\s+/g, ' ').trim().slice(0, 600);
-  const body = `I have read ${title}. ${inIt ? `${inIt} ` : ''}${parts}\n\nNothing is added yet. If you say yes, it becomes part of ${itsHandbook(name)}. ${askName(name)} answers from it, and check-ins are read with it in mind. If you say no, nothing from it is kept.`;
-  return { body, summary: `Add ${title} to ${itsHandbook(name)}?` };
+  const body = `I have read ${title}. ${inIt ? `${inIt} ` : ''}${parts}\n\nNothing is added yet. If you say yes, it goes on ${itsDesk(name)}, where everyone in ${theOrganisation(name)} can read it. ${askName(name)} answers from it, and check-ins read it when it applies. If you say no, nothing from it is kept.`;
+  return { body, summary: `Add ${title} to ${itsDesk(name)}?` };
 }
 
-export const ADDED_TO_THE_HANDBOOK = (title: string, parts: number, name?: string | null): string =>
-  `I have added ${title} to ${itsHandbook(name)}, ${parts === 1 ? 'as one part' : `in ${parts} parts`}. ${askName(name)} answers from it from now on.`;
+export const ADDED_TO_THE_DESK = (title: string, parts: number, name?: string | null): string =>
+  `I have added ${title} to ${itsDesk(name)}, ${parts === 1 ? 'as one part' : `in ${parts} parts`}. ${askName(name)} answers from it from now on, and check-ins read it when it applies.`;
 
 export const NOT_ADDED = (title: string): string => `I have not added ${title}. Nothing from it was kept.`;

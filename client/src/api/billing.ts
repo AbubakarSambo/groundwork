@@ -150,12 +150,12 @@ export const PLAN_PRICES: Record<SubscriptionPlan, string> = Object.fromEntries(
  * the source of truth for how it is DESCRIBED.
  */
 export const PLAN_FEATURES: Record<SubscriptionPlan, string[]> = {
-  STARTER: ['Unlimited check-ins', 'Unlimited sessions', 'Unlimited reports', 'Admin dashboard'],
-  SMALL_TEAM: ['Unlimited check-ins', 'Unlimited sessions', 'Unlimited reports', 'Admin dashboard'],
-  GROWTH: ['Unlimited check-ins', 'Unlimited sessions', 'Unlimited reports', 'Admin dashboard'],
-  BUSINESS: ['Unlimited check-ins', 'Unlimited sessions', 'Unlimited reports', 'Admin dashboard'],
-  SCALE: ['Unlimited check-ins', 'Unlimited sessions', 'Unlimited reports', 'Admin dashboard'],
-  ENTERPRISE: ['Unlimited check-ins', 'Unlimited sessions', 'Unlimited reports', 'Dedicated account manager'],
+  STARTER: ['Unlimited check-ins', 'Unlimited check-ins', 'Unlimited reports', 'Admin dashboard'],
+  SMALL_TEAM: ['Unlimited check-ins', 'Unlimited check-ins', 'Unlimited reports', 'Admin dashboard'],
+  GROWTH: ['Unlimited check-ins', 'Unlimited check-ins', 'Unlimited reports', 'Admin dashboard'],
+  BUSINESS: ['Unlimited check-ins', 'Unlimited check-ins', 'Unlimited reports', 'Admin dashboard'],
+  SCALE: ['Unlimited check-ins', 'Unlimited check-ins', 'Unlimited reports', 'Admin dashboard'],
+  ENTERPRISE: ['Unlimited check-ins', 'Unlimited check-ins', 'Unlimited reports', 'Dedicated account manager'],
 }
 
 /**
@@ -211,6 +211,8 @@ export interface LivePricing {
   free: { groundLimit: number; memberLimit: number }
   /** The free trial (Hafsah, 26 September). Billing grants it while it is on (U.19); say nothing while off. */
   trial?: { on: boolean; teamsUnder: number; months: number }
+  /** The anchor's own free month (anchor piece 34): it grants the same free month, so a page that offers one says it while it is on. */
+  anchorTrial?: { on: boolean; months: number; people: number }
 }
 
 /**

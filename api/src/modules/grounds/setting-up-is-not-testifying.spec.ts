@@ -67,10 +67,10 @@ describe('GW-EXP-6: but it is not a session', () => {
       to how-a-check-in-is-going.ts - where the board and the boards page now read it from too. The
       rule never changed: a setup row is not a session, and a round is done only when every party's
       row for it is completed. It is asserted where the rule lives, which is also the only place it
-      can now be broken.
+      can now be broken (the-sessions-done.ts since 12 November; the board, People and setup and a person's page all read it).
     */
-    const GOING = strip(readFileSync(join(__dirname, 'how-a-check-in-is-going.ts'), 'utf8'));
-    expect(GOING).toMatch(/\.filter\(\(ci\) => !\(ci as any\)\.isSetup\)/);
+    const GOING = strip(readFileSync(join(__dirname, 'the-sessions-done.ts'), 'utf8'));
+    expect(GOING).toMatch(/\.filter\(\(ci\) => !ci\.isSetup\)/);
     expect(GOING).toMatch(/const numbers = \[\.\.\.new Set\(sessions\.map/);
     expect(GOING).toMatch(/sessions\.filter\(\(ci\) => ci\.sessionNumber === n\)/);
     /** And the old form, which counted every row including a setup one, is gone. */

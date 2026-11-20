@@ -44,16 +44,16 @@ describe('the setup conversation', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Set up a check-in' })).toBeTruthy()
     /* Changed in F5 (stage 2): the opening is one line with the measured length. Changed 3 November evening (Hafsah: no cards in the
        conversation): the kind of check-in and its meaning are in the summary, with It’s something else, and End session is on screen. */
-    expect(document.body.textContent).toContain('This takes about five minutes. You can stop any time with End session.')
+    expect(document.body.textContent).toContain('This takes about five minutes. You can stop any time with End check-in.')
     expect(screen.queryByRole('region', { name: 'This sounds like' })).toBeNull()
     const summary = screen.getByRole('complementary', { name: 'What is set so far' })
     expect(summary.textContent).toContain('Help someone get back on track')
     expect(summary.textContent).toContain('Both sides on the concern, before the conversation.')
     expect(screen.queryByRole('button', { name: 'Confirmed' })).toBeNull()
     expect(screen.getByRole('button', { name: 'It’s something else' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'End session' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'End check-in' })).toBeTruthy()
     const page = document.body.textContent ?? ''
-    for (const old of ['Give this a name', 'Getting started', 'session is about 10 minutes', 'What is going on', 'Save & invite', 'Pick a different situation', 'Set up as', 'organic chickens', 'Fills in as you talk', 'about ten minutes']) {
+    for (const old of ['Give this a name', 'Getting started', 'check-in is about 10 minutes', 'What is going on', 'Save & invite', 'Pick a different situation', 'Set up as', 'organic chickens', 'Fills in as you talk', 'about ten minutes']) {
       expect(page, old).not.toContain(old)
     }
   })
@@ -117,7 +117,7 @@ describe('the setup conversation', () => {
       sessions: 1, cadence: 'WEEKLY', cadenceChosen: true, plannedFrom: { timelineDays: 42, cadence: 'WEEKLY' },
       onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
     })
-    await waitFor(() => expect(screen.getByRole('button', { name: 'End session' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'End check-in' })).toBeTruthy())
     expect(document.body.textContent).not.toMatch(/check-ins? planned|Session 1 in progress/)
   })
 })

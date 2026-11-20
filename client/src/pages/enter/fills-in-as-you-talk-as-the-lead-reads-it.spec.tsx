@@ -52,7 +52,8 @@ describe('the panel, as the lead reads it', () => {
     expect(screen.getAllByText('Sales team, Q3')).toHaveLength(1)
     expect(screen.getByText('Set goals and keep the team on track')).toBeTruthy()
     const [often, when, who] = screen.getAllByRole('listitem')
-    expect(often.textContent).toBe('How oftenEvery day, weekdays')
+    /* S18 (7 November): one wording for how often, the same as every other page. Was 'Every day, weekdays'. */
+    expect(often.textContent).toBe('How oftenEvery weekday, Monday to Friday')
     expect(when.textContent).toBe('When it runs1 July to 30 September')
     expect(within(who).getByText('4 of 6 added')).toBeTruthy()
     expect(within(who).getByText('Miriam Wanjiku')).toBeTruthy()

@@ -48,8 +48,8 @@ describe('B-145: the title no longer contradicts the page', () => {
   it('is titled for what the page actually does, not "Add sessions"', async () => {
     open()
     expect(await screen.findByText('Use an access code')).toBeInTheDocument()
-    expect(screen.queryByText('Add sessions to this check-in')).toBeNull()
-    expect(await screen.findByText(/Sessions are not charged for/)).toBeInTheDocument()
+    expect(screen.queryByText('Add check-ins to this check-in')).toBeNull()
+    expect(await screen.findByText(/Check-ins are not charged for/)).toBeInTheDocument()
     expect(document.body.textContent).not.toMatch(/tier/i)
     expect(document.body.textContent).not.toMatch(/cap\b/i)
   })

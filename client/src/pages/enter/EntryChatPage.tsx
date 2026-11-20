@@ -60,6 +60,7 @@ import { whatIsSetAndWhatIsNot } from '@/components/gw/when-the-check-ins-land'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 import { Button, Callout, Note, Section, TextField, TextArea, Bubble, Composer, Modal, Mark, GroundworkIsWriting } from '@/components/gw/ui'
 import { whatTheServerSaid } from '@/lib/what-the-server-said'
+import { GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
 
 /*
  * A COLLEAGUE ON THE INVITE LIST, BY ID (U.4). The list of colleagues carries no addresses, so a
@@ -81,13 +82,13 @@ const A_COLLEAGUE = 'colleague:'
  */
 export function namesFromTheirSetupWords(entries: string[], theirWords: string[], typed: Record<string, string> = {}): Record<string, string> {
   const out: Record<string, string> = { ...typed }
-  const said = theirWords.join(' ')
+  const said = theirWords.join('\n')
   for (const e of entries) {
     const address = e.split(/\s+[-–]\s+/)[0].trim().toLowerCase()
     if (!address.includes('@') || out[address]) continue
     const first = address.split('@')[0].split(/[._-]/)[0]
     if (first.length < 2) continue
-    const m = new RegExp(`\\b(${first.charAt(0).toUpperCase()}${first.slice(1)})\\s+([A-Z][a-z’'-]+)\\b`).exec(said)
+    const m = new RegExp(`\\b(${first.charAt(0).toUpperCase()}${first.slice(1)})[ \\t]+([A-Z][a-z’'-]+)\\b`).exec(said)
     if (m) out[address] = `${m[1]} ${m[2]}`
   }
   return out
@@ -192,10 +193,6 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   return <div className="gwui-ec-field-label">{children}</div>
 }
 
-function CardTitle({ children, weight = 600 }: { children: React.ReactNode; weight?: 600 | 700 }) {
-  return <div className={`gwui-ec-card-title${weight === 700 ? ' gwui-ec-card-title-700' : ''}`}>{children}</div>
-}
-
 /** The hairline either side of an "or" divider. */
 function Rule() {
   return <div className="gwui-ec-rule" />
@@ -286,15 +283,15 @@ export function sessionHasClosed(res: { reply: string; sessionComplete?: boolean
 
 const SESSION_END_PATTERNS = [
   'your check-in is complete',
-  'your session is complete',
+  'your check-in is complete',
   'your contribution is now on record',
   'that is now on record',
   'i have enough to work with',
   'your check-in is recorded',
   // Broadened so the AI inviting a close (however it phrases it) surfaces the prompt,
   // not only the six exact strings above.
-  'you can end this session',
-  'you can end the session',
+  'you can end this check-in',
+  'you can end the check-in',
   'ready to submit',
   'ready to end',
   'submit your answers',
@@ -346,7 +343,8 @@ export const ONBOARD_READY_CLOSER =
    * a claim that nothing else was left, flatly contradicted two inches away. Said instead as what
    * is actually true: there is enough from the conversation itself to move on.
    */
-  'Groundwork has enough from the conversation to set this up. Here is what you said.'
+  /* One voice, "I" (Hafsah's fixed rule, 3 November 2026; staging check S15): Groundwork never names itself in the third person. */
+  'I have enough from the conversation to set this up. Here is what you said.'
 // The reply to actually display: when the endpoint signals ready but the reply
 // still asks a question, show the clean closer instead so no question is
 // stranded. Otherwise show the reply verbatim.
@@ -1155,7 +1153,7 @@ export function groupOf(card: { cardKey: string; scenario: string }): string {
  * takes and how to stop, added in front of the first message she reads, which stays as it was; and one line when setup is done.
  */
 /* The target journey's opening, one line (F5, stage 2), with the measured length from its one owner. */
-export const THE_SETUP_LINE = `This takes ${SETUP_TAKES}. You can stop any time with End session.`
+export const THE_SETUP_LINE = `This takes ${SETUP_TAKES}. You can stop any time with End check-in.`
 export function theSetupIsDoneSaying(firstOpensOn: string | null): string {
   const d = firstOpensOn ? new Date(`${firstOpensOn}T12:00:00Z`) : null
   const day = d && !isNaN(d.getTime()) ? whenItWas(d, 'weekdayAndDay', 'UTC') : null
@@ -1290,25 +1288,21 @@ export function whoIsWaitingSentence(who: string[]): string {
  * sales team of four selling solar home kits across Nyanza. I want a weekly check-in ..." and her check-in was
  * named "A check-in at Lakeshore Solar", which tells her nothing. The name is built from a few fixed words
  * only, never from her own sentence, so nothing she wrote about a person reaches an invitation's subject line.
+ *
+ * NAMED FROM WHAT IT IS ABOUT, NEVER FROM HOW OFTEN OR WHO RUNS IT (staging check S17 and S18, 4 November 2026).
+ * "Weekly sales check-in" was read on a check-in that runs every weekday: how often is said by the one cadence
+ * wording, never by the name. "Stella's check-in" said only who runs it, and the invitation then read "the
+ * Stella's check-in". The name is the kind of work: "Sales updates".
  */
 const KINDS_OF_WORK: [RegExp, string][] = [
-  [/\b(?:sales?|sell(?:s|ing)?|sold|customers?)\b/i, 'sales'],
-  [/\b(?:projects?|rollout|launch)\b/i, 'project'],
-  [/\b(?:stock|warehouse|deliver(?:y|ies)?|dispatch|operations?|orders?|waste|wasted)\b/i, 'operations'],
-  [/\b(?:new hire|onboard(?:ing)?)\b/i, 'onboarding'],
-]
-const HOW_OFTEN: [RegExp, string][] = [
-  [/\b(?:weekly|every week|each week)\b/i, 'weekly'],
-  [/\b(?:fortnightly|every two weeks)\b/i, 'fortnightly'],
-  [/\b(?:monthly|every month|each month)\b/i, 'monthly'],
+  [/\b(?:sales?|sell(?:s|ing)?|sold|customers?)\b/i, 'Sales updates'],
+  [/\b(?:projects?|rollout|launch)\b/i, 'Project updates'],
+  [/\b(?:stock|warehouse|deliver(?:y|ies)?|dispatch|operations?|orders?|waste|wasted)\b/i, 'Operations updates'],
+  [/\b(?:new hire|onboard(?:ing)?)\b/i, 'Onboarding updates'],
 ]
 export function aPlainNameFromWhatTheyDescribed(said?: string): string | undefined {
   const text = said ?? ''
-  const kind = KINDS_OF_WORK.find(([re]) => re.test(text))?.[1]
-  if (!kind) return undefined
-  const often = HOW_OFTEN.find(([re]) => re.test(text))?.[1]
-  const name = `${often ? `${often} ` : ''}${kind} check-in`
-  return name.charAt(0).toUpperCase() + name.slice(1)
+  return KINDS_OF_WORK.find(([re]) => re.test(text))?.[1]
 }
 
 export function fallbackGroundName(situation?: string, where?: string, saidSoFar?: string): string {
@@ -1352,67 +1346,31 @@ export function newHireDays(saidSoFar: string): number {
  * because there is no one person it is about.
  */
 export function newHireGroundNameFallback(peopleNamed: string[] | undefined, days: number): string | undefined {
-  const first = (peopleNamed ?? []).map((p) => p.trim()).filter(Boolean)[0]
-  if (!first) return undefined
+  /* One person named, and only one: with two or more it is a team, and a team is not named after whoever came first. */
+  const named = (peopleNamed ?? []).map((p) => p.trim()).filter(Boolean)
+  if (named.length !== 1) return undefined
+  const first = named[0]
   const firstName = first.split(/\s+/)[0]
   return `${firstName}, first ${days} days`
 }
 
-/**
- * THE KIND OF CHECK-IN A SITUATION IS, FOR A PLAIN DEFAULT NAME (fault 15, coordinator, second
- * round). Not every situation needs its own word here - "Daniel's check-in" is already plain and
- * clear - but a project one is worth naming as a project, the way "Get a new project off to a
- * good start" and "Get a project back on track" both already say what they are about.
- */
-function kindOfCheckIn(situation: string | undefined): string {
-  switch (situation) {
-    case 'NEW_PROJECT':
-    case 'DRIFT':
-    case 'WORKPLAN_BUDGET':
-      return 'project check-in'
-    default:
-      return 'check-in'
-  }
-}
-
-/**
- * THE LEAD'S OWN NAME, NOT THE SITUATION'S LABEL (fault 15, coordinator, second round).
- *
- * Read live: with no name typed, a check-in that was not for a new hire took the situation's own
- * label as its name ("Get a new project off to a good start"), repeated as though it were a
- * title - the same defect the new-hire default (above) already exists to avoid for that one
- * situation. Every check-in a lead runs would otherwise read the same handful of situation labels
- * back at her rather than anything that tells them apart as HERS. `undefined` when there is no
- * lead name to use yet (nobody signed in, nothing typed) - a guess is worse than the plain label.
- */
 /** Said when the save step's name is left empty (local test of staging, 15 October). */
 export const WRITE_YOUR_NAME = 'Write your name, so the people you invite know who is asking.'
-
-export function leadNameGroundNameFallback(leadFirstName: string | undefined, situation: string | undefined): string | undefined {
-  const name = (leadFirstName ?? '').trim()
-  if (!name) return undefined
-  return `${name}'s ${kindOfCheckIn(situation)}`
-}
 
 /**
  * THE NAME A CHECK-IN GETS WHEN THE LEAD LEAVES THE FIELD BLANK, SITUATION-AWARE. The new hire's
  * default is the person it is about, when the conversation has already named them (faults 4 and
- * 6). Every other situation defaults to the lead's own name and the kind of check-in, when one is
- * available (fault 15); `fallbackGroundName`'s own situation label is the last resort, for
- * whichever of the two above has nothing to work with yet.
+ * 6). Every other check-in is named from what it is about (`fallbackGroundName`), never after the
+ * lead: "Stella's check-in" said nothing about the work (staging check S17, 4 November 2026).
  */
 export function effectiveFallbackGroundName(
   situation: string | undefined,
   peopleNamed: string[] | undefined,
   saidSoFar: string,
   where?: string,
-  leadFirstName?: string,
 ): string {
   if (situation === 'NEW_HIRE') {
     const named = newHireGroundNameFallback(peopleNamed, newHireDays(saidSoFar))
-    if (named) return named
-  } else if (situation) {
-    const named = leadNameGroundNameFallback(leadFirstName, situation)
     if (named) return named
   }
   return fallbackGroundName(situation, where, saidSoFar)
@@ -1428,8 +1386,6 @@ export function effectiveFallbackGroundName(
  */
 /*
  * PRIMARY-BUTTONS-NEVER-TOGETHER: this page's own `kind="primary"` Buttons never render at once.
- * - "Start my check-in" (showAdminBriefing) is an early `return` - it replaces this component's
- *   whole output, so nothing else in this file renders alongside it.
  * - "Save this" (signed in), "Save my check-in" (anonymous) and "Done" (once the email is sent)
  *   come from one three-way ternary keyed on `user` and `emailSent` - exactly one branch mounts.
  * - "Invite and finish" renders only from the closed-bar's own `closed && !showSave` branch, the
@@ -1627,7 +1583,6 @@ export function EntryChatPage() {
   const [closed, setClosed] = useState(false)
   const [phase, setPhase] = useState<'onboarding' | 'checkin'>('onboarding')
 
-  const [showAdminBriefing, setShowAdminBriefing] = useState(false)
   const [showNewScenarioConflict, setShowNewScenarioConflict] = useState(false)
   const [pendingNewScenario, setPendingNewScenario] = useState<{ sels: OnboardingSelections } | null>(null)
 
@@ -2460,7 +2415,7 @@ export function EntryChatPage() {
       if (!thePageIsOpen.current) return
       setSessionReport(null)
       persistCheckin(turns, true, '')
-      toast.error('We could not generate your session report. Your responses are saved.')
+      toast.error('We could not generate your check-in report. Your responses are saved.')
     } finally {
       setGeneratingReport(false)
     }
@@ -3259,7 +3214,7 @@ export function EntryChatPage() {
     if (history.length === 0) {
       setShowSave(false)
       setClosed(false)
-      toast.info('Nothing is on record yet. Your first session opens now; save when it closes.')
+      toast.info('Nothing is on record yet. Your first check-in opens now; save when it closes.')
       startCheckin.mutate()
       return
     }
@@ -3526,10 +3481,6 @@ export function EntryChatPage() {
       onboardingSelections.peopleNamed,
       `${onboardingSelections.initial ?? ''} ${onboardingSelections.brief ?? ''}`,
       orgName.trim() || user?.organization?.name || undefined,
-      /* FAULT 15 (coordinator, second round): only available once she is signed in - nothing
-         typed before then names her, and a guess at her name would be worse than the situation's
-         own label. */
-      user?.firstName,
     )
   }
   /* Whether the start is after today, which is the one case where nobody is invited on saving, for certain. */
@@ -3580,11 +3531,6 @@ export function EntryChatPage() {
     sendOnboarding(text, null)
   }
 
-  /* Seemingly unreachable, the same finding the previous commit made about CreateGroundPage's own
-     render: nothing in this file calls `setShowAdminBriefing(true)`, only this block's own
-     `setShowAdminBriefing(false)`. Documented rather than deleted, same as that finding - a page
-     losing a screen is a bigger decision than a rendering rebuild, so this still gets the same
-     shared-parts treatment as everything else, in case something upstream starts reaching it. */
   /* The team from the conversation, into the one team's lines (F5, stage 3; see changingTeam). Before the early returns, like every hook. */
   const namedKey = JSON.stringify([onboardingSelections.peopleNamed, onboardingSelections.peopleEmails, onboardingSelections.peoplePhones, inviteAdded])
   useEffect(() => {
@@ -3594,48 +3540,6 @@ export function EntryChatPage() {
     if (next !== teamTextNow.current) writeTheTeam(next)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [namedKey, !!user])
-  if (showAdminBriefing) {
-    return (
-      <div className="gwui-ec-briefing">
-        <div className="gwui-ec-briefing-inner">
-          <div className="gwui-ec-briefing-brand">
-            <span className="gwui-ec-briefing-wordmark">Groundwork</span>
-          </div>
-          <h1 className="gwui-ec-briefing-title">You're up first.</h1>
-          <p className="gwui-ec-briefing-sub">
-            Yours is the first one in. Here is what to expect.
-          </p>
-          <div className="gwui-ec-briefing-list">
-            <div className="gwui-ec-briefing-card">
-              <span className="gwui-ec-briefing-icon">⏱</span>
-              <div>
-                <CardTitle weight={700}>{takes ?? 'A short check-in'}</CardTitle>
-                <div className="gwui-ec-briefing-card-body">Answer in your own words. The questions are based on what you just described. There are no right answers.</div>
-              </div>
-            </div>
-            <div className="gwui-ec-briefing-card">
-              <span className="gwui-ec-briefing-icon">📨</span>
-              <div>
-                <CardTitle weight={700}>Invite links come after</CardTitle>
-                <div className="gwui-ec-briefing-card-body">Once you finish, you will get invite links to send to the other people involved. They check in independently.</div>
-              </div>
-            </div>
-            <div className="gwui-ec-briefing-card">
-              <span className="gwui-ec-briefing-icon">📄</span>
-              <div>
-                <CardTitle weight={700}>The shared report</CardTitle>
-                <div className="gwui-ec-briefing-card-body">When everyone is in, the report shows where the team agrees, where it differs, and what to do next.</div>
-              </div>
-            </div>
-          </div>
-          <Button kind="primary" wide onClick={() => { setShowAdminBriefing(false); startCheckin.mutate() }}>
-            Start my check-in
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   /**
    * THE ONE CARD THAT IS NOT A CONVERSATION.
    *
@@ -3671,9 +3575,9 @@ export function EntryChatPage() {
   function renderTheName(withLabel = true, withHint = true) {
     return (
             <div className="gwui-ec-savecard-name-block">
-              {withLabel && <div className="gwui-ec-savecard-name-label">Name this situation</div>}
+              {withLabel && <div className="gwui-ec-savecard-name-label">Name this check-in</div>}
               <TextField
-                type="text" aria-label="Name this situation" placeholder="e.g. Kwame, first 90 days" value={groundName}
+                type="text" aria-label="Name this check-in" placeholder="e.g. Agent activation, Q1" value={groundName}
                 onChange={e => setGroundName(e.target.value)}
                 className="gwui-ec-savecard-field"
               />
@@ -3710,7 +3614,12 @@ export function EntryChatPage() {
     const named = (l: string) => l.split(',')[0].trim()
     const reachable = (l: string) => l.includes('@') || !!colleagueNamed(named(l))
     return {
-      people: [...inviteAdded.map((e) => shownEntry(e)), ...lines.filter(reachable)],
+      people: [...inviteAdded.map((e) => {
+        /* The number the lead gave is shown with the person, so the list she saves reads "5 people" with five numbers, not names alone. */
+        const head = e.split(' - ')[0].trim()
+        const number = phones[head] ?? phones[head.toLowerCase()]
+        return number ? `${shownEntry(e)} Their number is ${number}.` : shownEntry(e)
+      }), ...lines.filter(reachable)],
       noEmailYet: lines.filter((l) => !reachable(l)).map(named),
     }
   }
@@ -4148,7 +4057,7 @@ export function EntryChatPage() {
               onClick={() => (phase === 'checkin' ? setShowEndConfirm(true) : endTheSetup(onboardingHistory))}
               disabled={phase === 'checkin' ? loading : onboardingLoading}
             >
-              End session
+              End check-in
             </button>
           )}
         </div>
@@ -4316,7 +4225,7 @@ export function EntryChatPage() {
                 */}
               {startCheckin.isPending && (
                 <p className="gwui-fine gwui-fine-centre">
-                  Starting your session…
+                  {GETTING_YOUR_FIRST_QUESTION_READY}
                 </p>
               )}
             </div>
@@ -4421,7 +4330,7 @@ export function EntryChatPage() {
               className="gwui-ec-checkin-messages"
             >
               {startCheckin.isPending && (
-                <div className="gwui-ec-checkin-starting">Starting your session…</div>
+                <div className="gwui-ec-checkin-starting">{GETTING_YOUR_FIRST_QUESTION_READY}</div>
               )}
               {displayedHistory.map((m, i) => {
                 const typing = m.content === '…'
@@ -4502,7 +4411,7 @@ export function EntryChatPage() {
           />
           <div className="gwui-ec-modal-actions">
             <Button kind="secondary" onClick={() => { setDocContextMode(false); setUploadedDoc(null) }}>Cancel</Button>
-            <Button kind="primary" onClick={submitDocContext}>Add to session</Button>
+            <Button kind="primary" onClick={submitDocContext}>Add to check-in</Button>
           </div>
         </Modal>
       )}
@@ -4550,8 +4459,8 @@ export function EntryChatPage() {
                 applies here the same as everywhere else a person reads. */}
             <div className="gwui-ec-savecard-eyebrow">
               {skippedCheckin
-                ? 'This is session 1. You set the context here.'
-                : hasAnswered ? 'This is session 1. It is your private report.' : 'This will be session 1. It will be your private report.'}
+                ? 'This is check-in 1. You set the context here.'
+                : hasAnswered ? 'This is check-in 1. It is your private report.' : 'This will be check-in 1. It will be your private report.'}
             </div>
             <div className="gwui-ec-savecard-title">{groundName || (hasAnswered ? 'What you said is on record.' : 'Nothing is on record yet.')}</div>
             <div className="gwui-ec-savecard-venn-row">
@@ -4772,7 +4681,7 @@ export function EntryChatPage() {
                 <div className="gwui-ec-savecard-clear-row">
                   {confirmClearInCard ? (
                     <span className="gwui-ec-savecard-clear-confirm">
-                      This throws away this session and everything in it.
+                      This throws away this check-in and everything in it.
                       <button type="button" className="gwui-plain-link gwui-ec-savecard-clear-danger" onClick={handleClearSession}>Start over</button>
                       <button type="button" className="gwui-plain-link" onClick={() => setConfirmClearInCard(false)}>Keep it</button>
                     </span>
@@ -5213,7 +5122,7 @@ export function EntryChatPage() {
 
       {/* End session confirmation modal */}
       {showEndConfirm && (
-        <Modal title="End this session?" onClose={() => setShowEndConfirm(false)}>
+        <Modal title="End this check-in?" onClose={() => setShowEndConfirm(false)}>
           <Note>
             {/*
               SCREEN FAULT 10 (FINAL WALK): "YOUR ANSWERS ARE SAVED ON THIS DEVICE" TOLD A SIGNED-IN
@@ -5222,15 +5131,15 @@ export function EntryChatPage() {
               server against their account, not this device, and closing this tab loses nothing.
             */}
             {user
-              ? "Ending this session generates your report, and this session's answers then lock."
-              : "Your answers are saved on this device. Ending this session generates your report, and this session's answers then lock."}
+              ? "Ending this check-in generates your report, and this check-in's answers then lock."
+              : "Your answers are saved on this device. Ending this check-in generates your report, and this check-in's answers then lock."}
           </Note>
           <Note>
             Once you save the record below, you can revisit and correct it any time from your report. The team’s report is shared with everyone in the check-in when you choose to share it.
           </Note>
           <div className="gwui-ec-modal-actions">
             <Button kind="secondary" onClick={() => setShowEndConfirm(false)}>Keep going</Button>
-            <Button kind="danger" onClick={() => { setShowEndConfirm(false); handleEndSession() }}>End session</Button>
+            <Button kind="danger" onClick={() => { setShowEndConfirm(false); handleEndSession() }}>End check-in</Button>
           </div>
         </Modal>
       )}

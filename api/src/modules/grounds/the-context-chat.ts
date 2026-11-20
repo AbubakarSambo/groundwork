@@ -1,8 +1,7 @@
-import { timesAWeekInWords } from './the-check-ins-own-schedule';
+import { howOftenItRuns } from './the-check-ins-own-schedule';
 import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from '../conversation/plain-words';
 import { stillNeedsSomethingInWriting } from './what-the-documents-say';
-import { CADENCE_WORDS, CADENCES, type Cadence } from './what-the-context-chat-heard';
-import { everyDayThatTheyWork } from './which-days-this-team-works';
+import { CADENCES, type Cadence } from './what-the-context-chat-heard';
 /**
  * THE CONTEXT CHAT. G37 and G23, the last of the seven and the largest.
  *
@@ -285,6 +284,7 @@ export function contextChatPrompt(
     '- SOMETHING THAT HAS CHANGED. A revised scope, a moved deadline, a new constraint. It goes in the change log on this page, dated and kept - nothing is replaced, so the old one stays readable.',
     '- MORE OF WHAT SUCCESS LOOKS LIKE. Add it to what doing well means. This is the one that most often gets set once and never revisited, and a report can only say "on track" against something.',
     '- A GOAL OR A TARGET, for the check-in or for one person. A target is a goal with a number and a line it crosses; take whichever they have and do not press for a number they do not have.',
+    '- A LIMIT. A line the work must stay under or inside ("our discount ceiling is 5 percent", "no order over 50,000 without approval"). It is a limit, not a goal: say it back as a limit that is kept as theirs, a number not to go over, and never offer it as what doing well looks like or as a target to reach.',
     '- A LIST OF THINGS TO BE DONE. Take it as commitments against whoever owns each one. Say plainly that a commitment is read back to that person in their next check-in and its state comes from what THEY say about it - this conversation cannot mark anything done, and nobody else can either.',
     '- A DOCUMENT. There is a button beside the message box. It is filed under this check-in\'s documents, everybody\'s check-in reads it before asking a question, and its visibility is set where it is filed.',
     '- SOMEBODY NEW WHO SHOULD BE IN THIS. You cannot add them from here - adding a person emails them an invitation, and that is not something a conversation should do on somebody\'s behalf. Say where the control is: Setup, the first band, "Add a person to this check-in".',
@@ -375,7 +375,7 @@ export function openingLine(timelineDays: number | null, cadence: string | null,
   if (CADENCES.includes(c as Cadence)) {
     /* A daily rhythm on weekdays only is said as such, never "every day" (setup page review). */
     /* Twice or more a week is said with its days (assessment test, 2 November). */
-    parts.push(`people check in ${c === 'DAILY' ? everyDayThatTheyWork(workingDays) : timesAWeekInWords({ cadence: c, days: cadenceDays }) ?? CADENCE_WORDS[c as Cadence]}`);
+    parts.push(`people check in ${howOftenItRuns({ cadence: c, workingDays, cadenceDays })}`);
   }
   if (!parts.length) return null;
   /* "This check-in people check in every two weeks." was not a sentence: with no length to say,

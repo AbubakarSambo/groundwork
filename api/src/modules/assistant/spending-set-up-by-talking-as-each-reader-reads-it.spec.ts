@@ -1,4 +1,4 @@
-import { anOrganisationToSetUp } from './an-organisation-to-set-up-for-specs';
+import { anOrganisationToSetUp, theOpening, theSaidBack } from './an-organisation-to-set-up-for-specs';
 
 /**
  * DECISION 85, SPENDING: AN ADMIN SETS UP HOW REQUESTS TO SPEND ARE APPROVED BY TALKING TO ASK
@@ -21,7 +21,7 @@ const GRACES_ANSWERS = [
   'Grace',
 ];
 
-const THE_RULES_SAID = [
+const THE_RULES = [
   'People ask to spend in KES.',
   'A request to spend of up to KES 20,000 goes to the person’s manager first.',
   'When the manager has approved it, it goes to Omar, who looks after finance, to approve as well.',
@@ -37,15 +37,17 @@ const THE_RULES_SAID = [
   'If Omar has not answered after three working days, or is on leave that day, it goes to an admin.',
   'If the head of the team has not answered after three working days, or is on leave that day, it goes to an admin.',
   'If you have not answered after three working days, or are on leave that day, it goes to an admin.',
-].join(' ');
+];
+const THE_RULES_SAID = THE_RULES.join(' ');
 
-const SAID_BACK = `Here is how spending requests will work. Spending requests will be switched on. ${THE_RULES_SAID} Shall I set it up like this? Nothing changes until you say yes.`;
+/* Changed 20 November 2026: the opening offers to work from a written policy, and the say-back lists one rule a line (Hafsah's screenshots). */
+const SAID_BACK = theSaidBack('Here is how spending requests will work. Spending requests will be switched on.', THE_RULES);
 
 describe('Grace, an admin, sets up spending approvals by talking', () => {
   it('is asked only what is missing, one question at a time, in plain words', async () => {
     const o = anOrganisationToSetUp();
     expect(await o.talk('u-grace', GRACES_ANSWERS)).toEqual([
-      'I will ask you a few questions about how spending requests work, one at a time, and I will not set anything until you say yes. Which currency do people spend in?',
+      theOpening('spending requests', 'Which currency do people spend in?'),
       'Who approves a request to spend?',
       'Does anybody approve it after the manager, for example finance? You can say no.',
       'Up to what amount does a request go this way? Above that amount, somebody else approves it.',

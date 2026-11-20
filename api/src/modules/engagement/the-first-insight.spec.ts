@@ -50,6 +50,8 @@ function world(serve: (userId: string) => any) {
   const prisma: any = {
     ground: { findUnique: jest.fn(async () => ground) },
     reportNotice: { findMany: jest.fn(async () => []), create: jest.fn(async () => ({})), deleteMany: jest.fn(async () => ({})) },
+    /* Added 16 November (fix plan, group 6): the report goes to people who have started a check-in, and the lead. Abigail and Omar have. */
+    checkIn: { findMany: jest.fn(async ({ where }: any) => (where.status?.in ? [{ participantId: 'p-abi' }, { participantId: 'p-link' }] : [])) },
   };
   const service: any = new ReportsService(prisma, {} as any, {} as any, email, { get: () => 'https://app.test' } as any, { emit: () => Promise.resolve() } as any, {} as any, { tell: async () => [] } as any);
   service.sessionReport = jest.fn(async (_g: string, _n: number, userId: string) => serve(userId));

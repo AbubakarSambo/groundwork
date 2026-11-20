@@ -24,13 +24,13 @@ describe('what needs deciding, as each reader reads it', () => {
     const d = await decisions(AMINA);
     expect(d.map((x: any) => [x.question, x.why, x.owner])).toEqual([
       ['Rukia Mwangi is waiting on the new provider for the sandbox credentials.', 'They cannot move until it comes.', 'the new provider'],
-      ['Baraka Otieno is waiting on you for the co-founder agreement.', 'They cannot move until it comes.', 'You'],
+      ['Baraka Otieno says the work is waiting on you for the co-founder agreement.', 'That is what Baraka Otieno said, and you have not said it is yours to give.', 'You'],
       ['Baraka Otieno is waiting on a decision on the release scope, so it needs deciding.', 'They cannot move until this is decided.', 'Nobody has been named to decide this.'],
     ]);
   });
   it('Juma, an admin, reads the same with Amina named', async () => {
     const d = await decisions(JUMA);
-    expect(d[1].question).toBe('Baraka Otieno is waiting on Amina Wanjiru for the co-founder agreement.');
+    expect(d[1].question).toBe('Baraka Otieno says the work is waiting on Amina Wanjiru for the co-founder agreement.');
     expect(d.map((x: any) => x.question).join(' ')).not.toMatch(/credentials, so it needs deciding|agreement, so it needs deciding/);
   });
   it('Rukia, who checks in, is not served the list of decisions, as before', async () => {

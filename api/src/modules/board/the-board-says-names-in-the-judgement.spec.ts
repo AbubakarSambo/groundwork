@@ -109,7 +109,7 @@ const GROUND: any = {
 };
 
 function boardFor(requestingUserId: string) {
-  const none = { findMany: jest.fn(async () => []), count: jest.fn(async () => 0), aggregate: jest.fn(async () => ({ _max: { sessionNumber: 1 } })) };
+  const none = { findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null), count: jest.fn(async () => 0), aggregate: jest.fn(async () => ({ _max: { sessionNumber: 1 } })) };
   const prisma: any = {
     /* A fresh copy each time: the board names the row in place, for the reader who asked. */
     ground: { findUnique: jest.fn(async () => JSON.parse(JSON.stringify(GROUND))) },

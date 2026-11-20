@@ -202,6 +202,11 @@ export function spendingSent(said: SpendSaid, currency: string | null, approverF
   return `I have sent your request to spend ${money(currency ?? said.currency, said.amount)} on ${said.what} to ${approverFirstName ?? 'an admin'}. It is not approved until they decide, and nothing is spent until then.`;
 }
 
+/** "I attached “receipt.pdf” to your request, so Stella can read it with the request." (staging check S13). */
+export function aFileWentWithTheRequest(fileName: string, approverFirstName: string | null): string {
+  return `I attached “${fileName}” to your request, so ${approverFirstName ?? 'whoever decides'} can read it with the request.`;
+}
+
 /**
  * The reason as it joins "on ...": the first letter is lower-case, so it reads as one sentence, unless it is somebody's own
  * word to keep. That is an "I", an acronym, a word with a capital inside it, a name the organisation knows (a person, a

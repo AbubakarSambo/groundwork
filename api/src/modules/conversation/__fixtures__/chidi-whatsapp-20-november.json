@@ -1,0 +1,215 @@
+{
+ "kind": "assessment",
+ "version": 1,
+ "about": {
+  "who": "Chidi Okeke",
+  "checkInId": "a8ab86f1-4115-4118-bba7-06b199c136b6",
+  "groundId": "f114832a-7de0-43ea-b0ba-84f8b9716458",
+  "participantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+  "sessionNumber": 3,
+  "isTheLead": false,
+  "endedAt": "2026-11-20T07:56:17.023Z",
+  "channel": "WhatsApp",
+  "checkIn": "Sales team, Q4"
+ },
+ "claims": [
+  {
+   "id": "r1.claims.0",
+   "from": [
+    1
+   ],
+   "claim": "The Kilele deal was closed for 450k on Tuesday.",
+   "proof": "said",
+   "words": "closed kilele 450k on tues",
+   "whoMaySee": "the people in this check-in",
+   "needsProof": true,
+   "saidWordForWord": true
+  }
+ ],
+ "dates": [
+  {
+   "id": "r1.dates.0",
+   "from": [
+    1
+   ],
+   "what": "Kilele deal closed",
+   "when": "tues",
+   "words": "tues",
+   "whoMaySee": "the people in this check-in",
+   "saidWordForWord": true
+  },
+  {
+   "id": "r1.dates.1",
+   "from": [
+    2
+   ],
+   "what": "Naivas purchase order expected date",
+   "when": "friday",
+   "words": "friday",
+   "whoMaySee": "the people in this check-in",
+   "saidWordForWord": true
+  }
+ ],
+ "people": [
+  {
+   "id": "r1.people.0",
+   "from": [
+    2
+   ],
+   "kind": "person",
+   "name": "Mercy",
+   "role": "procurement",
+   "words": "mercy in procurement",
+   "spokenOf": "neutral",
+   "whoMaySee": "the people in this check-in",
+   "organisation": "Naivas",
+   "saidWordForWord": true
+  }
+ ],
+ "numbers": [
+  {
+   "id": "r1.numbers.0",
+   "from": [
+    1
+   ],
+   "words": "450k",
+   "figure": "450000",
+   "measures": "Kilele deal value",
+   "whoMaySee": "the people in this check-in",
+   "saidWordForWord": true
+  },
+  {
+   "id": "r1.numbers.1",
+   "from": [
+    3
+   ],
+   "words": "1.2m",
+   "figure": "1200000",
+   "measures": "Naivas deal value",
+   "whoMaySee": "the people in this check-in",
+   "saidWordForWord": true
+  }
+ ],
+ "targets": [
+  {
+   "by": "Q4",
+   "id": "r1.targets.0",
+   "aim": "Chidi is aiming for a Q4 number of 2.4 million.",
+   "from": [
+    3
+   ],
+   "whose": "Chidi",
+   "words": "half my Q4 number",
+   "target": 2400000,
+   "whoMaySee": "the people in this check-in",
+   "saidWordForWord": true
+  }
+ ],
+ "blockers": [
+  {
+   "id": "r1.blockers.0",
+   "from": [
+    1,
+    2
+   ],
+   "what": "the Naivas purchase order",
+   "words": "still chasing naivas PO",
+   "onName": "Mercy",
+   "status": "WAITING",
+   "dueSaid": "friday",
+   "onLabel": "procurement at Naivas",
+   "triedSaid": "im on it with mercy in procurement",
+   "whoMaySee": "the people in this check-in",
+   "namedTheThing": true,
+   "saidWordForWord": true
+  }
+ ],
+ "workUpdates": [
+  {
+   "id": "r1.workUpdates.0",
+   "from": [
+    1
+   ],
+   "work": "Kilele deal",
+   "dates": "on tues",
+   "stage": "closed",
+   "value": "450k",
+   "words": "closed kilele 450k on tues",
+   "whoMaySee": "the people in this check-in",
+   "saidWordForWord": true
+  },
+  {
+   "id": "r1.workUpdates.1",
+   "from": [
+    1,
+    2,
+    3
+   ],
+   "work": "Naivas purchase order",
+   "stage": "chasing",
+   "value": "1.2m",
+   "words": "still chasing naivas PO",
+   "whoMaySee": "the people in this check-in",
+   "saidWordForWord": true
+  }
+ ],
+ "messages": [
+  {
+   "n": 1,
+   "at": "2026-11-20T07:54:39.061Z",
+   "where": "check-in",
+   "turnId": "d90b62ab-971d-4a68-b818-29239cea2a12"
+  },
+  {
+   "n": 2,
+   "at": "2026-11-20T07:54:53.868Z",
+   "where": "check-in",
+   "turnId": "9717eae6-d536-4f61-8701-4a6499815ad2"
+  },
+  {
+   "n": 3,
+   "at": "2026-11-20T07:55:10.487Z",
+   "where": "check-in",
+   "turnId": "db2d2e24-8fc1-41e4-aec7-bcaa08026565"
+  },
+  {
+   "n": 4,
+   "at": "2026-11-20T07:55:27.454Z",
+   "where": "check-in",
+   "turnId": "d71b1120-96e2-489d-bb63-23056c12dcc9"
+  },
+  {
+   "n": 5,
+   "at": "2026-11-20T07:56:15.935Z",
+   "where": "check-in",
+   "turnId": "6c8b0e15-de5b-4564-885b-30eed8894e53"
+  }
+ ],
+ "promises": [],
+ "decisions": [],
+ "documents": [],
+ "stillOpen": [],
+ "areas": [],
+ "corrections": [],
+ "observations": [],
+ "interventions": [],
+ "everythingElse": [],
+ "nothingToRecord": [
+  4,
+  5
+ ],
+ "measure": {
+  "readyAt": "2026-11-20T07:56:46.835Z",
+  "modelCalls": 1,
+  "modelFailed": false,
+  "msFromCloseToReady": 29812
+ },
+ "completeness": {
+  "ready": true,
+  "messages": 5,
+  "keptWhole": 0,
+  "addedByTheSecondRead": 0,
+  "matchedByTheFirstRead": 5
+ },
+ "summary": "Chidi closed the Kilele deal for 450k. He is waiting on a 1.2m purchase order from Naivas, which makes up half of his Q4 target, and is following up with Mercy in their procurement department."
+}

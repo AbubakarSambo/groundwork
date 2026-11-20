@@ -24,7 +24,7 @@ const ROWS = [
   { id: 'r1', type: 'PROGRESS', text: 'Lakeside Supermarket’s buyer confirmed the meeting on the 29th.', disputedAt: null, documented: true, mark: 'proven', how: 'From the photo you added.', typeSays: 'This is something you got done.', checkInId: 'c23', sessionNumber: 23 },
   { id: 'r2', type: 'PROGRESS', text: 'Green Mart has a quote.', disputedAt: null, documented: false, mark: 'said', how: 'You said this.', typeSays: 'This is what you said happened. It is not counted as done until something shows it.', checkInId: 'c23', sessionNumber: 23 },
   { id: 'r3', type: 'COMMITMENT', text: 'I’ll visit Westgate Deli on Friday.', disputedAt: null, documented: false, mark: 'said', how: 'You said you will do this. I will ask you how it went.', checkInId: 'c23', sessionNumber: 23 },
-  { id: 'r0', type: 'PROGRESS', text: 'Another session’s line.', disputedAt: null, documented: true, mark: 'proven', how: 'From the photo you added.', checkInId: 'c22', sessionNumber: 22 },
+  { id: 'r0', type: 'PROGRESS', text: 'Another check-in’s line.', disputedAt: null, documented: true, mark: 'proven', how: 'From the photo you added.', checkInId: 'c22', sessionNumber: 22 },
 ]
 
 function renderIt(light: boolean) {
@@ -69,7 +69,7 @@ describe('Miriam’s own report on a sales check-in', () => {
     expect(block.textContent).toContain('Lakeside Supermarket’s buyer confirmed the meeting on the 29th.')
     expect(block.textContent).toContain('From the photo you added.')
     expect(block.textContent).not.toContain('Green Mart has a quote.')
-    expect(block.textContent).not.toContain('Another session’s line.')
+    expect(block.textContent).not.toContain('Another check-in’s line.')
   })
 
   it('no photo is claimed for the quote she did not add: her line is her word, marked so', async () => {

@@ -1,0 +1,555 @@
+{
+  "kind": "programme",
+  "title": "Trader training programme",
+  "subtitle": "6 field officers in 3 counties. WhatsApp check-ins after each session.",
+  "leadName": "Wairimu Kamau",
+  "updated": "Last updated on Wednesday 23 September at 6pm. The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.",
+  "aim": "Train 10,000 market traders in financial skills, at least 60% of them women?",
+  "hero": {
+    "headline": "6,240 traders reached. 3,760 more are needed in 5 months",
+    "progress": 62.4,
+    "lines": [
+      "Groups that have a training date will reach 2,100 more. The other 1,660 have no date yet."
+    ],
+    "small": "Women are 54% of those reached, against 60%.",
+    "targetsHeading": "Where each target stands",
+    "targets": [
+      {
+        "name": "Traders reached",
+        "value": "6,240 of 10,000",
+        "status": "Behind",
+        "tone": "attention"
+      },
+      {
+        "name": "Women",
+        "value": "54% of ≥ 60%",
+        "status": "Below",
+        "tone": "concern"
+      },
+      {
+        "name": "Completed all 3 sessions",
+        "value": "71% of 80%",
+        "status": "Behind",
+        "tone": "attention"
+      },
+      {
+        "name": "Budget spent",
+        "value": "KES 11.2 million of ≤ KES 20 million",
+        "status": "Within",
+        "tone": "proven"
+      },
+      {
+        "name": "Cost per trainee",
+        "value": "KES 1,795 of ≤ KES 2,000",
+        "status": "Within",
+        "tone": "proven"
+      }
+    ]
+  },
+  "needs": {
+    "heading": "What needs you in this check-in",
+    "items": [
+      {
+        "what": "In Nairobi, only 49% of the people in the groups are women",
+        "detail": "Kevin's coaching is working (from 41% to 52%), but Nairobi is still below target.",
+        "source": "This comes from the targets.",
+        "block": true,
+        "edge": "info"
+      },
+      {
+        "what": "Juma has not sent attendance photos for 2 weeks",
+        "detail": "His 4 sessions cannot be counted until he sends them.",
+        "source": "From a pattern",
+        "block": false,
+        "edge": "att"
+      },
+      {
+        "what": "In Kisumu, people are not coming back for session 2",
+        "detail": "About 1 in 5 did not come back, for 2 weeks in a row. Market days moved.",
+        "source": "From a pattern (location)",
+        "block": false,
+        "edge": "att"
+      },
+      {
+        "what": "The venue in Kondele is still not confirmed",
+        "detail": "This has been raised 3 times with the county office.",
+        "source": "This comes from a blocker that keeps coming back.",
+        "block": true,
+        "edge": "att"
+      },
+      {
+        "what": "1,660 traders are in groups with no training date",
+        "detail": "Book dates, or the target will be missed.",
+        "source": "From the credible path",
+        "block": false,
+        "edge": "info"
+      }
+    ],
+    "button": "Open"
+  },
+  "proof": {
+    "heading": "Every trader, and what shows it",
+    "note": "Ringed is someone’s word; filled is proven. Select one for its detail",
+    "legend": [
+      "Proof shows it",
+      "Someone said it"
+    ],
+    "columns": [
+      "Group",
+      "Officer",
+      "Stage now",
+      "What shows it",
+      "Next"
+    ],
+    "rows": [
+      {
+        "name": "Kondele women traders (42)",
+        "sub": "Drop-off",
+        "subTone": "att",
+        "who": "Achieng",
+        "stage": "Kisumu",
+        "onRecord": true,
+        "shows": "Attendance photo",
+        "next": "Hold session 3 off market day",
+        "selected": true
+      },
+      {
+        "name": "Mtwapa fish sellers (35)",
+        "who": "Mwanaisha",
+        "stage": "Kilifi",
+        "onRecord": true,
+        "shows": "Attendance photos ×3",
+        "next": "Follow-up visit in 30 days"
+      },
+      {
+        "name": "Kibera youth vendors (60)",
+        "sub": "Mix below 60%",
+        "subTone": "att",
+        "who": "Kevin",
+        "stage": "Nairobi",
+        "onRecord": true,
+        "shows": "Registration list",
+        "next": "Recruit through the market women's group before session 1"
+      },
+      {
+        "name": "Gikomba traders (80)",
+        "sub": "Not proven",
+        "subTone": "con",
+        "who": "Juma",
+        "stage": "Nairobi",
+        "onRecord": false,
+        "shows": "No photo yet",
+        "next": "Send the attendance photo"
+      },
+      {
+        "name": "Kisumu bus park vendors (55)",
+        "sub": "No date",
+        "subTone": "att",
+        "who": "Beatrice",
+        "stage": "Kisumu",
+        "onRecord": false,
+        "shows": "Officer said",
+        "next": "Book session 1; mobilise more women"
+      },
+      {
+        "name": "Kilifi town tailors (28)",
+        "who": "Mwanaisha",
+        "stage": "Kilifi",
+        "onRecord": true,
+        "shows": "Attendance photo",
+        "next": "Session 2 on 30 Sep"
+      }
+    ],
+    "detail": {
+      "title": "Kondele women traders (42)",
+      "rows": [
+        [
+          "Women",
+          "26 of 42 (62%)"
+        ],
+        [
+          "Session 2",
+          "38 of 42 attended"
+        ],
+        [
+          "Why 4 missed",
+          "Market day moved (officer said)"
+        ]
+      ],
+      "nextLabel": "Next:",
+      "next": "Hold session 3 off market day"
+    },
+    "correct": {
+      "button": "Not right? Tell the check-in",
+      "foot": "Something here wrong? Anyone can correct what’s about their own work in their check-in; the change and the original both show here."
+    }
+  },
+  "team": {
+    "heading": "The team today",
+    "note": "Each person’s line, their last 10 check-ins, and what keeps coming up",
+    "foot": "These are about the work. Open anyone to see what they said and what the proof shows.",
+    "rows": [
+      {
+        "name": "Juma",
+        "line": "0 of 4 sessions with a photo",
+        "status": "Nothing checkable",
+        "tone": "concern",
+        "pips": "1111110111",
+        "said": "No attendance photos, for 2 weeks in a row"
+      },
+      {
+        "name": "Kevin",
+        "line": "1 of 3 chamas approached",
+        "status": "Mix below target",
+        "tone": "attention",
+        "pips": "1110111111",
+        "said": "Groups under 60% women, for 3 weeks in a row"
+      },
+      {
+        "name": "Achieng",
+        "line": "1 session clashed",
+        "status": "Drop-off at session 2",
+        "tone": "attention",
+        "pips": "1011111111",
+        "said": ""
+      },
+      {
+        "name": "Beatrice",
+        "line": "1 group with no date",
+        "status": "Behind the pace",
+        "tone": "attention",
+        "pips": "1111111111",
+        "said": ""
+      },
+      {
+        "name": "Mwanaisha",
+        "line": "On track",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "1101111111",
+        "said": ""
+      },
+      {
+        "name": "Lydia",
+        "line": "On track",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "1111100111",
+        "said": ""
+      }
+    ]
+  },
+  "shape": {
+    "heading": "Women's share by county, and drop-off by session",
+    "note": "The shape of the work",
+    "foot": "Shares come from registration lists; attendance from sheet photos.",
+    "share": {
+      "heading": "Women’s share by county; target 60%",
+      "target": 60,
+      "rows": [
+        {
+          "label": "Nairobi",
+          "value": "49% of 2,310",
+          "pct": 49,
+          "tone": "att"
+        },
+        {
+          "label": "Kisumu",
+          "value": "58% of 2,180",
+          "pct": 58,
+          "tone": "att"
+        },
+        {
+          "label": "Kilifi",
+          "value": "61% of 1,750",
+          "pct": 61,
+          "tone": "on"
+        }
+      ]
+    },
+    "dropoff": {
+      "heading": "Drop-off by session",
+      "rows": [
+        {
+          "label": "Enrolled",
+          "value": "6,240",
+          "pct": 100
+        },
+        {
+          "label": "Session 1",
+          "value": "5,900",
+          "pct": 94.6
+        },
+        {
+          "label": "Session 2",
+          "value": "4,800",
+          "pct": 76.9
+        },
+        {
+          "label": "Session 3, completed",
+          "value": "4,430",
+          "pct": 71
+        }
+      ]
+    }
+  },
+  "cards": {
+    "heading": "By county",
+    "cards": [
+      {
+        "title": "Nairobi",
+        "stats": [
+          [
+            "2,310",
+            "reached"
+          ],
+          [
+            "49%",
+            "women"
+          ],
+          [
+            "68%",
+            "completed"
+          ]
+        ],
+        "line": "Below the mix target; improving.",
+        "who": "Kevin, Juma"
+      },
+      {
+        "title": "Kisumu",
+        "stats": [
+          [
+            "2,180",
+            "reached"
+          ],
+          [
+            "58%",
+            "women"
+          ],
+          [
+            "70%",
+            "completed"
+          ]
+        ],
+        "line": "Session 2 drop-off.",
+        "who": "Achieng, Beatrice"
+      },
+      {
+        "title": "Kilifi",
+        "stats": [
+          [
+            "1,750",
+            "reached"
+          ],
+          [
+            "61%",
+            "women"
+          ],
+          [
+            "78%",
+            "completed"
+          ]
+        ],
+        "line": "On target.",
+        "who": "Mwanaisha, Lydia"
+      }
+    ]
+  },
+  "checked": {
+    "heading": "Who checked in",
+    "note": "The last 10 sessions, one row each",
+    "foot": "",
+    "rows": [
+      {
+        "name": "Juma",
+        "sessions": "1111110111"
+      },
+      {
+        "name": "Kevin",
+        "sessions": "1110111111"
+      },
+      {
+        "name": "Achieng",
+        "sessions": "1011111111"
+      },
+      {
+        "name": "Beatrice",
+        "sessions": "1111111111"
+      },
+      {
+        "name": "Mwanaisha",
+        "sessions": "1101111111"
+      },
+      {
+        "name": "Lydia",
+        "sessions": "1111110111"
+      }
+    ]
+  },
+  "blockers": {
+    "heading": "Blockers",
+    "note": "Each with its history and the one thing that would clear it",
+    "items": [
+      {
+        "title": "Kondele venue",
+        "tag": "Blocking",
+        "tone": "concern",
+        "waiting": "County office",
+        "raised": "3 times, 1 Sep to 23 Sep",
+        "affects": "Kondele session 3; 42 traders",
+        "promised": "Confirm by 15 Sep (missed)",
+        "proof": "No written confirmation",
+        "clear": "Ask for the venue in writing; book the church hall as backup.",
+        "then": "Kondele session 3 goes ahead for 42 traders"
+      },
+      {
+        "title": "Printed workbooks",
+        "tag": "Waiting",
+        "tone": "attention",
+        "waiting": "Printer",
+        "raised": "2 times, 10 Sep to 22 Sep",
+        "affects": "4 groups starting session 1",
+        "promised": "20 Sep (missed)",
+        "proof": "Unverified",
+        "clear": "Use the digital version on WhatsApp for now.",
+        "then": "4 groups can start session 1"
+      },
+      {
+        "title": "Transport allowance for officers",
+        "tag": "Decision",
+        "tone": "action",
+        "waiting": "Programme lead",
+        "raised": "2 times, 5 Sep to 19 Sep",
+        "affects": "Rural groups in Kilifi",
+        "promised": null,
+        "proof": "Decision pending",
+        "clear": "Approve or change the rate.",
+        "then": "Rural Kilifi groups can be booked"
+      }
+    ]
+  },
+  "keeps": {
+    "heading": "What keeps coming up",
+    "note": "Named after three check-ins in a row, never after one. Each describes the work",
+    "foot": "Each person sees what’s about them, and can answer it in their own words.",
+    "left": {
+      "heading": "About each person’s work",
+      "rows": [
+        {
+          "name": "Juma",
+          "line": "No attendance photos, for 2 weeks in a row"
+        },
+        {
+          "name": "Kevin",
+          "line": "Groups under 60% women, for 3 weeks in a row"
+        }
+      ]
+    },
+    "right": {
+      "heading": "How what people say can run ahead of what happened",
+      "items": [
+        {
+          "title": "“Went well”",
+          "text": "A session described, with no numbers or photo.",
+          "who": "Juma"
+        },
+        {
+          "title": "Estimates for counts",
+          "text": "Women’s share estimated by the officer.",
+          "who": "Beatrice"
+        }
+      ]
+    }
+  },
+  "reports": {
+    "overTime": "Over time",
+    "heading": "Reports",
+    "note": "Each person’s own, the team’s once shared, and a weekly one",
+    "rows": [
+      {
+        "name": "Today’s team report",
+        "text": "The day’s gaps: what moved, what didn’t, who’s missing",
+        "link": "Open"
+      },
+      {
+        "name": "Your own report",
+        "text": "Only you see it",
+        "link": "Open"
+      },
+      {
+        "name": "This week",
+        "text": "Patterns, once they’ve held for two weeks",
+        "link": "Open"
+      }
+    ]
+  },
+  "boards": {
+    "everySession": "Every session",
+    "heading": "The other boards you’re in",
+    "items": [
+      {
+        "name": "Sales team, Q3",
+        "tag": "Today’s report ready",
+        "tone": "proven"
+      },
+      {
+        "name": "Kwame, first 90 days",
+        "tag": "Decide how it ends",
+        "tone": "action"
+      },
+      {
+        "name": "Leadership, Q3",
+        "tag": "Your turn",
+        "tone": "action"
+      },
+      {
+        "name": "Supplier review",
+        "tag": "Waiting on Omar",
+        "tone": "plain"
+      },
+      {
+        "name": "Daniel, the next six weeks",
+        "tag": "Both accounts in",
+        "tone": "action"
+      },
+      {
+        "name": "Faith, first 90 days",
+        "tag": "Just started",
+        "tone": "action"
+      }
+    ]
+  },
+  "heading": {
+    "heading": "Where this is heading",
+    "note": "Check how the same role is going",
+    "outcomesLabel": "The possible outcomes",
+    "outcomes": [
+      "Support named people",
+      "Change the programme",
+      "Act on one person"
+    ],
+    "signalsLabel": "The signals behind them",
+    "signals": [
+      {
+        "line": "In Nairobi, only 49% of the people in the groups are women",
+        "from": "Kevin's coaching is working (from 41% to 52%), but Nairobi is still below target.",
+        "onRecord": false
+      },
+      {
+        "line": "Juma has not sent attendance photos for 2 weeks",
+        "from": "His 4 sessions cannot be counted until he sends them.",
+        "onRecord": false
+      },
+      {
+        "line": "In Kisumu, people are not coming back for session 2",
+        "from": "About 1 in 5 did not come back, for 2 weeks in a row. Market days moved.",
+        "onRecord": false
+      }
+    ],
+    "settleLabel": "What would settle it",
+    "settle": "Groups that have a training date will reach 2,100 more. The other 1,660 have no date yet.",
+    "decider": "Programme lead decides.",
+    "deciderNote": "Groundwork lays out the outcomes and the proof. It doesn’t choose.",
+    "button": "Record the decision"
+  }
+}

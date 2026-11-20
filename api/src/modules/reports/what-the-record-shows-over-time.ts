@@ -321,15 +321,15 @@ export function aCommitmentSaid(
   if (!c.theySaidIt) {
     if (quoteWhat) {
       out.push(stated !== null
-        ? `In session ${stated}, ${leadMid} said that ${mid} would do this, "${c.what}"`
+        ? `In check-in ${stated}, ${leadMid} said that ${mid} would do this, "${c.what}"`
         : `${leadFirst} said that ${mid} would do this, "${c.what}"`);
     } else if (clause) {
       out.push(stated !== null
-        ? `In session ${stated}, ${leadMid} committed ${mid} to ${clause}.`
+        ? `In check-in ${stated}, ${leadMid} committed ${mid} to ${clause}.`
         : `${leadFirst} committed ${mid} to ${clause}.`);
     } else {
       out.push(stated !== null
-        ? `In session ${stated}, ${leadMid} committed ${mid} to something, which is in the record.`
+        ? `In check-in ${stated}, ${leadMid} committed ${mid} to something, which is in the record.`
         : `${leadFirst} committed ${mid} to something, which is in the record.`);
     }
     out.push(`${who} did not say it.`);
@@ -339,17 +339,17 @@ export function aCommitmentSaid(
     const theTime = c.when && looksLikeATimeOrADate(c.when) && !whenAlreadySaidIn(c.when, c.what) ? ` ${c.when.trim().replace(/[.!?]+$/, '')}` : '';
     whenIsInTheSentence = true;
     out.push(stated !== null
-      ? `In session ${stated}, ${mid} said ${who === 'You' ? 'you' : 'they'} would ${clause}${theTime}.`
+      ? `In check-in ${stated}, ${mid} said ${who === 'You' ? 'you' : 'they'} would ${clause}${theTime}.`
       : c.fromAPaste ? `In what ${leadMid} pasted in, ${mid} ${isWord} down to ${clause}${theTime}.` : `${who} said ${who === 'You' ? 'you' : 'they'} would ${clause}${theTime}.`);
   } else if (quoteWhat) {
-    if (stated !== null) out.push(`In session ${stated}, ${mid} said, "${c.what}"`);
+    if (stated !== null) out.push(`In check-in ${stated}, ${mid} said, "${c.what}"`);
     else if (c.fromAPaste) out.push(`In what ${leadMid} pasted in, ${mid} ${isWord} down to do this, "${c.what}"`);
     else out.push(`${who} said, "${c.what}"`);
   } else if (clause) {
-    if (stated !== null) out.push(`In session ${stated}, ${mid} committed to ${clause}.`);
+    if (stated !== null) out.push(`In check-in ${stated}, ${mid} committed to ${clause}.`);
     else if (c.fromAPaste) out.push(`In what ${leadMid} pasted in, ${mid} committed to ${clause}.`);
     else out.push(`${who} committed to ${clause}.`);
-  } else if (stated !== null) out.push(`In session ${stated}, ${mid} made a commitment, which is in the record.`);
+  } else if (stated !== null) out.push(`In check-in ${stated}, ${mid} made a commitment, which is in the record.`);
   else out.push(`${who} made a commitment, which is in the record.`);
   /* The time once: "In session 1, you said, "I will deliver the Tuskys cookers on 9 October." The time you gave
      for it was "on 9 October"." said it twice (request 111 e). Where the words already say it, it is not repeated. */
@@ -361,7 +361,7 @@ export function aCommitmentSaid(
   else if (c.when && quoteWhen && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was "${c.when}".`);
   else if (c.when && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was ${c.when}.`);
   if (c.restatedIn.length) {
-    out.push(`${who} said it again in ${c.restatedIn.length === 1 ? `session ${c.restatedIn[0]}` : `sessions ${listed(c.restatedIn)}`}.`);
+    out.push(`${who} said it again in ${c.restatedIn.length === 1 ? `check-in ${c.restatedIn[0]}` : `check-ins ${listed(c.restatedIn)}`}.`);
   }
   if (open && c.saidHappened) {
     /* NEVER "NOBODY HAS SAID" WHEN SOMEBODY DID (messages test, 19 October, finding 4). It stays open: only its maker settles it. */
@@ -371,7 +371,7 @@ export function aCommitmentSaid(
     out.push(words ? `${by} said${on}, "${/[.!?]$/.test(words) ? words : `${words}.`}"` : `${by} said${on} that it happened.`);
   } else if (open) {
     out.push(sessionsOpen !== null && sessionsOpen > 0
-      ? `It has been open for ${sessionsOpen} ${sessionsOpen === 1 ? 'session' : 'sessions'}, and nobody has said whether it happened.`
+      ? `It has been open for ${sessionsOpen} ${sessionsOpen === 1 ? 'check-in' : 'check-ins'}, and nobody has said whether it happened.`
       : 'Nobody has said yet whether it happened.');
   } else {
     const outcome = status === 'DONE' ? 'done' : status === 'NOT_DONE' ? 'not done' : status === 'DROPPED' ? 'dropped' : status.toLowerCase().replace(/_/g, ' ');
@@ -448,7 +448,7 @@ export function dependenciesOverTime(
        * three sentences say the same thing and read like a person wrote them.
        */
       const howLong = sessionsWaiting !== null && sessionsWaiting > 0
-        ? ` for ${sessionsWaiting} ${sessionsWaiting === 1 ? 'session' : 'sessions'} now`
+        ? ` for ${sessionsWaiting} ${sessionsWaiting === 1 ? 'check-in' : 'check-ins'} now`
         : '';
       /*
        * ONE SENTENCE, SO WHAT WAS TRIED NEVER STANDS WITHOUT THE THING IT WAS TRIED ON, AND READ FROM
@@ -520,11 +520,11 @@ export function patternsOverTime(
       const howMany = seen.length || p.periodsObserved || 1;
       const surfaced = String(p.status).toUpperCase() === 'SURFACED';
       /* "Seen in sessions 1 of 2" was one session (request 109 f). */
-      const where = seen.length === 1 ? `session ${seen[0]}` : seen.length ? `sessions ${seen.join(', ')}` : `${howMany} ${howMany === 1 ? 'session' : 'sessions'}`;
+      const where = seen.length === 1 ? `check-in ${seen[0]}` : seen.length ? `check-ins ${seen.join(', ')}` : `${howMany} ${howMany === 1 ? 'check-in' : 'check-ins'}`;
       const consecutive = p.periodsObserved >= 3 ? ', consecutively' : seen.length >= 3 ? ', not consecutively' : '';
       const say = surfaced
-        ? `It was seen in ${where} of ${sessionsSoFar}${consecutive}. Enough sessions to be a pattern rather than an incident.`
-        : `It was seen in ${where} of ${sessionsSoFar}. One or two sessions of something is not yet a pattern, and it is here so a reader can see what it was.`;
+        ? `It was seen in ${where} of ${sessionsSoFar}${consecutive}. Enough check-ins to be a pattern rather than an incident.`
+        : `It was seen in ${where} of ${sessionsSoFar}. One or two check-ins of something is not yet a pattern, and it is here so a reader can see what it was.`;
       return {
         participantId: p.participantId,
         who: labelOf(p.participantId),
@@ -711,7 +711,7 @@ export function aRoleWrittenAsATitle(label: string, description: string): string
 /** What the record holds, in one list a sentence can end on. */
 function whatTheRecordHolds(p: APersonsRecord): string {
   const holds = [
-    aCount(p.sessions, 'session', 'sessions'),
+    aCount(p.sessions, 'check-in', 'check-ins'),
     `${aCount(p.lines, 'line', 'lines')} of what was said`,
     `${p.checkable === 0 ? 'none' : p.checkable} with a name, a number or a date in ${p.checkable === 1 ? 'it' : 'them'}`,
     `${p.documented === 0 ? 'none' : p.documented} backed by a document`,
@@ -795,6 +795,19 @@ export async function meetingsOnRecordFor(prisma: any, groundId: string): Promis
   }
 }
 
+/**
+ * ONE COUNT OF WHO HAS ANSWERED (run 8: "Over time" said "Two of the five people have answered" while Today and the board said "2 of 4"). The line was written
+ * with the report, from the count of that day, and kept. It is the same sentence `whatThisCannotTellYou` writes, said again from the board's one count.
+ */
+const A_STORED_COUNT_OF_WHO_HAS_NOT_ANSWERED = /not answered yet, so anything about them is missing rather than absent\.$/;
+function withTheLiveCountOfWhoAnswered(lines: string[] | undefined, answered?: number | null, ofPeople?: number | null): string[] {
+  const all = lines ?? [];
+  if (typeof answered !== 'number' || typeof ofPeople !== 'number' || ofPeople <= 0) return all;
+  return all.flatMap((l) => (A_STORED_COUNT_OF_WHO_HAS_NOT_ANSWERED.test(String(l))
+    ? (answered < ofPeople ? [someOfThemHave(ofPeople - answered, ofPeople, 'not answered yet, so anything about them is missing rather than absent.')] : [])
+    : [l]));
+}
+
 function withoutTheMeetingsLine(lines: string[] | undefined, meetingsOnRecord: boolean | undefined): string[] {
   const all = lines ?? [];
   return meetingsOnRecord === false ? all.filter((l) => !THE_MEETINGS_LINE.test(String(l))) : all;
@@ -822,7 +835,7 @@ export function whatThisCannotTellYou(o: {
   if (!o.anybodyAskedWhoArrangedThings && o.meetingsOnRecord !== false) {
     out.push('Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.');
   }
-  out.push('Most of what anybody did is not in here. This is what was said in the sessions, and nothing else.');
+  out.push('Most of what anybody did is not in here. This is what was said in the check-ins, and nothing else.');
   return out;
 }
 
@@ -856,12 +869,12 @@ export function toSettleFirst(o: {
     const what = first.saidWordForWord === true
       ? `"${first.what}"`
       : first.what.trim().replace(/[.!?]+$/, '').replace(/^\p{Ll}/u, (c) => c.toUpperCase());
-    out.push(`${what} has been said again in ${first.restatedIn.length} sessions and nobody has said whether it happened. Ask ${first.who} what it is waiting on, and decide whether it is still wanted.`);
+    out.push(`${what} has been said again in ${first.restatedIn.length} check-ins and nobody has said whether it happened. Ask ${first.who} what it is waiting on, and decide whether it is still wanted.`);
   }
 
   const inside = o.dependencies.filter((d) => !d.chased && d.onParticipantId);
   if (inside.length) {
-    out.push(`${inside.length === 1 ? 'One thing is' : `${inside.length} things are`} waiting on somebody in this check-in, and nothing on record says anybody has gone back about ${inside.length === 1 ? 'it' : 'them'}. Ask whether ${inside.length === 1 ? 'it was' : 'they were'} raised outside the sessions, because the record cannot tell you.`);
+    out.push(`${inside.length === 1 ? 'One thing is' : `${inside.length} things are`} waiting on somebody in this check-in, and nothing on record says anybody has gone back about ${inside.length === 1 ? 'it' : 'them'}. Ask whether ${inside.length === 1 ? 'it was' : 'they were'} raised outside the check-ins, because the record cannot tell you.`);
   }
 
   const outside = o.dependencies.filter((d) => !d.onParticipantId && !d.chased);
@@ -881,7 +894,7 @@ export function toSettleFirst(o: {
   for (const p of surfaced.slice(0, 2)) {
     /* "Seen in 1 sessions." (request 109 f): the count and its noun agree. */
     const n = p.seenInSessions.length;
-    out.push(`${p.observation} It was seen in ${n === 1 ? 'one session' : `${n} sessions`}. Ask ${p.who}${A_QUESTION_BUILT_FROM_A_PATTERN_ENDS}`);
+    out.push(`${p.observation} It was seen in ${n === 1 ? 'one check-in' : `${n} check-ins`}. Ask ${p.who}${A_QUESTION_BUILT_FROM_A_PATTERN_ENDS}`);
   }
 
   const noRole = o.commitments.length === 0;
@@ -912,7 +925,7 @@ export const A_QUESTION_BUILT_FROM_A_PATTERN_ENDS = ' what they have changed abo
 export function inSessions(n: number | null | undefined): string | null {
   const count = Number(n ?? 0);
   if (!count || count < 1) return null;
-  return `in ${count} ${count === 1 ? 'session' : 'sessions'}`;
+  return `in ${count} ${count === 1 ? 'check-in' : 'check-ins'}`;
 }
 
 /**
@@ -937,7 +950,7 @@ export function overTimeAsServed(
    * Tunde read "It has been open for 2 sessions" here and "It has been open for 1 session" in the work plan, about
    * the same commitment. The board passes its own count, the one the work plan uses.
    */
-  opts: { sessionsSoFar?: number | null; meetingsOnRecord?: boolean } = {},
+  opts: { sessionsSoFar?: number | null; meetingsOnRecord?: boolean; /** The one count (grounds/this-sessions-count.ts), so the line about who has not answered is the board's own number and never the one stored with the report. */ answered?: number | null; ofPeople?: number | null } = {},
 ): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
   /*
@@ -980,7 +993,7 @@ export function overTimeAsServed(
     commitments,
     stillOpen: (rebuilt as unknown[]).filter(theThingIsNamed).map((x) => oldWordingPutPlain(String(x))),
     patterns: [],
-    cannotTellYou: withoutTheMeetingsLine(it.cannotTellYou, opts.meetingsOnRecord),
+    cannotTellYou: withTheLiveCountOfWhoAnswered(withoutTheMeetingsLine(it.cannotTellYou, opts.meetingsOnRecord), opts.answered, opts.ofPeople),
     /* And by its count too (item 21, the support desk board): where the person asked is the reader, the question's end has
        already become "Your own account of this is not in this check-in." by the time it is read here, so Maria read "The
        record names another person positively with specific evidence of their contribution. Seen in 1 sessions. Your own

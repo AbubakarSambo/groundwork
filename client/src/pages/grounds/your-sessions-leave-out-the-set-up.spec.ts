@@ -1,18 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import { sessionsDoneBy, yourSessionsSentence } from './CheckInPeopleAndSetup'
+import { yourSessionsSentence } from './CheckInPeopleAndSetup'
 
-/** Screens item c: the set-up conversation is not a session, so day one reads "0 of 4", not "1 of 4". */
-const participants = [{ id: 'p-lead', userId: 'u-lead' }, { id: 'p-kito', userId: 'u-kito' }]
-const checkIns = [
-  { status: 'COMPLETED', isSetup: true, participantId: 'p-lead', sessionNumber: 0 },
-  { status: 'COMPLETED', isSetup: false, participantId: 'p-kito', sessionNumber: 1 },
-]
-describe("the lead's own sessions", () => {
+/**
+ * Screens item c: the set-up conversation is not a session, so day one reads "0 of 4", not "1 of 4". The count itself is the server's
+ * now (api grounds/the-sessions-done.spec.ts proves the set-up row and a corrected session are never counted twice); the screen only
+ * says the number it is given, and never more than were planned.
+ */
+describe("the lead's own sessions, as said", () => {
   it('on day one, with only the set-up done, are none', () => {
-    expect(yourSessionsSentence(sessionsDoneBy(checkIns, participants, 'u-lead'), 4)).toBe('0 of 4 sessions are done.')
+    expect(yourSessionsSentence(0, 4)).toBe('0 of 4 check-ins are done.')
   })
-  it('count a real session once, corrected or not', () => {
-    const more = [...checkIns, { status: 'COMPLETED', isSetup: false, participantId: 'p-lead', sessionNumber: 1 }, { status: 'COMPLETED', isSetup: false, participantId: 'p-lead', sessionNumber: 1 }]
-    expect(yourSessionsSentence(sessionsDoneBy(more, participants, 'u-lead'), 4)).toBe('1 of 4 sessions are done.')
+  it('say one real session once, and never more than were planned', () => {
+    expect(yourSessionsSentence(1, 4)).toBe('1 of 4 check-ins are done.')
+    expect(yourSessionsSentence(9, 6)).toBe('6 of 6 check-ins are done.')
   })
 })

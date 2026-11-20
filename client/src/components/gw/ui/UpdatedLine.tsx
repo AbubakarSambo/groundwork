@@ -10,9 +10,9 @@ import './gw-ui.css'
  * because there is nothing short to say.
  */
 export function UpdatedLine({ short, full }: { short: string | null; full: string }) {
-  if (!short) return <p className="gwui-upd-plain">{full}</p>
+  if (!short) return <p className="gwui-upd-plain gw-line">{full}</p>
   return (
-    <details className="gwui-upd">
+    <details className="gwui-upd gw-line">
       <summary>
         Updated {short} <span aria-hidden="true">ⓘ</span>
       </summary>

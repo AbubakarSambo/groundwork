@@ -80,7 +80,8 @@ describe('an IN_PROGRESS session is open, whatever its availableFrom says', () =
 
   it('does not tell the person there is no check-in open', async () => {
     renderPage()
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Sales team, Q3' })).toBeTruthy())
+    /* A check-in that is due is the card alone: the way back carries the name. */
+    await waitFor(() => expect(screen.getByRole('link', { name: /Sales team, Q3/ })).toBeTruthy())
     expect(screen.queryByText(/No check-in open right now/i)).toBeNull()
     expect(screen.queryByText(/next session opens/i)).toBeNull()
   })

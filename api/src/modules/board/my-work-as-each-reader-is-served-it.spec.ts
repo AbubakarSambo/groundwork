@@ -131,7 +131,8 @@ describe('My work, as each reader is served it', () => {
       [{ words: 'I will deliver the Carrefour freezers on 20 October.', cannotBeTrue: '20 October had already passed when it was said.' }],
     ] });
     const page = (await readMyWork(c.prisma, c.board, { groundId: 'g-sales', userId: 'u-mercy' }, NOW)) as MyWorkServed;
-    expect(page.reports.items.slice(0, 2).map((r) => r.line)).toEqual(['Session 10.', 'You said, “I sold 30 units today.”']);
+    /* Batch 2, group 3: quoted by the one function (their-words-as-said.ts), because she typed these words word for word. */
+    expect(page.reports.items.slice(0, 2).map((r) => r.line)).toEqual(['Check-in 10.', 'You said “I sold 30 units today”.']);
     expect(allText(page)).not.toContain('10,000 freezers');
     expect(allText(page)).not.toContain('20 October');
   });
@@ -183,7 +184,7 @@ describe('My work, as each reader is served it', () => {
     expect(page.coaching.keep).toEqual(['Doing what you say you’ll do.', 'Adding proof when you say something is done.', 'Helping your teammates.', 'Specific, on-time check-ins.']);
     expect(page.checkIns).toMatchObject({ heading: 'Your check-ins', due: 10, done: 10, onTime: 10, specific: 9 });
     expect(page.reports.heading).toBe('Your reports');
-    expect(page.reports.items.slice(0, 2).map((r) => r.line)).toEqual(['You said, “Greenfield signed the order today.”', 'You said, “Ruiru Academy moved to Qualified.”']);
+    expect(page.reports.items.slice(0, 2).map((r) => r.line)).toEqual(['You said “Greenfield signed the order today”.', 'You said “Ruiru Academy moved to Qualified”.']);
     expect(page.items.heading).toBe('Your deals');
     expect(page.items.note).toBe('5 open');
     expect(page.items.rows.find((r) => r.name === 'Westgate Deli')).toMatchObject({ stage: 'Contacted', next: 'Nothing booked', proof: 'None yet' });
@@ -262,7 +263,7 @@ describe('My work, as each reader is served it', () => {
     const page = (await readMyWork(c.prisma, c.board, { groundId: 'g-sales', userId: 'u-mercy' }, NOW)) as MyWorkServed;
     expect(page.performing.behaviours.every((b) => b.verdict === 'Not enough yet' && b.happened === 'Not enough check-ins show this yet.' && b.means === null)).toBe(true);
     expect(page.focus).toBeNull();
-    expect(page.focusEmpty).toBe('Nothing needs work yet. Your focus will show here once your check-ins show something to work on.');
+    expect(page.focusEmpty).toBe('Nothing needs work yet.');
     expect(page.coaching.keep).toEqual([]);
     expect(page.coaching.better).toEqual([{ text: TEAM_COACHING, from: 'Grace’s coaching for the team' }]);
   });
@@ -356,7 +357,7 @@ describe('My work while the board waits for their check-in', () => {
     const c = theSalesCheckIn();
     const withheld = { get: async () => ({ renders: true, withheldUntilYouCheckIn: true, saying: 'You will be able to open it as soon as you have checked in.' }) };
     const page = (await readMyWork(c.prisma, withheld, { groundId: 'g-sales', userId: 'u-kevin' }, NOW)) as MyWorkServed;
-    expect(page.items.emptySays).toBe('Your deals show here again once you have checked in for this session.');
+    expect(page.items.emptySays).toBe('Your deals show here again once you have checked in for this check-in.');
     expect(JSON.stringify(page)).not.toMatch(/no deals on the board/);
   });
 });

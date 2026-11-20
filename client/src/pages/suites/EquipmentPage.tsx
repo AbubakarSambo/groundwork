@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { equipmentApi, type EquipmentBoard } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Panel, Button, Note, Empty, FieldLabel, Select, TextField } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Note, Empty, FieldLabel, Select, TextField, Skeleton } from '@/components/gw/ui'
 import { SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
@@ -50,7 +50,7 @@ export function EquipmentPage() {
         subtitle="See who has each laptop, phone and other piece of equipment, and what needs fixing."
       />
 
-      {isLoading && <Note>Loading…</Note>}
+      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
           <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin can open this board.'} role={user?.role} /></Note>

@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { theAssessmentIn } from './the-assessment';
 import { theDayInWords } from '../board/the-day-in-words';
-import { whoHearsAComplaintAbout, theComplaintAsTheyReadIt, theComplaintsWords } from './a-complaint-about-the-lead';
+import { whoHearsAComplaintAbout, theComplaintAsTheyReadIt, whatTheComplaintSays } from './a-complaint-about-the-lead';
 
 const escape = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const nameOf = (u: any, given?: string | null) => [u?.firstName, u?.lastName].filter(Boolean).join(' ').trim() || (given ?? '').trim();
@@ -37,7 +37,7 @@ export class AComplaintIsToldListener {
           ground: { select: { label: true, initiatorId: true, organizationId: true, initiator: { select: { firstName: true, lastName: true } }, organization: { select: { name: true } } } },
         },
       });
-      const words = theComplaintsWords(theAssessmentIn(row?.sessionReport));
+      const words = whatTheComplaintSays(theAssessmentIn(row?.sessionReport));
       if (!row || !words.length || !this.email) return { told: 0 };
       const people = await whoHearsAComplaintAbout(this.prisma, { organizationId: row.ground.organizationId, leadUserId: row.ground.initiatorId, personUserId: row.participant?.userId ?? null });
       const base = (this.config?.get<string>('resend.frontendUrl') || '').replace(/\/$/, '');

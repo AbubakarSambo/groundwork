@@ -7,13 +7,15 @@ import { PLAN_LABELS, type SubscriptionPlan } from '@/api/billing'
 import { groundsApi } from '@/api/grounds'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import {
-  Section, Stack, Folded, TextField, Select, Choices, PeopleTable, PeopleTableHead, PersonRow, Tag, Note, Empty,
-  type TagTone,
+  Section, Stack, Folded, TextField, Select, Choices, Button, PeopleTable, PeopleTableHead, PersonRow, Tag, Note, Empty,
+  type TagTone, Skeleton
 } from '@/components/gw/ui'
 import {
   type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, isNamePlaceholder, roleWord, statusWord, needsSomething, whereTheySitLine, checkInsPartsApart,
 } from './people-here'
 import { TheirNumberInTheRow } from './their-number'
+import { RemoveFromTheOrganisation } from './ask-first-in-the-page'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * "EVERYONE AT BARIDI" AND "WHO REPORTS TO WHOM" (A4 people.txt), the People page's list.
@@ -36,7 +38,7 @@ type RoleFilter = 'Everyone' | 'Owner' | 'Admins' | 'Can open check-ins' | 'Take
 const ROLE_FILTERS: RoleFilter[] = ['Everyone', 'Owner', 'Admins', 'Can open check-ins', 'Takes part', 'Guests', 'Needs something']
 
 /** Team, Role, Status, Check-ins, Open - the name column is PersonRow's own (PEOPLE_NAME_COLUMN). */
-const EXTRA_COLUMNS = '120px 170px 230px minmax(150px, 1fr) 40px'
+const EXTRA_COLUMNS = '100px 110px 220px minmax(110px, 1fr) 40px'
 
 function matches(filter: RoleFilter, m: OrgMember, ownerId: string | null): boolean {
   const role = roleWord(m, ownerId)
@@ -73,10 +75,15 @@ export function howManyHere(
      read "Omondi is on a check-in with no seat for them", which was not true. They are said apart, and the server's own sentence
      about the plan being full (request 197) is said when it is served. */
   waitingWithNoCheckIn: string[] = [], overThePlanSays: string | null = null,
+  /* Invited with no account yet (run 9): a row below that holds no seat, so the head count never disagrees with the rows shown. */
+  invitedWithNoAccount: string[] = [],
+  /* An organisation with no cover at all (its free month is over, or the free plan never applied to it): not "on the free plan", which Plan and billing and the Pricing page never say of it (run 10). */
+  withNoPlanYet = false,
 ): string {
   const peopleCount = (n: number) => (n === 1 ? '1 person' : `${n} people`)
   const people = peopleCount(count)
   const first = cap == null ? `${people}.` : (() => {
+    if (!plan && withNoPlanYet) return `${people}, with no plan chosen yet, which covers up to ${cap}.`
     const name = plan ? `the ${PLAN_LABELS[plan as SubscriptionPlan] ?? plan} plan` : 'the free plan'
     return `${people}, on ${name}, which is for up to ${cap}.`
   })()
@@ -109,9 +116,12 @@ export function howManyHere(
   const extra = [
     sentence(waitingToBeLetIn, 'waiting to be let in', 'more are waiting to be let in'),
     wasNotSentence(notLetIn),
+    sentence(invitedWithNoAccount, 'invited, with no account yet', 'people are invited, with no account yet'),
     sentence(heldForASeat, 'on a check-in with no seat for them', 'people are on a check-in with no seat for them'),
     overThePlanSays?.trim() || sentence(waitingWithNoCheckIn, 'waiting for a seat on your plan', 'people are waiting for a seat on your plan'),
   ].filter((s): s is string => !!s)
+  /* More people than the plan is for, with nothing else already saying why (a plan that fell back to the free one): said, so "4 people, which is for up to 1" never contradicts itself. */
+  if (cap != null && count > cap && !overThePlanSays?.trim() && heldForASeat.length === 0 && waitingWithNoCheckIn.length === 0) extra.push('That is more people than the plan covers.')
   return [first, ...extra].join(' ')
 }
 
@@ -203,6 +213,8 @@ function TheTree({ people }: { people: OrgMember[] }) {
 
 export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: string | null }) {
   const whatsappOn = useWhatsAppIsOn()
+  const me = useAuthStore((st) => st.user)
+  const [removing, setRemoving] = useState<OrgMember | null>(null)
   const { data, isLoading, isError } = useQuery({ queryKey: ['org-members'], queryFn: fetchMembers })
   /* Same query the sidebar already makes (AppShell.tsx), read here only for when each check-in
      started, so a person's own check-ins cell can tell two of the same label apart. */
@@ -210,7 +222,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
   const startOf = useMemo(() => new Map((grounds.data ?? []).map((g) => [g.id, { startsAt: g.startsAt, createdAt: g.createdAt }])), [grounds.data])
   const status = useQuery({
     queryKey: ['billing-status-people'],
-    queryFn: () => apiClient.get('/billing/status').then((r: any) => (r.data.data ?? r.data) as { people?: { count: number; cap: number | null }; subscription?: { plan: string | null }; onTheHouse?: { plan: string } | null }),
+    queryFn: () => apiClient.get('/billing/status').then((r: any) => (r.data.data ?? r.data) as { people?: { count: number; cap: number | null }; subscription?: { plan: string | null }; onTheHouse?: { plan: string } | null; onTheFreePlan?: boolean }),
     retry: false,
   })
   const [find, setFind] = useState('')
@@ -237,7 +249,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
       </Note>
     )
   }
-  if (isLoading) return <Note>Loading…</Note>
+  if (isLoading) return <Skeleton what="Getting the people" shape="rows" />
 
   /* Who the head count leaves out, and why (U.4 people-group review, item 1): named, so "N people"
      and the number of rows below it never quietly disagree. */
@@ -245,6 +257,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
   const heldForASeat = everybody.filter((m) => m.heldForASeat && (m.checkInsOn ?? 0) > 0).map(firstNameOf)
   const waitingWithNoCheckIn = everybody.filter((m) => m.heldForASeat && (m.checkInsOn ?? 0) === 0).map(firstNameOf)
   const notLetIn = everybody.filter((m) => m.notLetIn).map(firstNameOf)
+  const invitedWithNoAccount = everybody.filter((m) => m.noAccountYet && !m.heldForASeat && !m.notLetIn && !m.awaitingOrgApproval).map(firstNameOf)
 
   return (
     <>
@@ -268,6 +281,8 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
           notLetIn,
           waitingWithNoCheckIn,
           data?.overThePlanSays ?? null,
+          invitedWithNoAccount,
+          !status.data?.subscription?.plan && !status.data?.onTheHouse && status.data?.onTheFreePlan === false,
         )}
       >
         <Stack gap={18}>
@@ -342,7 +357,13 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
                           a `<button>` with a click handler standing in for one. */}
                       {m.noAccountYet
                         ? <span />
-                        : <Link className="gwui-open-link" aria-label={`Open ${name}`} to={`/org/members/${m.id}`}>Open</Link>}
+                        : <span>
+                            <Link className="gwui-open-link" aria-label={`Open ${name}`} to={`/org/members/${m.id}`}>Open</Link>
+                            {/* Remove from the list too, not only from the person's own page (run 5, 19 November). Never yourself, never whoever owns the organisation. */}
+                            {m.id !== me?.id && m.id !== ownerId && (
+                              <Button kind="quiet" size="small" aria-label={`Remove ${name}`} onClick={() => setRemoving(m)}>Remove</Button>
+                            )}
+                          </span>}
                     </PersonRow>
                   )
                 }}
@@ -354,6 +375,9 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
           )}
         </Stack>
       </Section>
+      {removing && (
+        <RemoveFromTheOrganisation id={removing.id} name={nameOf(removing)} orgName={orgName} alsoIn={removing.alsoIn} onClose={() => setRemoving(null)} />
+      )}
     </>
   )
 }

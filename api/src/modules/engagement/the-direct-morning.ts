@@ -1,4 +1,5 @@
 import { withoutTheOldEnding } from '../reports/what-people-said-differently-about';
+import { howManyReadsAreStillToCome } from '../conversation/the-read-is-owed';
 import { workingDaysOf } from '../grounds/which-days-this-team-works';
 import { isASalesKind } from '../board/the-kind-of-work';
 import { theTeamsTargetsSaid } from '../board/release-4-teams';
@@ -16,7 +17,8 @@ import { theCollectionsTypeFor } from '../board/the-collections-record';
 import { aDeadlineSaid } from '../board/the-matter-board';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
-import { theirDay, twoMissedDaysSaid, notInTodaySaid, onTimeSaid, mayBeNudged, type ASessionOnRecord, type TheirDay } from './who-answers-and-when';
+import { whenTheseOrganisationsPaused } from '../billing/the-trial-grace';
+import { theirDay, wasAnswered, whenAnswered, twoMissedDaysSaid, notInTodaySaid, onTimeSaid, mayBeNudged, type ASessionOnRecord, type TheirDay } from './who-answers-and-when';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { readThePersonsRecord, type AStoredPersonsRecord } from '../board/the-persons-record-store';
 import { whoGroundworkCouldNotMove, type AKindOfCheckIn } from '../board/what-the-lead-reads-about-each-person';
@@ -175,6 +177,8 @@ export interface AWaitOnRecord {
 export interface TheSalesMorningInput {
   /** The lead's board, as she is served it. */
   board: any;
+  /** Whether a conversation on this check-in has not been read yet (conversation/the-read-is-owed.ts). */
+  readIsStillToCome?: boolean;
   groundId: string;
   label: string;
   /** The lead's own rows on the check-in. */
@@ -222,8 +226,26 @@ const OPEN_GROUPS = new Set(['possible', 'cooling', 'likely']);
 const isWon = (r: any) => /^won$/i.test(String(r?.stage ?? '').trim()) || r?.group === 'won' || r?.group === 'said-won';
 const theDealRows = (board: any): any[] => ((board?.workRecords ?? []) as any[]).filter((s) => s?.section === 'Deal grid').flatMap((s) => (s.rows ?? []) as any[]).filter((r) => (r.kind ?? 'deal') === 'deal' && String(r.name ?? '').trim());
 
+const listedNames = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0] ?? '');
+
+/**
+ * WHAT EACH PERSON SAID THEY HAD DONE, in the newest round anybody said it in, "Asha said 25". Read from what the board serves for the
+ * reader (saidBy on each target, kept by board.listener keepWhatPeopleSaid), one per person, never from a count: a said number is not
+ * a count and proves nothing. Somebody who did not say one in that round is not named, since they have not said it this week.
+ */
+export function theNumbersPeopleSaid(board: any): { lines: string[]; total: number } {
+  /* Said against the team's target first, so a person who also said one against an aim of their own is named once, for the team's. */
+  const all = [...((board?.objectives ?? []) as any[])].sort((a, b) => Number(!!a?.ownerParticipantId) - Number(!!b?.ownerParticipantId))
+    .flatMap((o) => (Array.isArray(o?.saidBy) ? o.saidBy : []) as any[])
+    .filter((x) => x && typeof x.count === 'number' && x.count > 0 && String(x.name ?? '').trim());
+  const newest = Math.max(-1, ...all.map((x) => Number(x.atSession ?? 0)));
+  const seen = new Set<string>();
+  const once = all.filter((x) => Number(x.atSession ?? 0) === newest && !seen.has(x.participantId) && !!seen.add(x.participantId));
+  return { lines: once.map((x) => `${String(x.name).trim().split(/\s+/)[0]} said ${commas(Number(x.count))}`), total: once.reduce((n, x) => n + Number(x.count), 0) };
+}
+
 /** 1. ARE WE GOING TO HIT THE TARGET? */
-export function theTargetLines(board: any, now: Date, zone: string): { lines: AMorningLine[]; gap: number | null; target: number | null; heading: string } {
+export function theTargetLines(board: any, now: Date, zone: string, readIsStillToCome = false): { lines: AMorningLine[]; gap: number | null; target: number | null; heading: string } {
   const heading = String(board?.headline?.question ?? '').trim() || 'Will we reach the target?';
   /* Release 5: a project's lead hears the next milestone and the tightest month, from the project board as served (release-5-projects). */
   if (board?.releaseFiveProjects && board?.project) {
@@ -237,6 +259,8 @@ export function theTargetLines(board: any, now: Date, zone: string): { lines: AM
     if (said.length) return { lines: said.map((text, i) => ({ text, rank: i })), gap: null, target: null, heading };
   }
   const aim = THE_TEAMS_AIM((board?.objectives ?? []) as any[]);
+  /* A read that is still to come is not "no target": the target may be in what was said and not read yet (conversation/the-read-is-owed.ts). */
+  if (!aim && readIsStillToCome) return { lines: [{ text: 'Groundwork is still working out the team target from what was said, so it is not shown yet.', rank: 0 }], gap: null, target: null, heading };
   if (!aim) return { lines: [{ text: 'No team target is on record yet, so set one in your check-in.', rank: 0 }], gap: null, target: null, heading };
   const target = Number(aim.target);
   const counted = aim.fromTheDeals ?? null;
@@ -246,14 +270,33 @@ export function theTargetLines(board: any, now: Date, zone: string): { lines: AM
   const onADeposit = counted && typeof counted.deposit === 'number' && counted.deposit > 0 ? Number(counted.deposit) : 0;
   const by = theAimsDay(aim.name) ?? null;
   const rows = theDealRows(board);
+  /*
+   * NOTHING ON A DEAL IS NOT "0 SOLD" (fix plan 17 November, group 5; run 4, 18 November). Taa Solar's people gave their numbers every
+   * week and no deal was ever written, so every morning opened "0 of 30 sold, 30 short, and no open deal covers any of it", which says
+   * they sold nothing and that nobody said otherwise. The cycle-3 fix read only a board with no count at all; the board always carries
+   * a count from the deals, so it never applied. Run 5 (19 November): it still did not, because Taa Solar's board holds one deal (a shop named in a check-in, no number of units on it), so "no deal at all" was false while the count was still nothing. The test is therefore whether any deal holds a number of units, which is what the old line's "short" and "cover" were counting. With no counted deal the line says the target, what each person said, and that none
+   * of it is on a deal yet so none of it is proven. It names no gap.
+   */
+  const { lines: saidLines, total: saidTotal } = theNumbersPeopleSaid(board);
+  /* Beside the target, what they said between them (run 7: the lead read each name and had to add it up herself). One person's number is the total. */
+  const whatTheySaid = saidLines.length ? `${listedNames(saidLines)}${saidLines.length > 1 ? `, which is ${commas(saidTotal)} between them` : ''}` : null;
+  const nothingCounted = sold === 0 && !(paid && paid > 0);
+  /* Run 8: 21 of 43 letters said "0 of 30 sold, 30 short, and no open deal covers any of it" while people said 9 to 17 a week, because a deal that held units sent the line down the count's path. Where people said a number and nothing is counted, the line says what they said, and that none of it is counted. */
+  if (nothingCounted && (whatTheySaid || !rows.some((r) => (theUnitsOf(r.fields) ?? 0) > 0))) {
+    const text = whatTheySaid
+      ? `The team target is ${commas(target)}. ${whatTheySaid}, and none of it is ${rows.some((r) => (theUnitsOf(r.fields) ?? 0) > 0) ? 'counted as sold' : 'on a deal'} yet, so none of it is proven.`
+      : `The team target is ${commas(target)}, and nothing is counted against it yet.`;
+    return { lines: [{ text, rank: 0 }], gap: null, target, heading };
+  }
   const likely = rows.filter((r) => r.group === 'likely' && !isWon(r));
   const likelyUnits = likely.reduce((n, r) => n + (theUnitsOf(r.fields) ?? 0), 0);
   /* THE TARGET IN ONE LINE (Hafsah, 21 October): sold, paid, what is likely by the target's day, the gap, and whether the open deals cover
      it. "75 of 120 sold, 47 paid, 45 short, and the open deals cover 40." */
   const said = [`${commas(sold)} of ${commas(target)} sold`, ...(paid !== null ? [`${commas(paid)} paid`] : []), ...(onADeposit ? [`${commas(onADeposit)} on a deposit`] : []), ...(likelyUnits > 0 ? [`${commas(likelyUnits)} more likely${by ? ` by ${by}` : ''}`] : [])].join(', ');
   const gap = target - sold - likelyUnits;
+  const andWhatTheySaid = whatTheySaid ? ` ${whatTheySaid}.` : '';
   if (gap <= 0) {
-    return { lines: [{ text: sold >= target ? `${said}, and you have reached the target.` : `${said}, and with the likely deals you reach the target.`, rank: 0 }], gap: Math.max(0, gap), target, heading };
+    return { lines: [{ text: `${sold >= target ? `${said}, and you have reached the target.` : `${said}, and with the likely deals you reach the target.`}${andWhatTheySaid}`, rank: 0 }], gap: Math.max(0, gap), target, heading };
   }
   /* What the open deals hold: the deals the board lists to close the gap, else every open deal not already counted as likely. */
   const listed = new Set(((board?.toCloseTheGap?.deals ?? []) as any[]).map((d) => String(d?.name ?? '').trim().toLowerCase()).filter(Boolean));
@@ -265,7 +308,7 @@ export function theTargetLines(board: any, now: Date, zone: string): { lines: AM
     : cover > 0
       ? `${said}, ${commas(gap)} short, and the open deals cover ${commas(cover)}.`
       : `${said}, ${commas(gap)} short, and no open deal covers any of it.`;
-  return { lines: [{ text, rank: 0 }], gap, target, heading };
+  return { lines: [{ text: `${text}${andWhatTheySaid}`, rank: 0 }], gap, target, heading };
 }
 
 const A_DECISION = /\b(?:decision|decide|approv\w*|yes or no|go-ahead|sign[- ]off on the price|price)\b/i;
@@ -497,6 +540,17 @@ export function theTeamLines(input: TheSalesMorningInput, name: (pid: string | n
  */
 export const NOTHING_NEEDS_YOU = 'Nothing needs you today.';
 
+/**
+ * A MORNING THAT ONLY SAYS NOTHING NEEDS YOU IS NOT SENT (fix plan 17 November, group 5). Kofi was mailed "nothing needs you today" 42
+ * times in 90 days. The board still says it; the mail goes only where something needs her, something is about to close, or a person on
+ * her team is in the message. The same single reading the paragraph is built from, so no second list of what counts.
+ */
+export function theMorningSaysOnlyThatNothingNeedsYou(m: TheDirectMorning): boolean {
+  const needs = m.parts.filter((p) => p.key === 'needsYou').flatMap((p) => p.lines);
+  if (!needs.length || !needs.every((l) => l.text === NOTHING_NEEDS_YOU)) return false;
+  return !m.parts.filter((p) => p.key !== 'needsYou' && p.key !== 'target').some((p) => p.lines.some((l) => !l.boardOnly));
+}
+
 export function withNothingNeedsYou(parts: TheMorningPart[]): { parts: TheMorningPart[]; nothing: boolean } {
   const inTheMessage = (k: AMorningPartKey) => parts.filter((p) => p.key === k).flatMap((p) => p.lines).some((l) => !l.boardOnly);
   if (inTheMessage('needsYou') || inTheMessage('team')) return { parts, nothing: false };
@@ -528,6 +582,8 @@ export function theCheckInLines(
   pid: string, who: string, day: TheirDay | null, lastCheckIn: Record<string, Date | null>, firstOpened: Record<string, Date | null>,
   today: string, before: string, workingDays: number[] | null, zone: string,
 ): AMorningLine[] {
+  /* In a pause nobody can check in, so nobody has not: no line about a check-in not made. */
+  if (day?.paused) return [];
   if (day) {
     const two = twoMissedDaysSaid(who, day, workingDays);
     if (two) return [{ text: two, rank: 8 }];
@@ -562,7 +618,7 @@ export function whoMayBeNudged(
 export function theSalesDirectMorning(input: TheSalesMorningInput): TheDirectMorning {
   const names = theNamesToCall(input.people.map((p) => ({ id: p.id, name: p.name })));
   const name = (pid: string | null) => (pid ? names.get(pid) ?? null : null);
-  const target = theTargetLines(input.board, input.now, input.zone);
+  const target = theTargetLines(input.board, input.now, input.zone, input.readIsStillToCome === true);
   const needs = theNeedsYouLines(input, name);
   const { parts, nothing } = withNothingNeedsYou([
     { key: 'target', heading: target.heading, lead: 'Target:', lines: target.lines },
@@ -915,7 +971,7 @@ export async function theDirectMorningFor(
   const ground = await Promise.resolve(prisma?.ground?.findUnique?.({
     where: { id: opts.groundId },
     select: { id: true, label: true, organizationId: true, initiatorId: true, kindOfWork: true, scenario: true, workingDays: true, overWhatsApp: true, cadence: true, cadenceDays: true,
-      participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, user: { select: { firstName: true, lastName: true } } } } },
+      participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, joinedAt: true, user: { select: { firstName: true, lastName: true } } } } },
   })).catch(() => null) as any;
   if (!ground || ground.initiatorId !== opts.leadUserId) return null;
   const zone = (await theOrganisationsZone(prisma, ground.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE;
@@ -925,22 +981,24 @@ export async function theDirectMorningFor(
     managingOnly: !!p.managingOnly, left: !!p.leftAt, isTheLead: p.userId === opts.leadUserId || p.partyType === 'INITIATOR', userId: p.userId,
   }));
   const hers = new Set(people.filter((p) => p.isTheLead).map((p) => p.id));
-  const checkIns: any[] = ((await Promise.resolve(prisma?.checkIn?.findMany?.({ where: { groundId: ground.id }, select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true } })).catch(() => [])) ?? []) as any[];
+  const checkIns: any[] = ((await Promise.resolve(prisma?.checkIn?.findMany?.({ where: { groundId: ground.id }, select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } } })).catch(() => [])) ?? []) as any[];
   const lastCheckIn: Record<string, Date | null> = {};
   const firstOpened: Record<string, Date | null> = {};
   for (const c of checkIns) {
     if (c.isSetup) continue;
     const opened = c.availableFrom ? new Date(c.availableFrom) : c.createdAt ? new Date(c.createdAt) : null;
     if (opened && opened <= now && (!firstOpened[c.participantId] || opened < (firstOpened[c.participantId] as Date))) firstOpened[c.participantId] = opened;
-    /* A session the clock closed with nothing said is not a check-in made. */
-    if (String(c.status).toUpperCase() !== 'COMPLETED' || !c.completedAt || /auto|expired|timed/i.test(String(c.closedReason ?? ''))) continue;
-    const at = new Date(c.completedAt);
+    /* A check-in made is one they answered in, whatever closed it (the one owner, who-answers-and-when's wasAnswered). */
+    const at = wasAnswered(c) ? whenAnswered(c) : null;
+    if (!at) continue;
     if (at > now) continue;
     if (!lastCheckIn[c.participantId] || at > (lastCheckIn[c.participantId] as Date)) lastCheckIn[c.participantId] = at;
   }
   const kept = ground.overWhatsApp === false;
   /* A daily check-in's open session is missed on each working day it stays open (item 5 of the final check). */
-  const sessions = checkIns.map((c) => ({ ...c, opensDaily: String(ground.cadence ?? '').toUpperCase() === 'DAILY', workingDays: ground.workingDays ?? null })) as ASessionOnRecord[];
+  const pausedFrom = (await whenTheseOrganisationsPaused(prisma, [ground.organizationId], now).catch(() => new Map<string, Date>())).get(ground.organizationId) ?? null;
+  const joinedAt = new Map(((ground.participants ?? []) as any[]).map((p) => [p.id, p.joinedAt ?? null] as const));
+  const sessions = checkIns.map((c) => ({ ...c, opensDaily: String(ground.cadence ?? '').toUpperCase() === 'DAILY', workingDays: ground.workingDays ?? null, pausedFrom, joinedAt: joinedAt.get(c.participantId) ?? null })) as ASessionOnRecord[];
   /* Each person's stored record, read only (never rebuilt here), where the organisation keeps judgements of a person on. */
   const records = await theStoredRecords(prisma, ground.organizationId, people.filter((p) => !p.isTheLead && !p.managingOnly && !p.left).map((p) => p.id), ground.id);
   const nudgeable = { mayBeNudged: whoMayBeNudged(people, hers, sessions, now, zone) };
@@ -980,6 +1038,7 @@ export async function theDirectMorningFor(
     ...theSalesDirectMorning({
       board: opts.board, groundId: ground.id, label: ground.label, hers, people, waits: open, deals, carried, sales, lastCheckIn, firstOpened, sessions,
       workingDays: ground.workingDays ?? null, now, zone, lines, records,
+      readIsStillToCome: (await howManyReadsAreStillToCome(prisma, ground.id)) > 0,
     }),
     ...nudgeable,
     ...(kept ? { keptInTheApp: true } : {}),

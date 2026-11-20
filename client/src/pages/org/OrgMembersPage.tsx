@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { WhoCanJoin } from './WhoCanJoin'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTheNextSeat } from '@/components/gw/this-adds-a-seat'
@@ -12,7 +13,7 @@ import { WaitingToBeLetIn } from './WaitingToBeLetIn'
 import { EveryoneHere } from './EveryoneHere'
 import { InvitePeople } from './InvitePeople'
 import { WhoCanOpenACheckIn } from './WhoCanOpenACheckIn'
-import { Page, PageTitle, EdgeList, EdgeRow, Button, Section, Panel, Note, Stack } from '@/components/gw/ui'
+import { Page, PageTitle, EdgeList, EdgeRow, Button, Section, Panel, Note, Stack, Folded } from '@/components/gw/ui'
 
 /**
  * THE PEOPLE PAGE (U.4, A4 people.txt), as an admin reads it, in the prototype's order:
@@ -114,6 +115,8 @@ export function OrgMembersPage() {
   })
   const people = seatCount.data?.people
   const nextSeat = useTheNextSeat()
+  /* The invitation form opens from "Invite a colleague", or at once when the address says #invite-list. */
+  const [inviting, setInviting] = useState(() => typeof window !== 'undefined' && window.location.hash.includes('invite-list'))
   /* Unknown until it answers: then the card says what it always said, never "there is room". */
   const seatsFree: number | null = !people ? 0 : people.cap == null ? null : Math.max(0, people.cap - people.count)
   const seatQueue = useQuery({
@@ -221,26 +224,32 @@ export function OrgMembersPage() {
 
       <EveryoneHere orgName={orgName} ownerId={ownerId} />
 
-      {/* SECONDARY, NOT PRIMARY (Hafsah, 30 September): this only scrolls to "Invite people" below,
-          where "Send their invitations" is the page's real, single primary action. Kept primary,
-          it would sit navy on screen at the same time as the no-seat card's own "Send their
-          invitations" button above, whenever somebody is waiting for a seat. */}
+      {/* ONE WAY TO INVITE (design playbook, rule 3): the button is the page's one main action, and it opens the form. The form used to sit
+          open under the button as a second way in. It is still on the page for anyone who arrives at "#invite-list". */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button
-          kind="secondary"
+          kind="primary"
           onClick={() => {
-            scrollToId('invite-list')
-            document.getElementById('invite-list')?.focus()
+            setInviting(true)
+            /* The form is not on the page until the state has changed, so the focus waits for it. */
+            setTimeout(() => {
+              scrollToId('invite-list')
+              document.getElementById('invite-list')?.focus()
+            }, 0)
           }}
         >Invite a colleague</Button>
       </div>
 
-      <InvitePeople />
+      {inviting && <div id="invite-people"><InvitePeople /></div>}
 
       {/* "Who can join" (A4 people.txt): anyone with the admin's own email domain, as "Takes part". U.3. */}
-      <WhoCanJoin orgName={orgName} />
-
-      <WhoCanOpenACheckIn orgName={orgName} />
+      {/* Settings a person changes once, kept in one fold (design playbook, rule 8). Nothing in it is removed. */}
+      <Folded summary="More about how people join">
+        <Stack gap={30}>
+          <WhoCanJoin orgName={orgName} />
+          <WhoCanOpenACheckIn orgName={orgName} />
+        </Stack>
+      </Folded>
 
       <Section heading="Help your team get started">
         <div className="gwui-two-up">
@@ -248,14 +257,14 @@ export function OrgMembersPage() {
             <Stack gap={10}>
               <p className="gwui-panel-text"><b>Send your team the guide</b></p>
               <p className="gwui-panel-text-muted">How a check-in works, what happens to what people write, and what you can see as their admin.</p>
-              <Button kind="secondary" wide onClick={() => navigate('/org/guide')}>Send the guide</Button>
+              <Button kind="quiet" onClick={() => navigate('/org/guide')}>Send the guide</Button>
             </Stack>
           </Panel>
           <Panel>
             <Stack gap={10}>
               <p className="gwui-panel-text"><b>Put your whole team on</b></p>
               <p className="gwui-panel-text-muted">{`Everyone at ${orgName} on one plan, so nobody waits for a seat.`}</p>
-              <Button kind="secondary" wide onClick={() => navigate('/billing')}>See the plans</Button>
+              <Button kind="quiet" onClick={() => navigate('/billing')}>See the plans</Button>
             </Stack>
           </Panel>
         </div>

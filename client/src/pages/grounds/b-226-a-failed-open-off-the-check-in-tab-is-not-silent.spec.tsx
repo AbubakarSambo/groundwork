@@ -142,6 +142,8 @@ describe('B-231: no second .gwui-page-main stacked above the failure note', () =
     // Closest .gwui-page-main ancestor of the note, if any, must be the header's own - not a
     // second one wrapping the note itself.
     expect(note.closest('.gwui-page-main')).toBeNull()
-    expect(note.closest('.gwui-page-narrow')).not.toBeNull()
+    /* Changed in batch 2, group 5: the Check-in tab's own body is the conversation's frame now, the full width beside the
+       sidebar (gwui-ci-tab-body), not the narrow column; the rule kept is the one above, no second page frame. */
+    expect(note.closest('.gwui-ci-tab-body')).not.toBeNull()
   })
 })

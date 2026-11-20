@@ -27,7 +27,7 @@ describe('absence of evidence is not a finding', () => {
   it('and tells the reader it is not a disagreement', () => {
     /* The whole point. Without this sentence the new word is just a different puzzle. */
     expect(whatToCallIt('thin', false).note).toMatch(/not a finding that people disagree/)
-    expect(whatToCallIt('thin', false).note).toMatch(/Another session/)
+    expect(whatToCallIt('thin', false).note).toMatch(/Another check-in/)
   })
 
   it('leaves a real reading alone', () => {

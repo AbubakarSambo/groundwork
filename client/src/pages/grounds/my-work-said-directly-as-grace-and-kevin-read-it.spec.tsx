@@ -36,14 +36,16 @@ describe('Kevin’s My work', () => {
   it('off: who else sees it, and the library note, as served', async () => {
     open({ ...(SERVED as any).kevin.myWork, directMorning: false })
     expect(await screen.findByRole('heading', { name: 'Kevin’s work' })).toBeTruthy()
-    expect(screen.getByText('What you need to do, what you’ve done, and how to get better. Grace sees this page too.')).toBeTruthy()
+    /* Changed 15 November 2026 (Hafsah): the served topLine is an explainer and a privacy note, so My work no longer draws it. */
+    expect(screen.queryByText('What you need to do, what you’ve done, and how to get better. Grace sees this page too.')).toBeNull()
     expect(screen.getByText(LIBRARY_NOTE)).toBeTruthy()
     expect(screen.getByText('The rest of My work is told it is off.')).toBeTruthy()
   })
   it('on: what the page is for, his numbers, deals and to do, and no note about who sees it', async () => {
     open(asServedOn((SERVED as any).kevin.myWork))
     expect(await screen.findByRole('heading', { name: 'Kevin’s work' })).toBeTruthy()
-    expect(screen.getByText('What you need to do, what you’ve done, and how to get better.')).toBeTruthy()
+    /* Changed 15 November 2026 (Hafsah): the served topLine is an explainer and a privacy note, so My work no longer draws it. */
+    expect(screen.queryByText('What you need to do, what you’ve done, and how to get better.')).toBeNull()
     expect(screen.getByText('Kilele Hotel was won, for KES 200,000.')).toBeTruthy()
     expect(screen.getByText('Ngong Road Minimart')).toBeTruthy()
     expect(screen.queryByText(LIBRARY_NOTE)).toBeNull()
@@ -56,7 +58,8 @@ describe('Grace’s own My work', () => {
   it('as the night run served it, before the fix, her own page told her "Grace sees this page too."; the API now serves her none (my-work.ts, readerRunsIt)', async () => {
     expect((SERVED as any).grace.myWork.topLine).toBe('What you need to do, what you’ve done, and how to get better. Grace sees this page too.')
     open(asServedOn((SERVED as any).grace.myWork))
-    expect(await screen.findByText('What you need to do, what you’ve done, and how to get better.')).toBeTruthy()
-    expect(screen.getByText('Lavington Business Park')).toBeTruthy()
+    /* Changed 15 November 2026 (Hafsah): the served topLine is an explainer and a privacy note, so My work no longer draws it. */
+    expect(await screen.findByText('Lavington Business Park')).toBeTruthy()
+    expect(screen.queryByText('What you need to do, what you’ve done, and how to get better.')).toBeNull()
   })
 })

@@ -32,20 +32,16 @@ describe('the switch is off for every organisation until it is switched on', () 
     expect(schema).toContain('release2CollectionsOn  Boolean   @default(false) @map("release_2_collections_on")');
   });
 
-  it('reads on only when the organisation\'s row says true', async () => {
+  /* 15 November 2026 (Hafsah: everything has a board): the reader is always on. The column is no longer read, so a stored false, a missing row or a failed read no longer hides the collections board. */
+  it('reads on whatever the organisation row says, or cannot say', async () => {
     const org = (row: any) => ({ organization: { findUnique: jest.fn(async () => row) } });
     expect(await theRelease2CollectionsIsOn(org({ release2CollectionsOn: true }), 'org-1')).toBe(true);
-    expect(await theRelease2CollectionsIsOn(org({ release2CollectionsOn: false }), 'org-1')).toBe(false);
-    expect(await theRelease2CollectionsIsOn(org(null), 'org-1')).toBe(false);
-    expect(await theRelease2CollectionsIsOn(org({ release2CollectionsOn: 'yes' }), 'org-1')).toBe(false);
-    expect(await theRelease2CollectionsIsOn(org({ release2CollectionsOn: true }), null)).toBe(false);
-  });
-
-  it('reads as off when the row cannot be read, so it fails closed to what people had', async () => {
+    expect(await theRelease2CollectionsIsOn(org({ release2CollectionsOn: false }), 'org-1')).toBe(true);
+    expect(await theRelease2CollectionsIsOn(org(null), 'org-1')).toBe(true);
+    expect(await theRelease2CollectionsIsOn(org({ release2CollectionsOn: true }), null)).toBe(true);
     const broken = { organization: { findUnique: jest.fn(async () => { throw new Error('the database is away'); }) } };
-    expect(await theRelease2CollectionsIsOn(broken, 'org-1')).toBe(false);
-    expect(await theRelease2CollectionsIsOn({}, 'org-1')).toBe(false);
-    expect(await theRelease2CollectionsIsOnFor({ ground: { findUnique: jest.fn(async () => { throw new Error('away'); }) } }, 'g-1')).toBe(false);
+    expect(await theRelease2CollectionsIsOn(broken, 'org-1')).toBe(true);
+    expect(await theRelease2CollectionsIsOn({}, 'org-1')).toBe(true);
   });
 
   it('read from a check-in, it is its organisation\'s switch', async () => {

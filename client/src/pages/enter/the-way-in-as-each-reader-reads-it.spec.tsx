@@ -45,7 +45,7 @@ describe('someone signed out opens /start', () => {
     openStart()
     expect(await screen.findByRole('heading', { level: 1, name: 'What do you need updates on, or want to track?' })).toBeTruthy()
     /* Changed in F5: the length is the measured one (how-long-setup-takes.ts), not "about two minutes". */
-    expect(screen.getByText('A goal, a new hire, a decision. Describe it and we’ll set it up in about five minutes.')).toBeTruthy()
+    expect(screen.getByText('A goal, a new hire, a decision. Describe it and I’ll set it up in about five minutes.')).toBeTruthy()
     for (const example of [
       'Track the team’s targets for the quarter',
       'Sales are behind and I don’t know why',
@@ -58,7 +58,7 @@ describe('someone signed out opens /start', () => {
     expect(screen.getByLabelText('What do you need updates on, or want to track?')).toBeTruthy()
 
     const page = document.body.textContent ?? ''
-    for (const gone of ['Give this a name', 'session planned', 'What is going on', 'Save & invite', 'Start over', 'Or pick a situation that already fits']) {
+    for (const gone of ['Give this a name', 'check-in planned', 'What is going on', 'Save & invite', 'Start over', 'Or pick a situation that already fits']) {
       expect(page, gone).not.toContain(gone)
     }
   })
@@ -124,7 +124,7 @@ describe('someone signed in starts a check-in', () => {
     render(<TheDoor signedIn onSend={() => {}} onSeeEverySituation={() => {}} />)
     expect(text(screen.getByRole('navigation', { name: 'Where you are' }))).toBe('Check-ins/New check-in')
     expect(screen.getByRole('heading', { level: 1, name: 'What do you need updates on, or want to track?' })).toBeTruthy()
-    expect(screen.getByText('A goal, a new hire, a decision. Describe it and we’ll set it up in about five minutes.')).toBeTruthy()
+    expect(screen.getByText('A goal, a new hire, a decision. Describe it and I’ll set it up in about five minutes.')).toBeTruthy()
     const box = screen.getByLabelText('What do you need updates on, or want to track?') as HTMLTextAreaElement
     expect(box.placeholder).toBe('')
     expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy()
@@ -212,32 +212,27 @@ describe('a name, the topic in plain words, never the lead\'s words (U.6 review)
       .toBe('Help someone get back on track')
   })
 
-  /*
-   * FAULT 15 (coordinator, second round): WITH NO NAME TYPED, A NON-NEW-HIRE CHECK-IN TOOK THE
-   * SITUATION'S OWN LABEL AS ITS NAME ("Get a new project off to a good start"), the exact defect
-   * fault 6 above already fixed for a new hire, left standing everywhere else. Defaulted to the
-   * lead's own first name and a plain word for the kind of check-in instead - "Wairimu's project
-   * check-in", not the situation repeated back at her - whenever the lead's name is available.
-   * With no lead name (nobody signed in yet), this still falls to the situation's own label: a
-   * guess at her name would be worse, and that is exactly what the test just above still proves.
-   */
-  it('defaults an ordinary check-in to the lead\'s own name and the kind of check-in, once she has one', async () => {
-    const { effectiveFallbackGroundName, leadNameGroundNameFallback } = await import('./EntryChatPage')
-    expect(leadNameGroundNameFallback('Wairimu', 'NEW_PROJECT')).toBe('Wairimu\'s project check-in')
-    expect(leadNameGroundNameFallback('Wairimu', 'DRIFT')).toBe('Wairimu\'s project check-in')
-    expect(leadNameGroundNameFallback('Wairimu', 'PIP')).toBe('Wairimu\'s check-in')
-    expect(leadNameGroundNameFallback(undefined, 'NEW_PROJECT')).toBeUndefined()
-    expect(leadNameGroundNameFallback('  ', 'NEW_PROJECT')).toBeUndefined()
+  /* Pilot, 12 November: a team is never named after whoever was named first, and a surname is never the next line's capital word. */
+  it('names a check-in after a person only when exactly one person is named, and keeps a surname on one line', async () => {
+    const { newHireGroundNameFallback, namesFromTheirSetupWords } = await import('./EntryChatPage')
+    expect(newHireGroundNameFallback(['Leah Kanyi', 'Speranzer Mutheu'], 90)).toBeUndefined()
+    expect(namesFromTheirSetupWords(['speranzer@x.com'], ['Speranzer\nIdentifying agents in Kisumu'])).toEqual({})
+    expect(namesFromTheirSetupWords(['speranzer@x.com'], ['Speranzer Mutheu leads Kisumu'])).toEqual({ 'speranzer@x.com': 'Speranzer Mutheu' })
+  })
 
-    expect(effectiveFallbackGroundName('NEW_PROJECT', [], 'A new project is starting.', undefined, 'Wairimu'))
-      .toBe('Wairimu\'s project check-in')
-    expect(effectiveFallbackGroundName('DRIFT', [], 'The project has stalled.', undefined, 'Wairimu'))
-      .toBe('Wairimu\'s project check-in')
-    expect(effectiveFallbackGroundName('PIP', ['Daniel'], 'Daniel is not delivering.', undefined, 'Wairimu'))
-      .toBe('Wairimu\'s check-in')
-    /* The new-hire rule still wins over the lead's own name: the check-in is about the new hire. */
-    expect(effectiveFallbackGroundName('NEW_HIRE', ['Imani Wekesa'], 'Imani starts next week.', undefined, 'Wairimu'))
-      .toBe('Imani, first 90 days')
+  /*
+   * Changed 7 November 2026 (staging check S17): FAULT 15's default, the lead's own name ("Stella's check-in"), said nothing about
+   * the work, and the invitation then read "Stella invited you to the Stella's check-in". A check-in with no name of its own is
+   * named from what it is about, whoever runs it, and never after the lead.
+   */
+  it('names an ordinary check-in from what it is about, never after the lead', async () => {
+    const { effectiveFallbackGroundName } = await import('./EntryChatPage')
+    expect(effectiveFallbackGroundName('NEW_PROJECT', [], 'A new project is starting.', undefined)).toBe('Project updates')
+    expect(effectiveFallbackGroundName('PULSE_CHECK', [], 'I want updates from my sales team on deals.', undefined)).toBe('Sales updates')
+    expect(effectiveFallbackGroundName('PIP', ['Daniel'], 'Daniel is not delivering.', undefined)).toBe('Help someone get back on track')
+    expect(effectiveFallbackGroundName('PIP', ['Daniel'], 'Daniel is not delivering.', undefined)).not.toMatch(/['’]s check-in/)
+    /* The new hire's own rule stays: the check-in is about the new hire. */
+    expect(effectiveFallbackGroundName('NEW_HIRE', ['Imani Wekesa'], 'Imani starts next week.', undefined)).toBe('Imani, first 90 days')
   })
 })
 

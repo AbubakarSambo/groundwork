@@ -84,9 +84,9 @@ export function howThisCompanyDoesIt(cards: Card[]): string {
  * purpose: a cleverer reading would be us deciding what a check-in is about, and a check-in is
  * about whatever the person in it says it is.
  *
- * Short messages are skipped entirely. "Yes", "not yet" and "I think so" are the answers most
- * likely to be hiding a gap and the least likely to name a process, and pulling three pages of
- * handbook behind a one-word reply helps nobody.
+ * NO LENGTH GATE (S7, 20 November 2026). It skipped every message under 40 characters, so "We use the Kilele
+ * contract" never reached the handbook. The caller now hands it the question that was asked as well as the answer, so
+ * a short answer is looked up by what it answers; a reply with nothing in it to search on still finds nothing.
  */
 const NOT_WORTH_LOOKING_UP = new Set([
   'the', 'and', 'for', 'our', 'you', 'your', 'this', 'that', 'with', 'from', 'have', 'has', 'had',
@@ -102,7 +102,7 @@ export const MOST_WORDS_IN_A_LOOKUP = 6;
 
 export function whatToLookUp(latestMessage: string | null | undefined): string | null {
   const t = (latestMessage ?? '').trim();
-  if (t.length < 40) return null;
+  if (!t) return null;
 
   const words = t
     .toLowerCase()
@@ -122,4 +122,33 @@ export function whatToLookUp(latestMessage: string | null | undefined): string |
   }
 
   return kept.length >= 2 ? kept.join(' ') : null;
+}
+
+/**
+ * WHAT IS ON THE DESK, AT A GLANCE (S7, 20 November 2026): every document the organisation keeps on its Desk, by title,
+ * with the summary written when it was added. Given on every turn, so a check-in knows what the organisation has written
+ * down whatever the person's message looked like; the passages that match what they said come with it, above.
+ *
+ * SMALL ON PURPOSE. Titles and two or three sentences each, at most MOST_DOCUMENTS_AT_A_GLANCE of them and never more
+ * than MOST_CHARS_AT_A_GLANCE in all, so a big Desk never grows the prompt.
+ */
+export const MOST_DOCUMENTS_AT_A_GLANCE = 12;
+export const MOST_CHARS_AT_A_GLANCE = 3_000;
+
+export function whatIsOnTheDesk(documents: { title: string; summary: string | null }[]): string {
+  const lines: string[] = [];
+  let size = 0;
+  for (const d of documents.slice(0, MOST_DOCUMENTS_AT_A_GLANCE)) {
+    const line = d.summary ? `- ${d.title}. ${d.summary}` : `- ${d.title}.`;
+    if (size + line.length > MOST_CHARS_AT_A_GLANCE) break;
+    lines.push(line);
+    size += line.length;
+  }
+  if (!lines.length) return '';
+  return [
+    'WHAT IS ON THE ORGANISATION\'S DESK.',
+    'The documents this organisation keeps for everyone (its policies, handbook, procedures and other documents), each with a short summary. They are what the organisation says, and can be out of date.',
+    ...lines,
+    'Where what this person says touches one of these, keep it in mind: ask them to walk you through how they do it, never test them on it, and where their account and the document differ, say so and ask which is right. Do not bring a document up when it does not apply.',
+  ].join('\n');
 }

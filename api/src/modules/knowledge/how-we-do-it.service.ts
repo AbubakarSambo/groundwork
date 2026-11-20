@@ -113,13 +113,16 @@ export class HowWeDoItService {
     });
     if (!p) throw new NotFoundException('That is not waiting for a decision.');
 
+    /* Through `ingestDocument`, the one way a document is read (S7): split into parts, summarised once and put on the
+       Desk, like a document added there or through Ask. It used to be one whole card with no summary. */
     const key = keyFor(p.document.fileName);
-    await this.knowledge.put(organizationId, {
+    await this.knowledge.ingestDocument(organizationId, {
       key,
-      kind: 'HANDBOOK',
+      kind: 'handbook',
       title: p.document.fileName.replace(/\.[a-z0-9]+$/i, ''),
-      body: p.document.content,
-    } as any);
+      text: p.document.content,
+      addedByUserId: userId,
+    });
 
     await this.prisma.knowledgeProposal.update({
       where: { id: proposalId },

@@ -3,10 +3,9 @@ import '@/components/gw/ui/gw-ui.css'
 /**
  * THE CHECK-IN'S HEADER (B3, docs/prototype/screens/B3-the-check-in/check-in-start.txt).
  *
- * The check-in's name, and "End session" on the right, small and quiet, always on screen (Hafsah, 3 November evening: "A check-in
- * should feel like texting one person ... 'End session', small and quiet, always visible"). Nothing under the name: how long it takes
- * and how to stop are said in the first message, and the "Pause" menu is gone. Its "Stop for now" is the back link above this card;
- * its "Skip this check-in" is what End session does before anything has been said (ChatPage).
+ * The check-in's name, and "Pause" on the right, small and quiet, always on screen (the prototype's word; it was "End session" until
+ * Hafsah's ruling of 15 November). Pause brings up the end card, so finishing early shows what was written down. Before anything has
+ * been said it reads "Skip this one" and asks first (ChatPage). Nothing under the name: how long it takes is said in the first message.
  *
  * ONE LINE, AT EVERY WIDTH (3 November 2026, screens-after/checkin-reply-390.png). The way back used to be a link above the card,
  * "← Wanjiru's check-in", and the card's header then said "Wanjiru's check-in" again. Now the header is the way back: the arrow
@@ -19,14 +18,15 @@ export function TheCheckInHeader({
   title,
   underTitle = null,
   onEnd,
-  ending = false,
+  endLabel = 'Pause',
   onBack,
   backTitle,
 }: {
   title: string
   underTitle?: string | null
   onEnd?: () => void
-  ending?: boolean
+  /** "Pause" once something has been answered, "Skip this one" before. */
+  endLabel?: string
   onBack?: () => void
   backTitle?: string
 }) {
@@ -42,8 +42,8 @@ export function TheCheckInHeader({
         {underTitle && <div className="t-tiny mut">{underTitle}</div>}
       </div>
       {onEnd && (
-        <button type="button" onClick={onEnd} disabled={ending} className="btn quiet sm">
-          {ending ? 'Ending…' : 'End session'}
+        <button type="button" onClick={onEnd} className="btn quiet sm">
+          {endLabel}
         </button>
       )}
     </div>

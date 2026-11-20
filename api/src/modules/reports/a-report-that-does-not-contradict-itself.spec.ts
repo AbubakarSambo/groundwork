@@ -78,11 +78,11 @@ describe('what somebody said they did about what is in their way is on record', 
 
   it('Ngozi, who escalated to the Head of Credit, is not the one told nobody chased', () => {
     /* Read on the run: "... for 2 sessions now. Nothing on record says anybody has chased it since." */
-    expect(deps[0].say).toBe('Ngozi Eze is waiting on the credit committee for "review and approval for their eleven files" for 2 sessions now, and it has been taken above the person it was with.');
+    expect(deps[0].say).toBe('Ngozi Eze is waiting on the credit committee for "review and approval for their eleven files" for 2 check-ins now, and it has been taken above the person it was with.');
     expect(deps[0].chased).toBe(true);
-    expect(deps[1].say).toBe('Femi Okonkwo is waiting on the customers for "the necessary documents" for 2 sessions now, and it has been chased more than once since.');
+    expect(deps[1].say).toBe('Femi Okonkwo is waiting on the customers for "the necessary documents" for 2 check-ins now, and it has been chased more than once since.');
     /* Nobody said anything about the date: that is still what it says. */
-    expect(deps[2].say).toBe('Bisi Adeyemi is waiting on somebody outside this check-in for "the exact date for the end of the quarter" for 2 sessions now, and nothing on record says anybody has chased it since.');
+    expect(deps[2].say).toBe('Bisi Adeyemi is waiting on somebody outside this check-in for "the exact date for the end of the quarter" for 2 check-ins now, and nothing on record says anybody has chased it since.');
   });
 
   it('Ngozi reads the same sentence about her own wait in her own report', () => {
@@ -142,8 +142,8 @@ describe('the lead\'s list of what is still open names what is still open', () =
   it('the lead reads each promise with what it was, and no line about "it" on its own', () => {
     const lead = overTimeForThisReader(stored, { isLead: true, participantId: 'p-bisi' })!;
     expect(lead.stillOpen).toEqual([
-      'In session 3, Femi Okonkwo said, "I will call them again today." Nobody has said yet whether it happened.',
-      'In session 3, Femi Okonkwo said, "I will explain to them more clearly why the statements are so important for their application." The time Femi Okonkwo gave for it was "this week". Nobody has said yet whether it happened.',
+      'In check-in 3, Femi Okonkwo said, "I will call them again today." Nobody has said yet whether it happened.',
+      'In check-in 3, Femi Okonkwo said, "I will explain to them more clearly why the statements are so important for their application." The time Femi Okonkwo gave for it was "this week". Nobody has said yet whether it happened.',
     ]);
   });
 

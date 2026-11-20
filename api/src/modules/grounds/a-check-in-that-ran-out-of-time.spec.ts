@@ -92,6 +92,10 @@ describe('and giving it more time opens it again', () => {
     expect(CRON).toMatch(/data: \{ status: GroundStatus\.STALLED, stalledFromStatus: prior, stalledAt: new Date\(\) \}/);
   });
 
+  it('and somebody who has left the check-in is not mailed that it ran out of time (N50)', () => {
+    expect(CRON).toMatch(/participants: \{ where: \{ leftAt: null \}, select: \{ id: true, email: true, userId: true \} \}/);
+  });
+
   /* Without this the 3am sweep re-stalls the same grounds nightly and re-emails everybody daily. */
   it('and a ground already out of time is not stopped a second time', () => {
     expect(CRON).toMatch(/const STOPPED: GroundStatus\[\] = A_GROUND_HAS_STOPPED;/);

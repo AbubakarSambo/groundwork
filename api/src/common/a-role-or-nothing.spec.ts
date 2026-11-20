@@ -36,9 +36,9 @@ describe('a piece of one of her answers is never her role', () => {
   });
 
   it('her board says "this work", not "your work as i own my own 10", for a role saved before the fix', () => {
-    expect(note('I own my own 10 deals and the weekly review.')).toMatch(/^This is session 1 of 56 of this work\./);
+    expect(note('I own my own 10 deals and the weekly review.')).toMatch(/^This is check-in 1 of 56 of this work\./);
     expect(note('I sign it off.')).not.toMatch(/your work as/);
-    expect(note('Head of sales')).toMatch(/^This is session 1 of 56 of your work as head of sales\./);
+    expect(note('Head of sales')).toMatch(/^This is check-in 1 of 56 of your work as head of sales\./);
   });
 
   it('the first check-in does not take "I sign it off" as what she calls her job', () => {

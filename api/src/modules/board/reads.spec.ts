@@ -135,10 +135,10 @@ describe('what the board says about the person who actually drifted', () => {
     // leaking, or as the shape of the record over time. Requiring a specific one
     // would be pinning the implementation rather than the outcome.
     const flagged = cov.kind === CoverageKind.LEAKING;
-    const shaped = /Nothing checkable from session|Nothing checkable since/.test(con.reason ?? '');
+    const shaped = /Nothing checkable from check-in|Nothing checkable since/.test(con.reason ?? '');
     if (!flagged && !shaped) {
       throw new Error(
-        `The board says nothing about ${truth.name}, who genuinely went quiet for five sessions.\n` +
+        `The board says nothing about ${truth.name}, who genuinely went quiet for five check-ins.\n` +
           `TRUTH: ${truth.truth}\n` +
           `COVERAGE SAID: ${cov.what}\n` +
           `CONTRIBUTION SAID: ${con.reason}`,
@@ -151,7 +151,7 @@ describe('what the board says about the person who actually drifted', () => {
     // The whole point of the trajectory read: a quarter-long total hid the
     // collapse inside it, and on totals alone he outscored the person who
     // delivered every week.
-    expect(con.reason).toMatch(/session \d/);
+    expect(con.reason).toMatch(/check-in \d/);
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { MagicVerifyPage } from './MagicVerifyPage'
 import { authApi } from '@/api/auth'
@@ -33,7 +33,6 @@ function open(query = '') {
 }
 
 const user = { id: 'u1', email: 'wairimu@baridi.test', role: 'ADMIN', jobTitle: null } as any
-const readable = (el: HTMLElement) => (el.textContent ?? '').replace(/\s+/g, ' ').trim()
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -42,61 +41,52 @@ beforeEach(() => {
   vi.mocked(entryApi.commit).mockRejectedValue({ response: { data: { message: 'NO_ENTRY_SESSION' } } })
 })
 
+/*
+ * CHANGED IN BATCH 2, GROUP 6 (staging check S14; Hafsah's fixed rule, no pages in between): "Your email is confirmed" with
+ * "Continue" was a page of its own after the link. It is gone: the link signs the person in and they land where they were going,
+ * with no password step either. The rules about where that is are kept.
+ */
 describe('when the link has just created the account', () => {
-  it('says so, with the address, before going anywhere', async () => {
+  it('goes straight on, with no "Your email is confirmed" page and no Continue', async () => {
     vi.mocked(authApi.verifyEmail).mockResolvedValue({ user, accessToken: 't', justCreated: true })
-    const { container } = open()
-    await screen.findByRole('heading', { name: 'Your email is confirmed' })
-    expect(readable(container)).toBe(
-      /* U.2 review: one sentence, not an address and a sentence joined by a full stop. */
-      'Groundwork' + 'Your email is confirmed' + 'I’ll send sign-in links and reports to wairimu@baridi.test.' + 'Continue',
-    )
-    expect(navigated).not.toHaveBeenCalled()
+    open()
+    await waitFor(() => expect(navigated).toHaveBeenCalledWith('/grounds', { replace: true }))
+    expect(screen.queryByText('Your email is confirmed')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull()
   })
 
-  it('"Continue" goes on to where the page was going', async () => {
+  it('goes on to where the page was going', async () => {
     vi.mocked(authApi.verifyEmail).mockResolvedValue({ user, accessToken: 't', justCreated: true })
     open('&next=%2Fgrounds%2Fg-7')
-    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }))
-    expect(navigated).toHaveBeenCalledWith('/grounds/g-7', { replace: true })
+    await waitFor(() => expect(navigated).toHaveBeenCalledWith('/grounds/g-7', { replace: true }))
   })
 
-  it('"Continue" goes back to the invite link they came from, which the server kept (U.3 review)', async () => {
-    /* The emailed link is /verify-email?token=… with no next. The place comes back with the answer. */
+  it('goes back to the invite link they came from, which the server kept (U.3 review)', async () => {
     vi.mocked(authApi.verifyEmail).mockResolvedValue({ user, accessToken: 't', justCreated: true, next: '/j/coamana-6rr7' } as any)
     open()
-    await screen.findByRole('heading', { name: 'Your email is confirmed' })
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
-    expect(navigated).toHaveBeenCalledWith('/j/coamana-6rr7', { replace: true })
+    await waitFor(() => expect(navigated).toHaveBeenCalledWith('/j/coamana-6rr7', { replace: true }))
     expect(entryApi.commit).not.toHaveBeenCalled()
   })
 
   it('an outside address handed back is never followed (U.3 review)', async () => {
     vi.mocked(authApi.verifyEmail).mockResolvedValue({ user, accessToken: 't', justCreated: true, next: '//evil.test/x' } as any)
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(navigated).toHaveBeenCalled())
     expect(navigated).not.toHaveBeenCalledWith('//evil.test/x', expect.anything())
   })
 
-  it('and through the password step first when the account has no password', async () => {
-    vi.mocked(authApi.verifyEmail).mockResolvedValue({ user, accessToken: 't', justCreated: true, needsPassword: true, passwordSetupToken: 'pst' })
+  it('never by way of "Choose a password", even with no password stored', async () => {
+    vi.mocked(authApi.verifyEmail).mockResolvedValue({ user, accessToken: 't', justCreated: true })
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }))
-    expect(navigated).toHaveBeenCalledWith('/set-password?token=pst&next=%2Fgrounds', { replace: true })
+    await waitFor(() => expect(navigated).toHaveBeenCalled())
+    expect(navigated).not.toHaveBeenCalledWith(expect.stringContaining('/set-password'), expect.anything())
   })
 
-  it('with no address on the response, it says "this address" rather than guessing', async () => {
-    vi.mocked(authApi.verifyEmail).mockResolvedValue({ user: { ...user, email: undefined }, accessToken: 't', justCreated: true })
-    open()
-    expect((await screen.findByText(/sign-in links and reports/)).textContent).toBe('I’ll send sign-in links and reports to this address.')
-  })
-
-  it('is never shown in front of a failure', async () => {
+  it('a failure is said, never passed over', async () => {
     vi.mocked(authApi.verifyEmail).mockResolvedValue({ user, accessToken: 't', justCreated: true })
     vi.mocked(entryApi.commit).mockRejectedValue({ response: { data: { message: 'Your plan is full.' } } })
     open()
     expect(await screen.findByText('Your plan is full.')).toBeTruthy()
-    expect(screen.queryByText('Your email is confirmed')).toBeNull()
   })
 })
 

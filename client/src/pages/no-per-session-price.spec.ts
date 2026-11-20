@@ -62,9 +62,10 @@ describe('no surface quotes a per-session price', () => {
   it('tells a new person the truth about what their first ground costs', () => {
     const entry = code(join(__dirname, 'enter/EntryChatPage.tsx'))
     expect(entry).not.toMatch(/\$5/)
-    /* The line "means signing in, and it is free" left the entry page when setup became a conversation (batch 1, groups 5-6);
-       the page now says plainly when the free check-ins are used up. It must still not put a price on a session. */
-    expect(entry).not.toMatch(/\$\d/)
+    /* UPDATED (Hafsah, 3 November 2026, "the conversation screens"; f9a83cd1c): the sessions prompt that said "means signing in,
+       and it is free" went with everything else beside the conversation, so the setup screen now quotes no price at all. What this
+       guards still holds: nothing on it charges per session. */
+    expect(entry).not.toMatch(/additional sessions|per session/i)
   })
 
   it('keeps access-code redemption, which grants access and costs nothing', () => {

@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
@@ -67,7 +69,7 @@ const SERVED_TO_GRACE = {
     { participantId: 'p-joseph', says: "Nobody has described Joseph Mutua's role here, so Joseph gets the general questions.", fix: 'add-their-role' },
     { participantId: 'p-peter', says: "Peter Ouma can't start, because the invitation to Peter bounced.", fix: 'fix-the-address' },
   ],
-  sessions: '5 of 15 sessions done. Sessions already done are never removed.',
+  sessions: '5 of 15 check-ins done. Check-ins already done are never removed.',
   joinedWithTheLink: '3 people have answered with it.',
   kindOfWork: 'sales team', kindsOffered: ['sales team', 'sales org'],
   othersWithAccess: "The people above and the admins of Drop Access can see it. So can a lead in the same department, once the team's report is shared.",
@@ -142,8 +144,8 @@ describe('Grace, who runs the sales check-in, reads the whole page in the pictur
     /* Says what Peter needs, read from the same reason his row reads (Hafsah, 30 October 2026:
        plain language for an impatient first-time lead; "1 needs something" said nothing). */
     expect(screen.getByText('5 people. 4 are checking in. 1 did not get the invitation, because the email bounced.')).toBeTruthy()
-    expect(screen.getByText('5 of 15 sessions done. Sessions already done are never removed.')).toBeTruthy()
-    expect(screen.getByText('Never more than one reminder a day. Quiet hours end at 7am. At the last session, everyone is asked how this should close.')).toBeTruthy()
+    expect(screen.getByText('5 of 15 check-ins done. Check-ins already done are never removed.')).toBeTruthy()
+    expect(screen.getByText('Never more than one reminder a day. Quiet hours end at 7am. At the last check-in, everyone is asked how this should close.')).toBeTruthy()
     expect(screen.getByText('Coming back')).toBeTruthy()
     expect(screen.getByText('First check-in done')).toBeTruthy()
     expect(screen.getByText('+254 7·· ··· 410')).toBeTruthy()
@@ -160,10 +162,10 @@ describe('Grace, who runs the sales check-in, reads the whole page in the pictur
     const p = props()
     renderPage(p)
     await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
-    expect(screen.queryByText('You have changes. They apply from the next check-in. Sessions already done keep their dates.')).toBeNull()
+    expect(screen.queryByText('You have changes. They apply from the next check-in. Check-ins already done keep their dates.')).toBeNull()
     fireEvent.change(screen.getByLabelText('Targets'), { target: { value: 'own' } })
     expect(p.setWhoSeesTargets.mutate).not.toHaveBeenCalled()
-    expect(screen.getByText('You have changes. They apply from the next check-in. Sessions already done keep their dates.')).toBeTruthy()
+    expect(screen.getByText('You have changes. They apply from the next check-in. Check-ins already done keep their dates.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
     expect(p.setWhoSeesTargets.mutate).toHaveBeenCalledWith(false)
     expect(p.saveSetup.mutate).not.toHaveBeenCalled()
@@ -230,7 +232,7 @@ describe('Mercy, a team member, reads only her short page', () => {
       '5 people answer every weekday, until 30 October, on WhatsApp or here.'
       + 'Your roleRep, Kiambu and schools'
       + 'Your statusThis check-in is open, and waiting on people to check in.'
-      + 'Your sessionsYou have completed 5 sessions, out of 15.'
+      + 'Your check-insYou have completed 5 check-ins, out of 15.'
       + 'Runs itGrace Achieng'
       + "Grace knows who is here. You see the team's report once it's shared, with names.",
     )
@@ -258,7 +260,7 @@ describe('Grace’s People and setup, with the direct morning on', () => {
     expect(screen.queryByText('The scenario and kind of work decide the board, the reports, and what each check-in asks about.')).toBeNull()
     expect(document.body.textContent).not.toMatch(/the report shows where (the team|you) agree/)
     expect(screen.getByText("Peter Ouma can't start, because the invitation to Peter bounced.")).toBeTruthy()
-    expect(screen.getByText('5 of 15 sessions done. Sessions already done are never removed.')).toBeTruthy()
+    expect(screen.getByText('5 of 15 check-ins done. Check-ins already done are never removed.')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Who sees what' })).toBeTruthy()
   })
   it('off, the two lines read as they did', async () => {
@@ -266,5 +268,153 @@ describe('Grace’s People and setup, with the direct morning on', () => {
     renderPage(props({ ground: { ...theSalesCheckIn(), directMorningOn: false } }))
     await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
     expect(screen.getByText('The scenario and kind of work decide the board, the reports, and what each check-in asks about.')).toBeTruthy()
+  })
+})
+
+/**
+ * WHO MAY SEE WHOM, ON THE PAGE IN USE. Moved here (7 November 2026) from the specs of two components batch 1 stopped drawing,
+ * WhoIsInThis.tsx and RolesInThisCheckIn.tsx, when both were deleted. Every privacy rule those specs held is checked again here,
+ * rendered as each reader of the page that now draws the roster: Grace, who runs it; Naomi, an admin who does not; and a team
+ * member, who reads only her own short page.
+ */
+describe('who may see whom, as each reader reads the roster', () => {
+  const NOTES = ['Sales lead', 'Rep, Nairobi hardware shops', 'Rep, Kiambu and schools', 'Agent, Thika']
+
+  it('Naomi, an admin who does not run it, reads no note the lead wrote about anybody, even with the notes still on the row', async () => {
+    /* The server strips the notes for her (theLeadsWordsAbout, grounds.service.ts); this proves the page would not show them either. */
+    ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_NAOMI)
+    renderPage(props({ ground: theSalesCheckIn({ mayChangeSetup: false }), user: { id: 'u-naomi' }, isInitiator: false, isOrgAdmin: true, viewerIsAParty: false }))
+    await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
+    const text = document.body.textContent ?? ''
+    const values = Array.from(document.querySelectorAll('input, textarea')).map((el) => (el as HTMLInputElement).value)
+    for (const note of NOTES) {
+      expect(text).not.toContain(note)
+      expect(values).not.toContain(note)
+    }
+    expect(screen.queryByLabelText('Their role here, for Kevin Otieno')).toBeNull()
+    expect(screen.getAllByText('Grace has described it.').length).toBe(4)
+  })
+
+  it('a team member reads her own short page, which names the lead and carries nobody else, on a check-in that hides people from each other', async () => {
+    ;(groundsApi.peopleAndSetup as any).mockResolvedValue({
+      on: true, view: 'member', howItRuns: '3 people answer every week, until 30 November, here.',
+      yourRole: 'Field officer', status: 'AWAITING_PARTIES', yourSessionsDone: 1, sessionsPlanned: 6, runsIt: 'Rukia Otieno',
+      whoSeesWhat: "Rukia knows who is here. You see the team's report once it's shared, without names.",
+    })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { container } = render(<QueryClientProvider client={qc}><YourPeopleAndSetup groundId="g-hidden" /></QueryClientProvider>)
+    await screen.findByText("Rukia knows who is here. You see the team's report once it's shared, without names.")
+    expect(container.textContent).not.toMatch(/Your lead/)
+    expect(container.textContent).toBe(
+      '3 people answer every week, until 30 November, here.'
+      + 'Your roleField officer'
+      + 'Your statusThis check-in is open, and waiting on people to check in.'
+      + 'Your check-insYou have completed 1 check-in, out of 6.'
+      + 'Runs itRukia Otieno'
+      + "Rukia knows who is here. You see the team's report once it's shared, without names.",
+    )
+  })
+
+  it('the roster says who has checked in, and never a word of what anybody said, to Grace or to Naomi', async () => {
+    const ground = theSalesCheckIn({
+      checkIns: [{ id: 'c-kevin', participantId: 'p-kevin', status: 'COMPLETED', summary: 'I closed the Kilele deal on Monday', messages: [{ content: 'Kilele paid in full' }] }],
+    })
+    const parties = [{ id: 'p-kevin', done: true, isSelf: false }, { id: 'p-mercy', done: false, isSelf: false }]
+    for (const reader of [
+      { served: SERVED_TO_GRACE, over: {} },
+      { served: SERVED_TO_NAOMI, over: { user: { id: 'u-naomi' }, isInitiator: false, isOrgAdmin: true, viewerIsAParty: false } },
+    ]) {
+      ;(groundsApi.peopleAndSetup as any).mockResolvedValue(reader.served)
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const { unmount } = render(<QueryClientProvider client={qc}><MemoryRouter><CheckInPeopleAndSetup {...props({ ground, whoIsInThisParties: parties, ...reader.over }) as any} /></MemoryRouter></QueryClientProvider>)
+      await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
+      const text = document.body.textContent ?? ''
+      expect(text).toContain('Kevin Otieno has checked in for this check-in.')
+      expect(text).toContain('Mercy Wanjiru has not checked in for this check-in yet.')
+      expect(text).not.toMatch(/Kilele/)
+      unmount()
+    }
+  })
+
+  it('nobody is said to be late before the session opens', async () => {
+    ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_GRACE)
+    renderPage(props({ whoIsInThisParties: [{ id: 'p-kevin', done: false, isSelf: false }, { id: 'p-grace', done: false, isSelf: true }], whoIsInThisNotOpenYet: true }))
+    await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
+    expect(document.body.textContent).not.toMatch(/checked in for this check-in|late/i)
+  })
+
+  /* Issue 65 (7 November 2026): Grace runs a check-in that hides people from each other, and was never told so. */
+  it('Grace, who runs a check-in that hides people from each other, reads that they answer without seeing each other', async () => {
+    ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_GRACE)
+    renderPage(props({ whoIsInThisPeersHidden: true }))
+    await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
+    expect(screen.getByText('People on this check-in answer without seeing each other. You can see who is here.')).toBeTruthy()
+  })
+
+  it('Naomi, on a check-in that hides people from each other, reads that she can see who is here, never the sentence meant for a team member', async () => {
+    ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_NAOMI)
+    renderPage(props({ ground: theSalesCheckIn({ mayChangeSetup: false }), user: { id: 'u-naomi' }, isInitiator: false, isOrgAdmin: true, viewerIsAParty: false, whoIsInThisPeersHidden: true }))
+    await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
+    expect(screen.getByText('People on this check-in answer without seeing each other. You can see who is here.')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/knows who is here|Your lead|will not see the others/)
+  })
+
+  it('an address the server did not send her is not on the page, and somebody with no name and no address is "Somebody invited by email"', async () => {
+    ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_NAOMI)
+    const hidden = theSalesCheckIn({
+      mayChangeSetup: false,
+      participants: [
+        ...theSalesCheckIn().participants.map((p: any) => ({ ...p, email: null, roleAsDescribed: null })),
+        person('p-zawadi', null, '', '', { email: null, nameGiven: null, inviteDeliveryStatus: 'PENDING' }),
+      ],
+    })
+    renderPage(props({ ground: hidden, user: { id: 'u-naomi' }, isInitiator: false, isOrgAdmin: true, viewerIsAParty: false }))
+    await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
+    expect(screen.getAllByText('Somebody invited by email').length).toBeGreaterThan(0)
+    expect(document.body.textContent).not.toMatch(/@dropaccess\.test|A colleague|Zawadi/)
+  })
+})
+
+/**
+ * THE PERMISSION STAYS IN THE SERVICE (W13-5; moved from who-is-in-this.spec.tsx, 7 November 2026). The server decides who may
+ * see whom and filters the payload; the pages draw what they are given. If a page grew its own peer rule, the rule would exist in
+ * two places and they would disagree.
+ */
+describe('who may be seen is decided by the server, not by the page', () => {
+  const raw = (rel: string) => readFileSync(join(__dirname, rel), 'utf8')
+  const code = (rel: string) => raw(rel).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+
+  it('the roster on People and setup draws every person it is served, with no peer rule of its own', () => {
+    const page = raw('./PeopleAndSetupAsPictured.tsx')
+    const roster = page.slice(page.indexOf("{/* 3. WHO'S IN IT */}"), page.indexOf('{/* 4. WHEN IT RUNS */}'))
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(roster.length).toBeGreaterThan(0)
+    expect(roster).not.toMatch(/peersVisible|restrictExternalVisibility|hidePeers|participants\.filter\(/)
+    expect(roster).toContain('[...participants].sort(')
+    expect(code('./PeopleAndSetupAsPictured.tsx')).toContain('const participants: any[] = g?.participants ?? []')
+  })
+
+  it('a team member\'s page draws what the service serves her, rather than a roster built from a role', () => {
+    expect(code('./GroundParticipantPage.tsx')).toContain("{tab === 'settings' && <YourPeopleAndSetup groundId={id ?? ''} />}")
+    expect(code('./YourPeopleAndSetup.tsx')).toContain('groundsApi.peopleAndSetup(groundId)')
+  })
+
+  it('and that page has no peer rule of its own, so the rule exists in one place', () => {
+    expect(code('./YourPeopleAndSetup.tsx')).not.toMatch(/peersVisible|participants|restrictExternalVisibility|hidePeers/)
+  })
+
+  /* Changed 7 November 2026 (issue 65): the party sentence this qualification kept from a lead is gone; the one sentence left, "People on
+     this check-in answer without seeing each other. You can see who is here.", is written for whoever runs it, so the lead reads it too. */
+  it('the page that runs the check-in tells its lead and its admins that people answer without seeing each other', () => {
+    expect(code('./GroundAdminPage.tsx'))
+      .toMatch(/whoIsInThisPeersHidden = \(ground as any\)\.peersVisibleEffective === false\n/)
+  })
+
+  it('and a team member\'s page still gets the rule unqualified', () => {
+    expect(code('./GroundParticipantPage.tsx')).not.toMatch(/peersVisibleEffective === false &&/)
+  })
+
+  it('"not open yet" is read off the same two values the composer reads', () => {
+    expect(code('./GroundAdminPage.tsx')).toMatch(/const whoIsInThisNotOpenYet = !myOpenCheckInId && !!myNextOpensAt/)
   })
 })

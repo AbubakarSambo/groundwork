@@ -1,10 +1,11 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { joinApi } from '@/api/entry'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
-import { Page, Mark, PageTitle, Callout, Note, Button, FieldLabel, TextField, Stack } from '@/components/gw/ui'
+import { Page, Mark, PageTitle, Note, Button, FieldLabel, TextField, Stack } from '@/components/gw/ui'
 import { PhoneNumberField } from '@/components/gw/PhoneNumberField'
 import { keepTheNumberForWhenTheySignIn } from '@/lib/a-number-given-before-signing-in'
 
@@ -34,11 +35,9 @@ export function JoinPage() {
   const [ground, setGround] = useState<{ groundId: string; groundLabel: string; scenario: string; initiatorName: string } | null>(null)
 
   const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('')
   /* Optional, beside their part. Never inferred; blank means blank. */
-  const [department, setDepartment] = useState('')
   /* Optional, always asked (Hafsah, 30 October 2026); saved to them through PATCH /auth/me once their link signs them in. */
   const [phone, setPhone] = useState('')
   const [failure, setFailure] = useState('')
@@ -75,9 +74,7 @@ export function JoinPage() {
         joinToken,
         email: email.trim(),
         firstName: firstName.trim() || undefined,
-        lastName: lastName.trim() || undefined,
         roleAsDescribed: role.trim(),
-        department: department.trim() || undefined,
         trapFilled: !!trap.filled,
       })
       keepTheNumberForWhenTheySignIn(email, phone)
@@ -96,7 +93,7 @@ export function JoinPage() {
     return (
       <Page narrow>
         <Mark />
-        <PageTitle center subtitle="Loading…" subtitleRole="status" />
+        <Skeleton what="Getting this page" shape="lines" count={1} />
       </Page>
     )
   }
@@ -136,27 +133,13 @@ export function JoinPage() {
         subtitle={<>A Groundwork check-in about <strong>{ground.groundLabel}</strong>.</>}
       />
 
-      {/* The same true promise as the invitation carries, kept in step with it deliberately: these
-          are the two doors an invited person can arrive through and they must say the same thing. */}
-      <Callout>
-        What you write is used to build the shared report and nothing else. It shows where people
-        agree and where they differ. Your own words about your own work can appear in it. Anything
-        you say about somebody else never does, and it never says who said what about whom.
-      </Callout>
-
       <form noValidate onSubmit={e => { e.preventDefault(); join() }}>
         <Stack gap={10}>
           {trap.field}
-          <div className="gwui-field-pair">
-            <FieldLabel htmlFor="join-first">
-              First name
-              <TextField id="join-first" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Optional" />
-            </FieldLabel>
-            <FieldLabel htmlFor="join-last">
-              Last name
-              <TextField id="join-last" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Optional" />
-            </FieldLabel>
-          </div>
+          <FieldLabel htmlFor="join-first">
+            First name
+            <TextField id="join-first" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Optional" />
+          </FieldLabel>
           <FieldLabel htmlFor="join-email">
             Email
             <TextField id="join-email" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
@@ -174,10 +157,6 @@ export function JoinPage() {
             </FieldLabel>
             <p className="gwui-field-help">One line on what you do here. The questions you get asked are shaped by it.</p>
           </div>
-          <FieldLabel htmlFor="join-department">
-            Department
-            <TextField id="join-department" value={department} onChange={e => setDepartment(e.target.value)} placeholder="Optional" />
-          </FieldLabel>
           {/* Nobody is signed in on this page, so nothing here says WhatsApp (useWhatsAppIsOn answers off until somebody is). */}
           <PhoneNumberField id="join-phone" value={phone} onChange={setPhone} whose="yours" whatsappOn={false} />
           {failure && <Note tone="error">{failure}</Note>}
@@ -186,11 +165,6 @@ export function JoinPage() {
           </Button>
         </Stack>
       </form>
-
-      <Note>
-        This saves your place so you can come back any time and see the shared report once everyone
-        has checked in. We will email you a link for returning later.
-      </Note>
     </Page>
   )
 }

@@ -1,6 +1,12 @@
 import { AssistantService } from '../assistant/assistant.service';
-import { whoApprovesFor, mayApproveFor } from './who-approves';
+import { whoApprovesFor } from './who-approves';
+import { decidesIt, theOneWhoDecides, theStepsFor } from './who-may-decide';
 import { theirSignIn, theirRosterEntries } from './a-roster-entry-and-its-sign-in';
+
+/* mayApproveFor had no caller outside the specs and is gone (Batch S, S2). The same question, asked of the one resolver. */
+const mayApproveFor = async (prisma: any, i: { organizationId: string; readerId: string; readerRole: string | null; personUserId: string }) =>
+  decidesIt(await theOneWhoDecides(prisma, theStepsFor('leave')[0], { organizationId: i.organizationId, requesterUserId: i.personUserId }), { userId: i.readerId, role: i.readerRole }, i.personUserId);
+
 
 /**
  * DECISION 82, ITEM 6 (WhatsApp item 8): A ROSTER ENTRY WITH NO LINK, BUT THE SAME ADDRESS AS A

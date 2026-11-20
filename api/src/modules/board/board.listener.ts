@@ -1,3 +1,4 @@
+import { mayReadTheLine, EVERYBODY } from '../conversation/who-may-read-a-line';
 import { fileProofThatWasFiledOnNothing } from '../documents/proof-filed-on-its-item';
 import { Injectable, Logger } from '@nestjs/common';
 import { aMilestoneAcceptedIsAnInvoiceToRaise } from './release-5-projects';
@@ -20,6 +21,7 @@ import { withTheStageKept, theStagesToKeep } from './a-deals-stages-are-kept';
 import { aDealTheLeadNamedBecomesTheReps } from './one-deal-per-customer';
 import { aDealNamedAsAPerson, theDealThePersonIsAt, thePersonsDetailsOnTheDeal, theQuestionBefore } from './a-deals-contact-is-never-a-deal';
 import { theAimsCountedNow } from './an-aim-is-counted-now';
+import { WHAT_PEOPLE_SAID_PROMPT, WHAT_PEOPLE_SAID_SCHEMA, theQuestionAboutWhatPeopleSaid, onlyWhatAPersonReallySaid } from './what-people-said-against-a-target';
 import { whatTheOwnerSaidOfEachDeal } from './what-the-owner-said-of-each-deal';
 import {
   WHAT_THE_RECORD_SAYS_PROMPT,
@@ -439,11 +441,62 @@ export class BoardListener {
     return counted;
   }
 
+  /**
+   * WHAT EACH PERSON SAID THEY HAD DONE, KEPT BESIDE THE TARGET THEY SAID IT AGAINST (what-people-said-against-a-target). Read once a
+   * round from what the people who are not the lead said, for every target, the ones the deals count included, because that is where
+   * a weekly "I sold 24" goes. Said, never proven: no count changes and no aim is made. Best effort.
+   */
+  async keepWhatPeopleSaid(groundId: string, sessionNumber: number): Promise<number> {
+    try {
+      const db = this.prisma as any;
+      if (!db.groundObjectiveSaid?.upsert) return 0;
+      const targets = ((await this.prisma.groundObjective.findMany({
+        where: { groundId, isADecisionAboutAPerson: false },
+        select: { id: true, name: true, target: true, ownerParticipantId: true },
+      })) as any[]).filter((t) => t.target != null);
+      if (!targets.length) return 0;
+      const rows = await this.prisma.recordEntry.findMany({
+        where: {
+          disputedAt: null,
+          participant: { groundId, leftAt: null, partyType: { not: 'INITIATOR' as any } },
+          checkIn: { sessionNumber },
+          type: { in: ['PROGRESS', 'COMMITMENT', 'WORRY', 'TENSION', 'SUCCESS_DEFINITION'] as any },
+        },
+        orderBy: { createdAt: 'asc' },
+        select: { text: true, type: true, participantId: true, standing: true, aboutParticipantId: true },
+      }) as any[];
+      const lines = rows
+        .filter((r) => r.participantId && r.standing !== 'cannot be true' && !r.aboutParticipantId)
+        .map((r) => ({ text: cleanText(r.text), who: r.participantId as string, saidByTheLead: false, kind: r.type ?? null }))
+        .filter((l) => l.text);
+      if (!lines.length) return 0;
+      const answer = await this.anthropic.extract<{ said: { objectiveId: string; participantId: string; count: number; said: string }[] }>(
+        WHAT_PEOPLE_SAID_PROMPT,
+        [{ role: 'user', content: theQuestionAboutWhatPeopleSaid(targets, lines) }],
+        WHAT_PEOPLE_SAID_SCHEMA,
+      );
+      const kept = onlyWhatAPersonReallySaid(answer?.said ?? [], targets, lines);
+      for (const k of kept) {
+        await db.groundObjectiveSaid.upsert({
+          where: { objectiveId_participantId: { objectiveId: k.objectiveId, participantId: k.participantId } },
+          create: { groundId, objectiveId: k.objectiveId, participantId: k.participantId, count: k.count, said: k.said, sessionNumber },
+          update: { count: k.count, said: k.said, sessionNumber },
+        }).catch(() => undefined);
+      }
+      if (kept.length) this.logger.log(`Kept ${kept.length} number(s) people said they had done, for ground ${groundId} round ${sessionNumber}.`);
+      return kept.length;
+    } catch (err: any) {
+      this.logger.warn(`Reading what people said they had done for ${groundId} failed: ${err?.message}`);
+      return 0;
+    }
+  }
+
   @OnEvent(GroundworkEvents.ROUND_COMPLETED)
   async onRoundCompleted(e: Pick<RoundCompletedEvent, 'groundId' | 'sessionNumber'>) {
     await this.readWhatTheRoomIsAbout(e);
     /* An aim the deals count is counted from them, never read off what was said (Hafsah's answer of 17 October). */
     const fromTheDeals = await this.countTheAimsFromTheDeals(e.groundId, e.sessionNumber);
+    await this.keepWhatPeopleSaid(e.groundId, e.sessionNumber);
     try {
       const targets = (await this.prisma.groundObjective.findMany({
         where: { groundId: e.groundId },
@@ -467,8 +520,8 @@ export class BoardListener {
              only where a line reports the value - is what keeps a worry with no figure out. */
           type: { in: ['PROGRESS', 'COMMITMENT', 'SUCCESS_DEFINITION', 'WORRY', 'TENSION'] as any },
         },
-        select: { text: true, type: true, participantId: true, participant: { select: { partyType: true } }, recallBased: true, anchoredDocumentId: true, anchoredOrigin: true, anchoredPassage: true },
-      });
+        select: { text: true, type: true, participantId: true, participant: { select: { partyType: true } }, recallBased: true, anchoredDocumentId: true, anchoredOrigin: true, anchoredPassage: true, aboutParticipantId: true, standing: true },
+      }).then((rows: any[]) => rows.filter((r) => r.standing !== 'cannot be true'));
       if (!said.length) return;
 
       /*
@@ -498,9 +551,11 @@ export class BoardListener {
           /* A count proof backs lands as the number the proof holds (three codes, three sales). */
           const proves = theNumberItProves(n, theLineWasSaid(n.said, lines));
           if (proves !== null) n.count = proves;
+          /* The words it came from are kept beside the figure, unless the lead said them about somebody: those stay hers and theirs. */
+          const from = said.find((l: any) => cleanText(l.text) === cleanText(n.said));
           await this.prisma.groundObjective.update({
             where: { id: n.objectiveId },
-            data: { count: n.count, suggestedCount: null, suggestedSaid: cleanText(n.said), suggestedAtSession: e.sessionNumber },
+            data: { count: n.count, suggestedCount: null, suggestedSaid: from?.aboutParticipantId ? null : cleanText(n.said), suggestedAtSession: e.sessionNumber },
           }).catch(() => undefined);
           /*
            * AND THE ROUND'S OWN SNAPSHOT, which was taken when the round closed, before this number was
@@ -512,12 +567,9 @@ export class BoardListener {
             where: { groundId: e.groundId, objectiveId: n.objectiveId, sessionNumber: e.sessionNumber },
             data: { count: n.count },
           })?.catch?.(() => undefined);
-        } else {
-          await this.prisma.groundObjective.update({
-            where: { id: n.objectiveId },
-            data: { suggestedCount: n.count, suggestedSaid: cleanText(n.said), suggestedAtSession: e.sessionNumber },
-          }).catch(() => undefined);
         }
+        /* Nothing else is kept: the model's own suggested count is not a source of a figure (batch 2, group 2; staging S1). A figure is
+           what a person gave for themselves, or the lead gave for them, landed above with the session it was said in. */
       }
       if (worth.length) {
         this.logger.log(`Read ${worth.length} number(s) off the record for ground ${e.groundId} round ${e.sessionNumber}; ${landed} landed as the lead's own count.`);
@@ -548,10 +600,13 @@ export class BoardListener {
         },
         select: {
           text: true,
+          aboutParticipantId: true, standing: true,
           participant: { select: { id: true } },
         },
       });
+      /* What the room is about is the team's picture: no line the lead said about one of them (who-may-read-a-line.ts). */
       const lines = said
+        .filter((s: any) => mayReadTheLine(s, EVERYBODY))
         .map((s: any) => ({
           text: cleanText(s.text),
           /* A LABEL, NEVER THEIR NAME AND NEVER THE LEAD'S DESCRIPTION OF THEM (decision 110, P9; request 36): an opaque one made from the person's

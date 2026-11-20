@@ -58,7 +58,7 @@ describe('Mercy opens People and setup on her own check-in page', () => {
     renderPage()
     await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
     expect(screen.getByText('Rep, Kiambu and schools')).toBeTruthy()
-    expect(screen.getByText('You have completed 5 sessions, out of 15.')).toBeTruthy()
+    expect(screen.getByText('You have completed 5 check-ins, out of 15.')).toBeTruthy()
     expect(screen.getByText("Grace knows who is here. You see the team's report once it's shared, with names.")).toBeTruthy()
     expect(screen.queryByText('Setup')).toBeNull()
   })

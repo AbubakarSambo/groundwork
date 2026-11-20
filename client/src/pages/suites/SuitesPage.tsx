@@ -5,9 +5,12 @@ import { TheSpendingRoute } from './ApprovalStepsByAmount'
 import { suitesApi, reviewsApi, yourRequestsApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
-import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select, Modal } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select, Modal, Skeleton } from '@/components/gw/ui'
 import { QueueLink } from './QueuePage'
 import { WhoLooksAfterWhat } from './WhoLooksAfterWhat'
+import { WhatIsMissing } from './WhatIsMissing'
+import { ForSomePeople } from './ForSomePeople'
+import { TheLeavePolicy } from './TheLeavePolicy'
 import { everySays } from './ReviewsBoardPage'
 
 /**
@@ -71,7 +74,7 @@ export const ALREADY_PART = [
   { name: 'Commitments', line: 'What people said they would do, and whether they did.', where: 'Each check-in', to: '/grounds' },
   { name: 'Teams and who reports to whom', line: 'Each person’s team, level and manager.', where: 'People', to: '/org/members' },
   { name: 'Roles and permissions', line: 'Who can start check-ins, and who can see what.', where: 'People', to: '/org/members' },
-  { name: 'Company documents', line: 'The handbook, learnings and resources.', where: 'Company context', to: '/company/context' },
+  { name: 'Company documents', line: 'The handbook, learnings and resources.', where: 'Desk', to: '/company' },
   { name: 'Numbers from other systems', line: 'Sales, payments and usage, shown beside what people say.', where: 'Connections', to: '/settings/connections' },
   { name: 'Slack or Teams', line: 'Notices in the channels your team already uses.', where: 'Connections', to: '/settings/connections' },
 ]
@@ -91,6 +94,9 @@ export const BOARDS: Record<string, { to: string }> = {
 }
 
 const DID_NOT_GO = 'That did not go through, and nothing has changed. Try again.'
+
+/** The suites whose approvals follow the reporting lines, so their card says what is missing (Batch S, S3). */
+const CHECKED = ['leave', 'time', 'spend', 'reviews']
 
 export function SuitesPage() {
   const user = useAuthStore(s => s.user)
@@ -131,7 +137,7 @@ export function SuitesPage() {
         }
       />
 
-      {isLoading && <Note>Loading…</Note>}
+      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 ? (
           <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open the suites.'}</Note>
@@ -295,6 +301,7 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
             <Button kind="quiet" size="small" onClick={openSettings}>See or change its settings</Button>
           )}
           {s.on && s.key === 'spend' && !asking && <TheSpendingRoute />}
+          {s.on && CHECKED.includes(s.key) && <WhatIsMissing suite={s.key} />}
         </div>
         <div className="gwui-suite-switch">
           <Tag>{s.on ? 'On' : 'Off'}</Tag>
@@ -321,6 +328,10 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
           </div>
         </form>
       )}
+      {/* Batch S, S1: the number set for some people, beside the settings it differs from. Its own form, saved on its own. */}
+      {asking && s.on && <ForSomePeople suite={s.key} />}
+      {/* The whole leave policy, in the server's sentences, and each part of it to change (21 November 2026). */}
+      {asking && s.on && s.key === 'leave' && <TheLeavePolicy />}
       {problem && <Note tone="error">{problem}</Note>}
 
       {confirmingOff && (

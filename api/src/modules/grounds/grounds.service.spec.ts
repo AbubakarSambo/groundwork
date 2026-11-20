@@ -54,7 +54,8 @@ describe('GroundsService - participant serialization (GW-01)', () => {
 
     expect(prisma.ground.findFirst).toHaveBeenCalled();
     // The participants relation must be a field-selected projection, not `true`.
-    expect(capturedInclude.participants).toEqual({ select: SAFE_PARTICIPANT_SELECT });
+    /* UPDATED 19 NOVEMBER: people who have left are not read (leftAt: null), so the relation carries that filter beside the safe select. */
+    expect(capturedInclude.participants).toEqual({ where: { leftAt: null }, select: SAFE_PARTICIPANT_SELECT });
     for (const field of SENSITIVE) {
       expect(capturedInclude.participants.select[field]).toBeUndefined();
     }

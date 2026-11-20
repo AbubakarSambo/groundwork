@@ -16,7 +16,6 @@ describe('TheEndCard', () => {
     render(
       <TheEndCard
         engine={{ inYourRecord: [], next: ['A line of what happens next.'] }}
-        leadName={null}
         nextOpens="Your next check-in opens tomorrow at 4pm."
         finishing={false}
         onFinish={() => {}}
@@ -34,7 +33,6 @@ describe('TheEndCard', () => {
     render(
       <TheEndCard
         engine={{ inYourRecord: [{ says: 'Green Mart has a quote.', how: 'You said this. A photo of the quote would prove it.', mark: 'said' }], next: [] }}
-        leadName="Wairimu"
         nextOpens="Your next check-in opens tomorrow at 8am."
         finishing={false}
         onFinish={() => {}}
@@ -45,8 +43,10 @@ describe('TheEndCard', () => {
     expect(line.closest('ul')).toBeNull()
     expect(line.closest('details')).toBeNull()
     expect(screen.getAllByText('Your next check-in opens tomorrow at 8am.')).toHaveLength(1)
-    expect(screen.getByText('Why answering matters, and what happens next').closest('summary')).toBeTruthy()
-    expect(screen.getByText(/Wairimu also answers a check-in/).closest('details')).toBeTruthy()
+    /* Hafsah, 15 November: the fold "Why answering matters, and what happens next" and its reassurance line are gone. */
+    expect(screen.queryByText(/Why answering matters/)).toBeNull()
+    expect(screen.queryByText(/also answers a check-in/)).toBeNull()
+    expect(screen.queryByText(/If you don’t want to talk about something yet/)).toBeNull()
     expect(screen.queryByText(/^\d\. /)).toBeNull()
   })
 })
@@ -54,7 +54,7 @@ describe('TheEndCard', () => {
 /** USER JOURNEYS, F-10: the card said "Below is what I wrote down" over two sections that were not her answers. It now says what is true of its first part. */
 describe('TheEndCard, what it says where her answers should be', () => {
   const draw = (props: Partial<React.ComponentProps<typeof TheEndCard>>) =>
-    render(<TheEndCard engine={null} leadName={null} nextOpens={null} finishing={false} onFinish={() => {}} onChange={() => {}} {...props} />)
+    render(<TheEndCard engine={null} nextOpens={null} finishing={false} onFinish={() => {}} onChange={() => {}} {...props} />)
 
   it('while the card is still being written, says so', () => {
     draw({ beingWritten: true })
@@ -79,7 +79,7 @@ describe('TheEndCard, what it says where her answers should be', () => {
     render(
       <TheEndCard
         engine={{ inYourRecord: [{ says: 'Green Mart has a quote.', how: 'You said this.', mark: 'said' }, { says: 'I will visit Westgate on Friday.', how: 'You said you will do this. I will ask you how it went.', mark: 'said' }] }}
-        leadName={null} nextOpens={null} finishing={false} onFinish={() => {}} onChange={onChange}
+        nextOpens={null} finishing={false} onFinish={() => {}} onChange={onChange}
       />
     )
     const buttons = screen.getAllByRole('button', { name: 'That’s not right' })
@@ -89,9 +89,9 @@ describe('TheEndCard, what it says where her answers should be', () => {
     expect(screen.queryByText('Change something')).toBeNull()
     expect(screen.getByRole('button', { name: 'That’s right, finish' })).toBeTruthy()
   })
-  it('with no card at all, says it could not be shown and that finishing writes it', () => {
+  it('with no card at all, says it could not be loaded', () => {
     draw({ engine: null })
     /* Changed in F5: the way back to the conversation is in the sentence, since "Change something" is gone. */
-    expect(screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === 'I could not show you what I wrote down just now. It is written from your answers when you finish. If something is missing, tell me.')).toBeTruthy()
+    expect(screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === 'I could not load what I wrote down. If something is missing, tell me.')).toBeTruthy()
   })
 })

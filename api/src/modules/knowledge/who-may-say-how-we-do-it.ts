@@ -10,6 +10,8 @@
  * a lead anything they did not already have, and nothing lets an admin be bypassed.
  */
 
+import { mayAddToTheDesk } from './the-desk';
+
 export type Decision = { may: true } | { may: false; because: string };
 
 /**
@@ -21,7 +23,8 @@ export type Decision = { may: true } | { may: false; because: string };
  * arriving on an approval queue as though it were policy.
  */
 export function mayPropose(role: string): Decision {
-  if (role === 'ADMIN' || role === 'LEAD') return { may: true };
+  /* The same people who may add a document to the Desk (the-desk.ts), so the two can never disagree. */
+  if (mayAddToTheDesk(role)) return { may: true };
   return { may: false, because: NOT_YOURS_TO_PROPOSE };
 }
 

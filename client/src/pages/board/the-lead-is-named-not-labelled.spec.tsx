@@ -78,9 +78,11 @@ describe('"What the team is aiming for" says who sets the targets, never "the le
 })
 
 describe('"What keeps coming up" names whose private report a judgement stays in', () => {
-  it('says "your private report" to the lead', async () => {
+  /* 15 November 2026: the footer under "What keeps coming up" (a privacy note saying where a judgement about a person stays) is gone: the backend enforces it, and a screen is not told it. So the lead is told neither "your private report" nor "the lead's private report". */
+  it('draws no privacy footer under the patterns, to the lead', async () => {
     me = { id: 'u-lead', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(AS_THE_LEAD)
-    expect(await screen.findByText(/stays in your private report and never appears here\./)).toBeInTheDocument()
+    expect(await screen.findByText('You set these targets.')).toBeInTheDocument()
+    expect(screen.queryByText(/private report and never appears here/)).toBeNull()
   })
 })

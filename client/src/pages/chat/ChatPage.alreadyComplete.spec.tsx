@@ -58,6 +58,16 @@ function renderChat() {
   )
 }
 
+/**
+ * CHANGED 15 NOVEMBER 2026 (Hafsah, audit of the check-in pages, row 29): the quiet button is now "Pause", and pressing it brings up the
+ * end card ("What I wrote down"); only "That’s right, finish" finishes. These cases used to click End session and finish at once. They
+ * now do both presses, so the refusals below are met on the one way of finishing there is.
+ */
+async function pauseAndFinish() {
+  fireEvent.click(await screen.findByText('Pause', {}, { timeout: 4000 }))
+  fireEvent.click(await screen.findByRole('button', { name: 'That’s right, finish' }))
+}
+
 /** The server's refusal, in the shape axios delivers it. */
 function alreadyCompleteError() {
   return { response: { data: { message: 'This check-in is already complete' } } }
@@ -85,13 +95,12 @@ describe('finishing a check-in the engine already closed', () => {
     ;(conversationApi.complete as any).mockRejectedValue(alreadyCompleteError())
     renderChat()
 
-    /* Changed 26 October: End session ends it at once; there is no confirm card in between. */
-    fireEvent.click(await screen.findByText('End session', {}, { timeout: 4000 }))
+    await pauseAndFinish()
 
     // THE REGRESSION. The button lived on forever, and pressing it again only
     // produced the same refusal.
     await waitFor(() => {
-      expect(screen.queryByText('End session')).toBeNull()
+      expect(screen.queryByText('Pause')).toBeNull()
     })
   }, 15_000)
 
@@ -114,17 +123,16 @@ describe('finishing a check-in the engine already closed', () => {
    */
   it('treats a 400 with no canContinue field the same way as one that has it', async () => {
     ;(conversationApi.complete as any).mockRejectedValue({
-      response: { status: 400, data: { message: 'Not enough on record to close this session yet' } },
+      response: { status: 400, data: { message: 'Not enough on record to close this check-in yet' } },
     })
     renderChat()
 
-    /* Changed 26 October: End session ends it at once; there is no confirm card in between. */
-    fireEvent.click(await screen.findByText('End session', {}, { timeout: 4000 }))
+    await pauseAndFinish()
 
     await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalled())
     // The card comes down, the server's own sentence is never shown, and the plain explanation
     // and a live composer take its place.
-    expect(await screen.findByText(/I need a little more from you before this check-in can close/i)).toBeTruthy()
+    expect(await screen.findByText(/I need one or two more answers before I can close this/i)).toBeTruthy()
     expect(screen.queryByText(/Not enough on record to close this session yet/i)).toBeNull()
     expect((screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement).disabled).toBe(false)
   }, 15_000)
@@ -135,24 +143,22 @@ describe('finishing a check-in the engine already closed', () => {
     })
     renderChat()
 
-    /* Changed 26 October: End session ends it at once; there is no confirm card in between. */
-    fireEvent.click(await screen.findByText('End session', {}, { timeout: 4000 }))
+    await pauseAndFinish()
 
     // A failure that is not the gate refusing a thin record must keep the way forward open - the
     // person has nothing new to add, and hiding the button would strand them.
     await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalled())
-    expect(await screen.findByText('End session')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'That’s right, finish' })).toBeTruthy()
   }, 15_000)
 
   it('still finishes normally when the server accepts the completion', async () => {
     ;(conversationApi.complete as any).mockResolvedValue({ status: 'completed' })
     renderChat()
 
-    /* Changed 26 October: End session ends it at once; there is no confirm card in between. */
-    fireEvent.click(await screen.findByText('End session', {}, { timeout: 4000 }))
+    await pauseAndFinish()
 
     await waitFor(() => {
-      expect(screen.queryByText('End session')).toBeNull()
+      expect(screen.queryByText('Pause')).toBeNull()
     })
   }, 15_000)
 })

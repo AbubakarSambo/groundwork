@@ -6,7 +6,7 @@ import { PersonCell } from './PeopleTable'
  * U.4 RE-REVIEW, ITEM 4: NEVER THE SAME EMAIL TWICE.
  *
  * Several pages now put a person's own address in the name slot itself, when there is no real name
- * on record, rather than a name guessed out of it (see WhosInItRoster.tsx, RolesInThisCheckIn.tsx).
+ * on record, rather than a name guessed out of it (see `whereThisPersonIs` in WhosInItRoster.tsx, which PeopleAndSetupAsPictured.tsx reads).
  * `email` is still handed here too, for the row's usual "name, then address underneath" shape - so
  * without this check, somebody with no name read their own address twice on the same row: once as
  * the name, once again directly under it.

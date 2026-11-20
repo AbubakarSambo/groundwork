@@ -86,7 +86,7 @@ export default function OpsTargetCompaniesPage() {
             every page now, and a second way home is clutter rather than help. */}
         <p style={LABEL}>Target companies</p>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
-          {data?.period?.name ?? 'Loading'}
+          {data?.period?.name ?? 'This period'}
         </h1>
         {data?.period?.goal && (
           <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: 0 }}>{data.period.goal}</p>

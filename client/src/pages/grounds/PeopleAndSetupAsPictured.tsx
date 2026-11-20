@@ -21,7 +21,7 @@ import { initialsOf } from '@/pages/org/people-here'
 import { scenarioLabel } from '@/lib/scenario-catalog'
 import { scrollToId } from '@/lib/scroll-to'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { sessionsFor } from '@/lib/cadence'
+import { sessionsFor, SELECTABLE_CADENCES } from '@/lib/cadence'
 import { KIND_OF_WORK_OPTION_LABEL } from '@/pages/board/WorkRecords'
 import { SHARE_A_LINK } from './ShareSection'
 import {
@@ -59,15 +59,10 @@ import '@/pages/board/pictured/pictured-board.css'
  */
 type Served = Extract<PeopleAndSetup, { view: 'lead' | 'admin' }>
 
-const HOW_OFTEN: { key: string; label: string }[] = [
-  { key: 'weekday', label: 'Every weekday' },
-  { key: 'day', label: 'Every day' },
-  { key: 'WEEKLY', label: 'Every week' },
-  { key: 'FORTNIGHTLY', label: 'Every 2 weeks' },
-  { key: 'MONTHLY', label: 'Every month' },
-  { key: 'SEQUENTIAL', label: 'When I choose' },
-  { key: 'ONE_TIME', label: 'Once' },
-]
+/* Every rhythm a lead may choose, from the one list (lib/cadence.ts), so this picker can never drop one the product recommends.
+   A daily check-in is offered twice, as the prototype pictures it: on weekdays only, or every day. */
+const HOW_OFTEN: { key: string; label: string }[] = SELECTABLE_CADENCES.map((c) => ({ key: c.cadence as string, label: c.label }))
+  .flatMap((c) => (c.key === 'DAILY' ? [{ key: 'weekday', label: 'Every weekday' }, { key: 'day', label: c.label }] : [c]))
 
 const weekdaysOnly = (days: number[]) => { const d = workingDaysOf(days); return d.length === 5 && WEEKDAYS.every((x) => d.includes(x)) }
 export function howOftenKey(cadence: string, workingDays: number[]): string {
@@ -185,7 +180,11 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
     props.setStartsAtDraft(props.startsAtOnRecord)
   }
 
+  /* One press is one save: every write "Save changes" makes, so the button waits while any of them is on its way. */
+  const saving = [props.saveSetup, setKind, confirmType, props.setChasing, props.setOverWhatsApp, props.setSimplerWords, props.setExpectThemToUnblock,
+    props.setPeerVisibility, props.setContactVisibility, props.setWorkTogether, props.setWhoSeesTargets, setSharesAt, props.updateRole].some((m) => m.isPending)
   const save = () => {
+    if (saving) return
     const patch: Record<string, unknown> = {}
     if (changedKeys.includes('label') && draft.label.trim()) patch.label = draft.label.trim()
     if (props.theTimeframeChanged) Object.assign(patch, theTimeframeToSave(props))
@@ -395,7 +394,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                       {numberFor === p.id
                         ? <TheirNumber groundId={id} participantId={p.id} name={row.name} phone={phone} onDone={() => setNumberFor(null)} />
                         : phone
-                          ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button>{props.whatsAppIsOn && onWhatsApp?.says ? <span className="gwui-note">{' '}{onWhatsApp.says}</span> : null}</>
+                          ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button>{props.whatsAppIsOn && onWhatsApp?.says ? <span className="gwui-note">{onWhatsApp.says}</span> : null}</>
                           : <>None yet{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Add a number</button></>}
                     </span>
                     <Stack gap={4}>
@@ -466,7 +465,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                   <Button kind="secondary" size="small" onClick={() => { endsRef.current?.focus(); endsRef.current?.showPicker?.() }}>Give it more time</Button>
                 </FlexRow>
                 {props.canOfferStartDate && (
-                  <Note>Session 1 opens on the start day, and anybody you add before it is invited on it. Leave it empty to open the check-in as soon as people are added.</Note>
+                  <Note>Check-in 1 opens on the start day, and anybody you add before it is invited on it. Leave it empty to open the check-in as soon as people are added.</Note>
                 )}
                 {(cadenceKey === 'weekday' || cadenceKey === 'day') && (
                   <WhichDaysTheyWork value={props.workingDaysDraft} onChange={props.setWorkingDaysDraft} />
@@ -488,15 +487,15 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             {page && <Text size="15" as="p">{page.sessions}{typeof g?.daysLeft === 'number' && g?.endsOn ? ` ${g.daysLeft} day${g.daysLeft === 1 ? '' : 's'} left.` : ''}</Text>}
             {props.theTimeframeChanged && (
               <Note>
-                {`${props.timelineDaysDraft} days, ${n} session${n === 1 ? '' : 's'}.`}
-                {(props.cadenceDraft === 'WEEKLY' || props.cadenceDraft === 'FORTNIGHTLY' || props.cadenceDraft === 'MONTHLY') && ' The day you choose applies from the next check-in on. A session already made keeps its own date.'}
+                {`${props.timelineDaysDraft} days, ${n} check-in${n === 1 ? '' : 's'}.`}
+                {(props.cadenceDraft === 'WEEKLY' || props.cadenceDraft === 'FORTNIGHTLY' || props.cadenceDraft === 'MONTHLY') && ' The day you choose applies from the next check-in on. A check-in already made keeps its own date.'}
               </Note>
             )}
             {viewerIsAParty && (
               <FieldRows>
                 <FieldRow label="Your status" value={statusSentence(whatThisStatusMeans(g?.status))} />
                 <FieldRow
-                  label="Your sessions"
+                  label="Your check-ins"
                   value={(participants.find((p) => p.userId === user?.id)?.managingOnly) ? 'You check in when you choose. Use Check in yourself any time.' : yourSessionsSentence(mySessionsDone, plannedSessions)}
                 />
               </FieldRows>
@@ -526,7 +525,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                 <FieldRow label="Reminders" value={g?.chasingStopped ? 'Off. Nobody is reminded.' : chasingSentence(recordReminderDays)} />
               </FieldRows>
             )}
-            <Note>Never more than one reminder a day. Quiet hours end at 7am. At the last session, everyone is asked how this should close.</Note>
+            <Note>Never more than one reminder a day. Quiet hours end at 7am. At the last check-in, everyone is asked how this should close.</Note>
           </Stack>
         </Panel>
       </Section>
@@ -571,7 +570,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
       <Section heading="Starting point">
         <Stack gap={10}>
           <StartingPointPanel groundId={id} canRecord={isInitiator} />
-          <Note>Recorded once, from your first session. It stays as written, and the board measures progress from it.</Note>
+          <Note>Recorded once, from your first check-in. It stays as written, and the board measures progress from it.</Note>
           {/* "What doing well looks like" is under About this work on References and resources now (Release 1B, pull request 2
               of 3), with its versions and wording; this page is drawn only where that tab is too. */}
         </Stack>
@@ -655,7 +654,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             {props.deleteError && <Note tone="error">{props.deleteError}</Note>}
             {nobodyElseAnswered && props.confirmDelete && (
               <FlexRow gap={8} wrap align="center">
-                <span>Delete "{g?.label}" for good? Everything goes, including the conversation, the sessions and anything uploaded.</span>
+                <span>Delete "{g?.label}" for good? Everything goes, including the conversation, the check-ins and anything uploaded.</span>
                 <Button kind="danger" disabled={props.removeGround.isPending} onClick={() => props.removeGround.mutate()}>
                   {props.removeGround.isPending ? 'Deleting…' : 'Yes, delete it'}
                 </Button>
@@ -679,10 +678,10 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
         <div role="region" aria-label="Unsaved changes" style={{ position: 'sticky', bottom: 0, zIndex: 5 }}>
           <Panel>
             <FlexRow gap={12} justify="space-between" align="center" wrap>
-              <Text size="15" as="p">You have changes. They apply from the next check-in. Sessions already done keep their dates.</Text>
+              <Text size="15" as="p">You have changes. They apply from the next check-in. Check-ins already done keep their dates.</Text>
               <FlexRow gap={8}>
                 <Button kind="secondary" onClick={discard}>Discard</Button>
-                <Button kind="secondary" disabled={props.saveSetup.isPending || props.setWorkTogether.isPending} onClick={save}>Save changes</Button>
+                <Button kind="secondary" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save changes'}</Button>
               </FlexRow>
             </FlexRow>
           </Panel>

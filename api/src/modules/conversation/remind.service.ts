@@ -615,7 +615,7 @@ export class RemindService {
       });
       if (already?.absenceToldAt) return;
 
-      await this.email.sendAbsenceReminder(email, name, groundName, consecutiveMissed, checkInUrl);
+      await this.email.sendAbsenceReminder(email, name, groundName, consecutiveMissed, checkInUrl, { kind: 'REMINDER', participantId });
       await this.prisma.groundParticipant.update({
         where: { id: participantId },
         data: { absenceToldAt: new Date() },

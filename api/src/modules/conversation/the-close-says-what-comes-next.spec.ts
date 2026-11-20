@@ -57,7 +57,8 @@ describe('the close, as a person reads it', () => {
     const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     // Changed 26 October 2026 (Hafsah: item 4): sessionComplete is a let now, since past seven answers the product closes too.
     const decided = src.indexOf("let sessionComplete = close.ready && (theyAreLeaving || !stillAsking(aiTurn.content ?? ''));");
-    const closed = src.indexOf("const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web', await this.usesSimplerWords(checkIn.groundId));");
+    // Changed 16 November 2026 (fix plan group 2): the close also takes which close it is (already asked, or the read still to come).
+    const closed = src.indexOf("const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web', await this.usesSimplerWords(checkIn.groundId), theCloseIs);");
     expect(decided).toBeGreaterThan(0);
     expect(closed).toBeGreaterThan(decided);
     expect(src.slice(closed - 200, closed)).toContain('if (sessionComplete) {');

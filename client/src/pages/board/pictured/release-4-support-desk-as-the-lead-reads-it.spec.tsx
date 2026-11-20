@@ -3,18 +3,18 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThePicturedBoard } from './ThePicturedBoard'
-import { RELEASE_4_ORDERS, RELEASE_4_FOLD_AFTER } from '../release-4-orders'
+import { RELEASE_4_ORDERS } from '../release-4-orders'
 import board from '../../preview/__fixtures__/release-4-support-desk.json'
 
 /**
  * RELEASE 4, THE SUPPORT DESK (support.jpg), AS ITS LEAD READS IT, from Kijani Helpdesk (test), written by hand. The sections in the
  * picture's order, each target with the picture's colour for where it stands, a ceiling read as "of ≤", and no line joined with a colon.
  */
-function draw(startOpen = true) {
+function draw() {
   return render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter>
-        <ThePicturedBoard order={RELEASE_4_ORDERS['support desk']} foldAfter={startOpen ? RELEASE_4_FOLD_AFTER : undefined} b={board as any} groundId="kijani-support-desk"
+        <ThePicturedBoard order={RELEASE_4_ORDERS['support desk']} b={board as any} groundId="kijani-support-desk"
           sessionRows={[]} renderActions={() => null} overTime={null} recommendations={[]} onAnswerRecommendation={() => undefined}
           recommendationBusy={false} onRecordTheDecision={() => undefined} navigate={() => undefined} />
       </MemoryRouter>

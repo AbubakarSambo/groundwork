@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { reviewsApi, type AReview, type ReviewForTheWriter, type YourAppeal, type AppealForAnotherReader, type ReviewForThePerson, type TheRecord, type ABriefing, type RecogniseForTheWriter, type RecogniseForThePerson, type AReviewAsPictured } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Page, PageTitle, Section, Panel, Button, Note, ProofMark, FieldLabel, TextArea, TextField, RowList, Row, FoldedLine, EdgeList, EdgeRow } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Note, ProofMark, FieldLabel, TextArea, TextField, RowList, Row, FoldedLine, EdgeList, EdgeRow, Skeleton } from '@/components/gw/ui'
 
 /**
  * ONE PERFORMANCE REVIEW (E4, #/suite/reviews/:id, group 2 piece 4). The wording is copied from the
@@ -74,7 +74,7 @@ export function ReviewPage() {
           title={data.reader === 'person' ? `Your review, ${monthOf(data.dueOn)}` : `${data.firstName}’s review, ${monthOf(data.dueOn)}`}
         />
       )}
-      {isLoading && <Note>Loading…</Note>}
+      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
           <Note tone="error">{refused.data?.message ?? 'You cannot open this review.'}</Note>
@@ -84,6 +84,12 @@ export function ReviewPage() {
             <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
           </div>
         )
+      )}
+      {/* Batch S, S4: what it is drawn from, who reads it and what happens next, first, in the server's own sentences. */}
+      {data?.about && data.about.length > 0 && (
+        <Section heading="About this review">
+          {data.about.map(line => <p key={line} className="gwui-panel-text">{line}</p>)}
+        </Section>
       )}
       {/* Release 7: the review as pictured, built from check-ins, first; the review's own parts follow, folded under it. */}
       {data?.asPictured && <TheReviewAsPictured p={data.asPictured} />}
@@ -441,9 +447,11 @@ function Decision({ r }: { r: AReview }) {
   const qc = useQueryClient()
   const [says, setSays] = useState('')
   const [reasons, setReasons] = useState('')
+  const [nextSteps, setNextSteps] = useState('')
+  const [lookAgainOn, setLookAgainOn] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
   const saving = useMutation({
-    mutationFn: () => reviewsApi.decide(r.id, says.trim(), reasons.trim()),
+    mutationFn: () => reviewsApi.decide(r.id, says.trim(), reasons.trim(), { nextSteps: nextSteps.trim(), lookAgainOn }),
     onSuccess: (x) => { setProblem(null); qc.setQueryData(['suite-review', r.id], x) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
@@ -478,6 +486,14 @@ function Decision({ r }: { r: AReview }) {
         <div className="gwui-suite-q">
           <FieldLabel htmlFor="rv-reasons">Your reasons, in a sentence or two</FieldLabel>
           <TextArea id="rv-reasons" rows={3} value={reasons} onChange={e => setReasons(e.target.value)} maxLength={2000} />
+        </div>
+        <div className="gwui-suite-q">
+          <FieldLabel htmlFor="rv-next">What happens next, for example what {r.firstName} will work on and how you will help</FieldLabel>
+          <TextArea id="rv-next" rows={3} value={nextSteps} onChange={e => setNextSteps(e.target.value)} maxLength={2000} />
+        </div>
+        <div className="gwui-suite-q">
+          <FieldLabel htmlFor="rv-again">When you will look at it again together</FieldLabel>
+          <TextField id="rv-again" type="date" value={lookAgainOn} onChange={e => setLookAgainOn(e.target.value)} />
         </div>
         <div><Button type="submit" disabled={!says.trim() || !reasons.trim() || saving.isPending}>Save my decision</Button></div>
         {problem && <Note tone="error">{problem}</Note>}

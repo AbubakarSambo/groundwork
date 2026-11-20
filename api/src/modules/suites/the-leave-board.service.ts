@@ -1,4 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { readForWhom, theRuleFor, type APerson, type ForWhom } from './who-a-rule-is-for';
+import { thePeopleHere, thePersonForRules } from './the-people-and-their-lines';
 import { answersUnderTheQuestionsOwnIds } from './the-answers-under-the-questions-own-ids';
 import { suiteOf } from './the-ten-suites';
 import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
@@ -16,9 +18,10 @@ import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { aLeaveRequest, leaveInWords, type AWaitingRequest, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
 import { ownedInWords, whatTheyOwnWhileAway } from './what-they-own-while-away';
-import { aLeaveRequestAsTheApproverReadsIt, theClashSaid, whoIsOffNamed } from './a-leave-request-as-the-approver-reads-it';
+import { aLeaveRequestAsTheApproverReadsIt, leaveDaysInWords, theClashSaid, whoIsOffNamed } from './a-leave-request-as-the-approver-reads-it';
 import { LEAVE_QUESTION_KIND, QUESTION_REFUSED, aQuestionSaid, aReasonSaid, wordsGiven, type AQuestion } from './a-question-about-a-request';
-import { hereSince, inASentence, readLeaveRules, theKindOf, theRulesThatApply, type ALeaveKind, type LeaveRules } from './the-leave-rules';
+import { everyDayCounts, hereSince, inASentence, readLeaveRules, theBalanceRuleOf, theCalendarRulesOf, theKindOf, theRulesThatApply, type ALeaveKind, type LeaveRules } from './the-leave-rules';
+import { THE_USUAL_CALENDAR, THE_USUAL_CALENDARS, daysLeftOf, leaveDaysUsed, readLeaveCalendars, type LeaveCalendars } from './the-leave-calendar';
 import { readDuties } from './who-holds-each-duty';
 import { daysOfLeaveLeftSaid } from '../assistant/your-own-requests-asked-about';
 
@@ -127,7 +130,7 @@ export interface MyLeave {
   perYear: number | null;
   daysLeft: number | null;
   /** Each kind of leave the admin set, with this person's days a year and days left; empty when none are set. */
-  kinds: { key: string; name: string; perYear: number | null; daysLeft: number | null }[];
+  kinds: { key: string; name: string; perYear: number | null; daysLeft: number | null; eachTime?: number }[];
   /** The days left, in a full sentence for this reader ("You have 17 days of leave left this year, out of 20."), the same one Ask Groundwork says. */
   daysLeftSaid: string;
   requests: {
@@ -167,21 +170,52 @@ const DAY = 86_400_000;
 const dayOf = (d: Date): Day => d.toISOString().slice(0, 10);
 const atMidnight = (d: Day): Date => new Date(`${d}T00:00:00.000Z`);
 
-/** Monday to Friday between two days, both counted. Public holidays are not known here. */
+/** Monday to Friday between two days, both counted: the leave calendar when nothing is set (the-leave-calendar.ts). */
 export function workingDays(from: Date, to: Date): number {
-  let n = 0;
-  for (let t = from.getTime(); t <= to.getTime(); t += DAY) {
-    const w = new Date(t).getUTCDay();
-    if (w !== 0 && w !== 6) n++;
-  }
-  return n;
+  return leaveDaysUsed(THE_USUAL_CALENDAR, from, to);
 }
 
-/** Working days of a request that fall in one calendar year. */
-function workingDaysIn(year: number, from: Date, to: Date): number {
-  const start = new Date(Math.max(from.getTime(), Date.UTC(year, 0, 1)));
-  const end = new Date(Math.min(to.getTime(), Date.UTC(year, 11, 31)));
-  return end < start ? 0 : workingDays(start, end);
+/** The leave answers every reading of a request needs: the days a year, the steps, the rules, and each person's calendar. */
+export interface TheLeaveAnswers { perYear: number | null; workflow?: AWorkflow; rules: LeaveRules; calendars?: LeaveCalendars }
+
+/** The leave days one request uses, by the person's own calendar and its type (the-leave-calendar.ts). The one count every reader reads. */
+export function theDaysOf(r: { userId: string; startsOn: Date; endsOn: Date; kind?: string | null }, answers: { rules?: LeaveRules; calendars?: LeaveCalendars }): number {
+  const kind = answers.rules ? theKindOf(r.kind, answers.rules) : null;
+  return leaveDaysUsed((answers.calendars ?? THE_USUAL_CALENDARS).of(r.userId), r.startsOn, r.endsOn, kind);
+}
+
+/**
+ * The days left of one type of leave for one person on a day (the-leave-calendar.ts): its days a year, how annual leave builds up,
+ * the leave year and what is carried over, less the approved requests of that type, counted by the person's calendar. With no
+ * types set, the suite's one number and every approved request, as before. Null when no number is set.
+ */
+export function theDaysLeft(answers: TheLeaveAnswers, kind: ALeaveKind | null, userId: string, approved: { userId: string; startsOn: Date; endsOn: Date; kind?: string | null }[], asOf: Date | Day): number | null {
+  const mine = approved.filter((a) => a.userId === userId && (!kind || theKindOf(a.kind, answers.rules)?.key === kind.key));
+  const day = typeof asOf === 'string' ? asOf : dayOf(asOf);
+  return daysLeftOf(theBalanceRuleOf(answers.rules, kind, answers.perYear), (answers.calendars ?? THE_USUAL_CALENDARS).of(userId),
+    mine.map((a) => ({ startsOn: a.startsOn, endsOn: a.endsOn, everyDay: theKindOf(a.kind, answers.rules)?.everyDay })), day);
+}
+
+/**
+ * THE DAYS LEFT OF EACH PERSON WHOSE REQUEST WAITS (Batch S, round 2, T9), for a reader of many requests at once (the approvals
+ * queue), worked out as the leave board does: their own days a year (who-a-rule-is-for.ts), of the request's kind, for the year
+ * the request starts in, less what is approved. Keyed by request id.
+ */
+export async function theDaysLeftOfEach(prisma: PrismaService, organizationId: string, requests: { id: string; userId: string; kind?: string | null; startsOn: Date }[]): Promise<Map<string, number | null>> {
+  const out = new Map<string, number | null>();
+  if (!requests.length) return out;
+  const suite = await prisma.organizationSuite.findUnique({ where: { organizationId_suite: { organizationId, suite: 'leave' } }, select: { answers: true } }).catch(() => null);
+  const a = answersUnderTheQuestionsOwnIds(suiteOf('leave')!, suite?.answers) as Record<string, unknown>;
+  const rules = await readLeaveRules(prisma, organizationId);
+  const base: TheLeaveAnswers = { perYear: typeof a.days === 'number' ? a.days : null, rules, calendars: await readLeaveCalendars(prisma, organizationId, theCalendarRulesOf(rules)) };
+  const forWhom = await readForWhom(prisma, organizationId);
+  const people = new Map(forWhom['leave.days']?.length ? (await thePeopleHere(prisma, organizationId)).map((p) => [p.userId, p] as const) : []);
+  const approved = (await prisma.leaveRequest.findMany({ where: { organizationId, status: 'approved', userId: { in: [...new Set(requests.map((r) => r.userId))] } } })) as any[];
+  for (const r of requests) {
+    const theirs = withTheirAllowance(base, people.get(r.userId) ?? null, forWhom);
+    out.set(r.id, theDaysLeft(theirs, theKindOf(r.kind, theirs.rules), r.userId, approved, r.startsOn));
+  }
+  return out;
 }
 
 const overlaps = (a: { startsOn: Date; endsOn: Date }, b: { startsOn: Date; endsOn: Date }) =>
@@ -216,14 +250,15 @@ export class LeaveBoardService {
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
     /* Whoever holds the HR duty, when the admin chose to tell HR (build step 8). */
-    const holdsHr = !!answers.rules.tellHr && !!role && role !== 'GUEST' && (await readDuties(this.prisma, reader.organizationId)).hr === reader.userId;
+    /* Whoever holds the HR duty reads the leave board, told of requests or not (Batch S, round 2, T9: Peter was refused until he set leave up). */
+    const holdsHr = !!role && role !== 'GUEST' && (await readDuties(this.prisma, reader.organizationId)).hr === reader.userId;
     /*
      * Whoever the rules name decides, whatever their role or team (who-may-decide.ts). A member the
      * rules could name opens the board as an approver and is served only what waits for them; any
      * other member, and a guest, are refused, as before.
      */
     const asApprover = role !== 'ADMIN' && role !== 'LEAD';
-    const mayBeNamed = asApprover && role === 'MEMBER' && (await couldBeNamed(this.prisma, [...everyRuleIn(theStepsFor('leave', answers)), ...(answers.rules.thresholds ?? []).flatMap((t) => everyRuleIn(t.steps))], reader.organizationId, { userId: reader.userId, role }));
+    const mayBeNamed = asApprover && role === 'MEMBER' && (await couldBeNamed(this.prisma, [...everyRuleIn(theStepsFor('leave', answers)), ...(answers.rules.thresholds ?? []).flatMap((t) => everyRuleIn(t.steps)), ...(answers.rules.kinds ?? []).flatMap((k) => everyRuleIn(k.steps ?? []))], reader.organizationId, { userId: reader.userId, role }));
     if (asApprover && !mayBeNamed && !holdsHr) {
       throw new ForbiddenException(LEAVE_REFUSED.onlyAdminsAndLeads);
     }
@@ -244,6 +279,9 @@ export class LeaveBoardService {
       : role === 'LEAD' ? await this.theLeadsTeam(reader, people) : (_userId: string) => false;
 
     const approved = rows.filter((r) => r.status === 'approved');
+    /* Each person's own days a year (who-a-rule-is-for.ts): read only when an admin set days for some people. */
+    const forWhom = await readForWhom(this.prisma, reader.organizationId);
+    const allowances = new Map(forWhom['leave.days']?.length ? (await thePeopleHere(this.prisma, reader.organizationId)).map((p) => [p.userId, p] as const) : []);
     const waiting: Waiting[] = [];
     for (const r of rows.filter((x) => x.status === 'waiting' && x.userId !== reader.userId)) {
       /* A lead reads their own team's requests; anybody also reads each request that waits for them to decide. */
@@ -260,11 +298,12 @@ export class LeaveBoardService {
         : { count: 0, names: [] as string[], busiest: 0 };
       const alsoOff = off.names;
       const first = names.get(r.userId)?.first ?? '';
-      const days = workingDays(r.startsOn, r.endsOn);
-      const kind = theKindOf(r.kind, answers.rules);
-      const daysLeft = this.daysLeftOf(answers, kind, approved.filter((a) => a.userId === r.userId), r.startsOn.getUTCFullYear());
+      const days = theDaysOf(r, answers);
+      const theirs = withTheirAllowance(answers, allowances.get(r.userId) ?? null, forWhom);
+      const kind = theKindOf(r.kind, theirs.rules);
+      const daysLeft = theDaysLeft(theirs, kind, r.userId, approved, r.startsOn);
       /* Each leave rule that applies (build step 8), with the person's name. None set: none said. */
-      const rules = await this.theRulesFor(answers.rules, r, kind, { name: first || 'This person' }, today);
+      const rules = await this.theRulesFor(answers, r, kind, { name: first || 'This person' }, today);
       const standIn = r.standInUserId ? names.get(r.standInUserId)?.full ?? null : null;
       /* What the person owns in those days, read for this reader (decision 85, build step 7). */
       const owns = ownedInWords(first, await whatTheyOwnWhileAway(this.prisma, { ...reader, role }, r.userId, r.startsOn, r.endsOn).catch(() => ({ owned: [], hidden: 1 })));
@@ -290,6 +329,7 @@ export class LeaveBoardService {
         said: aLeaveRequestAsTheApproverReadsIt({
           firstName: first, startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), days, daysLeft, team,
           kindName: kind ? inASentence(kind) : null,
+          everyDayCounts: everyDayCounts(answers.rules, kind),
           alsoOff, busiest: off.busiest, standIn, owns, more: [...rules, ...asked],
         }),
       });
@@ -298,7 +338,8 @@ export class LeaveBoardService {
     const from = atMidnight(dayOf(today));
     const to = new Date(from.getTime() + 13 * DAY);
     const off: Off[] = approved
-      .filter((r) => inScope(r.userId) || r.userId === reader.userId)
+      /* Whoever holds the HR duty reads who is off across the organisation, as an admin does (Batch S, round 2, T9: "Who's off" left out Amani). */
+      .filter((r) => inScope(r.userId) || holdsHr || r.userId === reader.userId)
       .filter((r) => overlaps(r, { startsOn: from, endsOn: to }))
       .map((r) => {
         const kind = theKindOf(r.kind, answers.rules);
@@ -318,14 +359,14 @@ export class LeaveBoardService {
         const full = names.get(r.userId)?.full ?? '';
         if (!full) continue;
         const what = leaveInWords(dayOf(r.startsOn), dayOf(r.endsOn));
-        const days = workingDays(r.startsOn, r.endsOn);
+        const days = theDaysOf(r, answers);
         const now = r.status === 'waiting' ? await this.now(r, people, answers, shared) : null;
         toldToHr.push({
           id: r.id, name: full, startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), status: r.status as 'waiting' | 'approved', kindName: kind?.name ?? null,
           said: [
-            `${full} asked for ${kind ? `${inASentence(kind)}${what.slice('leave'.length)}` : what}, which is ${days} working ${days === 1 ? 'day' : 'days'}.`,
+            `${full} asked for ${kind ? `${inASentence(kind)}${what.slice('leave'.length)}` : what}, which is ${leaveDaysInWords(days, everyDayCounts(answers.rules, kind))}.`,
             whereItIsOnTheBoard(await this.whereItStands(r, now, undefined, reader.userId, shared.lookups?.names)),
-            ...(kind?.document ? await this.theRulesFor({ kinds: [kind] }, r, kind, { name: first || 'this person' }, today) : []),
+            ...(kind?.document ? await this.theRulesFor({ ...answers, rules: { kinds: [kind] } }, r, kind, { name: first || 'this person' }, today) : []),
           ],
         });
       }
@@ -383,23 +424,29 @@ export class LeaveBoardService {
       const now = r.status === 'waiting' ? await this.now(r, people, answers) : null;
       where.set(r.id, whereYourRequestIs(`Your ${leaveInWords(dayOf(r.startsOn), dayOf(r.endsOn))}`, await this.whereItStands(r, now, undefined, reader.userId)));
     }
-    const kinds = (answers.rules.kinds ?? []).map((k) => ({
-      key: k.key, name: k.name, perYear: k.days,
-      daysLeft: this.daysLeftOf(answers, k, rows.filter((r) => r.status === 'approved'), today.getUTCFullYear()),
+    /* Their own days a year: the organisation's, or the number an admin set for their job title, app role, team or them (who-a-rule-is-for.ts). */
+    const forWhom = await readForWhom(this.prisma, reader.organizationId);
+    const theirs = withTheirAllowance(answers, forWhom['leave.days']?.length ? await thePersonForRules(this.prisma, reader.organizationId, reader.userId) : null, forWhom);
+    const approvedOfMine = rows.filter((r) => r.status === 'approved');
+    const kinds = (theirs.rules.kinds ?? []).map((k) => ({
+      key: k.key, name: k.name, perYear: k.per === 'occasion' ? null : k.days,
+      /* A type taken each time (maternity leave of 90 days) has no days a year to be left of: how long it is each time instead. */
+      ...(k.per === 'occasion' && k.days != null ? { eachTime: k.days } : {}),
+      daysLeft: theDaysLeft(theirs, k, reader.userId, approvedOfMine, today),
     }));
-    const perYear = kinds.length ? kinds[0].perYear : answers.perYear;
-    const daysLeft = kinds.length ? kinds[0].daysLeft : this.daysLeft(answers.perYear, rows.filter((r) => r.status === 'approved'), today.getUTCFullYear());
+    /* With kinds set, the first kind's (the one taken when somebody does not say); otherwise the one number. */
+    const perYear = kinds.length ? kinds[0].perYear : theirs.perYear;
+    const daysLeft = kinds.length ? kinds[0].daysLeft : theDaysLeft(theirs, null, reader.userId, approvedOfMine, today);
     return {
       daysLeftSaid: daysOfLeaveLeftSaid({ perYear, daysLeft, kinds }, 'Groundwork'),
-      /* With kinds set, the first kind's (the one taken when somebody does not say); otherwise as before. */
-      perYear: kinds.length ? kinds[0].perYear : answers.perYear,
-      daysLeft: kinds.length ? kinds[0].daysLeft : this.daysLeft(answers.perYear, rows.filter((r) => r.status === 'approved'), today.getUTCFullYear()),
+      perYear,
+      daysLeft,
       kinds,
       requests: rows.map((r) => ({
         id: r.id,
         startsOn: dayOf(r.startsOn),
         endsOn: dayOf(r.endsOn),
-        days: workingDays(r.startsOn, r.endsOn),
+        days: theDaysOf(r, answers),
         status: (r.status as 'waiting' | 'approved' | 'declined'),
         standIn: r.standInUserId ? names.get(r.standInUserId)?.full ?? null : null,
         leaveKind: theKindOf(r.kind, answers.rules)?.name ?? null,
@@ -488,8 +535,8 @@ export class LeaveBoardService {
    * already approved it at an earlier step, with "Omar had already approved it, so this step was
    * passed." kept in the record for each.
    */
-  private async passOnFrom(row: Row, people: Map<string, any>, answers: { approver: string | null; workflow?: AWorkflow; rules?: LeaveRules }, from: { step: number; escalatedTo: number }, approvedByIds: string[], record = true, shared: { lookups?: Lookups; on?: Date } = {}) {
-    const moved = await passWhatTheyAlreadyApproved(this.prisma, theStepsFor('leave', answers, workingDays(row.startsOn, row.endsOn)), {
+  private async passOnFrom(row: Row, people: Map<string, any>, answers: { workflow?: AWorkflow; rules?: LeaveRules; calendars?: LeaveCalendars }, from: { step: number; escalatedTo: number }, approvedByIds: string[], record = true, shared: { lookups?: Lookups; on?: Date } = {}) {
+    const moved = await passWhatTheyAlreadyApproved(this.prisma, theStepsFor('leave', answers, theDaysOf(row, answers), row.kind), {
       organizationId: row.organizationId, requesterUserId: row.userId,
       managerExternalId: people.get(row.userId)?.managerExternalId ?? null, team: people.get(row.userId)?.department ?? null,
     }, from, approvedByIds, shared);
@@ -609,7 +656,7 @@ export class LeaveBoardService {
     const out: PassedOn[] = [];
     const toTell: { approverUserIds: string[]; request: AWaitingRequest }[] = [];
     for (const r of rows) {
-      const n = await whoComesNext(this.prisma, theStepsFor('leave', answers, workingDays(r.startsOn, r.endsOn)), {
+      const n = await whoComesNext(this.prisma, theStepsFor('leave', answers, theDaysOf(r, answers), r.kind), {
         organizationId, requesterUserId: r.userId,
         managerExternalId: people.get(r.userId)?.managerExternalId ?? null, team: people.get(r.userId)?.department ?? null,
       }, r, shared);
@@ -675,7 +722,7 @@ export class LeaveBoardService {
   }
 
   /** Whoever decides the step a request is on is told on WhatsApp (decision 82, item 1). */
-  async tellWhoDecides(row: Row, people?: Map<string, any>, answers?: { perYear: number | null; approver: string | null; workflow?: AWorkflow; rules?: LeaveRules }, shared: { lookups?: Lookups; on?: Date } = {}, batch?: { approverUserIds: string[]; request: AWaitingRequest }[]): Promise<void> {
+  async tellWhoDecides(row: Row, people?: Map<string, any>, answers?: { perYear: number | null; workflow?: AWorkflow; rules?: LeaveRules; calendars?: LeaveCalendars }, shared: { lookups?: Lookups; on?: Date } = {}, batch?: { approverUserIds: string[]; request: AWaitingRequest }[]): Promise<void> {
     if (!this.told) return;
     try {
       const a = answers ?? (await this.suiteAnswers(row.organizationId));
@@ -727,7 +774,7 @@ export class LeaveBoardService {
     }
     /* The only admin cannot decide their own leave, and nobody else could: said now, not after it has waited for ever. */
     const me = await theirRosterEntry(this.prisma, organizationId, userId, { managerExternalId: true, department: true }).catch(() => null);
-    if (await nobodyElseCanDecide(this.prisma, theStepsFor('leave', answers, workingDays(startsOn, endsOn)), { organizationId, requesterUserId: userId, managerExternalId: (me as any)?.managerExternalId ?? null, team: (me as any)?.department ?? null }, role)) {
+    if (await nobodyElseCanDecide(this.prisma, theStepsFor('leave', answers, theDaysOf({ userId, startsOn, endsOn, kind }, answers), kind), { organizationId, requesterUserId: userId, managerExternalId: (me as any)?.managerExternalId ?? null, team: (me as any)?.department ?? null }, role)) {
       throw new BadRequestException(NOBODY_ELSE_CAN_DECIDE);
     }
     /* The same request while the first still waits is that request (B-147): nothing new is made and the approver hears once. */
@@ -777,21 +824,13 @@ export class LeaveBoardService {
     }).catch(() => undefined);
   }
 
-  /**
-   * Days left of one kind of leave, counting only approved requests of that kind; with no kinds set,
-   * the suite's one number of days and every approved request, as before.
-   */
-  private daysLeftOf(answers: { perYear: number | null; rules: LeaveRules }, kind: ALeaveKind | null, approved: Row[], year: number): number | null {
-    if (!kind) return this.daysLeft(answers.perYear, approved, year);
-    return this.daysLeft(kind.days, approved.filter((a) => theKindOf(a.kind, answers.rules)?.key === kind.key), year);
-  }
-
   /** The leave rules that apply to one request already sent, for whoever reads it on the board. */
-  private async theRulesFor(rules: LeaveRules, r: Row, kind: ALeaveKind | null, reader: { name: string }, today: Date): Promise<string[]> {
-    if (!rules.noticeDays && !rules.blackouts?.length && !rules.eligibleAfterDays && !kind?.noticeDays && !kind?.document) return [];
+  private async theRulesFor(answers: { rules: LeaveRules; calendars?: LeaveCalendars }, r: Row, kind: ALeaveKind | null, reader: { name: string }, today: Date): Promise<string[]> {
+    const rules = answers.rules;
+    if (!rules.noticeDays && !rules.blackouts?.length && !rules.eligibleAfterDays && !kind?.noticeDays && !kind?.document && kind?.per !== 'occasion') return [];
     const since = rules.eligibleAfterDays ? await hereSince(this.prisma, r.organizationId, r.userId).catch(() => null) : null;
     return theRulesThatApply(rules, {
-      kind, startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), days: workingDays(r.startsOn, r.endsOn),
+      kind, startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), days: theDaysOf(r, answers),
       askedOn: dayOf(r.askedAt ?? today), hereSince: since,
     }, reader);
   }
@@ -807,16 +846,10 @@ export class LeaveBoardService {
     await recordIt(this.prisma, { organizationId: row.organizationId, suite: 'leave', ref: row.id, kind: 'told', toUserId: hr, basis: { row: 'leave_requests', id: row.id, onTheBoard: 'hr' } });
   }
 
-  private daysLeft(perYear: number | null, approved: Row[], year: number): number | null {
-    if (perYear == null) return null;
-    const used = approved.reduce((n, r) => n + workingDaysIn(year, r.startsOn, r.endsOn), 0);
-    return Math.max(0, perYear - used);
-  }
-
   /** Who decides this request now, from the step it is on, by the one approval resolver (who-may-decide.ts). */
-  private now(r: Row, people: Map<string, any>, answers: { approver: string | null; workflow?: AWorkflow; rules?: LeaveRules }, shared: { lookups?: Lookups; on?: Date } = {}): Promise<DecidesNow> {
+  private now(r: Row, people: Map<string, any>, answers: { workflow?: AWorkflow; rules?: LeaveRules; calendars?: LeaveCalendars }, shared: { lookups?: Lookups; on?: Date } = {}): Promise<DecidesNow> {
     /* Leave by length (the-leave-rules.ts): the request's working days choose the steps. No thresholds: as before. */
-    return whoDecidesNow(this.prisma, theStepsFor('leave', answers, workingDays(r.startsOn, r.endsOn)), {
+    return whoDecidesNow(this.prisma, theStepsFor('leave', answers, theDaysOf(r, answers), r.kind), {
       organizationId: r.organizationId, requesterUserId: r.userId,
       managerExternalId: people.get(r.userId)?.managerExternalId ?? null, team: people.get(r.userId)?.department ?? null,
     }, r, shared);
@@ -841,20 +874,22 @@ export class LeaveBoardService {
     };
   }
 
-  private async suiteAnswers(organizationId: string): Promise<{ perYear: number | null; approver: string | null; workflow?: AWorkflow; rules: LeaveRules }> {
+  private async suiteAnswers(organizationId: string): Promise<TheLeaveAnswers> {
     const suite = await this.prisma.organizationSuite.findUnique({
       where: { organizationId_suite: { organizationId, suite: 'leave' } },
       select: { isOn: true, answers: true },
     });
     if (!suite?.isOn) throw new NotFoundException(LEAVE_REFUSED.notOn);
     const a = answersUnderTheQuestionsOwnIds(suiteOf('leave')!, suite.answers) as Record<string, unknown>;
+    const rules = await readLeaveRules(this.prisma, organizationId);
     return {
       perYear: typeof a.days === 'number' ? a.days : null,
-      approver: typeof a.approver === 'string' && a.approver ? a.approver : null,
       /* The steps an admin set (the-approval-steps.ts). None: one step, as before. */
       workflow: await readWorkflow(this.prisma, organizationId, 'leave'),
       /* The leave rules an admin set (the-leave-rules.ts). None: exactly as before. */
-      rules: await readLeaveRules(this.prisma, organizationId),
+      rules,
+      /* Each person's leave calendar: their office's holidays, or the organisation's (the-leave-calendar.ts). None set: Monday to Friday. */
+      calendars: await readLeaveCalendars(this.prisma, organizationId, theCalendarRulesOf(rules)),
     };
   }
 
@@ -884,4 +919,16 @@ export class LeaveBoardService {
       full: [u.firstName, u.lastName].filter(Boolean).join(' ').trim(),
     }]));
   }
+}
+
+/**
+ * The leave answers as they hold for one person: the days a year are theirs (who-a-rule-is-for.ts, `theRuleFor`). With kinds of
+ * leave set, the number is the first kind's (annual leave), the one taken when somebody does not say which.
+ */
+export function withTheirAllowance<A extends { perYear: number | null; rules: LeaveRules }>(answers: A, person: APerson | null, forWhom: ForWhom): A {
+  if (!person || !forWhom['leave.days']?.length) return answers;
+  const kinds = answers.rules.kinds ?? [];
+  if (!kinds.length) return { ...answers, perYear: theRuleFor(person, forWhom, 'leave.days', answers.perYear) };
+  const first = { ...kinds[0], days: theRuleFor(person, forWhom, 'leave.days', kinds[0].days) };
+  return { ...answers, rules: { ...answers.rules, kinds: [first, ...kinds.slice(1)] } };
 }

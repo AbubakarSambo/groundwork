@@ -1,10 +1,12 @@
 import { apiClient } from './client'
 
 /**
- * THE COMPANY PAGE (D2, U.15). The server builds it from what you may already read and decides what
- * each reader is given (GET /company): everybody in the organisation reads the priorities and who
- * owns them; what success looks like is served to admins only; a check-in is named only to somebody
- * who may open it. A guest from another company is refused. The server writes the sentences.
+ * THE DESK (S7, the company page renamed, D2, U.15). The server builds it from what you may already
+ * read and decides what each reader is given (GET /company): everybody in the organisation reads the
+ * documents with their kept summaries, the directory, the priorities and who owns them; what success
+ * looks like is served to admins only; a check-in is named only to somebody who may open it. Somebody
+ * who does not work here is served one plain sentence (`outsider`) and nothing else. The server
+ * writes the sentences.
  */
 export interface CompanyPriority {
   id: string
@@ -65,13 +67,52 @@ export interface CompanyPage {
    * (week 20). Served to admins, leads and anyone who runs a check-in; absent for everyone else.
    * `readBy` is a sentence ready to show; `source` is "Picked up from your check-in on 22 September".
    */
-  whatWeKeep?: { readBy: string; items: { id: string; kind: string; says: string; source: string }[] }
+  whatWeKeep?: { items: { id: string; kind: string; says: string; source: string }[] }
+  /** THE DESK'S SHARED CONTEXT (S7): the documents with their kept summaries, the directory, and whether you may add a document. */
+  desk?: TheDesk
 }
 
-/** One piece of how the company does things (GET /org/how-we-do-it), readable by everybody in it. */
-export interface CompanyCard { key: string; title: string; body: string; kind: string; effectiveFrom: string }
+export interface DeskDocument {
+  key: string
+  title: string
+  /** Two or three sentences, written by the model when it was added and kept. Null where none was kept. */
+  summary: string | null
+  /** "Grace Wanjiru added this on 19 November 2026.", or null. */
+  added: string | null
+}
+
+export interface DirectoryEntry {
+  id: string
+  name: string
+  jobTitle: string | null
+  team: string | null
+  reportsTo: string | null
+  phone: string | null
+}
+
+export interface TheDesk {
+  documents: DeskDocument[]
+  directory: DirectoryEntry[]
+  mayAdd: boolean
+}
+
+/** What somebody who does not work here is served instead of the Desk. */
+export interface NotYourDesk {
+  name: string
+  outsider: string
+}
 
 export const companyApi = {
-  get: async (): Promise<CompanyPage> => (await apiClient.get('/company')).data,
-  cards: async (): Promise<CompanyCard[]> => ((await apiClient.get('/org/how-we-do-it')).data?.cards ?? []) as CompanyCard[],
+  get: async (): Promise<CompanyPage | NotYourDesk> => (await apiClient.get('/company')).data,
+  /** One document in full. */
+  document: async (key: string): Promise<{ key: string; title: string; summary: string | null; text: string }> =>
+    (await apiClient.get(`/company/documents/${encodeURIComponent(key)}`)).data,
+  /** An admin or a lead adds a document, as a file or pasted text. The server reads it, summarises it and keeps it. */
+  addDocument: async (input: { file?: File | null; title?: string; text?: string }): Promise<{ key: string; title: string; summary: string | null }> => {
+    const form = new FormData()
+    if (input.file) form.append('file', input.file)
+    if (input.title?.trim()) form.append('title', input.title.trim())
+    if (input.text?.trim()) form.append('text', input.text)
+    return (await apiClient.post('/company/documents', form, { headers: { 'Content-Type': 'multipart/form-data' } })).data
+  },
 }

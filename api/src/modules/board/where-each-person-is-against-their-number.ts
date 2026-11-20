@@ -212,7 +212,7 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
         ? `${start} was not let in by ${row.notLetIn.by}, so there is nobody to ask.`
         : `${start} was not let in, so there is nobody to ask.`;
     case 'has not answered':
-      return `${start} has not checked in for this session yet.`;
+      return `${start} has not checked in yet.`;
     case 'not joined':
       return `${start} was invited and has not joined yet.`;
     case 'something in the way two weeks': {

@@ -46,7 +46,7 @@ const CHECK_INS = [1, 2, 3].flatMap((n) => [
 /* The engine's own sentences, which are what a reader would see beside the names. */
 const NGOZI_SAID = 'The failure to secure approvals is attributed entirely to the credit committee not clearing submitted files.';
 const FEMI_SAID = 'Femi described the Harbor Foods deal as his own although Ngozi prepared the pricing.';
-const CANDIDATE_SAID = 'Named the new analyst as the reason the forecast was late in the second session.';
+const CANDIDATE_SAID = 'Named the new analyst as the reason the forecast was late in the second check-in.';
 
 const DETECTIONS = [
   { id: 'pd1', participantId: 'p-ngozi', code: 'B11', status: 'SURFACED', observationText: NGOZI_SAID, periodsObserved: 3, seenInSessions: [1, 2, 3], lastPeriodNumber: 3, createdAt: new Date('2026-09-04T09:00:00Z'), lastSeenAt: new Date('2026-09-04T09:00:00Z'), readyAt: new Date('2026-09-04T09:00:00Z') },

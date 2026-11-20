@@ -117,10 +117,12 @@ describe('the summary card\'s labels are plain words in full, not one-word label
  * FAULT 3 (live walk, 6 October 2026): ONE VOICE. The closer used to say "told us so far" while
  * the card under it spoke of "I" - two different voices for the one product in the same breath.
  */
-describe('the closer speaks of Groundwork and the reader, never "I" mixed with "us"', () => {
-  it('says "you" and "Groundwork", not "I" or "us"', () => {
-    expect(ONBOARD_READY_CLOSER).not.toMatch(/\bI\b|\bus\b/)
-    expect(ONBOARD_READY_CLOSER).toMatch(/Groundwork/)
+/* Changed 7 November 2026: Hafsah's fixed rule of 3 November is one voice, "I", everywhere Groundwork speaks; the staging check (S15)
+   read "Groundwork has enough from the conversation" as Groundwork naming itself. The closer says "I", never "us" or "Groundwork". */
+describe('the closer speaks as "I" to the reader, never "us" or "Groundwork"', () => {
+  it('says "I" and "you", not "us" or "Groundwork"', () => {
+    expect(ONBOARD_READY_CLOSER).toBe('I have enough from the conversation to set this up. Here is what you said.')
+    expect(ONBOARD_READY_CLOSER).not.toMatch(/\bus\b|\bwe\b|Groundwork/)
   })
 })
 

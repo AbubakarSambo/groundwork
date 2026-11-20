@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate } from 'react-router-dom'
@@ -62,7 +63,7 @@ export function WaitingForAnAdminPage() {
     onError: (e: any) => setProblem(e?.response?.data?.message ?? 'That reminder did not send. Try again.'),
   })
 
-  if (isLoading) return <Page narrow><Mark /><PageTitle title="Almost in" subtitle="One moment." subtitleTone="ink" /></Page>
+  if (isLoading) return <Page narrow><Mark /><PageTitle title="Almost in" /><Skeleton what="Getting where your request has got to" shape="lines" count={1} /></Page>
   if (isError || !data) {
     return <Page narrow><Mark /><PageTitle title="Almost in" subtitle="We could not read where your request has got to. Reload the page to try again." subtitleTone="ink" /></Page>
   }
@@ -145,7 +146,7 @@ export function youAreFromOutside(w: Pick<Extract<MyWaiting, { waiting: true }>,
   /* The server's own sentence when it sends one (B-096; journey test, 12 October): Pia, on Brightloom's own
      address, was told "You're from outside Brightloom" because this page always built the outsider sentence. */
   if (w.says?.trim()) return w.says
-  const asked = w.admin?.name ? ` We’ve asked ${w.admin.name}.` : ' We’ve asked the admins there.'
+  const asked = w.admin?.name ? ` I have asked ${w.admin.name}.` : ' I have asked the admins there.'
   if (w.heldForASeat) {
     return `${w.organisationName} has no free seat right now, so an admin there has to make room before you can start.${asked}`
   }

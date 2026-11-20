@@ -1,4 +1,4 @@
-import { useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
+import { whereYourReportLives } from '@/pages/grounds/ground-tabs'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { groundsApi } from '@/api/grounds'
@@ -99,7 +99,7 @@ function CorrectionsYouHaveMade({ groundId }: { groundId: string }) {
         {corrections.map((c, i) => (
           <div key={c.checkInId} style={{ padding: '11px 16px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
             <span className="gwui-panel-text">
-              Session {c.correctionOf ?? c.sessionNumber}. Corrected on {whenItWas(c.date, 'full')}.
+              Check-in {c.correctionOf ?? c.sessionNumber}. Corrected on {whenItWas(c.date, 'full')}.
             </span>
             <Link to={`/checkin/${c.checkInId}`} style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Details</Link>
           </div>
@@ -180,8 +180,6 @@ export function YourWork({
   totalSessions, completedCount, myFinishedSessions, sessionDots, myParticipant, myName, leadFirstName,
   otherParties, postReportGuide, aTeamReportComes, onSeeEverySession, onReadTeamReport, onSeeRoster, asTheRestOfMyWork,
 }: YourWorkProps) {
-  /* The direct morning (lib/the-direct-morning.tsx): no "Only you see this page." Who reads it is the backend's rule, the same either way. */
-  const direct = useTheDirectMorning() || isTheDirectMorningOn(ground)
   const myCommitments = ((ground?.commitments ?? []) as any[]).filter((c) => c.participantId === myParticipant?.id)
   /* Their own files, the WhatsApp photos and pins included, from the same list and cache the Context tab reads. */
   const { data: docsOnTheCheckIn } = useQuery({
@@ -260,12 +258,12 @@ export function YourWork({
               return (
                 <div key={s.id} style={{ padding: '11px 16px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                    <span className="gwui-panel-text">Session {s.sessionNumber}, your own</span>
-                    <Link to={`/checkin/${s.id}/report`} className="gwui-tap-44" style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Read</Link>
+                    <span className="gwui-panel-text">Check-in {s.sessionNumber}, your own</span>
+                    <Link to={whereYourReportLives(groundId, s.id)} className="gwui-tap-44" style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Read</Link>
                   </div>
                   {aTeamReportComes && (
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-                      <span className="gwui-panel-text">Session {s.sessionNumber}, the team’s</span>
+                      <span className="gwui-panel-text">Check-in {s.sessionNumber}, the team’s</span>
                       {teamReleased
                         ? (onReadTeamReport
                           ? <button type="button" onClick={onReadTeamReport} className="gwui-tap-44" style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>Read</button>
@@ -287,13 +285,8 @@ export function YourWork({
       {!rest && <PageTitle
         eyebrow={ground?.label}
         title="Your work"
-        subtitle={
-          direct
-            ? 'Everything you’ve said, and what the proof shows.'
-            : patterns.length > 0
-            ? 'Everything you’ve said, and what the proof shows. Only you see this page, apart from the pattern below.'
-            : 'Everything you’ve said, and what the proof shows. Only you see this page.'
-        }
+        /* No subtitle: "Everything you’ve said, and what the proof shows. Only you see this page." was an explainer and a privacy
+           note (Hafsah, 4 November, issue 41). Who reads it is the server's rule. */
       />}
 
       {rest ? sideColumn : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 20, alignItems: 'start' }}>
@@ -321,7 +314,7 @@ export function YourWork({
                         a clipped fragment rather than a caption. "Sessions so far" says what the
                         number is without saying it twice. "Session" is the one word for a single
                         occurrence of a check-in (B-147); "check-ins" would mean separate check-ins. */}
-                    <div className="gwui-panel-text-muted">sessions so far</div>
+                    <div className="gwui-panel-text-muted">check-ins so far</div>
                   </div>
                 )}
                 {whatHappenedToThePromises && <p className="gwui-panel-text" style={{ margin: 0, flexBasis: '100%' }}>{whatHappenedToThePromises}</p>}
@@ -408,7 +401,7 @@ export function YourWork({
           own work. */}
       {(onSeeEverySession || onSeeRoster) && (
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          {onSeeEverySession && <Button kind="quiet" size="small" onClick={onSeeEverySession}>Every session</Button>}
+          {onSeeEverySession && <Button kind="quiet" size="small" onClick={onSeeEverySession}>Every check-in</Button>}
           {onSeeRoster && <Button kind="quiet" size="small" onClick={onSeeRoster}>Who has answered</Button>}
         </div>
       )}

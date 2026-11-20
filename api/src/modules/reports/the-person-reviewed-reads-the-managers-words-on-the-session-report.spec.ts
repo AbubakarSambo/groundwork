@@ -106,7 +106,7 @@ describe.each([
   ['a performance plan', 'PIP'],
   ['a renewal', 'CONTRACT_RENEWAL'],
   ['a recognition round', 'RECOGNITION'],
-])('on %s, the session report as each person reads it', (_label, scenario) => {
+])('on %s, the check-in report as each person reads it', (_label, scenario) => {
   it('the person reviewed reads the manager\'s words word for word, and their own', async () => {
     const result: any = await makeService(makeGround(scenario)).sessionReport('g1', 1, 'user-2', 'org-1');
     const served = JSON.stringify(rowsFor(result));

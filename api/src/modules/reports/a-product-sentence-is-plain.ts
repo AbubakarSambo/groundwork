@@ -19,7 +19,7 @@ const JARGON = /\b(bottlenecks?|pipeline|stakeholders?|alignment|leverage|delive
 
 const NUMBER_WORDS = 'one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve';
 /* A count said as a word: "two people", "three of them", "once" is not one. */
-const COUNT_AS_A_WORD = new RegExp(`\\b(?:${NUMBER_WORDS})(?= (?:of\\b|people\\b|times\\b|check-ins?\\b|sessions?\\b|commitments?\\b|things\\b|days\\b|weeks\\b|months\\b|blockers?\\b|targets?\\b|lines\\b|answers\\b|reports?\\b|more\\b))`, 'gi');
+const COUNT_AS_A_WORD = new RegExp(`\\b(?:${NUMBER_WORDS})(?= (?:of\\b|people\\b|times\\b|check-ins?\\b|check-ins?\\b|commitments?\\b|things\\b|days\\b|weeks\\b|months\\b|blockers?\\b|targets?\\b|lines\\b|answers\\b|reports?\\b|more\\b))`, 'gi');
 const COUNT_AS_A_FIGURE = /(?<![\w.#:-])\d+(?= (?:of\b|people\b|times\b|check-ins?\b|sessions?\b|commitments?\b|things\b|days\b|weeks\b|months\b|blockers?\b|targets?\b|lines\b|answers\b|reports?\b|more\b))/g;
 
 const A_VERB = /\b(?:is|are|was|were|be|been|has|have|had|does|do|did|can|cannot|could|will|would|should|may|might|must|said|says|say|came|come|went|gave|made|asked|wants|want|needs|need|checked|answered|agree[sd]?|waiting)\b|n't\b/i;

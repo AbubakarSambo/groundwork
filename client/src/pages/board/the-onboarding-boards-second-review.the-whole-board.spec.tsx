@@ -16,7 +16,7 @@ vi.mock('@/api/patterns', () => ({ patternsApi: { answer: vi.fn() } }))
  *
  * 1. The new hire's board is no longer one closed fold - he reads the same open sections as his
  *    lead (day-30-and-60.txt: "Wairimu and Kwame see the same pictures"). A sales participant's own
- *    view is unaffected: hers still leads, with the rest folded below it.
+ *    view is unaffected: hers still leads, with the rest open below it, under no fold.
  * 2. His history heading is true of what is under it: "Your history" for him, and for her, his own
  *    row under his name and her own row under its own heading, "Your own record".
  * 4. A not-known `workRecords` entry is left out of the end fold once the board already draws a
@@ -47,8 +47,8 @@ const PARTICIPANTS = [
 const PHASE_SPINE_BETWEEN_ROUNDS = {
   startsAt: null, endsAt: null, currentSession: 4, plannedSessions: 6,
   sessions: [
-    { n: 4, state: 'done', date: '2026-09-26T16:12:36.813Z', opensOn: null, says: 'Session 4 finished on 26 September.' },
-    { n: 5, state: 'upcoming', date: null, opensOn: '2026-10-12T16:11:17.452Z', says: 'Session 5 opens on 12 October.' },
+    { n: 4, state: 'done', date: '2026-09-26T16:12:36.813Z', opensOn: null, says: 'Check-in 4 finished on 26 September.' },
+    { n: 5, state: 'upcoming', date: null, opensOn: '2026-10-12T16:11:17.452Z', says: 'Check-in 5 opens on 12 October.' },
   ],
 }
 
@@ -66,15 +66,15 @@ function boardAsLead(overrides: any = {}) {
       { section: 'Timeline', holds: '', state: 'not-known' as const, why: 'Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.' },
     ],
     workPlan: [
-      { id: 'wp-1', participantId: 'p-tobi', who: 'Tobi Adewale', says: 'In session 2, Tobi Adewale made a commitment, which is in the record.', when: null, state: 'open' as const, statedInSession: 2 },
+      { id: 'wp-1', participantId: 'p-tobi', who: 'Tobi Adewale', says: 'In check-in 2, Tobi Adewale made a commitment, which is in the record.', when: null, state: 'open' as const, statedInSession: 2 },
     ],
     timeline: [
-      { on: '2026-09-26', says: 'On 26 September, the first answers for session 1 came in.' },
+      { on: '2026-09-26', says: 'On 26 September, the first answers for check-in 1 came in.' },
     ],
     startingState: null,
     personHistory: [
-      { participantId: 'p-amina', who: 'You', says: 'You have answered 4 sessions.', sessions: [] },
-      { participantId: 'p-tobi', who: 'Tobi Adewale', says: 'Tobi Adewale has answered 4 sessions and made 7 commitments.', sessions: [] },
+      { participantId: 'p-amina', who: 'You', says: 'You have answered 4 check-ins.', sessions: [] },
+      { participantId: 'p-tobi', who: 'Tobi Adewale', says: 'Tobi Adewale has answered 4 check-ins and made 7 commitments.', sessions: [] },
     ],
     divergence: {
       items: [{
@@ -112,21 +112,21 @@ describe('fix 1: the new hire reads the same open sections as his lead, not one 
     me = { id: 'u-tobi', firstName: 'Tobi', role: 'MEMBER' }
     renderBoard(boardAsLead({
       myParticipantId: 'p-tobi', canEditFrame: false,
-      personHistory: [{ participantId: 'p-tobi', who: 'You', says: 'You have answered 4 sessions.', sessions: [] }],
+      personHistory: [{ participantId: 'p-tobi', who: 'You', says: 'You have answered 4 check-ins.', sessions: [] }],
     }))
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
     expect(screen.getByText('Where you both see it differently')).toBeTruthy()
     expect(screen.queryByText('The whole check-in')).toBeNull()
   })
 
-  it('a sales participant is unchanged: her own view still leads, with the rest folded below it', async () => {
+  it('a sales participant is unchanged: her own view still leads, with the rest open below it, under no fold', async () => {
     me = { id: 'u-tobi', firstName: 'Tobi', role: 'MEMBER' }
     renderBoard(boardAsLead({
       family: 'DELIVERY', kindOfWork: 'sales org', myParticipantId: 'p-tobi', canEditFrame: false,
       teamPicture: { shared: true },
     }))
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
-    expect(screen.getByText('The whole check-in')).toBeTruthy()
+    expect(screen.queryByText('The whole check-in')).toBeNull()
   })
 })
 
@@ -136,16 +136,16 @@ describe('fix 2: every history heading is true of what is under it', () => {
     renderBoard(boardAsLead())
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
     const tobis = screen.getByText('Tobi’s history').closest('section') as HTMLElement
-    expect(within(tobis).getByText('Tobi Adewale has answered 4 sessions and made 7 commitments.')).toBeTruthy()
+    expect(within(tobis).getByText('Tobi Adewale has answered 4 check-ins and made 7 commitments.')).toBeTruthy()
     const own = screen.getByText('Your own record').closest('section') as HTMLElement
-    expect(within(own).getByText('You have answered 4 sessions.')).toBeTruthy()
+    expect(within(own).getByText('You have answered 4 check-ins.')).toBeTruthy()
   })
 
   it('the new hire reads "Your history", never "Tobi’s history"', async () => {
     me = { id: 'u-tobi', firstName: 'Tobi', role: 'MEMBER' }
     renderBoard(boardAsLead({
       myParticipantId: 'p-tobi', canEditFrame: false,
-      personHistory: [{ participantId: 'p-tobi', who: 'You', says: 'You have answered 4 sessions and made 7 commitments.', sessions: [] }],
+      personHistory: [{ participantId: 'p-tobi', who: 'You', says: 'You have answered 4 check-ins and made 7 commitments.', sessions: [] }],
     }))
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
     expect(screen.getByText('Your history')).toBeTruthy()
@@ -170,9 +170,9 @@ describe('fix 4: a not-known work-record entry is left out once a filled section
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
     const workPlanHeadings = screen.getAllByText('Work plan')
     expect(workPlanHeadings).toHaveLength(1)
-    expect(screen.getByText('Who is doing what, and by when.')).toBeTruthy()
+    expect(screen.queryByText('Who is doing what, and by when.')).toBeNull()
     expect(screen.getAllByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.')).toHaveLength(1)
-    const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
+    const fold = document.body as HTMLElement
     expect(within(fold).queryByText('Deal grid')).toBeNull()
     expect(within(fold).queryByText('Every deadline')).toBeNull()
   })
@@ -182,7 +182,7 @@ describe('fix 4: a not-known work-record entry is left out once a filled section
     renderBoard(boardAsLead({ workPlan: undefined }))
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
     expect(screen.getAllByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.')).toHaveLength(1)
-    const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
+    const fold = document.body as HTMLElement
     expect(within(fold).queryByText('Work plan')).toBeNull()
     expect(within(fold).queryByText('Deal grid')).toBeNull()
     expect(within(fold).queryByText('Every deadline')).toBeNull()

@@ -8,6 +8,6 @@ describe('a check-in with no end, on People and setup', () => {
     expect(theRhythmLine({ cadence: 'DAILY', timelineDays: null })).toBe('Every day, until you end it.')
   })
   it('a check-in with a length reads as before', () => {
-    expect(theRhythmLine({ cadence: 'WEEKLY', timelineDays: 84, runsUntilItIsEnded: false })).toMatch(/^Every week\. 12 sessions in total\./)
+    expect(theRhythmLine({ cadence: 'WEEKLY', timelineDays: 84, runsUntilItIsEnded: false })).toMatch(/^Every week\. 12 check-ins in total\./)
   })
 })

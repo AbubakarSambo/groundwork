@@ -35,8 +35,8 @@ describe('GW-ROSTER: the roster counts the session the check-in is on', () => {
     expect(chips).toEqual([false, false])
     // The counter's number, computed the way the header computes it.
     const countedDone = chips.filter(Boolean).length
-    expect(`${countedDone} of ${chips.length} checked in for session ${session}`)
-      .toBe('0 of 2 checked in for session 2')
+    expect(`${countedDone} of ${chips.length} checked in for check-in ${session}`)
+      .toBe('0 of 2 checked in for check-in 2')
   })
 
   it('THE OLD BEHAVIOUR, kept here so the contradiction is visible', () => {

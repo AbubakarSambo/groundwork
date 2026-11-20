@@ -33,33 +33,24 @@ export function WhatYouGaveUs({ it }: { it: WhatYouGave | null | undefined }) {
       maxWidth: 460, margin: '12px auto 0', padding: '12px 14px', borderRadius: 10,
       border: '1px solid var(--gw-border)', background: 'var(--gw-blue-bg)',
     }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: 0.3, marginBottom: 6 }}>
-        WHAT YOU GAVE US
-      </div>
-      {/* The count first, because it is the part they can check against their own answers. */}
+      {/* Plain lines, no capital heading, no lead-ins and no colon-joined pieces (audit of the check-in pages, 15 November 2026, row 19). */}
       <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px' }}>
         {all > 0 && (
           <div style={{ marginBottom: it.theStrongest.length || it.worthAdding.length ? 8 : 0 }}>
-            <strong>{it.checkable}</strong> of {all} things you said can be checked by somebody who was not here.
+            <strong>{it.checkable}</strong> of your {all} points can be checked.
           </div>
         )}
         {it.theStrongest.length > 0 && (
-          <div style={{ marginBottom: it.worthAdding.length ? 8 : 0 }}>
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 3 }}>A reader can stand on these:</div>
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {it.theStrongest.map((s, i) => <li key={i} style={{ marginBottom: 2 }}>{s}</li>)}
-            </ul>
-          </div>
+          <ul style={{ margin: it.worthAdding.length ? '0 0 8px' : 0, paddingLeft: 18 }}>
+            {it.theStrongest.map((s, i) => <li key={i} style={{ marginBottom: 2 }}>{s}</li>)}
+          </ul>
         )}
         {it.worthAdding.length > 0 && (
-          <div>
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 3 }}>One detail would make these usable:</div>
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {it.worthAdding.map((w, i) => (
-                <li key={i} style={{ marginBottom: 2 }}>{w.said}: needs {w.needs}</li>
-              ))}
-            </ul>
-          </div>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {it.worthAdding.map((w, i) => (
+              <li key={i} style={{ marginBottom: 2 }}>For {w.said}, add {w.needs}.</li>
+            ))}
+          </ul>
         )}
       </div>
     </div>

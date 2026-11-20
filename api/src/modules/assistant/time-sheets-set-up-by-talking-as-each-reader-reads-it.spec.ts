@@ -1,4 +1,4 @@
-import { anOrganisationToSetUp } from './an-organisation-to-set-up-for-specs';
+import { anOrganisationToSetUp, theOpening, theSaidBack } from './an-organisation-to-set-up-for-specs';
 
 /**
  * DECISION 85, TIME SHEETS: AN ADMIN SETS UP TIME SHEETS BY TALKING TO ASK GROUNDWORK. The clients or
@@ -9,22 +9,24 @@ import { anOrganisationToSetUp } from './an-organisation-to-set-up-for-specs';
 
 const GRACES_ANSWERS = ['Set up timesheets', 'Atlas, Kisumu depot and Internal', 'Their manager', 'No', '40', 'Friday at 5pm', 'Nothing, it waits'];
 
-const THE_RULES_SAID = (hours: number) => [
+const THE_RULES = (hours: number) => [
   'People give their hours for Atlas, Kisumu depot and Internal, each week.',
   'A week of hours goes to the person’s manager.',
   'If the person has no manager in Groundwork, it goes to an admin instead.',
   `Each person is asked for ${hours} hours a week.`,
   'The hours for each week are due by Friday at 17:00, Lagos time.',
   'If somebody does not answer, it waits for them. Groundwork does not pass it on by itself.',
-].join(' ');
+];
+const THE_RULES_SAID = (hours: number) => THE_RULES(hours).join(' ');
 
-const SAID_BACK = (hours: number) => `Here is how time sheets will work. Time sheets will be switched on. ${THE_RULES_SAID(hours)} Shall I set it up like this? Nothing changes until you say yes.`;
+/* Changed 20 November 2026: the opening offers to work from a written policy, and the say-back lists one rule a line (Hafsah's screenshots). */
+const SAID_BACK = (hours: number) => theSaidBack('Here is how time sheets will work. Time sheets will be switched on.', THE_RULES(hours));
 
 describe('Grace, an admin, sets up time sheets by talking', () => {
   it('is asked only what is missing, one question at a time, in plain words', async () => {
     const o = anOrganisationToSetUp();
     expect(await o.talk('u-grace', GRACES_ANSWERS)).toEqual([
-      'I will ask you a few questions about how time sheets work, one at a time, and I will not set anything until you say yes. Which clients or projects do people give their hours for? Write one on each line, or put commas between them.',
+      theOpening('time sheets', 'Which clients or projects do people give their hours for? Write one on each line, or put commas between them.'),
       'Who approves each week’s hours?',
       'Does anybody approve the hours after the manager, for example finance? You can say no.',
       'How many hours a week does each person need to give? You can say none.',
@@ -43,7 +45,10 @@ describe('Grace, an admin, sets up time sheets by talking', () => {
     expect(await o.says('u-grace', 'yes')).toBe(`I have set it up, and time sheets are switched on. ${THE_RULES_SAID(35)} You can change any of it by telling me, or on the Suites page.`);
     const grace = o.as('u-grace');
     const page: any = await o.suites.forReader(grace);
-    expect(page.groups.flatMap((g: any) => g.suites).find((s: any) => s.key === 'time')).toMatchObject({ on: true, answers: { clients: ['Atlas', 'Kisumu depot', 'Internal'], approver: 'Their manager' } });
+    /* Batch S, S1: "Who approves?" is no longer saved: it was kept and never read. Who approves is the approval steps, checked below. */
+    const time = page.groups.flatMap((g: any) => g.suites).find((s: any) => s.key === 'time');
+    expect(time).toMatchObject({ on: true, answers: { clients: ['Atlas', 'Kisumu depot', 'Internal'] } });
+    expect(time.answers.approver).toBeUndefined();
     expect((await o.suites.timeRules(grace)).rules).toEqual({ every: 'week', hoursAWeek: 35, cutOff: { day: 'friday', time: '17:00' } });
     expect((await o.suites.workflows(grace)).suites.find((s) => s.key === 'time')).toMatchObject({ set: true, steps: [['manager', 'admin']], escalateAfter: null });
     expect((await o.assistant.theSetUpAsStored(grace, 'time')).join(' ')).toBe(THE_RULES_SAID(35));

@@ -1,0 +1,124 @@
+{
+  "kind": "matter",
+  "title": "Kasarani Foods v Pwani Mills",
+  "subtitle": "A Partner, a Senior Associate, two Associates, a paralegal and a tax specialist. Weekly. Reply due Friday 2 October.",
+  "leadName": "Wairimu Kamau",
+  "updated": "Last updated on Wednesday 23 September at 6pm. The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.",
+  "aim": "Breach of a maize supply contract. High Court, Commercial Division, Nairobi. Stage: pleadings. Our reply is due on Friday 2 October.",
+  "answer": {
+    "label": "Where the matter stands",
+    "answer": "The reply is due on Friday. It is at risk because the client has not sent the original contract. The team talks as if the delivery terms are proven, but without the original they are not.",
+    "needsHeading": "What you need to decide",
+    "needs": [
+      {
+        "title": "Do we argue the limitation point first?",
+        "text": "Leila’s research made it stronger. Tom wants to lead with it. You have not decided."
+      },
+      {
+        "title": "Ask the court for more time, or file on Friday?",
+        "text": "Only if the original contract does not arrive by Wednesday."
+      }
+    ]
+  },
+  "confident": {
+    "title": "More confident than the evidence allows",
+    "text": "Kevin believes the evidence that Pwani Mills broke the delivery terms is strong. Joy, the paralegal, says the signed original contract is still with the client. Tom thought it had arrived. Without the original, the delivery terms rest on an unsigned copy.",
+    "note": "Nobody is wrong to believe it. The proof is just not in the firm’s hands yet."
+  },
+  "strategy": {
+    "title": "This may change the strategy. It needs your review.",
+    "text": "We planned to win on the broken delivery terms. Leila’s research this week found that Pwani Mills filed their defence 3 months too late under the Limitation Act. Tom wants to lead with this. If he is right, the case may turn on the limitation point instead.",
+    "note": "Affects: Tom, Leila and Kevin’s drafting, and what we tell the client."
+  },
+  "changed": {
+    "heading": "What changed this week, and what it changed",
+    "rows": [
+      {
+        "who": "Leila’s research",
+        "kind": "shown",
+        "said": "Found the defence was filed 3 months late. This makes the limitation point much stronger."
+      },
+      {
+        "who": "Kevin’s drafting",
+        "kind": "said",
+        "said": "Two of the four sections are drafted. The delivery section waits for the original contract."
+      },
+      {
+        "who": "The client",
+        "kind": "client",
+        "said": "Says they sent the original contract on 20 September. The firm has not received it."
+      },
+      {
+        "who": "Original contract",
+        "kind": "unknown",
+        "said": "Not received. Joy has asked twice."
+      }
+    ],
+    "key": [
+      {
+        "kind": "shown",
+        "label": "A document shows it"
+      },
+      {
+        "kind": "said",
+        "label": "A lawyer believes it"
+      },
+      {
+        "kind": "client",
+        "label": "The client says it"
+      },
+      {
+        "kind": "decided",
+        "label": "Decided"
+      },
+      {
+        "kind": "unknown",
+        "label": "Not known yet"
+      }
+    ]
+  },
+  "handover": {
+    "title": "Leila moves to another matter on Monday",
+    "text": "Amos takes over her part. The handover page gives him what he needs.",
+    "button": "See the handover"
+  },
+  "heading": {
+    "heading": "Where this is heading",
+    "note": "Keep a read on live work",
+    "outcomesLabel": "The possible outcomes",
+    "outcomes": [
+      {
+        "title": "Look closer at named areas"
+      },
+      {
+        "title": "Step in"
+      },
+      {
+        "title": "Keep watching"
+      }
+    ],
+    "signalsLabel": "The signals behind them",
+    "signals": [
+      {
+        "line": "The original contract has not arrived",
+        "from": "Joy has asked the client twice",
+        "kind": "unknown"
+      },
+      {
+        "line": "The limitation point is much stronger",
+        "from": "From Leila’s research note",
+        "kind": "shown"
+      },
+      {
+        "line": "Tom wants to lead with the limitation point",
+        "from": "His view, not yet decided",
+        "kind": "said"
+      }
+    ],
+    "settleLabel": "What would settle it",
+    "settle": "Whether the original contract arrives by Wednesday.",
+    "decider": "Njeri, the Partner, decides.",
+    "deciderNote": "Groundwork lays out the outcomes and the proof. It doesn’t choose.",
+    "button": "Record the decision"
+  }
+}

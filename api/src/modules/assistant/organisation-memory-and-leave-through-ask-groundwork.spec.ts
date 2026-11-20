@@ -158,7 +158,7 @@ describe('leave is never answered with a shrug', () => {
     const out = await said(s, 'I need Monday and Wednesday off next week.');
     expect(out).toEqual({
       lane: 'ask_for_leave',
-      /* Updated 19 November 2026: the example is now a whole sentence the rules read as leave; the days alone were not read. */
+      /* The example is now a whole sentence the rules read as leave, as in b76548965 (Hafsah's screenshot of 19 November): "from next Monday to next Wednesday" alone is not read. */
       text: 'I could not tell exactly which days you mean, so I have not sent anything. Tell me the first day and the last day in one sentence, for example "I want leave from next Monday to next Wednesday", and I will ask again.',
     });
     expect(s.proposals).toEqual([]);
@@ -175,5 +175,22 @@ describe('leave is never answered with a shrug', () => {
     expect(out.text).toBe('You asked for leave on Tuesday 20 October, which is 1 working day. You have 16 days of leave left this year, and nobody else in Sales is off then. Shall I send it to Wairimu to approve?');
     expect(s.proposals[1]).toMatchObject({ kind: 'leave_request', payload: { startsOn: '2026-10-20', endsOn: '2026-10-20' } });
     expect(s.ask).not.toHaveBeenCalled();
+  });
+});
+
+describe('leave comes up with no policy (chat is king, step 4)', () => {
+  const OFF = 'Leave requests are not switched on in your organisation, so I have not sent or kept these dates. An admin can switch them on under Suites.';
+  it('an admin is told how to set it up, in the words that start it, and nothing is kept', async () => {
+    const s = svc({ role: 'ADMIN', suiteOn: false });
+    (s.service as any).suites = { maySetUp: async (_r: any, key: string) => key === 'leave' };
+    const out = await said(s, 'I need next Thursday and Friday off');
+    expect(out.text).toBe(`${OFF} Since you can set it up, say “Set up our employee leave process” and I will ask only what is missing, say it back, and set it up once you say yes.`);
+    expect(s.proposals).toEqual([]);
+  });
+
+  it('a member who cannot set it up is told only what they were told before', async () => {
+    const s = svc({ role: 'MEMBER', suiteOn: false });
+    (s.service as any).suites = { maySetUp: async () => false };
+    expect((await said(s, 'I need next Thursday and Friday off')).text).toBe(OFF);
   });
 });

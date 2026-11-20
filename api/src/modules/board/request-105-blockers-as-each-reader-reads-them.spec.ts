@@ -25,7 +25,7 @@ describe('the sales run, as Bisi who runs it', () => {
       who: 'Femi Okonkwo',
       state: 'blocking',
       says: 'Femi Okonkwo is waiting for the bank statements.',
-      raised: { times: 1, says: 'This was raised once, on 16 September.', inSessions: 'It was raised in session 2.', sessions: [2] },
+      raised: { times: 1, says: 'This was raised once, on 16 September.', inSessions: 'It was raised in check-in 2.', sessions: [2] },
       proof: { state: 'none', says: 'Nothing on record proves it yet. It rests on what Femi Okonkwo said.' },
       timeGiven: 'No time has been given for it.',
       wouldClearIt: 'Femi Okonkwo said, "I will visit a few of them again this week to see if I can collect the statements myself."',
@@ -103,7 +103,7 @@ describe('a blocker raised in three sessions, with a document behind one line an
     const x = b['the pipeline fix'];
     expect(x.says).toBe('Rukia Mwangi says the work is waiting on Baraka Otieno for the pipeline fix.');
     expect(x.raised.says).toBe('This has been raised 3 times, from 1 September to 23 September.');
-    expect(x.raised.inSessions).toBe('It was raised in sessions 1, 2 and 3.');
+    expect(x.raised.inSessions).toBe('It was raised in check-ins 1, 2 and 3.');
     expect(x.proof).toEqual({ state: 'shown', says: 'A document backs what Rukia Mwangi said about it.' });
     expect(x.timeGiven).toBe('The time given for it was "by Friday". It was raised again after 5 September, the day it was due.');
     expect(x.holdingUp).toBe('Once it is cleared, the reporting system can restart.');

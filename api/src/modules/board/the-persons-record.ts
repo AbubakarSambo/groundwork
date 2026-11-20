@@ -457,6 +457,13 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
     let proofSays: string | null = null;
     const proofIds: string[] = [];
     const typedCode = /\b(?=[A-Z0-9]{10}\b)(?=[A-Z0-9]*\d)(?=(?:[0-9]*[A-Z]){2})[A-Z0-9]{10}\b/.exec(l.text)?.[0] ?? null;
+    /*
+     * A WEEKLY COUNT IS NOT A SALE NOBODY CAN SHOW (fix plan 17 November, group 3). "I sold 5 this week" names no deal, so there is nothing
+     * on file it could be filed against; counted as a claim with no proof, an honest person who gave a specific number every week was
+     * told to the lead as "5 times something was sold or signed with nothing on file, so call Joel". A claim is held to proof where it
+     * names a deal; a number of sales said with no deal named is a count, and the board's own count reads it.
+     */
+    if (!item && l.mark !== 'proven' && l.mark !== 'confirmed' && !input.codes.some((c) => l.text.includes(c.code)) && !typedCode && /\b\d+\b/.test(sentences.find((x) => aClaimIn(x)) ?? '')) continue;
     if (l.mark === 'proven') {
       if (l.anchoredDocumentId) { proof = 'a document they added'; proofSays = 'A document you added'; proofIds.push(l.anchoredDocumentId); }
       else if (typedCode) { proof = 'an M-Pesa code'; proofSays = `The M-Pesa code ${typedCode}`; }
@@ -776,7 +783,9 @@ export function howItWent(r: ThePersonsRecord, about: AThingToCoach, which: (ses
     }
     case 'check-ins': {
       const cs = r.checkIns.filter((c) => which(c.sessionNumber));
-      return share(cs.filter((c) => c.done && c.onTime && c.specific).length, cs.length);
+      /* What was coached is "name the item, what changed and the day": a check-in is better when it did that. Whether it came within a day of opening is not what the coaching said,
+         and was what made Sam, who answered every round with numbers, "worse" (run 7). */
+      return share(cs.filter((c) => c.done && c.specific).length, cs.length);
     }
   }
 }
@@ -859,10 +868,15 @@ export function theCoachingFollowedUp(beforeAsStored: readonly ACoaching[], r: T
   const before = theCoachingTheRecordStillHolds(beforeAsStored, r);
   const out: ACoaching[] = before.map((c) => {
     const since = howItWent(r, c.about, (n) => typeof n === 'number' && n > c.afterSession);
-    if (!since.of) return { ...c, since: null, outcome: null };
+    /* A coaching is given inside a check-in of theirs, so it is read again only from check-ins they did after it. A person who did none since
+       has not been coached on it, and check-ins they missed are not proof that the coaching failed (fix plan 16 November, group 5: "Groundwork has
+       coached Mary ... it has got worse, so call Mary", said of a person with one check-in). */
+    const didOneSince = r.checkIns.some((x) => x.sessionNumber > c.afterSession && x.done);
+    if (!since.of || !didOneSince) return { ...c, since: null, outcome: null };
     const sessions = r.checkIns.filter((x) => x.sessionNumber > c.afterSession).map((x) => x.sessionNumber);
     const d = since.good - c.before.good;
-    const outcome: ACoaching['outcome'] = d > 0.1 ? 'better' : d < -0.1 ? 'worse' : 'the same';
+    /* Doing it nearly every time since is the coaching working, whatever the share was before: "nothing has changed, so call Sam" is not true of somebody who now does what was asked. */
+    const outcome: ACoaching['outcome'] = d > 0.1 || since.good >= 0.8 ? 'better' : d < -0.1 ? 'worse' : 'the same';
     return { ...c, since: { ...since, sessions }, outcome, done: c.done || outcome === 'better' };
   });
   const open = out.find((c) => !c.done);

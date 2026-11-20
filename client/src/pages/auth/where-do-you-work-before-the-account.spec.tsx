@@ -41,12 +41,11 @@ beforeEach(() => {
   vi.mocked(entryApi.commit).mockRejectedValue({ response: { data: { message: 'NO_ENTRY_SESSION' } } })
 })
 
-/* "Your email is confirmed" comes first, then "Where do you work?" (the natural order). */
+/* Changed in batch 2, group 6 (S14, no pages in between): "Your email is confirmed, Continue" no longer comes first; the link
+   opens on "Where do you work?" itself. */
 async function pastTheConfirmation() {
-  expect(await screen.findByRole('heading', { name: 'Your email is confirmed' })).toBeTruthy()
-  expect(screen.getByText(/sign-in links and reports to/).textContent).toBe('I’ll send sign-in links and reports to ama@coamana.test.')
-  fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
   await screen.findByRole('heading', { name: 'Where do you work?' })
+  expect(screen.queryByRole('heading', { name: 'Your email is confirmed' })).toBeNull()
 }
 
 describe('an organisation lets their domain join', () => {
@@ -54,7 +53,7 @@ describe('an organisation lets their domain join', () => {
     vi.mocked(authApi.verifyEmail).mockResolvedValueOnce({ email: 'ama@coamana.test', whereDoYouWork: { byDomain: [{ id: 'o-c', name: 'Coamana', domain: 'coamana.test' }] } } as any)
   })
 
-  it('reads as the prototype\'s "Where do you work?", with no head count, after "Your email is confirmed"', async () => {
+  it('reads as the prototype\'s "Where do you work?", with no head count, straight after the link', async () => {
     const { container } = open()
     await pastTheConfirmation()
     expect(readable(container)).toBe([

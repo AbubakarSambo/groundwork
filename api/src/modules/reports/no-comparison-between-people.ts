@@ -12,8 +12,9 @@ const THAN_THE_OTHERS = '(?:the\\s+)?(?:others?|rest(?:\\s+of\\s+(?:the\\s+)?(?:
 
 export const A_COMPARISON_BETWEEN_PEOPLE: RegExp[] = [
   new RegExp(`\\b(?:fewer|less|more|thinner|vaguer|shorter|longer|slower|faster|weaker|stronger|lower|higher|better|worse|much\\s+\\w+)\\b[^.!?\\n]{0,80}\\bthan\\s+${THAN_THE_OTHERS}`, 'i'),
-  new RegExp(`\\b(?:compared\\s+(?:with|to)|relative\\s+to|against|in\\s+comparison\\s+(?:with|to))\\s+${THAN_THE_OTHERS}`, 'i'),
-  new RegExp(`\\b(?:below|above|under|over|behind|ahead\\s+of|lagging|trailing|beyond)\\s+(?:the\\s+)?(?:team|group|rest|others|average|everyone\\s+else)`, 'i'),
+  /* Never "the team's target": a thing the team owns is not the team (Hafsah's run, 20 November 2026: "progress against the team's target of 40 new shops" was cut, and left half a line in Ask). */
+  new RegExp(`\\b(?:compared\\s+(?:with|to)|relative\\s+to|against|in\\s+comparison\\s+(?:with|to))\\s+${THAN_THE_OTHERS}(?![\\w'’])`, 'i'),
+  new RegExp(`\\b(?:below|above|under|over|behind|ahead\\s+of|lagging|trailing|beyond)\\s+(?:the\\s+)?(?:team|group|rest|others|average|everyone\\s+else)(?![\\w'’])`, 'i'),
   /\b(?:the\s+)?(?:most|least|highest|lowest|best|worst)\s+(?:active|engaged|specific|responsive|detailed|vague|forthcoming|communicative|committed|reliable)\b/i,
   /\b(?:significantly|noticeably|markedly)\s+(?:fewer|less|more|thinner)\b[^.!?\n]{0,60}\b(?:entries|exchanges|detail|specific|records?)\b/i,
 ];

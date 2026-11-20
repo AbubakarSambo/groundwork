@@ -22,7 +22,7 @@ export function TheCheckInsOwnHeader({ groundId, ground, sessionNumber, label }:
         people ? `${people} ${people === 1 ? 'person' : 'people'}.` : null,
         theScheduleInWords(ground, null),
         /* A week holds one session only when it meets once a week; twice a week, a session is not a week. */
-        planned && now ? `${ground?.cadence === 'WEEKLY' && !timesAWeek(ground?.cadence, ground?.cadenceDays) ? 'Week' : 'Session'} ${now} of ${planned}.` : null,
+        planned && now ? `${ground?.cadence === 'WEEKLY' && !timesAWeek(ground?.cadence, ground?.cadenceDays) ? 'Week' : 'Check-in'} ${now} of ${planned}.` : null,
       ].filter(Boolean).join(' ')}
       action={<YourCheckIn groundId={groundId} />}
       active=""

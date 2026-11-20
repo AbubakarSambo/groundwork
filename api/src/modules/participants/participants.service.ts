@@ -6,13 +6,14 @@ import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
 import { needsApproval, isAnAdminOf, whoToAsk, howTheyStandIn, WAITING_TO_BE_LET_IN } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
 
-import { HELD_FOR_A_SEAT } from './held-for-a-seat';
+import { HELD_FOR_A_SEAT, REMOVED_FROM_THE_CHECK_IN_BY_LINK } from './held-for-a-seat';
 import { namedWhenAnAdminApproved, theyWaitForAnAdmin, whatHappensWhenYouJoin } from './named-when-an-admin-approved';
 import { canSignIn } from '../grounds/can-sign-in';
 export { HELD_FOR_A_SEAT };
 import { tellTheAdminsSomebodyIsWaiting } from './somebody-is-waiting-at-the-door';
 import { assertInviteLinkStillOpens, hasExpired } from './an-invite-link-still-opens';
 import { whenItAsks } from './when-it-asks';
+import { theNumberOnRecord } from '../whatsapp/one-number-for-a-person';
 import { A_CHECK_IN_TAKES } from '../../common/how-long-a-check-in-takes';
 import { inviteExpiryFrom } from './how-long-an-invite-lasts';
 import { PrismaService } from '../prisma/prisma.service';
@@ -35,6 +36,7 @@ export const FRESH_LINK_REPLY =
 
 import { theAnchorInvitation } from '../entry/the-anchor-people-step';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
+import { whoCanReadWhatYouSay } from '../grounds/who-may-read-this-check-in';
 import { THE_ANCHOR_SCENARIO_KEY, theInvitationWordsFor } from '../entry/the-anchor-scenario-content';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 
@@ -69,6 +71,7 @@ export class ParticipantsService {
      * "They have not been told any of this", and a button that is refused after it is pressed is not
      * an answer.
      */
+    if (row?.leftAt) return { removed: true as const, saying: REMOVED_FROM_THE_CHECK_IN_BY_LINK };
     if (row?.awaitingSeat) return { heldForASeat: true as const, saying: HELD_FOR_A_SEAT };
     const participant = await this.loadByToken(token);
     const ground = await this.prisma.ground.findUnique({
@@ -116,6 +119,8 @@ export class ParticipantsService {
       /* For "Wairimu invited you to the sales team's check-in" and "Baridi Appliances, until 30 September." */
       organisationName: (ground as any).organization?.name ?? null,
       leadFirstName: leadFirst,
+      /* The one sentence about who reads what they say, from its one owner (grounds/who-may-read-this-check-in.ts). */
+      whoCanReadWhatYouSay: whoCanReadWhatYouSay(ground as any, leadFirst),
       endsAt: ground.endsAt ? ground.endsAt.toISOString() : null,
       /* U.6 review: when their first check-in opens, if that is later than now, so the page does not
          offer "Answer today's check-in now" for a check-in that opens on 5 October. */
@@ -140,6 +145,9 @@ export class ParticipantsService {
       /* U.6 review: no "Your part in this". What is stored there is the lead's sentence about this
          person (the-leads-words-about-someone.ts), and this page is read by that person. */
       email: participant.email,
+      /* Their own number, as the lead gave it in setup or on People: the one record of a person's number (theNumberOnRecord), so the
+         invitation's phone field is never empty when it is already known (staging check S17). Served beside their own address. */
+      phone: await theNumberOnRecord(this.prisma, (ground as any).organizationId, { userId: participant.userId ?? null, email: participant.email }).catch(() => null),
       alreadyAccepted,
       /* Somebody who answered through an open link has no sign-in yet, and has already done the thing
          the arrival screen describes. A link that brings them to their report should not read "wants
@@ -183,6 +191,8 @@ export class ParticipantsService {
 
   async accept(token: string, names?: { firstName?: string; lastName?: string }, returningUserId?: string | null) {
     const participant = await this.loadByToken(token);
+    /* Somebody who was removed is told so, plainly, and nothing is made (run 4, 18 November). */
+    if (participant.leftAt) throw new BadRequestException(REMOVED_FROM_THE_CHECK_IN_BY_LINK);
     const ground = await this.prisma.ground.findUnique({ where: { id: participant.groundId } });
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /*
@@ -463,29 +473,8 @@ export class ParticipantsService {
         .catch((err: any) => this.logger.warn(`Could not tell the admins about ${email}: ${err.message}`));
     }
 
-    // Send a password setup link so the participant can return after their
-    // initial session without being locked out. Only send when no password
-    // is set - existing accounts that already have one don't need this.
-    /*
-     * ONE EMAIL WHILE ITS LINK STILL WORKS (messages test, 19 October, finding 17): Brian accepted his Fee notes invitation and, minutes later and
-     * signed in, his Litigation team daily one, and was sent "Set a password for Groundwork" twice. A setup link sent and not used or run out is
-     * still his way in, so no second one goes.
-     */
-    const aLiveSetupLink = !user.passwordHash
-      ? await Promise.resolve((this.prisma as any).emailVerificationToken?.findFirst?.({ where: { userId: user.id, type: TokenType.PASSWORD_SETUP, usedAt: null, expiresAt: { gt: new Date() } }, select: { id: true } })).catch(() => null)
-      : null;
-    if (!user.passwordHash && !aLiveSetupLink) {
-      const setupToken = crypto.randomBytes(32).toString('hex');
-      await this.prisma.emailVerificationToken.create({
-        data: {
-          userId: user.id,
-          token: hashed(setupToken),
-          type: TokenType.PASSWORD_SETUP,
-          expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000), // 72 hours
-        },
-      });
-      this.email.sendAddPasswordEmail(user.email, user.firstName, setupToken).catch(() => null);
-    }
+    /* No "Set a password" email after joining (batch 2, group 6; staging check S14): a person signs back in with an emailed link,
+       which goes straight in, and sets a password from Settings if they want one. */
 
     // SEQUENTIAL cadence: if this participant was added before the lead
     // completed their own session 1 (so their session 1 was locked at

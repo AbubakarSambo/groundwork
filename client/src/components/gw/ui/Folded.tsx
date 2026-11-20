@@ -9,7 +9,7 @@ import './gw-ui.css'
  * label (16px, ink) and an optional muted note beside it (14.5px), the way "Who reports to whom"
  * sits next to "Level and reporting lines describe the organisation...".
  */
-export function Folded({ summary, note, children, open, onToggle, id }: {
+export function Folded({ summary, note, children, open, onToggle, id, defaultOpen }: {
   summary: string
   note?: ReactNode
   children: ReactNode
@@ -23,10 +23,12 @@ export function Folded({ summary, note, children, open, onToggle, id }: {
   onToggle?: (open: boolean) => void
   /** So another part of the same page can point at this fold and open it - see `scrollTo` callers. */
   id?: string
+  /** Uncontrolled and open to begin with: the list is on the page, and a reader can still close it (Hafsah, 13 November 2026: nothing starts folded that need not). */
+  defaultOpen?: boolean
 }) {
   const isControlled = onToggle !== undefined
   return (
-    <details id={id} className="gwui-folded" open={isControlled ? open : undefined}>
+    <details id={id} className="gwui-folded" open={isControlled ? open : defaultOpen || undefined}>
       {/*
         CONTROLLED MODE HANDLES ITS OWN CLICK, RATHER THAN THE NATIVE `toggle` EVENT: a real browser
         dispatches `toggle` when a summary click flips `<details>`'s own `open`, but that is the

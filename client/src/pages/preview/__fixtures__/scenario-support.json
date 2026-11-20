@@ -1,0 +1,540 @@
+{
+  "kind": "support",
+  "title": "Support desk",
+  "subtitle": "6 agents in 3 queues. ~400 tickets a week. Daily check-ins on exceptions only.",
+  "leadName": "Wairimu Kamau",
+  "updated": "Last updated on Wednesday 23 September at 6pm. The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.",
+  "question": "Resolve customer issues within a day, without reopening them?",
+  "headline": "412 tickets this week. 91% were solved within a day",
+  "bar": 91,
+  "under": "The numbers come from the helpdesk, so they are proven. The open questions are why 7 tickets were passed to engineering and 17 were opened again.",
+  "reported": "Check-ins covered 38 exceptions; the other 374 tickets needed no one's account.",
+  "targets": {
+    "heading": "Where each target stands",
+    "rows": [
+      {
+        "name": "Resolved within 24h",
+        "value": "91% of 90%",
+        "status": "Met",
+        "tone": "proven"
+      },
+      {
+        "name": "Passed to engineering each week",
+        "value": "7 of ≤ 5",
+        "status": "Over limit",
+        "tone": "concern"
+      },
+      {
+        "name": "Reopened",
+        "value": "4.1% of ≤ 3%",
+        "status": "Over limit",
+        "tone": "concern"
+      },
+      {
+        "name": "First reply within 1h",
+        "value": "96% of 95%",
+        "status": "Met",
+        "tone": "proven"
+      },
+      {
+        "name": "Satisfaction",
+        "value": "4.4 of 4.5",
+        "status": "Close",
+        "tone": "attention"
+      }
+    ]
+  },
+  "needs": {
+    "heading": "What needs you in this check-in",
+    "open": "Open",
+    "rows": [
+      {
+        "what": "The billing bug has come up 3 times since 2 September",
+        "sub": "Engineering promised a fix by 16 September. 9 tickets and 2 cases passed to engineering came from it.",
+        "edge": "blue",
+        "strip": "This comes from a blocker that keeps coming back."
+      },
+      {
+        "what": "Too many tickets are being passed to engineering",
+        "sub": "7 this week, when the limit is 5. 5 of them came from the technical queue.",
+        "edge": "amber",
+        "strip": "This comes from the targets."
+      },
+      {
+        "what": "Tom’s tickets are opened again after he closes them quickly",
+        "sub": "for 2 weeks in a row, from helpdesk data. Coaching started last week and is working.",
+        "edge": "amber",
+        "chip": "From a pattern"
+      },
+      {
+        "what": "5 tickets are older than 48 hours",
+        "sub": "3 are waiting for engineering, and 2 are waiting for the customer.",
+        "edge": "dark",
+        "chip": "From the stall rule"
+      },
+      {
+        "what": "The ready-made answer for import errors has still not been written",
+        "sub": "It was due on 18 September. 5 tickets this week had the same cause.",
+        "edge": "blue",
+        "strip": "This comes from the plan."
+      }
+    ]
+  },
+  "items": {
+    "heading": "Every ticket, and what shows it",
+    "note": "Ringed is someone’s word; filled is proven. Select one for its detail",
+    "legend": [
+      "Proof shows it",
+      "Someone said it"
+    ],
+    "columns": [
+      "Ticket",
+      "Agent",
+      "Stage now",
+      "What shows it",
+      "Next"
+    ],
+    "rows": [
+      {
+        "name": "#4812, Double charge after a plan change",
+        "owner": "Grace",
+        "stage": "Aged",
+        "on": true,
+        "shows": "Helpdesk",
+        "next": "Refund manually while the fix waits",
+        "flag": "Waiting on engineering",
+        "flagTone": "amber"
+      },
+      {
+        "name": "#4790, Password reset loop",
+        "owner": "Tom",
+        "stage": "Reopened twice",
+        "on": true,
+        "shows": "Helpdesk",
+        "next": "Confirm with the customer before closing",
+        "flag": "Reopened",
+        "flagTone": "amber"
+      },
+      {
+        "name": "#4801, API timeout for one client",
+        "owner": "Otieno",
+        "stage": "Passed to engineering",
+        "on": true,
+        "shows": "Helpdesk",
+        "next": "Engineering confirms the cause",
+        "flag": "Passed to engineering",
+        "flagTone": "amber"
+      },
+      {
+        "name": "#4833, Import failed",
+        "owner": "Halima",
+        "stage": "Aged",
+        "on": true,
+        "shows": "Helpdesk",
+        "next": "Send the format guide; write the macro"
+      },
+      {
+        "name": "#4776, Refund not received",
+        "owner": "Tom",
+        "stage": "Reopened",
+        "on": true,
+        "shows": "Helpdesk",
+        "next": "Ask finance for the refund reference",
+        "flag": "Reopened",
+        "flagTone": "amber"
+      },
+      {
+        "name": "#4840, Webhook not firing",
+        "owner": "Wanjiru",
+        "stage": "Passed to engineering",
+        "on": true,
+        "shows": "Helpdesk",
+        "next": "Engineering to reproduce"
+      }
+    ],
+    "detail": {
+      "title": "#4812, Double charge after a plan change",
+      "pairs": [
+        [
+          "Queue",
+          "Billing"
+        ],
+        [
+          "Cause",
+          "Billing bug after a plan change (agent said, matched to engineering ticket)"
+        ],
+        [
+          "Seen before",
+          "9 tickets this week"
+        ]
+      ],
+      "next": "Refund manually while the fix waits",
+      "button": "Not right? Tell the check-in",
+      "foot": "Something here wrong? Anyone can correct what’s about their own work in their check-in; the change and the original both show here."
+    }
+  },
+  "team": {
+    "heading": "The team today",
+    "note": "Each person’s line, their last 10 check-ins, and what keeps coming up",
+    "foot": "These are about the work. Open anyone to see what they said and what the proof shows.",
+    "rows": [
+      {
+        "name": "Grace",
+        "line": "1 of 3 reviews held",
+        "tag": "Waiting on engineering",
+        "tone": "concern",
+        "sessions": "1111110111"
+      },
+      {
+        "name": "Tom",
+        "line": "Tickets opened again: down from 6% to 3%",
+        "tag": "Reopens after quick close",
+        "tone": "attention",
+        "sessions": "1110111111",
+        "comingUp": "Tickets opened again within 3 days, for 2 weeks in a row (from the helpdesk)"
+      },
+      {
+        "name": "Halima",
+        "line": "Not written",
+        "tag": "Behind on the plan",
+        "tone": "attention",
+        "sessions": "1011111111"
+      },
+      {
+        "name": "Otieno",
+        "line": "3 of 3 escalations with steps",
+        "tag": "On pace",
+        "tone": "proven",
+        "sessions": "1111111111"
+      },
+      {
+        "name": "Wanjiru",
+        "line": "On track",
+        "tag": "On pace",
+        "tone": "proven",
+        "sessions": "1101111111"
+      },
+      {
+        "name": "Peter",
+        "line": "On track",
+        "tag": "On pace",
+        "tone": "proven",
+        "sessions": "1111110001"
+      }
+    ]
+  },
+  "shape": {
+    "kind": "volume",
+    "heading": "Volume from the helpdesk, causes from the check-ins",
+    "note": "The shape of the work",
+    "numbers": [
+      {
+        "n": "412",
+        "l": "tickets",
+        "src": "Helpdesk",
+        "on": true
+      },
+      {
+        "n": "374",
+        "l": "resolved within a day",
+        "src": "Helpdesk",
+        "on": true
+      },
+      {
+        "n": "7",
+        "l": "escalated",
+        "src": "Helpdesk",
+        "on": true
+      },
+      {
+        "n": "17",
+        "l": "reopened",
+        "src": "Helpdesk",
+        "on": true
+      },
+      {
+        "n": "38",
+        "l": "exceptions asked about",
+        "src": "Check-ins",
+        "on": false
+      }
+    ],
+    "causesHeading": "Causes, from the check-ins",
+    "causes": [
+      {
+        "name": "Billing bug after a plan change",
+        "n": 9,
+        "note": "Agent said, matched to 1 engineering ticket"
+      },
+      {
+        "name": "Password reset loop",
+        "n": 6,
+        "note": "Agent said"
+      },
+      {
+        "name": "Import file format",
+        "n": 5,
+        "note": "Agent said"
+      },
+      {
+        "name": "First answer unclear",
+        "n": 4,
+        "note": "Agent said"
+      }
+    ],
+    "foot": "Counts are proven by the helpdesk. Causes are the agents' accounts until engineering or the customer confirms them."
+  },
+  "groups": {
+    "heading": "By queue",
+    "cards": [
+      {
+        "title": "Billing",
+        "stats": [
+          {
+            "n": "148",
+            "l": "tickets"
+          },
+          {
+            "n": "88%",
+            "l": "within a day"
+          },
+          {
+            "n": "9",
+            "l": "reopened"
+          }
+        ],
+        "text": "Most reopens trace to the billing bug.",
+        "names": "Grace, Peter"
+      },
+      {
+        "title": "Technical",
+        "stats": [
+          {
+            "n": "171",
+            "l": "tickets"
+          },
+          {
+            "n": "90%",
+            "l": "within a day"
+          },
+          {
+            "n": "5",
+            "l": "escalated"
+          }
+        ],
+        "text": "Escalations over the limit.",
+        "names": "Tom, Otieno, Wanjiru"
+      },
+      {
+        "title": "Onboarding",
+        "stats": [
+          {
+            "n": "93",
+            "l": "tickets"
+          },
+          {
+            "n": "97%",
+            "l": "within a day"
+          },
+          {
+            "n": "2",
+            "l": "reopened"
+          }
+        ],
+        "text": "Import errors repeat.",
+        "names": "Halima"
+      }
+    ]
+  },
+  "who": {
+    "heading": "Who checked in",
+    "note": "The last 10 sessions, one row each",
+    "rows": [
+      {
+        "name": "Grace",
+        "sessions": "1111110111"
+      },
+      {
+        "name": "Tom",
+        "sessions": "1110111111"
+      },
+      {
+        "name": "Halima",
+        "sessions": "1011111111"
+      },
+      {
+        "name": "Otieno",
+        "sessions": "1001101001"
+      },
+      {
+        "name": "Wanjiru",
+        "sessions": "1101111111"
+      },
+      {
+        "name": "Peter",
+        "sessions": "1111110001"
+      }
+    ]
+  },
+  "blockers": {
+    "heading": "Blockers",
+    "note": "Each with its history and the one thing that would clear it",
+    "rows": [
+      {
+        "title": "Billing bug after a plan change",
+        "tag": "Blocking",
+        "tone": "concern",
+        "waiting": "Engineering",
+        "raised": "3 times, 2 Sep to 23 Sep",
+        "affects": "9 tickets, 2 escalations",
+        "proof": "Matched to an engineering ticket",
+        "clear": "Escalate to the engineering lead with the 9 tickets. Then: 9 tickets close and 2 escalations drop",
+        "promised": "Fix by 16 Sep (missed)"
+      },
+      {
+        "title": "Refund references from finance",
+        "tag": "Waiting",
+        "tone": "attention",
+        "waiting": "Finance",
+        "raised": "2 times, 15 Sep to 22 Sep",
+        "affects": "3 billing tickets",
+        "proof": "Unverified",
+        "clear": "Agree a same-day reference process. Then: 3 billing tickets can close the same day"
+      },
+      {
+        "title": "Import-error help macro",
+        "tag": "Waiting",
+        "tone": "attention",
+        "waiting": "Halima",
+        "raised": "2 times, 11 Sep to 23 Sep",
+        "affects": "5 tickets a week",
+        "proof": "Self-reported",
+        "clear": "Write it this week. Then: 5 tickets a week answered by the macro",
+        "promised": "18 Sep (missed)"
+      }
+    ]
+  },
+  "keeps": {
+    "heading": "What keeps coming up",
+    "note": "Named after three check-ins in a row, never after one. Each describes the work",
+    "personHeading": "About each person’s work",
+    "people": [
+      {
+        "name": "Tom",
+        "text": "Tickets opened again within 3 days, for 2 weeks in a row (from the helpdesk)"
+      }
+    ],
+    "sayHeading": "How what people say can run ahead of what happened",
+    "say": [
+      {
+        "title": "Quick close",
+        "text": "Closed before the customer confirmed the fix.",
+        "who": "Tom"
+      },
+      {
+        "title": "Cause unknown",
+        "text": "Exceptions logged with no cause.",
+        "who": "Tom, Peter"
+      },
+      {
+        "title": "Waiting as status",
+        "text": "“Waiting on engineering” with no date asked for.",
+        "who": "Grace"
+      }
+    ],
+    "foot": "Each person sees what’s about them, and can answer it in their own words."
+  },
+  "heading": {
+    "heading": "Where this is heading",
+    "note": "Set goals and keep the team on track",
+    "outcomesLabel": "The possible outcomes",
+    "outcomes": [
+      "On course",
+      "Reach it with a change",
+      "Change the target"
+    ],
+    "signalsLabel": "The signals behind them",
+    "signals": [
+      {
+        "line": "The billing bug has come up 3 times since 2 September",
+        "text": "Engineering promised a fix by 16 September. 9 tickets and 2 cases passed to engineering came from it.",
+        "onRecord": false
+      },
+      {
+        "line": "Too many tickets are being passed to engineering",
+        "text": "7 this week, when the limit is 5. 5 of them came from the technical queue.",
+        "onRecord": false
+      },
+      {
+        "line": "Tom’s tickets are opened again after he closes them quickly",
+        "text": "for 2 weeks in a row, from helpdesk data. Coaching started last week and is working.",
+        "onRecord": false
+      }
+    ],
+    "settleLabel": "What would settle it",
+    "settle": "The numbers come from the helpdesk, so they are proven. The open questions are why 7 tickets were passed to engineering and 17 were opened again.",
+    "decider": "Support lead decides.",
+    "deciderNote": "Groundwork lays out the outcomes and the proof. It doesn’t choose.",
+    "button": "Record the decision"
+  },
+  "overTime": "Over time",
+  "reports": {
+    "heading": "Reports",
+    "note": "Each person’s own, the team’s once shared, and a weekly one",
+    "open": "Open",
+    "rows": [
+      {
+        "name": "Today’s team report",
+        "text": "The day’s gaps: what moved, what didn’t, who’s missing"
+      },
+      {
+        "name": "Your own report",
+        "text": "Only you see it"
+      },
+      {
+        "name": "This week",
+        "text": "Patterns, once they’ve held for two weeks"
+      }
+    ]
+  },
+  "everySession": "Every session",
+  "others": {
+    "heading": "The other boards you’re in",
+    "rows": [
+      {
+        "name": "Sales team, Q3",
+        "tag": "Today’s report ready",
+        "tone": "proven"
+      },
+      {
+        "name": "Kwame, first 90 days",
+        "tag": "Decide how it ends",
+        "tone": "action"
+      },
+      {
+        "name": "Leadership, Q3",
+        "tag": "Your turn",
+        "tone": "action"
+      },
+      {
+        "name": "Supplier review",
+        "tag": "Waiting on Omar",
+        "tone": "sand"
+      },
+      {
+        "name": "Daniel, the next six weeks",
+        "tag": "Both accounts in",
+        "tone": "action"
+      },
+      {
+        "name": "Faith, first 90 days",
+        "tag": "Just started",
+        "tone": "action"
+      }
+    ]
+  },
+  "askBox": {
+    "placeholder": "Ask about this board, for example “Why is Green Mart next quarter?”",
+    "button": "Ask"
+  }
+}

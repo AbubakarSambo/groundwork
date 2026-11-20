@@ -58,7 +58,7 @@ describe('the report follow-up (to Grace)', () => {
 });
 
 describe("Joseph's week", () => {
-  const w: any = { kept: null, open: ['Get it to him', 'Get that price to Juja Hardware'], openSaid: [], waitingOn: [], waitingOnYou: [], saidToWaitOnYou: [], reportsReady: [] };
+  const w: any = { kept: null, open: ['Get it to him', 'Get that price to Juja Hardware'], openSaid: [], waitingOn: [], waitingOnYou: [], saidToWaitOnYou: [] };
   it('on: the greeting, and the week', () => {
     expect(theirWeekInWords('Joseph', w)!.lines[0]).toBe('Hello Joseph. Here is your week.');
   });

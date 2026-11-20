@@ -137,7 +137,10 @@ describe('ConversationContextService - Degree-3 invisible labour cross-reference
       latestMessage: 'We shipped the migration this week.',
     });
     expect(block).toContain('[INVISIBLE_LABOUR | TIER 1]');
-    expect(block).toContain('There is work that appears connected to you in the broader record. What specifically did you contribute to that, and does the record here reflect it?');
+    /* Changed in run 9: the old probe said work "appears connected to you in the broader record", which the model read as colleagues having said something and then invented what. The probe is now a question of its own and the block says nothing may be said about what anybody said. */
+    expect(block).toContain('Is there work you have done lately that is not in the record here yet? What was it, and who was it for?');
+    expect(block).toContain('never say or suggest that colleagues or other check-ins mentioned, said or described anything about this person');
+    expect(block).not.toMatch(/broader record|appears connected to you/);
     // The count itself, and any other party's verbatim words, must never appear.
     expect(block).not.toContain('3');
   });

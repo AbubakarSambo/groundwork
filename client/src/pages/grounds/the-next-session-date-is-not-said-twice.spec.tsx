@@ -56,13 +56,13 @@ describe('the next-session date, on the Check-in tab where BetweenCheckIns alrea
   it('is said once, by BetweenCheckIns, not again by the header', async () => {
     renderPage('?tab=checkin')
     expect(await screen.findByText(/Your next check-in opens on/)).toBeTruthy()
-    expect(screen.queryByText(/Your next session opens on/)).toBeNull()
+    /* Said once: findByText above throws if two elements say it (the header's subtitle line and BetweenCheckIns). */
   })
 })
 
 describe('every other tab, where nothing else says the date', () => {
   it('Context still reads the header\'s own date', async () => {
     renderPage('?tab=context')
-    expect(await screen.findByText(/Your next session opens on/)).toBeTruthy()
+    expect(await screen.findByText(/Your next check-in opens on/)).toBeTruthy()
   })
 })

@@ -96,6 +96,19 @@ describe('what each reader reads', () => {
     expect(text).toBe('Brian has missed 3 of the last 4 check-ins on "Sales weekly". Speak to Brian this week.');
     expect(text).not.toMatch(/\b(him|her|his|she|he)\b|at risk|PIP|exit/);
     expect(theNextStepSuggested('Brian', TOLD_THE_LEAD)).toBeNull();
-    expect(theNextStepSuggested('Brian', A_FORMAL_PROCESS)).toContain('a formal process in the performance suite');
+    /* The same line had named "a formal process in the performance suite", a label on a person (fix plan 17 November, group C). */
+    expect(theNextStepSuggested('Brian', A_FORMAL_PROCESS)).toBe('Brian has still kept missing check-ins. If a support plan has not helped, what to do next is your decision.');
+  });
+});
+
+describe('rounds that were never open to anybody (fix plan 17 November, group C)', () => {
+  it('a round that ended after the organisation paused is no miss, and one before it still is', () => {
+    const rows = [answered(1), missed(2), missed(3), missed(4), missed(5)];
+    const withoutPause = whereTheyStand(theirClosedSessions(rows, [], NOW));
+    expect(withoutPause.stage).toBeGreaterThan(0);
+    /* Paused from the start of week 3: weeks 3 to 5 were never open. Only week 2 is a miss. */
+    const withPause = whereTheyStand(theirClosedSessions(rows, [], NOW, { pausedFrom: day(3) }));
+    expect(withPause.ofTheLastFour).toBe(1);
+    expect(withPause.stage).toBe(0);
   });
 });

@@ -30,7 +30,6 @@ import { theDayInWords } from './the-headline-and-where-each-target-stands';
  * person. The caller enforces both.
  */
 
-export const GROUNDWORK_DOES_NOT_CHOOSE = '';
 export const NO_OUTCOMES_ON_RECORD = 'Nothing on record names the possible outcomes for this check-in yet.';
 export const NO_SIGNALS_YET = 'Nothing on record points towards one outcome or another yet.';
 export const NOTHING_SAYS_WHAT_WOULD_SETTLE_IT = 'Nothing on record says yet what would settle it.';
@@ -53,7 +52,6 @@ export interface WhereThisIsHeading {
   whatWouldSettleIt: string[];
   whatWouldSettleItSays: string;
   whoDecides: string;
-  groundworkDoesNotChoose: string;
   /** "Record the decision", to the lead only, while it is not recorded. Recorded through POST /grounds/:id/resolution. */
   recordTheDecision: string | null;
   /** Once it is recorded: which ending, and when. */
@@ -88,7 +86,7 @@ export function whereThisIsHeading(a: {
   const b = a.board;
   const signals: ASignal[] = [];
   for (const f of (Array.isArray(b.forecast) ? b.forecast : []).slice(0, 2)) {
-    if (f?.about && f?.says) signals.push({ says: `${String(f.about).trim()} ${String(f.says).trim()}`, from: String(f.restsOn ?? '').trim() || 'This comes from the counts stored when each session closed.' });
+    if (f?.about && f?.says) signals.push({ says: `${String(f.about).trim()} ${String(f.says).trim()}`, from: String(f.restsOn ?? '').trim() || 'This comes from the counts stored when each check-in closed.' });
   }
   for (const x of (Array.isArray(b.blockers) ? b.blockers : []).slice(0, 2)) {
     if (x?.says) signals.push({ says: String(x.says).trim(), from: String(x.raised?.says ?? '').trim() || 'This comes from what people said in their check-ins.' });
@@ -149,7 +147,6 @@ export function whereThisIsHeading(a: {
       ? (a.sales?.whatWouldSettleIt.length ? null as unknown as string : `${lead} wrote ${stillToDecide.length === 1 ? 'this' : 'these'} down as still to decide.`)
       : NOTHING_SAYS_WHAT_WOULD_SETTLE_IT,
     whoDecides: `${lead} decide${lead === 'You' ? '' : 's'}.`,
-    groundworkDoesNotChoose: GROUNDWORK_DOES_NOT_CHOOSE,
     recordTheDecision: a.readerIsTheLead && !a.decided ? 'Record the decision' : null,
     decided,
   };

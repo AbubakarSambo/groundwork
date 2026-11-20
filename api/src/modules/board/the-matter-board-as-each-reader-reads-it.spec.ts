@@ -185,11 +185,10 @@ describe('the fee notes that fell due on an event, on the collections board, as 
   });
 });
 
-describe('with Release 2 off, nothing changes', () => {
-  it('the matter board is not served to anybody, and no fee note moved', async () => {
-    for (const reader of [LIT_WANJIRU, LIT_BRIAN, LIT_AISHA, LIT_DAVID]) expect(await matterBoard(reader, 3, { release2On: false })).toBeNull();
-    const { world } = await theWeekRead(3, { release2On: false });
-    expect(world.items.find((i: any) => i.id === 'w-fn005').fields['Falls due']).toBeUndefined();
+describe('with the stored Release 2 switch off, the matter board is served all the same', () => {
+  it('15 November 2026: every board is on for every organisation, so a stored switch of false (or a row that cannot be read) no longer changes this.', async () => {
+    for (const reader of [LIT_WANJIRU, LIT_BRIAN, LIT_AISHA, LIT_DAVID]) expect(await matterBoard(reader, 3, { release2On: false })).toEqual(await matterBoard(reader, 3, { release2On: true }));
+    expect(await matterBoard(LIT_WANJIRU, 3, { release2On: false })).not.toBeNull();
   });
 });
 

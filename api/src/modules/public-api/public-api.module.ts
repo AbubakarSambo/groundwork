@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { TRANSCRIBER, GeminiTranscriber } from '../voice/the-transcriber';
+import { AForwardFromATeamMemberService } from './a-forward-from-a-team-member.service';
+import { LocalInboundMailController } from './local-inbound-mail.controller';
 import { ConnectionsAtAGlanceController } from './connections-at-a-glance.controller';
 import { ConnectionsAtAGlanceService } from './connections-at-a-glance.service';
 import { JwtModule } from '@nestjs/jwt';
@@ -18,6 +21,13 @@ import { ImportsBootstrap } from '../subjects/imports.bootstrap';
 import { EmbedService } from '../embed/embed.service';
 import { EmbedSessionGuard } from '../embed/embed-session.guard';
 import { AssistantService } from '../assistant/assistant.service';
+import { YearEndService } from '../year-end/year-end.service';
+import { ReportsOnRequestService } from '../reports-on-request/reports-on-request.service';
+import { ReportsOnRequestController } from '../reports-on-request/reports-on-request.controller';
+import { YearEndNarratorService } from '../year-end/the-year-end-narrator.service';
+import { ExecutiveOnboardingService } from '../executive-onboarding/executive-onboarding.service';
+import { TeamLoopService } from '../team-loop/team-loop.service';
+import { ExecutiveOnboardingController } from '../executive-onboarding/executive-onboarding.controller';
 import { BoardModule } from '../board/board.module';
 import { GroundsByApiService } from './grounds-by-api.service';
 import { ReportsModule } from '../reports/reports.module';
@@ -63,10 +73,13 @@ import { WhatHappenedWithACustomerService } from './what-happened-with-a-custome
 import { AskController } from '../ask/ask.controller';
 import { AskService } from '../ask/ask.service';
 import { ParticipantsModule } from '../participants/participants.module';
+import { MemoryModule } from '../memory/memory.module';
 
 @Module({
   imports: [
     PrismaModule,
+    /* The librarian, so the assistant can be given what the organisation's memory says (memory system, step 3). */
+    MemoryModule,
     /* Imported rather than re-provided: listing ReportsService as a provider here drags its whole
        dependency chain (UsageService and below) into this module, and the server refuses to boot.
        Every test still passed - it is a wiring fault, which only starting the thing reveals. */
@@ -98,8 +111,8 @@ import { ParticipantsModule } from '../participants/participants.module';
       useFactory: (config: ConfigService) => ({ secret: config.get<string>('jwt.secret') }),
     }),
   ],
-  controllers: [PublicApiController, ConnectionsAtAGlanceController, WhatsAppForAnOrganisationController, WhatsAppController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController, RetentionController, KnowledgeController, DetectorsController, CheckinsController, DraftsController, WhatICanSeeController, AskController],
-  providers: [CredentialsService, ConnectionsAtAGlanceService, IdempotencyService, IdempotencyInterceptor, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, CommitmentsByApiService, TodosByApiService, WhatsAppForAnOrganisationService, ApiAccessService, ApiWatchCron, HeldRequestsCron, ApprovedOrMachineGuard, WhatIsTrueService, ReadItIfWeCanService, ReportsForMyPeopleService, ReviewsComingUpService, ReviewsComingUpCron, AskService],
+  controllers: [LocalInboundMailController, PublicApiController, ConnectionsAtAGlanceController, WhatsAppForAnOrganisationController, WhatsAppController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController, RetentionController, KnowledgeController, DetectorsController, CheckinsController, DraftsController, WhatICanSeeController, AskController, ExecutiveOnboardingController, ReportsOnRequestController],
+  providers: [{ provide: TRANSCRIBER, useClass: GeminiTranscriber }, AForwardFromATeamMemberService, CredentialsService, ConnectionsAtAGlanceService, IdempotencyService, IdempotencyInterceptor, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, YearEndService, YearEndNarratorService, TeamLoopService, { provide: 'TEAM_LOOP', useExisting: TeamLoopService }, ExecutiveOnboardingService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, CommitmentsByApiService, TodosByApiService, WhatsAppForAnOrganisationService, ApiAccessService, ApiWatchCron, HeldRequestsCron, ApprovedOrMachineGuard, WhatIsTrueService, ReadItIfWeCanService, ReportsForMyPeopleService, ReviewsComingUpService, ReviewsComingUpCron, AskService, ReportsOnRequestService],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}

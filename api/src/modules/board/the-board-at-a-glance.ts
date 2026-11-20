@@ -120,7 +120,7 @@ export function theBoardAtAGlance(b: any, opts: { readerCheckedInThisRound: bool
   /* Plan and commitments */
   if (b.coaching?.yours) {
     lines.yourNextStep = opts.readerCheckedInThisRound === false
-      ? 'Only you. You haven’t checked in this session'
+      ? 'Only you. You haven’t checked in this check-in'
       : 'Only you. Written for you, not part of the shared report';
   }
   const plan = Array.isArray(b.workPlan) ? b.workPlan : [];
@@ -159,7 +159,7 @@ export function theBoardAtAGlance(b: any, opts: { readerCheckedInThisRound: bool
   /* Reports and other boards */
   const sessions = Array.isArray(b.phaseSpine?.sessions) ? b.phaseSpine.sessions : [];
   const done = sessions.filter((s: any) => s.state === 'done').length;
-  if (done) lines.reports = `${plural(done, 'session')} so far, each with its reports`;
+  if (done) lines.reports = `${plural(done, 'check-in')} so far, each with its reports`;
 
   const pick = (...keys: GlanceLine[]) => keys.map((k) => lines[k]).filter((x): x is string => !!x).slice(0, 2);
   const boxes: Record<GlanceBox, string[]> = {

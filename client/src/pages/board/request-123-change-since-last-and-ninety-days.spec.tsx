@@ -53,13 +53,13 @@ const NOT_KNOWN_WORK_RECORDS = [
 
 const CHANGE_SINCE_LAST = {
   heading: 'Change since last check-in',
-  between: 'Between session 2 and session 3.',
+  between: 'Between check-in 2 and check-in 3.',
   rows: [
-    { area: 'Commitments', state: 'late' as const, says: 'Tobi Adewale made 1 commitment in session 3. Of Tobi Adewale\'s commitments, 1 was marked done since session 2. Tobi Adewale still has 1 commitment open from before session 2.', kind: 'commitments' as const },
+    { area: 'Commitments', state: 'late' as const, says: 'Tobi Adewale made 1 commitment in check-in 3. Of Tobi Adewale\'s commitments, 1 was marked done since check-in 2. Tobi Adewale still has 1 commitment open from before check-in 2.', kind: 'commitments' as const },
     { area: 'Waits', state: 'late' as const, says: 'Tobi Adewale is waiting on you for the commercial terms for each client, and has been since 2 September. The wait for access to the client folders was cleared on 15 September.', kind: 'waits' as const },
     { area: 'Know the five biggest clients', state: 'late' as const, says: 'This goal was due on 10 September and is still open.', kind: 'goal' as const },
-    { area: 'Lead a renewal conversation', state: 'moved' as const, says: 'This goal was marked met between session 2 and session 3.', kind: 'goal' as const },
-    { area: 'Own all five clients', state: 'held' as const, says: 'Nothing has changed on this goal between session 2 and session 3.', kind: 'goal' as const },
+    { area: 'Lead a renewal conversation', state: 'moved' as const, says: 'This goal was marked met between check-in 2 and check-in 3.', kind: 'goal' as const },
+    { area: 'Own all five clients', state: 'held' as const, says: 'Nothing has changed on this goal between check-in 2 and check-in 3.', kind: 'goal' as const },
   ],
 }
 
@@ -85,8 +85,8 @@ function boardAsLead(overrides: any = {}) {
     changeSinceLast: CHANGE_SINCE_LAST,
     ninetyDays: NINETY_DAYS,
     personHistory: [
-      { participantId: 'p-amina', who: 'You', says: 'You have answered 4 sessions.', sessions: [] },
-      { participantId: 'p-tobi', who: 'Tobi Adewale', says: 'Tobi Adewale has answered 4 sessions and made 7 commitments.', sessions: [] },
+      { participantId: 'p-amina', who: 'You', says: 'You have answered 4 check-ins.', sessions: [] },
+      { participantId: 'p-tobi', who: 'Tobi Adewale', says: 'Tobi Adewale has answered 4 check-ins and made 7 commitments.', sessions: [] },
     ],
     divergence: { items: [], agreements: [], whyNothingYet: 'Nothing has come up yet where you see it differently.' },
     decisions: [],
@@ -119,14 +119,14 @@ describe('"Change since last check-in" and "The 90 days, in three steps" (reques
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
 
     expect(screen.getByText('Change since last check-in')).toBeTruthy()
-    expect(screen.getByText('Between session 2 and session 3.')).toBeTruthy()
+    expect(screen.getByText('Between check-in 2 and check-in 3.')).toBeTruthy()
     // Screen match: "Commitments" is also a line of the person's history now (kwame-board.jpg).
     expect(screen.getAllByText('Commitments').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Late').length).toBeGreaterThan(0)
     expect(screen.getByText('Moved')).toBeTruthy()
     expect(screen.getByText('Held')).toBeTruthy()
-    expect(screen.getByText(/Tobi Adewale made 1 commitment in session 3\./)).toBeTruthy()
-    expect(screen.getByText('This goal was marked met between session 2 and session 3.')).toBeTruthy()
+    expect(screen.getByText(/Tobi Adewale made 1 commitment in check-in 3\./)).toBeTruthy()
+    expect(screen.getByText('This goal was marked met between check-in 2 and check-in 3.')).toBeTruthy()
   })
 
   it('draws "The 90 days, in three steps" with each step\'s question as a heading and its sentence under it', async () => {
@@ -172,7 +172,7 @@ describe('"Change since last check-in" and "The 90 days, in three steps" (reques
     const iAgreed = main.indexOf('What was agreed at the start')
     const iChange = main.indexOf('Change since last check-in')
     const iNinety = main.indexOf('The 90 days, in three steps')
-    const iHistory = main.indexOf('Tobi Adewale has answered 4 sessions')
+    const iHistory = main.indexOf('Tobi Adewale has answered 4 check-ins')
     expect(iAgreed).toBeGreaterThan(-1)
     expect(iAgreed).toBeLessThan(iChange)
     expect(iChange).toBeLessThan(iNinety)

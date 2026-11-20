@@ -104,7 +104,9 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
     expect(await screen.findByText('This check-in is about a sales team and its deals.')).toBeTruthy()
     const dealGrid = screen.getByRole('region', { name: 'Every deal, day by day' })
     expect(within(dealGrid).getAllByText('Nyama Choma Palace').length).toBeGreaterThan(0)
-    expect(within(dealGrid).getByText('Akinyi, KES 90K')).toBeTruthy()
+    /* The value sits under the deal's name and the rep has a column of their own (the open table, 13 November 2026). */
+    expect(within(dealGrid).getAllByText('KES 90K').length).toBeGreaterThan(0)
+    expect(within(dealGrid).getAllByText('Akinyi').length).toBeGreaterThan(0)
   })
 
   it('the lead reads the kind of work, the sales org’s own heading, one stage per row, and the key only for marks drawn', async () => {
@@ -115,7 +117,9 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
 
     const dealGrid = screen.getByRole('region', { name: 'Every deal, day by day' })
     expect(within(dealGrid).getAllByText('Nyama Choma Palace').length).toBeGreaterThan(0)
-    expect(within(dealGrid).getByText('Akinyi, KES 90K')).toBeTruthy()
+    /* The value sits under the deal's name and the rep has a column of their own (the open table, 13 November 2026). */
+    expect(within(dealGrid).getAllByText('KES 90K').length).toBeGreaterThan(0)
+    expect(within(dealGrid).getAllByText('Akinyi').length).toBeGreaterThan(0)
     expect(within(dealGrid).queryByText('The value is KES 90K.')).toBeNull()
     expect(within(dealGrid).getByText('Nobody is named for it yet.')).toBeTruthy()
     expect(within(dealGrid).queryByText('Nobody named yet.')).toBeNull()
@@ -234,7 +238,7 @@ describe('the founder’s own check-in: a Work plan with none yet', () => {
     renderBoard(FOUNDER)
     expect(await screen.findByText('This is your own check-in as a founder, about your own commitments and decisions.')).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Every item, and what shows it' })).toBeTruthy()
-    expect(screen.getByText('No commitments and decisions have come up yet. They appear here when someone names one in a check-in, or when you add one below.')).toBeTruthy()
+    expect(screen.getByText('No commitments and decisions have come up yet. You can add one below.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add one' })).toBeTruthy()
   })
 
@@ -242,7 +246,7 @@ describe('the founder’s own check-in: a Work plan with none yet', () => {
     me = { id: 'u-akinyi', firstName: 'Akinyi', role: 'MEMBER' }
     renderBoard({ ...FOUNDER, myParticipantId: 'p-akinyi', canEditFrame: false })
     expect(await screen.findByText("This is a founder's own check-in, about their own commitments and decisions.")).toBeTruthy()
-    expect(screen.getByText('No commitments and decisions have come up yet. They appear here when someone names one in a check-in.')).toBeTruthy()
+    expect(screen.getByText('No commitments and decisions have come up yet.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Add one' })).toBeNull()
   })
 })
@@ -260,7 +264,8 @@ describe('nobody has said the kind of work yet: every section not-known', () => 
   it('the lead is asked to choose a kind, and every section reads as not-known, said once', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(NO_KIND)
-    expect(await screen.findByText('Nobody has said what kind of work this check-in is about yet. Choose one, so its board can keep the right kind of record.')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Choose the kind of work' })).toBeTruthy()
+    expect(screen.queryByText(/Nobody has said what kind of work this check-in is about yet/)).toBeNull()
     /* Was pinned at 2 (the same sentence shown once per section), the exact repeated-line fault
        found live on a role-handover board (real-user walk, Kijani Foods, fault 4b): the collapsing
        this sentence already gets on a project or onboarding board was never scoped to apply here

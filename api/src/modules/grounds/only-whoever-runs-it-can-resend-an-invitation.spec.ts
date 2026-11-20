@@ -27,7 +27,7 @@ const SENTENCE = 'Only the person who runs this check-in, or an administrator of
 describe('who may send an invitation again', () => {
   it.each([['Wairimu, who leads it', 'u-wairimu', 'MEMBER'], ['Lola, the admin who set it up', 'u-lola', 'MEMBER'], ['Daniel, an organisation admin', 'u-daniel', 'ADMIN']])('%s', async (_n, userId, role) => {
     const w = service();
-    expect(await w.s.resendParticipantInvite('g1', 'p-femi', 'org1', userId, role)).toEqual({ message: 'Invite resent' });
+    expect(await w.s.resendParticipantInvite('g1', 'p-femi', 'org1', userId, role)).toEqual({ message: 'Invite resent', sent: true });
     expect(w.sent).toHaveLength(1);
   });
 
@@ -65,5 +65,14 @@ describe('what the lead is told when there is nothing to send', () => {
     const err: any = await w.s.resendParticipantInvite('g1', 'p-femi', 'org1', 'u-wairimu', 'MEMBER').catch((e) => e);
     expect(err.message).toBe('Kwesi has already joined this check-in, so there is no invitation to send again.');
     expect(w.sent).toEqual([]);
+  });
+});
+
+/** End-to-end check of 16 November, M-8: the lead pressed Resend twice and read nothing. The second press did not send (the same mail goes once a day), and she is told so. */
+describe('what Resend invite answers when the same invitation already went today', () => {
+  it('says it was not sent again', async () => {
+    const w = service();
+    (w.s as any).email.sendTheInviteThisGroundSends = jest.fn(async (...a: any[]) => { a[5].outcome = 'suppressed'; });
+    expect(await w.s.resendParticipantInvite('g1', 'p-femi', 'org1', 'u-wairimu', 'MEMBER')).toEqual({ message: 'The same invite already went today', sent: false });
   });
 });

@@ -160,7 +160,7 @@ describe('what the chat is told it must not do', () => {
  */
 describe('the opening line, written by the product from what the check-in already holds', () => {
   it('says the length and the rhythm together, exactly as an example the fix names', () => {
-    expect(openingLine(84, 'WEEKLY')).toBe('This check-in runs for 12 weeks and people check in once a week.');
+    expect(openingLine(84, 'WEEKLY')).toBe('This check-in runs for 12 weeks and people check in every week.' /* S18, 7 November: the one cadence wording (howOftenItRuns) */);
   });
 
   it('says twice a week with its days (assessment test, 2 November)', () => {

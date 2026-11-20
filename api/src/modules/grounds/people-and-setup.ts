@@ -1,10 +1,13 @@
-import { timesAWeekInWords } from './the-check-ins-own-schedule';
+import { thePlannedSessionsOf } from './this-sessions-count';
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
+import { howOftenItRuns } from './the-check-ins-own-schedule';
 import { aDayInItsZone } from '../board/a-day-said-in-full';
 import { whoAnswersThisCheckIn } from '../reports/how-many-have-answered';
 import { NotFoundException } from '@nestjs/common';
 import { readsAsAnAdmin } from './who-may-read-this-check-in';
-import { deadlineOf } from './when-the-clock-starts';
-import { totalSessionsFor } from './session-count';
+import { theLastDayOf } from './when-the-clock-starts';
+import { theSessionRowsOf, theRoundsDone, theSessionsDoneBy } from './the-sessions-done';
+import { leaveOfThePeopleOn } from '../suites/who-is-away';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { theBoardKindsOffered } from '../admin/what-is-hidden-at-release';
@@ -61,6 +64,8 @@ export type PeopleAndSetup =
       howItRuns: string;
       problems: ASetupProblem[];
       sessions: string;
+      yourSessionsDone: number;
+      sessionsPlanned: number | null;
       joinedWithTheLink: string;
       kindOfWork: string | null;
       kindsOffered: string[];
@@ -86,34 +91,6 @@ export interface TheTypeInWhatItIs {
   mayConfirm: boolean;
 }
 
-const WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const ordinal = (n: number) => (n % 10 === 1 && n !== 11 ? `${n}st` : n % 10 === 2 && n !== 12 ? `${n}nd` : n % 10 === 3 && n !== 13 ? `${n}rd` : `${n}th`);
-const listed = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
-
-/** "every weekday", "every Monday", "on the 5th of every month", "once": how often, as part of a sentence. */
-export function theRhythmInWords(g: { cadence?: string | null; workingDays?: number[] | null; cadenceAnchorDay?: number | null; cadenceDays?: number[] | null }): string {
-  const days = [...new Set((g.workingDays ?? []).filter((d) => d >= 0 && d <= 6))].sort();
-  const anchor = g.cadenceAnchorDay;
-  switch (g.cadence) {
-    case 'DAILY':
-      if (days.length === 5 && [1, 2, 3, 4, 5].every((d) => days.includes(d))) return 'every weekday';
-      if (!days.length || days.length === 7) return 'every day';
-      return `every ${listed(days.map((d) => WEEK[d]))}`;
-    case 'WEEKLY':
-      return timesAWeekInWords({ cadence: g.cadence, days: g.cadenceDays }) ?? (anchor != null && anchor >= 0 && anchor <= 6 ? `every ${WEEK[anchor]}` : 'every week');
-    case 'FORTNIGHTLY':
-      return anchor != null && anchor >= 0 && anchor <= 6 ? `every other ${WEEK[anchor]}` : 'every 2 weeks';
-    case 'MONTHLY':
-      return anchor != null && anchor >= 1 && anchor <= 31 ? `on the ${ordinal(anchor)} of every month` : 'every month';
-    case 'SEQUENTIAL':
-      return 'each time a new round is opened';
-    case 'ONE_TIME':
-      return 'once';
-    default:
-      return 'when it opens';
-  }
-}
-
 /* With the year when it is not this one (board/a-day-said-in-full.ts). */
 const aDay = (d: Date, timeZone: string, weekday = false) => aDayInItsZone(d, timeZone, weekday);
 
@@ -132,7 +109,7 @@ export function howThisCheckInRuns(a: {
   timeZone: string;
 }): string {
   const who = a.answering === 1 ? '1 person answers' : `${a.answering} people answer`;
-  const rhythm = theRhythmInWords(a);
+  const rhythm = howOftenItRuns(a);
   const until = a.cadence === 'ONE_TIME'
     ? (a.endsOn ? `, closing ${aDay(a.endsOn, a.timeZone, true)}` : '')
     : a.noEnd || !a.endsOn
@@ -230,8 +207,7 @@ export async function readPeopleAndSetup(
           user: { select: { firstName: true, lastName: true, jobTitle: true, awaitingOrgApproval: true, phoneNumber: true } },
         },
       },
-      checkIns: { select: { participantId: true, status: true, isSetup: true, sessionNumber: true, closedReason: true } },
-      roundCompletions: { select: { sessionNumber: true } },
+      checkIns: { select: { participantId: true, status: true, isSetup: true, sessionNumber: true, closedReason: true, availableFrom: true, createdAt: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } } },
     },
   });
   if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
@@ -242,27 +218,24 @@ export async function readPeopleAndSetup(
   const isAdmin = !isLead && readsAsAnAdmin({ ...viewer, userId: input.userId }, ground);
   const mine = rows.find((p) => p.userId === input.userId) ?? null;
 
-  const timeZone = ground.organization?.timeZone || 'Africa/Lagos';
+  /* The organisation's own zone, from the one owner (common/the-organisations-own-day), never a fixed fallback beside it (run 9). */
+  const timeZone = ground.organization?.timeZone || (await theOrganisationsZone(prisma, ground.organizationId).catch(() => null)) || 'Africa/Lagos';
   const leadName = [ground.initiator?.firstName, ground.initiator?.lastName].filter(Boolean).join(' ').trim() || null;
   const orgHasWhatsApp = !!ground.organization?.whatsappConnection?.enabled;
   const askedOnWhatsApp = orgHasWhatsApp && ground.overWhatsApp !== false;
   const noEnd = !!ground.runsUntilEnded || !ground.timelineDays;
-  const endsOn = noEnd ? null : deadlineOf(ground);
+  const endsOn = noEnd ? null : theLastDayOf(ground);
   /* The people a session waits on, by the round's own rule (reports/how-many-have-answered.ts), so this and Today's "1 of 5" count the same people. */
   const answering = whoAnswersThisCheckIn(rows as any[], ground.scenario).length;
   const howItRuns = howThisCheckInRuns({
     answering, cadence: ground.cadence, workingDays: ground.workingDays, cadenceAnchorDay: ground.cadenceAnchorDay, cadenceDays: (ground as any).cadenceDays,
     endsOn, noEnd, onWhatsApp: askedOnWhatsApp, endedBy: isLead ? 'you' : (ground.initiator?.firstName || 'the person who runs it'), timeZone,
   });
-  const planned = noEnd ? null : totalSessionsFor(ground.timelineDays, ground.cadence, ground.cadenceDays);
+  const planned = noEnd ? null : thePlannedSessionsOf(ground as any);
 
   if (!isLead && !isAdmin && mine) {
     /* A TEAM MEMBER: THE SHORT PAGE, AND NOTHING ELSE. */
-    const done = new Set(
-      (ground.checkIns ?? [])
-        .filter((c: any) => c.participantId === mine.id && c.status === 'COMPLETED' && !c.isSetup && c.closedReason !== 'auto_closed')
-        .map((c: any) => c.sessionNumber ?? 0),
-    ).size;
+    const done = theSessionsDoneBy(ground.checkIns ?? [], mine.id);
     const named = peersAreNamedOn(ground, { participantId: mine.id } as any);
     const leadFirst = ground.initiator?.firstName || 'The person who runs it';
     return {
@@ -294,7 +267,10 @@ export async function readPeopleAndSetup(
   const mayReadTheAddress = isLead || !ground.restrictExternalVisibility;
   const problems = theSetupProblems({ rows, leadUserId: ground.initiatorId, reader: isLead ? 'lead' : 'admin', organisationName: ground.organization?.name ?? 'your organisation', askedOnWhatsApp, phones, mayReadTheAddress });
 
-  const rounds = (ground.roundCompletions ?? []).length;
+  const leave = await leaveOfThePeopleOn(prisma, [ground.id]).catch(() => undefined);
+  const rounds = theRoundsDone(theSessionRowsOf(ground.checkIns ?? [], rows), leave, now);
+  /* The same function the member's page and the board read; a lead who is a party reads her own count here too. */
+  const yourSessionsDone = mine ? theSessionsDoneBy(ground.checkIns ?? [], mine.id) : 0;
   const sessions = ground.cadence === 'ONE_TIME'
     ? (OPEN_STATUSES.has(ground.status) ? 'Open now. The report comes when it closes, or when everyone has answered.' : 'It has closed. The report is made from the answers given.')
     : planned == null
@@ -322,6 +298,8 @@ export async function readPeopleAndSetup(
     howItRuns,
     problems,
     sessions,
+    yourSessionsDone: planned != null ? Math.min(yourSessionsDone, planned) : yourSessionsDone,
+    sessionsPlanned: planned,
     joinedWithTheLink,
     kindOfWork: ground.kindOfWork ?? null,
     kindsOffered,
@@ -344,7 +322,7 @@ export function whereTheTypeCameFrom(readFrom: string | null, confirmed: boolean
 
 async function theTypeInWhatItIs(prisma: any, ground: any, isLead: boolean): Promise<TheTypeInWhatItIs | null> {
   const offered = TYPES_A_SCENARIO_OFFERS[ground.scenario as keyof typeof TYPES_A_SCENARIO_OFFERS];
-  if (!offered || ground.organization?.release2CollectionsOn !== true) return null;
+  if (!offered) return null;
   const others: any[] = await Promise.resolve(prisma.ground?.findMany?.({
     where: { organizationId: ground.organizationId, scenario: ground.scenario, id: { not: ground.id }, checkInTypeConfirmedAt: { not: null } },
     select: { checkInType: true },

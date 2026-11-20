@@ -75,7 +75,9 @@ describe('a round closes once', () => {
     expect(prisma.groundParticipant.findMany).toHaveBeenCalledWith(
       /* CHANGED 11 OCTOBER (decision 133): was `{ managingOnly: false }`. The lead is now never who a
          round waits on, and is counted only when they answered it. */
-      expect.objectContaining({ where: { groundId: 'g1', ...whoASessionCounts(1, AN_ANSWER) } }),
+      /* CHANGED 20 NOVEMBER: the same clause is now `whoARoundWaitsFor`, which still holds whoASessionCounts and also leaves out people who left
+         and people who never signed in and hold no open invitation (spec: who-a-round-waits-for.spec.ts). */
+      expect.objectContaining({ where: expect.objectContaining({ groundId: 'g1', AND: [whoASessionCounts(1, AN_ANSWER)], leftAt: null }) }),
     );
   });
 

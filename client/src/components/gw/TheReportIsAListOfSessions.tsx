@@ -58,13 +58,13 @@ export interface SessionRow {
 }
 
 export const EVERY_SESSION = {
-  heading: 'Every session',
-  intro: 'Below is the board, then one line for each session, newest first. Open a session to see its report.',
+  heading: 'Every check-in',
+  intro: 'Below is the board, then one line for each check-in, newest first. Open a check-in to see its report.',
   board: 'The board',
   boardSub: 'Everything so far',
   shared: 'Shared',
   notShared: 'Not shared',
-  nothingYet: 'No session has finished yet. Each one gets its own report here as it completes.',
+  nothingYet: 'No check-in has finished yet. Each one gets its own report here as it completes.',
 } as const
 
 /** "Wed, 23 Sept", as the prototype's rows read. */
@@ -170,7 +170,7 @@ export function TheReportIsAListOfSessions({
               }}
             >
               <span style={{ minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '2px 16px' }}>
-                <span style={{ fontSize: 15, fontWeight: 700 }}>Session {r.sessionNumber}</span>
+                <span style={{ fontSize: 15, fontWeight: 700 }}>Check-in {r.sessionNumber}</span>
                 {r.opened
                   ? <span style={{ fontSize: 14, color: 'var(--gw-sub)' }}>{sessionDay(r.opened)}</span>
                   : r.opensOn && <span style={{ fontSize: 14, color: 'var(--gw-sub)' }}>opens on {sessionDay(r.opensOn)}</span>}

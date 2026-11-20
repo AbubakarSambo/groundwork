@@ -29,12 +29,12 @@ describe('the doors', () => {
     const form = strip(readFileSync(join(CLIENT, 'components', 'gw', 'WhosInItRoster.tsx'), 'utf8'));
     expect(form).toContain('<TheTeamBox');
   });
-  it('the join page asks it beside "your part in this"', () => {
+  /* UPDATED 19 NOVEMBER (rest of the list): the open link asks for less since 719b9b897 (audit row 7: no department on the join page). The page no longer asks; the route still takes a department, so a door that sends one keeps it. */
+  it('the join page no longer asks it, and the route still takes it', () => {
     /* The join body is a DTO class since B14 (the pipe could not see the inline type); the field is on it. */
     expect(read('../entry/entry.controller.ts')).toMatch(/class EntryJoinAcceptDto[\s\S]{0,900}department\?: string/);
     const page = strip(readFileSync(join(CLIENT, 'pages', 'join', 'JoinPage.tsx'), 'utf8'));
-    expect(page).toContain('htmlFor="join-department"');
-    expect(page).toMatch(/department: department\.trim\(\) \|\| undefined/);
+    expect(page).not.toContain('htmlFor="join-department"');
   });
   it('and both participant-shaped rows have somewhere to put it', () => {
     const schema = readFileSync(join(__dirname, '..', '..', '..', 'prisma', 'schema.prisma'), 'utf8');

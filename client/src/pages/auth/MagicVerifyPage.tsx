@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useEffect, useRef, useState } from 'react'
 import { rememberTheFirstCheckInClosing } from '@/lib/the-closing-after-your-first-check-in'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -12,12 +13,12 @@ import { Page, Mark, PageTitle, Panel, SubHeading, Stack, Button, Note, Callout 
 import { useAuthStore } from '@/stores/auth'
 import { whatTheLinkDid, WE_SENT_A_NEW_ONE, ALREADY_CONFIRMED } from './a-link-that-has-expired'
 import { LinkExpired, LinkAlreadyResent, LinkAlreadyUsedConfirmed, LinkDidNotWork } from './LinkExpired'
-import { EmailConfirmed } from './EmailConfirmed'
 
 const COMMIT_KEY = 'gw_commit_payload'
 import { loadEntryHandover, clearEntryHandover } from "./entry-handover"
 import { copy } from '@/components/gw/copying-can-fail'
 import { toast } from 'sonner'
+import { REFERENCES_AND_RESOURCES } from '@/lib/the-references-tab'
 const FRONTEND_URL = window.location.origin
 
 // Verifying the token flips the auth state, which swaps the route into the
@@ -26,7 +27,7 @@ const FRONTEND_URL = window.location.origin
 // the success screen. Cache each token's outcome at module scope so remounts
 // replay the outcome instead of re-verifying.
 type VerifyOutcome =
-  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; waitingInvites?: { email: string; because: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; passwordSetupToken?: string; wasAnchorDraft: boolean }
+  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; waitingInvites?: { email: string; because: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; wasAnchorDraft: boolean }
   | { kind: 'noSession' }
   /* The save is still running somewhere else (COMMIT_IN_PROGRESS): not lost, not failed. */
   | { kind: 'stillSaving' }
@@ -44,7 +45,6 @@ type VerifyOutcome =
      a-link-that-has-expired.ts for what each one means and says. */
   | { kind: 'deadLink'; what: 'expired' | 'resent' | 'used-confirmed'; sentence: string }
   /* The link has just created the account: say so first, then carry on to `then`. */
-  | { kind: 'confirmed'; email: string | null; then: VerifyOutcome }
   /* The address is proved, nothing is made yet, and "Where do you work?" comes first (U.3 review). */
   | { kind: 'whereDoYouWork'; token: string; offers: WhereDoYouWorkFirst['whereDoYouWork'] }
 type SignedIn = VerifyEmailResponse
@@ -80,7 +80,6 @@ export function MagicVerifyPage() {
      from them - a retry here re-attempts the VERIFY, not a commit. */
   const [verifyRetrying, setVerifyRetrying] = useState(false)
   const [deadLink, setDeadLink] = useState<{ what: 'expired' | 'resent' | 'used-confirmed'; sentence: string } | null>(null)
-  const [confirmed, setConfirmed] = useState<{ email: string | null; then: VerifyOutcome } | null>(null)
   const [choosing, setChoosing] = useState<{ token: string; offers: WhereDoYouWorkFirst['whereDoYouWork'] } | null>(null)
   const [chooseBusy, setChooseBusy] = useState(false)
   const [commitError, setCommitError] = useState(false)
@@ -120,7 +119,6 @@ export function MagicVerifyPage() {
    * So the token is held here, and the onward button carries it. Everybody sees the confirmation;
    * everybody without a password sets one on the way out of it.
    */
-  const [passwordSetupToken, setPasswordSetupToken] = useState<string | null>(null)
 
   const lastAttempt = useRef<{ token: string; payload: any; user: { jobTitle?: string | null; role?: string } } | null>(null)
 
@@ -129,7 +127,6 @@ export function MagicVerifyPage() {
        the one that follows (U.6 review: the saved check-in's confirmation sat under it). */
     if (outcome.kind !== 'whereDoYouWork') setChoosing(null)
     if (outcome.kind === 'success') {
-      setPasswordSetupToken(outcome.passwordSetupToken ?? null)
       setFailedInvites(outcome.failedInvites)
       setWhyInvitesFailed(outcome.whyInvitesFailed ?? [])
       setInvited(outcome.invited)
@@ -152,9 +149,6 @@ export function MagicVerifyPage() {
       setRateLimited(outcome.message)
     } else if (outcome.kind === 'deadLink') {
       setDeadLink({ what: outcome.what, sentence: outcome.sentence })
-    } else if (outcome.kind === 'confirmed') {
-      setChoosing(null)
-      setConfirmed({ email: outcome.email, then: outcome.then })
     } else if (outcome.kind === 'whereDoYouWork') {
       setChoosing({ token: outcome.token, offers: outcome.offers })
     }
@@ -269,7 +263,7 @@ export function MagicVerifyPage() {
 
 
   /** Everything after the link has made or opened the account: the password step, the confirmation, the commit. */
-  async function afterVerify(res: SignedIn, token: string, fromParam: string | null, alreadyConfirmed = false): Promise<VerifyOutcome> {
+  async function afterVerify(res: SignedIn, token: string, fromParam: string | null): Promise<VerifyOutcome> {
     setAuth(res.user, res.accessToken)
 
     /**
@@ -295,34 +289,12 @@ export function MagicVerifyPage() {
      * So the order is now: commit first, THEN the password. `passwordStep` below wraps whatever
      * destination the arrival was heading for, so the detour cannot swallow it again.
      */
-    const passwordStep = (destination: string): VerifyOutcome | null =>
-      res.needsPassword && res.passwordSetupToken
-        ? {
-            kind: 'redirect',
-            to: `/set-password?token=${encodeURIComponent(res.passwordSetupToken)}&next=${encodeURIComponent(destination)}`,
-          }
-        : null
 
     /*
-     * "YOUR EMAIL IS CONFIRMED" (A2, #/verify-email), ONLY FOR AN ACCOUNT THIS LINK HAS JUST MADE.
-     *
-     * Shown when the server says `justCreated`, and only in front of an outcome that goes on
-     * (a redirect, or the first check-in's welcome). A failure is never hidden behind it. Its
-     * "Continue" leads to exactly where the page would have gone without it, through the
-     * password step when the account has no password yet. Without `justCreated`, which the
-     * server does not send yet, nothing changes.
+     * NO PAGES IN BETWEEN (batch 2, group 6; staging check S14). "Your email is confirmed, Continue" and "Choose a password"
+     * used to stand between an emailed link and where the person was going, the second one every time somebody had no
+     * password. The link signs them in and they land where they were going; a password is set from Settings, if ever.
      */
-    const confirmFirst = (o: VerifyOutcome): VerifyOutcome => {
-      /* Somebody who came from Google confirmed no email, so they are not told they did (U.3 review). */
-      /* Said once: somebody who chose where they work was told before they chose (U.3 review). */
-      if (!res.justCreated || alreadyConfirmed || params.get('via') === 'google') return o
-      if (o.kind === 'redirect') {
-        const onward = o.to.startsWith('/set-password') ? o : (passwordStep(o.to) ?? o)
-        return { kind: 'confirmed', email: res.user?.email ?? null, then: onward }
-      }
-      if (o.kind === 'success') return { kind: 'confirmed', email: res.user?.email ?? null, then: o }
-      return o
-    }
 
     /*
      * THE EMAILED LINK CARRIES NO `next`, SO THE SERVER KEEPS IT (U.3 review). Somebody who pressed
@@ -340,7 +312,7 @@ export function MagicVerifyPage() {
      */
     const home = goingTo === '/today' || goingTo === '/grounds' ? goingTo : null
     if (goingTo && !home) {
-      return confirmFirst(passwordStep(goingTo) ?? { kind: 'redirect', to: goingTo })
+      return { kind: 'redirect', to: goingTo }
     }
     // ALWAYS attempt the commit. The server merges whatever this browser
     // has over the server-side draft written at entry-save, so the commit
@@ -353,22 +325,9 @@ export function MagicVerifyPage() {
     lastAttempt.current = { token, payload, user: res.user }
     const outcome = await commitFlow(payload, hadEntryIntent)
 
-    /**
-     * Only a SUCCESSFUL commit hands over to the password step, and it hands over pointing at
-     * the ground that now exists - so the reassurance the interstitial used to give ("your
-     * ground is set up") is given by the ground itself.
-     *
-     * A commit ERROR must stay on this screen. It has a "Try again" that re-attempts, and
-     * sending somebody to set a password mid-failure loses the retry and the explanation both.
-     * They will still be asked for a password the next time they arrive.
-     */
-    if (outcome.kind === 'success' && res.needsPassword && res.passwordSetupToken) {
-      /** Shown, not skipped. The button out of the confirmation goes via the password step. */
-      return confirmFirst({ ...outcome, passwordSetupToken: res.passwordSetupToken })
-    }
-    /* Nothing to save after all, on the way home: the same password step the home link always had. */
-    if (outcome.kind === 'redirect' && home && outcome.to === '/grounds') return confirmFirst(passwordStep(home) ?? { kind: 'redirect', to: home })
-    return confirmFirst(outcome)
+    /* Nothing to save after all, on the way home: home. */
+    if (outcome.kind === 'redirect' && home && outcome.to === '/grounds') return { kind: 'redirect', to: home }
+    return outcome
   }
 
   /**
@@ -413,7 +372,7 @@ export function MagicVerifyPage() {
        */
       if ('whereDoYouWork' in res && res.whereDoYouWork) {
         const choice: VerifyOutcome = { kind: 'whereDoYouWork', token, offers: res.whereDoYouWork }
-        return params.get('via') === 'google' ? choice : { kind: 'confirmed', email: res.email ?? null, then: choice }
+        return choice
       }
       return afterVerify(res as SignedIn, token, fromParam)
     })()
@@ -495,19 +454,14 @@ export function MagicVerifyPage() {
          * re-entered by emailing themselves a fresh link - the whole reason this step exists.
          */
         if (!first) {
-          navigate(
-            passwordSetupToken
-              ? `/set-password?token=${encodeURIComponent(passwordSetupToken)}&next=${encodeURIComponent('/grounds')}`
-              : '/grounds',
-            { replace: true },
-          )
+          navigate('/grounds', { replace: true })
         }
       })
       // If the count cannot be fetched, show the welcome rather than a blank
       // screen: being over-welcomed is a smaller failure than being stranded.
       .catch(() => { if (mounted) setIsFirstGround(true) })
     return () => { mounted = false }
-  }, [nextGroundId, passwordSetupToken])
+  }, [nextGroundId])
 
   /**
    * THE FIRST-RUN WELCOME IS FOR A FIRST GROUND.
@@ -541,7 +495,7 @@ export function MagicVerifyPage() {
         const res = passwordKey ? await authApi.verifyEmail(token, choice, passwordKey) : await authApi.verifyEmail(token, choice)
         if ('accessToken' in res && res.accessToken) forgetThePasswordKey()
         if ('whereDoYouWork' in res && res.whereDoYouWork) return { kind: 'whereDoYouWork', token, offers: res.whereDoYouWork }
-        const onward = await afterVerify(res as SignedIn, token, null, true)
+        const onward = await afterVerify(res as SignedIn, token, null)
         /* They have just answered "Where do you work?", so the first page after signing in must not
            ask it again. After afterVerify, because signing in is what sets that flag. */
         takeJustSignedIn()
@@ -569,7 +523,7 @@ export function MagicVerifyPage() {
     flow.then(o => { setChooseBusy(false); applyOutcome(o) })
   }
 
-  if (choosing && !confirmed) {
+  if (choosing) {
     return (
       <WhereDoYouWork
         byDomain={choosing.offers.byDomain}
@@ -581,9 +535,6 @@ export function MagicVerifyPage() {
     )
   }
 
-  if (confirmed) {
-    return <EmailConfirmed email={confirmed.email} onContinue={() => { const then = confirmed.then; setConfirmed(null); applyOutcome(then) }} />
-  }
 
   if (nextGroundId && isFirstGround === false) {
     return null   // returning user: the effect above has sent them to their grounds
@@ -705,18 +656,13 @@ export function MagicVerifyPage() {
           */}
           <p className="gwui-fine" style={{ textAlign: 'center' }}>
             Track their check-ins on your check-in page, and add documents or notes
-            for everyone to work from under <strong>Context and resources</strong>.
+            for everyone to work from under <strong>{REFERENCES_AND_RESOURCES}</strong>.
           </p>
 
           <Button
             size="big"
             wide
-            onClick={() => navigate(
-              passwordSetupToken
-                ? `/set-password?token=${encodeURIComponent(passwordSetupToken)}&next=${encodeURIComponent(`/grounds/${nextGroundId}`)}`
-                : `/grounds/${nextGroundId}`,
-              { replace: true },
-            )}
+            onClick={() => navigate(`/grounds/${nextGroundId}`, { replace: true })}
           >
             Go to your check-in
           </Button>
@@ -849,11 +795,7 @@ export function MagicVerifyPage() {
       <Mark />
       {/* Only somebody who described a check-in before giving their address has one being made
           (U.2 re-review). Everybody else is only having their address confirmed. */}
-      <PageTitle
-        center
-        subtitle={aCheckInIsBeingMade() ? 'Setting up your check-in…' : 'Confirming your email…'}
-        subtitleRole="status"
-      />
+      <Skeleton what={aCheckInIsBeingMade() ? 'Setting up your check-in…' : 'Confirming your email…'} shape="lines" count={1} />
     </Page>
   )
 }

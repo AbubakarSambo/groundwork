@@ -59,7 +59,7 @@ describe("Grace's list on Today and in her weekly letter", () => {
   /* Kevin's newest assessment, holding a layer-2 pattern and the lead's layer-3 step for it (F2, 2 November 2026). */
   const KEVINS_ASSESSMENT = { id: 'c-kevin-3', participantId: 'p-kevin', sessionNumber: 3, sessionReport: { kind: 'assessment', version: 1,
     acrossTime: { patterns: [{ key: 'slipping-promises', participantId: 'p-kevin', kind: 'needs work', state: 'holds', who: 'Kevin', saying: 'Kevin has let 2 promised days pass without the work done.',
-      instances: [{ checkInId: 'c-kevin-2', sessionNumber: 2, on: '2026-10-07', item: 'the Sarit quote', words: ['I have not sent the Sarit quote.'] }, { checkInId: 'c-kevin-3', sessionNumber: 3, on: '2026-10-14', item: 'the Westgate call', words: ['I did not call Westgate'] }] }],
+      instances: [{ checkInId: 'c-kevin-2', sessionNumber: 2, on: '2026-10-07', item: 'the Sarit quote', words: ['I have not sent the Sarit quote.'], saidWordForWord: true }, { checkInId: 'c-kevin-3', sessionNumber: 3, on: '2026-10-14', item: 'the Westgate call', words: ['I did not call Westgate'], saidWordForWord: true }] }],
       role: null, focus: null, toAskNextTime: [] },
     interventions: [{ key: 'slipping-promises', participantId: 'p-kevin', ladder: 'work', rung: 2, step: 'a conversation', forWhom: 'the lead', theLeadDecides: true,
       says: 'Talk with Kevin about it. Kevin has let 2 promised days pass without the work done.', because: '', state: 'waiting for the lead', startedIn: { checkInId: 'c-kevin-3', sessionNumber: 3 }, followedUp: [] }] } };
@@ -91,7 +91,8 @@ describe("Grace's list on Today and in her weekly letter", () => {
     expect(readTheAssessments(prisma)).toBe(true);
     expect(items).toEqual(expect.arrayContaining([expect.objectContaining({
       decide: 'Talk with Kevin about it. Kevin has let 2 promised days pass without the work done.',
-      why: 'On 7 October, the words were "I have not sent the Sarit quote." On 14 October, the words were "I did not call Westgate."',
+      /* Batch 2, group 3: their words quoted by the one function (their-words-as-said.ts), only because Kevin typed them word for word. */
+      why: 'On 7 October, the words were “I have not sent the Sarit quote”. On 14 October, the words were “I did not call Westgate”.',
     })]));
   });
 });

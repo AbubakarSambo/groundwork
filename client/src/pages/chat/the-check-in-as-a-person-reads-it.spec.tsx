@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, within, act } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ChatPage } from './ChatPage'
@@ -120,36 +120,39 @@ async function typeAndSend(text: string) {
    skipping is End session before any answer has landed, which still asks first and says what follows. */
 /* Changed 3 November 2026 (screens-after/checkin-reply-390.png): the way back was a link above the card that said the name, and the
    header said it again. Now the name is said once, on one line: the arrow and the name are the way back, End session is beside them. */
+/* Changed in batch 2, group 5 (Hafsah, items 3b and 53): the conversation is drawn inside the check-in's own Check-in tab, under
+   its tabs, so the card no longer carries a way back of its own. The name is said once, beside End session. */
 describe('the header', () => {
-  it('names the check-in once, on one line with the way back and End session, and nothing under the name', async () => {
+  it('names the check-in once, on one line with “Skip this one” (it reads “Pause” once an answer has landed), and nothing under the name', async () => {
     renderChat()
-    const back = await findByRole('button', { name: 'Sales team, Q3' }, { timeout: 5000 })
-    expect(back.textContent).toBe('←Sales team, Q3')
-    const heading = screen.getByRole('heading', { name: 'Sales team, Q3' })
-    expect(heading.contains(back)).toBe(true)
+    const heading = await findByRole('heading', { name: 'Sales team, Q3' }, { timeout: 5000 })
     expect(screen.getAllByText('Sales team, Q3')).toHaveLength(1)
     expect(document.querySelector('.ci-back')).toBeNull()
-    expect(back.closest('.ci-h')?.contains(screen.getByRole('button', { name: 'End session' }))).toBe(true)
-    expect(await findByRole('button', { name: 'End session' })).toBeTruthy()
+    expect(heading.closest('.ci-h')?.contains(screen.getByRole('button', { name: 'Skip this one' }))).toBe(true)
     expect(await findByText(OPENING, {}, { timeout: 5000 })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'End check-in' })).toBeNull()
     expect(screen.queryByText('About ten minutes')).toBeNull()
     expect(screen.queryByText(/What this check-in is about/)).toBeNull()
   })
 
-  it('the way back leaves with everything saved, and declines nothing', async () => {
+  it('offers no way out of the card: the tabs around it are the way to anywhere else', async () => {
     renderChat()
-    fireEvent.click(await findByRole('button', { name: 'Sales team, Q3' }, { timeout: 5000 }))
-    expect(await findByText('The check-in’s own page')).toBeTruthy()
+    await findByText(OPENING, {}, { timeout: 5000 })
+    expect(screen.queryByRole('button', { name: 'Sales team, Q3' })).toBeNull()
+    expect(screen.queryByText(/Back to check-ins/)).toBeNull()
     expect(conversationApi.decline).not.toHaveBeenCalled()
   })
 
-  it('End session before any answer asks first and says what follows, as skipping did', async () => {
+  /* Changed 15 November 2026 (Hafsah, audit rows 8 and 29): one confirm sentence, not four bullets, and "skipped", not "declined". */
+  it('“Skip this one”, before any answer, asks first in one sentence', async () => {
     renderChat()
     await findByText(OPENING, {}, { timeout: 5000 })
-    fireEvent.click(await findByRole('button', { name: 'End session' }))
-    expect(await findByText('Not taking part in this session?')).toBeTruthy()
-    expect(screen.getByText('The report will say you declined. It will not guess at what you would have said.')).toBeTruthy()
+    fireEvent.click(await findByRole('button', { name: 'Skip this one' }))
+    expect(await findByText('Skip this check-in? The report will say you skipped it.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Yes, skip it' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Keep going' })).toBeTruthy()
+    expect(screen.queryByText(/This cannot be undone|Nothing you have written here is shown to anyone|declined/)).toBeNull()
     expect(conversationApi.decline).not.toHaveBeenCalled()
     expect(conversationApi.complete).not.toHaveBeenCalled()
   })
@@ -278,7 +281,7 @@ describe('the + button', () => {
     fireEvent.change(input, { target: { files: [photo] } })
     expect(await findByText('What does it show? One line is enough; you can skip it.')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('What does it show?'), { target: { value: 'The quote I sent' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add to session' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add to check-in' }))
     await waitFor(() => expect(documentsApi.upload).toHaveBeenCalledWith('g1', photo, false, 'The quote I sent', { fromTheCheckIn: true }))
     expect(await findByText('You added “green-mart-quote.heic”. Only you can open it.', {}, { timeout: 5000 })).toBeTruthy()
   })
@@ -331,29 +334,21 @@ describe('the end card, once Groundwork has closed the conversation', () => {
   })
 
   /* Changed 3 November evening: the header no longer changes to "That’s everything for today"; the closing message says it. */
-  it('Miriam reads why answering matters, what happens next, and the two buttons, and no line under the header', async () => {
+  it('Miriam reads the finish button and no explainer, and no line under the header', async () => {
     closesOnTheNextAnswer()
     await answerTheLastQuestion()
     expect(screen.queryByText('That’s everything for today')).toBeNull()
-    /* The light prototype's s68 (sales-first.md, section 5): why answering matters and what happens next
-       fold behind one line, and lose their numbers. */
-    expect(screen.getByText('Why answering matters, and what happens next').closest('summary')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Why answering matters' }).closest('details')).toBeTruthy()
-    expect(screen.getByText('Wairimu also answers a check-in. The report puts the answers side by side. It shows where you agree and where you see things differently. It does not decide who is right.')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'What happens next' }).closest('details')).toBeTruthy()
-    expect(screen.getByText('If you don’t want to talk about something yet, that’s fine. You can leave it for now.')).toBeTruthy()
+    /* Hafsah, 15 November: the fold "Why answering matters, and what happens next", its reassurance line and the line about who sees it are gone. */
+    expect(screen.queryByText(/Why answering matters/)).toBeNull()
+    expect(screen.queryByText(/also answers a check-in/)).toBeNull()
+    expect(screen.queryByText('If you don’t want to talk about something yet, that’s fine. You can leave it for now.')).toBeNull()
+    expect(document.querySelector('details')).toBeNull()
     expect(screen.getByRole('button', { name: 'That’s right, finish' })).toBeTruthy()
     /* Changed in F5: no "Change something"; with nothing written, the sentence offers to be told what is missing. */
     expect(screen.getByRole('button', { name: 'tell me' })).toBeTruthy()
     // The engine sent no lines for the record, so none are made up.
     expect(screen.queryByText(/What goes in your record|What is now in your record/)).toBeNull()
-    /*
-     * WORDING RESTORED (group 3's review, request batch A, fault 2): the question of who sees a
-     * person's words was settled 29 September (Conflict A) - the people in a check-in, including
-     * the lead, can see what you say in it once the shared report goes out. This fixture's ground
-     * has `aTeamReportComes: true` (line 68), so the prototype's own line is shown again.
-     */
-    expect(screen.getByText('Your team will see what you said today, and a short summary of what moved.')).toBeTruthy()
+    expect(screen.queryByText('Your team will see what you said today, and a short summary of what moved.')).toBeNull()
     // No suggested answers under the closing message: the card has its own buttons.
     expect(screen.queryByRole('group', { name: 'Suggested answers' })).toBeNull()
     expect(conversationApi.complete).not.toHaveBeenCalled()
@@ -375,7 +370,7 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     expect(screen.getByText('Green Mart will buy in January')).toBeTruthy()
     expect(screen.getByText('You said this. It will count next quarter, from October.')).toBeTruthy()
     expect(screen.getByRole('img', { name: 'Only someone’s word' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Why answering matters' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Why answering matters' })).toBeNull()
     expect(screen.getByRole('heading', { name: 'What happens next' })).toBeTruthy()
     expect(screen.getByText('If Green Mart sends a written order, add a photo of it. Then the sale counts as proven.')).toBeTruthy()
   })
@@ -406,9 +401,7 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     closesOnTheNextAnswer()
     await answerTheLastQuestion()
     expect(screen.queryByText(/Why answering matters/)).toBeNull()
-    /* Her fold is named for the one thing in it. */
-    expect(screen.getByText('What happens next', { selector: 'summary *' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'What happens next' })).toBeTruthy()
+    expect(screen.queryByText(/also answers a check-in/)).toBeNull()
   })
 
   it('a lead who only manages does not answer, so the sentence is not said', async () => {
@@ -436,163 +429,63 @@ describe('the end card, once Groundwork has closed the conversation', () => {
   })
 })
 
-describe('the Done page, after “That’s right, finish”', () => {
-  const DIMS = { delivery: 'specific', evidence: 'vague', enablement: 'specific', coverage: 'directional', commitment: 'specific' }
-  const tomorrowAt4 = () => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(16, 0, 0, 0); return d.toISOString() }
-
-  async function finish(opts: { ground?: any; carry?: string | null; whatChanged?: unknown; qc?: QueryClient } = {}) {
-    const ground = opts.ground ?? { ...SALES, checkIns: [{ id: 'ci1', participantId: 'p-m', sessionNumber: 38, status: 'COMPLETED', specificityDimensions: DIMS }], roundCompletions: [] }
-    ;(groundsApi.get as any).mockResolvedValue(ground)
-    ;(groundsApi.getMyCheckinStatus as any).mockResolvedValue({
-      participantId: 'p-m', partyType: 'PARTICIPANT', latestStatus: null, latestSessionNumber: null,
-      checkIns: [
-        { id: 'ci1', sessionNumber: 38, status: 'COMPLETED', completedAt: new Date().toISOString() },
-        { id: 'ci2', sessionNumber: 39, status: 'NOT_STARTED', completedAt: null, availableFrom: tomorrowAt4() },
-      ],
-    })
-    ;(conversationApi.artifact as any).mockResolvedValue({ artifact: opts.carry ? { whatToCarry: opts.carry } : null })
+/*
+ * CHANGED IN BATCH 2, GROUP 5 (Hafsah, 4 November, items 54 to 56). Finishing used to replace the
+ * conversation with a Done page ("Done. Thanks, Miriam.", "Two reports come from this", "How
+ * checkable today's check-in was", "For tomorrow"), cut off from the check-in's tabs. The end is
+ * now the last messages in the conversation and one small pop-up, "Done. Your report is in My
+ * work.", which closes leaving the person where they are. The report itself is read in My work
+ * (your-report-lives-in-my-work.spec.tsx). These tests read what Miriam now sees.
+ */
+describe('the end, after “That’s right, finish”', () => {
+  async function finish(opts: { qc?: QueryClient } = {}) {
+    ;(groundsApi.get as any).mockResolvedValue({ ...SALES, checkIns: [{ id: 'ci1', participantId: 'p-m', sessionNumber: 38, status: 'COMPLETED' }], roundCompletions: [] })
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
-      turns: [{ id: 't1', role: 'AI', content: 'Did anything else change with your sales today?', suggestedAnswers: ['I’ll visit Westgate Deli on Friday'] }],
+      turns: [{ id: 't1', role: 'AI', content: 'Did anything else change with your sales today?' }],
     })
     ;(conversationApi.send as any).mockResolvedValue({ reply: 'That’s all for today. Is anything wrong?', sessionComplete: true })
-    ;(conversationApi.complete as any).mockResolvedValue({ status: 'COMPLETED', whatChanged: opts.whatChanged })
+    ;(conversationApi.complete as any).mockResolvedValue({ status: 'COMPLETED' })
     renderChat(opts.qc)
     await typeAndSend('I’ll visit Westgate Deli on Friday')
     fireEvent.click(await findByRole('button', { name: 'That’s right, finish' }, { timeout: 6000 }))
-    await findByRole('heading', { name: 'Done. Thanks, Miriam.' }, { timeout: 6000 })
+    await findByText(/Your report is ready in/, {}, { timeout: 6000 })
   }
 
-  /*
-   * SCREEN FAULT 3 (FINAL WALK): "YOUR TURN" AND "NOBODY HAS CHECKED IN YET" RIGHT AFTER
-   * FINISHING. Nothing invalidated the ground, grounds or board queries when a session completed,
-   * so the check-in's own page and the sidebar kept reading the answer just given as still
-   * outstanding. Proven directly against the query cache, since that is the one fact that was
-   * actually wrong - the rendered page after finishing is the Done page, which reads its own,
-   * fresh data regardless.
-   */
   it('marks the ground, grounds and board queries stale the moment a session completes', async () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-    // Nobody is observing 'grounds' or the board in this test, so an invalidated one stays
-    // marked invalidated - there is nothing mounted to refetch it straight away.
     qc.setQueryData(['grounds'], { stale: true })
     qc.setQueryData(['board', 'g1', 'default'], { stale: true })
     const callsBefore = (groundsApi.get as any).mock.calls.length
     await finish({ qc })
     expect(qc.getQueryState(['grounds'])?.isInvalidated).toBe(true)
     expect(qc.getQueryState(['board', 'g1', 'default'])?.isInvalidated).toBe(true)
-    /*
-     * ChatPage's own ['ground', 'g1'] query IS mounted here, so invalidating it also refetches
-     * it immediately - the `isInvalidated` flag clears again once that succeeds, which is the
-     * invalidation actually working, not it never having fired. A second call to `groundsApi.get`
-     * for this ground is the proof.
-     */
     expect((groundsApi.get as any).mock.calls.filter((c: any[]) => c[0] === 'g1').length).toBeGreaterThan(callsBefore)
   })
 
-  it('Miriam reads that it is saved, when the next one opens, and her two reports', async () => {
+  /* Changed 15 November 2026 (Hafsah, audit row 4): the pop-up with Close is gone; Groundwork's last line in the conversation says it, with a plain link. */
+  it('Miriam reads Groundwork’s last line in the conversation, with a link to My work, and the conversation stays where it is', async () => {
     await finish()
-    expect(await findByText('Your check-in is saved. Your next check-in opens tomorrow at 4pm.', {}, { timeout: 5000 })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Two reports come from this' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Your own report' })).toBeTruthy()
-    expect(screen.getByText('Only you')).toBeTruthy()
-    expect(screen.getByText('What you said today and what it shows. Ready now.')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Read yours' }).getAttribute('href')).toBe('/checkin/ci1/report')
-    expect(screen.getByRole('heading', { name: 'The team’s report' })).toBeTruthy()
-    expect(screen.getByText('Not shared yet')).toBeTruthy()
-    expect(screen.getByText('Everyone’s check-ins together. You’ll get it once everyone has answered.')).toBeTruthy()
-    // The conversation is gone from the screen; the Done page stands on its own.
-    expect(screen.queryByPlaceholderText('Type your answer')).toBeNull()
+    const line = screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === 'Done. Thanks, Miriam. Your report is ready in My work.')
+    expect(line.querySelector('a')?.getAttribute('href')).toBe('/grounds/g1?tab=mywork&report=ci1')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByText('I’ll visit Westgate Deli on Friday')).toBeTruthy()
+    expect(screen.getByText('That’s all for today. Is anything wrong?')).toBeTruthy()
   })
 
-  it('she reads For tomorrow first, then her reports, then how checkable her own check-in was as one line that opens', async () => {
+  it('reads none of the old end page', async () => {
     await finish()
-    /*
-     * THE LIGHT DONE PAGE (sales-first.md, section 5; the light prototype's s68). "For tomorrow" is the approved
-     * rename of "That’s saved" and comes first, before the two reports; why answering matters folds behind one
-     * line inside it. How checkable today's check-in was is one line that opens. Updated from the old order and
-     * headings, which this replaces on purpose.
-     */
-    expect(await findByRole('heading', { name: 'For tomorrow' }, { timeout: 5000 })).toBeTruthy()
-    expect(screen.queryByText('That’s saved')).toBeNull()
-    const tomorrow = screen.getByRole('region', { name: 'For tomorrow' })
-    expect(tomorrow.textContent).toBe('For tomorrowWhy answering matters›Wairimu also answers a check-in. The report puts the answers side by side. It does not decide who is right.')
-    expect(within(tomorrow).getByText('Why answering matters').closest('summary')).toBeTruthy()
-    const order = [...document.querySelectorAll('h2, summary')].map((e) => e.textContent ?? '')
-    expect(order.findIndex((t) => t === 'For tomorrow')).toBeLessThan(order.findIndex((t) => t === 'Two reports come from this'))
-    const checkable = screen.getByText('How checkable today’s check-in was').closest('details') as HTMLDetailsElement
-    expect(checkable).toBeTruthy()
-    expect(checkable.open).toBe(false)
-    /**
-     * "4 of 5" no longer shows (U.8 re-review, request 45 to the engine workspace): it is a score
-     * built from a read of the session that is known to miss real content, so it stays off until
-     * that is answered. The five short lines, with the sr-only sentence for a screen reader, are
-     * unchanged inside the fold.
-     */
-    expect(within(checkable).queryByText('4 of 5')).toBeNull()
-    expect(within(checkable).getByText(
-      'Groundwork looked for these five things. It may have missed some of what you said.',
-    )).toBeTruthy()
-    const missingLine = within(checkable).getAllByText(/One date, number or document/)[0]
-    expect(missingLine.querySelector('.gwui-sr-only')?.textContent).toContain('Groundwork did not pick this up this time.')
-    const foundLine = within(checkable).getAllByText(/What you did, not just what was happening/)[0]
-    expect(foundLine.querySelector('.gwui-sr-only')?.textContent).toContain('Groundwork found this.')
-    expect(within(checkable).getByText('This is about the check-in. Only you see it.')).toBeTruthy()
+    const text = document.body.textContent ?? ''
+    for (const gone of ['Two reports come from this', 'How checkable today’s check-in was', 'For tomorrow', 'Your next check-in is open now', 'Go to it', 'Read yours', 'Open my report', 'Open the team board']) {
+      expect(text).not.toContain(gone)
+    }
+    expect(screen.queryByRole('heading', { name: 'Your report' })).toBeNull()
   })
 
-  it('the one thing to carry is the first thing under For tomorrow, once the session writes it', async () => {
-    await finish({ carry: 'Get Green Mart’s January date in writing.' })
-    /* The prototype has no label before it ("One thing for tomorrow: " is taken off in s68): the sentence
-       sits under For tomorrow, before the fold. Updated from the old "One thing for next time" heading. */
-    const carried = await findByText('Get Green Mart’s January date in writing.', {}, { timeout: 6000 })
-    const tomorrow = screen.getByRole('region', { name: 'For tomorrow' })
-    expect(tomorrow.contains(carried)).toBe(true)
-    expect(tomorrow.textContent?.startsWith('For tomorrowGet Green Mart’s January date in writing.')).toBe(true)
-    expect(screen.queryByRole('heading', { name: 'One thing for next time' })).toBeNull()
-  })
-
-  it('once everyone has answered, the team’s report is there to read', async () => {
-    /*
-     * `roundCompletions` ALONE IS NOT "READ IT" (U.8, edge case caught before ticking): it records
-     * that everyone on the round had answered AT THE TIME IT CLOSED, which a lead who later grows
-     * the team can leave behind for good. "Read it" reads whether the report has actually
-     * released, `report.releasedAt` - the real shape here has both, together, the way a check-in
-     * whose report genuinely is out would send them.
-     */
-    await finish({ ground: { ...SALES, checkIns: [], roundCompletions: [{ sessionNumber: 38, completedAt: new Date().toISOString() }], report: { id: 'r1', releasedAt: new Date().toISOString(), createdAt: new Date().toISOString() } } })
-    const read = await findByRole('link', { name: 'Read it' }, { timeout: 5000 })
-    expect(read.getAttribute('href')).toBe('/grounds/g1/session/38')
-    expect(screen.queryByText('Not shared yet')).toBeNull()
-  })
-
-  it('with nobody else answering, there is one report and no team report', async () => {
-    /* `aTeamReportComes` and `leadAnswersToo` are the top-level facts the server computes for
-       exactly this case - overridden alongside `participants`, which drops the lead's row too. */
-    await finish({ ground: { ...SALES, participants: [SALES.participants[1]], aTeamReportComes: false, leadAnswersToo: false, checkIns: [], roundCompletions: [] } })
-    expect(await findByRole('heading', { name: 'Your own report' }, { timeout: 5000 })).toBeTruthy()
-    expect(screen.queryByText('Two reports come from this')).toBeNull()
-    expect(screen.queryByText('The team’s report')).toBeNull()
-    expect(screen.queryByText(/Why answering matters/)).toBeNull()
-  })
-
-  it('without the engine’s stages or the read of how checkable it was, those parts are not drawn', async () => {
-    await finish({ ground: { ...SALES, checkIns: [], roundCompletions: [] } })
-    await findByRole('heading', { name: 'Your own report' }, { timeout: 5000 })
-    expect(screen.queryByText(/How checkable/)).toBeNull()
-    expect(screen.queryByText(/What changed/)).toBeNull()
-  })
-
-  it('shows what changed on a deal, with its stages, when the engine sends it', async () => {
-    await finish({ whatChanged: { title: 'What changed on your deals', items: [{ name: 'Green Mart', says: 'From the photo you added.', stages: [{ name: 'Contacted', mark: 'proven' }, { name: 'Need', mark: 'proven' }, { name: 'Pitched', mark: 'proven' }, { name: 'Qualified', mark: 'not_reached' }, { name: 'Quoted', mark: 'not_reached' }] }] } })
-    expect(await findByRole('heading', { name: 'What changed on your deals' }, { timeout: 5000 })).toBeTruthy()
-    expect(screen.getByText('Green Mart')).toBeTruthy()
-    expect(screen.getByText('From the photo you added.')).toBeTruthy()
-    expect(screen.getByText('Qualified')).toBeTruthy()
-  })
-
-  it('when she said "Later" to the photo, her deal says so and claims no photo (sales-first.md, section 5)', async () => {
-    await finish({ whatChanged: { title: 'What changed on your deals', items: [{ name: 'Green Mart', says: 'You said this. A photo would prove it.', stages: [{ name: 'Contacted', mark: 'said' }, { name: 'Quoted', mark: 'said' }] }] } })
-    expect(await findByText('You said this. A photo would prove it.', {}, { timeout: 5000 })).toBeTruthy()
-    expect(screen.queryByText(/photo you added|Quote photo added/)).toBeNull()
+  it('there is no pop-up and no Close, and the conversation is still there', async () => {
+    await finish()
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+    expect(screen.getByText('I’ll visit Westgate Deli on Friday')).toBeTruthy()
+    expect(screen.queryByText('The check-in’s own page')).toBeNull()
   })
 })

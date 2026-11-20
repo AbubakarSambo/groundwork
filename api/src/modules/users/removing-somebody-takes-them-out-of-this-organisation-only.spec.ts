@@ -91,7 +91,14 @@ function aPrisma(s: Store): any {
       findUnique: async ({ where }: any) => s.grounds.find((g) => g.id === where.id) ?? null,
       findMany: async () => [],
     },
-    groundParticipant: { findMany: async () => [] },
+    groundParticipant: {
+      findMany: async () => [],
+      updateMany: async ({ where, data }: any) => {
+        const mine = s.participants.filter((p) => p.userId === where.userId && (where.leftAt === null ? !p.leftAt : true) && s.grounds.find((g) => g.id === p.groundId)?.organizationId === where.ground.organizationId);
+        mine.forEach((p) => Object.assign(p, data));
+        return { count: mine.length };
+      },
+    },
     person: { findMany: async () => [] },
     membershipRequest: { findMany: async () => [] },
     checkIn: {
@@ -165,6 +172,11 @@ describe.each([
     const c = await svc.conversation.loadOwnedCheckIn('c-lakeview', 'neema');
     expect(c.words).toBe('Neema said this in Lakeview.');
     expect((await svc.auth.myOrganizations('neema')).map((o: any) => [o.name, o.active])).toEqual([['Lakeview Clinic', true]]);
+  });
+
+  it('she is off Msingi Foods\' team in its check-ins (the mail, the lead\'s lines and the count read that), and still on Lakeview\'s', () => {
+    expect(s.participants.find((p) => p.id === 'p-msingi')?.leftAt).toBeInstanceOf(Date);
+    expect(s.participants.find((p) => p.id === 'p-lakeview')?.leftAt).toBeUndefined();
   });
 
   it('nothing she said in Msingi Foods is deleted', () => {

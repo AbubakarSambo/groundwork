@@ -9,7 +9,7 @@ import { aSetupConversation } from './request-92-harness';
  * from what is stored; the first model call is made on the lead's first message.
  */
 const SET = { timelineStated: true, cadenceStated: true };
-const OPENING = 'This check-in runs for 90 days and people check in once a week. What does doing well look like here? I do not mean a target for one person. What would make you say, at the end, that this went the way it should have?';
+const OPENING = 'This check-in runs for 90 days and people check in every week. What does doing well look like here? I do not mean a target for one person. What would make you say, at the end, that this went the way it should have?';
 
 describe('request 101 (e): the opening turn, with no model call', () => {
   it('the lead opens the tab twice and reads the same opening, and the model is never asked', async () => {

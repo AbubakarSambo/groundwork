@@ -87,31 +87,9 @@ export function theNextOpenCheckInId(
 }
 
 /**
- * The lead's first name, when the lead also answers this check-in and the reader is someone else.
- * "Wairimu also answers a check-in" is only true then: a lead who only manages does not answer, and
- * the lead reading their own end card is not told about themselves.
- *
- * READS `ground.leadFirstName`/`leadAnswersToo`, NOT `ground.participants` (U.8 fourth review). The
- * lead's own row is filtered out of `participants` for a participant on a check-in that hides
- * everyone else - correctly, that is the peer rule doing its job - which meant this fell back to
- * null on exactly the check-ins where somebody most needed to be told who reads their words. The
- * server now sends her first name, and whether she answers too, straight on the ground, unaffected
- * by who else the peer rule is hiding. See the note on `leadFirstName` in `grounds.service.ts`.
- */
-export function whoElseAnswers(
-  ground: { leadFirstName?: string | null; leadAnswersToo?: boolean; viewerIsInitiator?: boolean } | null | undefined,
-): string | null {
-  if (!ground || ground.viewerIsInitiator || !ground.leadAnswersToo) return null
-  /* Signup asks for "Your name" in one field and stores it whole (AuthPage.tsx, auth.service.ts),
-     so a lead who typed "Wairimu Kamau" has that whole string in `firstName`. The prototype's own
-     line says only the first name ("Wairimu also answers a check-in"), never the surname too. */
-  return firstWordOfAName(ground.leadFirstName)
-}
-
-/**
  * The lead's first name, for "Rukia knows who is here" (the peers-hidden sentence on the topic
  * card) - true whenever there is a lead, whether or not she also answers a check-in herself.
- * Different question from `whoElseAnswers` above, and answered from the same field.
+ * Answered from `leadFirstName`, which arrives whatever the peer rule hides.
  */
 export function whoRunsThis(
   ground: { leadFirstName?: string | null } | null | undefined,
@@ -128,3 +106,10 @@ export function whoRunsThis(
  * `ground.aTeamReportComes`, a plain yes/no read off the raw participants before that filter runs -
  * use that instead of counting `participants` for this question.
  */
+
+/**
+ * THE ONE PLACEHOLDER FOR THE BOX UNDER A FINISHED OR BETWEEN CHECK-IN, EVERYWHERE (audit of the check-in pages, row 9). There were
+ * four wordings for one box ("Add something for your next check-in", "Ask, or add a note", "Note something for your next check-in…",
+ * "Write to check in again"); this is the only one.
+ */
+export const WRITE_ANYTHING_YOU_WANT_ME_TO_REMEMBER = 'Write anything you want me to remember'

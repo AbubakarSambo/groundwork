@@ -254,7 +254,7 @@ export function buildDeferralNotice(deferrals: Deferral[], waiting: WaitingBehin
         waiting
           .map(
             (w) =>
-              `- ${w.label}: ${w.people} other part${w.people === 1 ? 'y' : 'ies'} described their work as sitting behind this one, across ${w.sessions.length} separate sessions (${w.sessions.join(', ')}).`,
+              `- ${w.label}: ${w.people} other part${w.people === 1 ? 'y' : 'ies'} described their work as sitting behind this one, across ${w.sessions.length} separate check-ins (${w.sessions.join(', ')}).`,
           )
           .join('\n') +
         '\nThis is a leadership pattern and belongs in leadershipGaps. Do not read it as a fault before checking the record: being what people wait on is also what holding a decision looks like, and someone every thread routes through may be carrying too much rather than avoiding anything. Report what the record shows about how that landed on the people waiting, without quoting or naming anyone.\n',
@@ -263,14 +263,14 @@ export function buildDeferralNotice(deferrals: Deferral[], waiting: WaitingBehin
 
   if (!deferrals.length) return blocks.length ? blocks.join('\n') + '\n' : '';
   const lines = deferrals.map((d) => {
-    const where = `sessions ${d.sessions.join(', ')}`;
+    const where = `check-ins ${d.sessions.join(', ')}`;
     const end = d.resolvedAt
-      ? `The record shows it happening in session ${d.resolvedAt}.`
+      ? `The record shows it happening in check-in ${d.resolvedAt}.`
       : 'The record does not show it happening.';
     return `- ${d.label}: named something as still outstanding in ${where} (${d.subject}). ${end}`;
   });
   blocks.push(
-    'THINGS NAMED AS STILL TO DO ACROSS SESSIONS (counted from the record, not interpreted):\n' +
+    'THINGS NAMED AS STILL TO DO ACROSS Check-ins (counted from the record, not interpreted):\n' +
     lines.join('\n') +
     '\nEach of these is a candidate leadership pattern and belongs in leadershipGaps, not in divergences - but only if it genuinely lands on someone else. Something one party keeps meaning to do that affects nobody is not a gap, it is a busy week. Check whether another party is waiting on it or describes it differently before reporting it, and never quote or name anyone.\n'
   );

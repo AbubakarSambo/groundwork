@@ -1,5 +1,6 @@
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Section, Panel, EdgeList, EdgeRow, Tag } from '@/components/gw/ui'
+import { whoHasAnsweredOnTheBoard } from '@/lib/the-one-count'
+import { Section, Panel, EdgeList, EdgeRow, Tag, ShowAll } from '@/components/gw/ui'
 
 /**
  * RELEASE 8: THE SECTIONS A SITUATION'S BOARD DRAWS THAT NO KIT PICTURE DRAWS ON ITS OWN (api/src/modules/board/release-8-situations.ts).
@@ -127,13 +128,12 @@ const firstNameOf = (n: string | null | undefined) => (n ?? '').trim().split(/\s
 const wordsOf = (text: string) => String(text ?? '').replace(/^[^"“]*?said,\s*/i, '').replace(/^["“]|["”]$/g, '').trim()
 
 export function whoAnsweredThisRound(b: Any): { answered: Set<string>; open: number | null } {
-  const grid = b.checkInGrid
-  const last = (grid?.sessions ?? []).slice(-1)[0]
-  const answered = new Set<string>((grid?.rows ?? []).filter((r: Any) => last != null && r.cells?.[String(last)] === 'done').map((r: Any) => r.participantId))
-  return { answered, open: last ?? null }
+  /* Read from the one count (lib/the-one-count.ts), the same that says "3 of 6 have checked in" (fix plan 16 November, group 5). */
+  const { answered, session } = whoHasAnsweredOnTheBoard(b)
+  return { answered, open: session }
 }
 
-/** "Each account, side by side": each person's own view, in their own words, as they gave it. */
+/** "What each person said", side by side: each person's own view, in their own words, as they gave it. */
 export function EachAccountSideBySide({ b }: { b: Any }) {
   const { answered } = whoAnsweredThisRound(b)
   /* Those who have answered first, as pictured. */
@@ -141,7 +141,7 @@ export function EachAccountSideBySide({ b }: { b: Any }) {
   const linesOf = (pid: string): Any[] => ((b.whoOwnsWhat ?? []).find((w: Any) => w.participantId === pid)?.items ?? [])
   if (people.length < 2) return null
   return (
-    <Section heading="Each account, side by side" note="Nobody saw the others’ before answering">
+    <Section heading="What each person said">
       <div className="pb-cards3">
         {people.map((x) => {
           /* Their view: what they said they want, which the board sends with no kind or as an intent, in their own words. */
@@ -179,16 +179,16 @@ export function KnownBelievedUnknown({ b, unknown, leadFirstName }: { b: Any; un
   return (
     <Section heading="What’s known, believed and unknown">
       <div className="pb-cards3">
-        {[['Known', known, 'pb-k-known'], ['Believed', believed, 'pb-k-believed'], ['Unknown', unknown, 'pb-k-unknown']].map(([h, l, cls]) => (
+        {/* A column with nothing in it is not drawn, and a long one shows its first five lines, then "Show all N": the rest is one tap away (Hafsah, 15 November). */}
+        {[['Known', known, 'pb-k-known'], ['Believed', believed, 'pb-k-believed'], ['Unknown', unknown, 'pb-k-unknown']].filter(([, l]) => (l as string[]).length).map(([h, l, cls]) => (
           <div key={h as string} className="pb-kbu">
             <b className={cls as string}>{h as string}</b>
-            {(l as string[]).length ? (l as string[]).map((t) => <p key={t}>{t}</p>) : <p className="pb-sub">Nothing yet.</p>}
+            <ShowAll items={l as string[]} first={5} render={(t) => <p key={t}>{t}</p>} />
           </div>
         ))}
       </div>
       <div className="pb-decides">
-        <b>{`For ${b.canEditFrame ? 'you' : leadFirstName ?? 'the person who runs it'} to decide${waitingFor.length ? ` once ${waitingFor.join(' and ')}’s account is in` : ''}.`}</b>
-        <p>The board lays out the accounts and what’s known. It doesn’t choose.</p>
+        <b>{`For ${b.canEditFrame ? 'you' : leadFirstName ?? 'the person who runs it'} to decide${waitingFor.length ? ` once ${waitingFor.join(' and ')}’s answer is in` : ''}.`}</b>
       </div>
     </Section>
   )

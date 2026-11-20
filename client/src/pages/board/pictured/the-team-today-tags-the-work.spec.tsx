@@ -26,7 +26,7 @@ const DEALS = { rows: [{ kind: 'deal', ownerParticipantId: 'p-a', contactHistory
 
 it('Wairimu reads each person’s tag about the work, as pictured', () => {
   render(<MemoryRouter><TheTeamToday b={B} deals={DEALS} today={TODAY} groundId="g1" /></MemoryRouter>)
-  const rowOf = (name: string) => screen.getByText(name).closest('.pb-row') as HTMLElement
+  const rowOf = (name: string) => screen.getByText(name).closest('tr') as HTMLElement
   expect(rowOf('Aisha').textContent).toContain('Deals moving')
   expect(rowOf('Brian').textContent).toContain('Many visits, few moves')
   expect(rowOf('David').textContent).toContain('Visits without names')

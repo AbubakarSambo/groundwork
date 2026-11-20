@@ -54,7 +54,7 @@ const reads: [string, (p: any, userId: string) => Promise<unknown>][] = [
   ['the board', (p, u) => new BoardService(p, { respond: async () => null } as any, { getSessionProgress: async () => null } as any, reports(p)).get(GROUND, u)],
   ['the check-in page', (p, u) => new GroundsService(p, {} as any, {} as any, {} as any, {} as any, {} as any, { respond: async () => '' } as any).get(GROUND, 'org1', u)],
   ['the report', (p, u) => reports(p).get(GROUND, u, 'org1')],
-  ['the session report', (p, u) => reports(p).sessionReport(GROUND, 1, u, 'org1')],
+  ['the check-in report', (p, u) => reports(p).sessionReport(GROUND, 1, u, 'org1')],
   ['the rounds', (p, u) => reports(p).rounds(GROUND, u, 'org1')],
   ['where things stand against success', (p, u) => reports(p).whereAgainstSuccess(GROUND, u, 'org1')],
   ['the weekly report', (p, u) => new TheWeeklyReportService(p).read(GROUND, { userId: u, role: 'MEMBER', organizationId: 'org1' }, new Date(), null)],

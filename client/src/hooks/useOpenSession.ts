@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
 import { billingApi } from '@/api/billing'
+import { whereAConversationLives } from '@/pages/grounds/ground-tabs'
 
 /**
  * REVIEW ROUND 3, ITEM 2: ONE OPENING FLOW, USED BY BOTH PAGES THAT CAN OPEN A SESSION.
@@ -82,7 +83,9 @@ export function useOpenSession(groundId: string | undefined) {
       setPaywallFreeExtensionAvailable(freeExtensionAvailable ?? false)
       setShowPaywall(true)
     } else {
-      navigate(`/checkin/${checkIn.id}`, {
+      /* Into the check-in's own Check-in tab, where the conversation is drawn (batch 2, group 5). */
+      navigate(whereAConversationLives(checkIn.id, groundId), {
+        replace: true,
         state: {
           sessionNumber: checkIn.sessionNumber,
           isFinal: (checkIn as any).isFinal ?? false,
@@ -168,9 +171,9 @@ export function useOpenSession(groundId: string | undefined) {
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
       setShowPaywall(false)
       setPaywallFreeExtensionAvailable(false)
-      toast.success('Free session added. You can now start your session.')
+      toast.success('Free check-in added. You can now start your check-in.')
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add the free session. Try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add the free check-in. Try again.'),
   })
 
   const createSubscriptionMut = useMutation({

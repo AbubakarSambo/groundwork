@@ -61,7 +61,7 @@ describe('a person is "every session done" only when there is nothing still to c
     ;(groundsApi.get as any).mockResolvedValue(groundOneOfSix())
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Esther - Quarterly/i).length).toBeGreaterThan(0))
-    await waitFor(() => expect(screen.queryByText('Every session done')).toBeNull())
+    await waitFor(() => expect(screen.queryByText('Every check-in done')).toBeNull())
   })
 
   it('still says somebody is done once their completed count reaches the planned total', async () => {
@@ -72,7 +72,7 @@ describe('a person is "every session done" only when there is nothing still to c
     ;(groundsApi.get as any).mockResolvedValue(g)
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Esther - Quarterly/i).length).toBeGreaterThan(0))
-    await waitFor(() => expect(screen.getByText('Every session done')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Every check-in done')).toBeTruthy())
   })
 
   it('says somebody is done once the check-in has ended, even with sessions left unplanned', async () => {
@@ -80,6 +80,6 @@ describe('a person is "every session done" only when there is nothing still to c
     ;(groundsApi.get as any).mockResolvedValue(g)
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Esther - Quarterly/i).length).toBeGreaterThan(0))
-    await waitFor(() => expect(screen.getByText('Every session done')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Every check-in done')).toBeTruthy())
   })
 })

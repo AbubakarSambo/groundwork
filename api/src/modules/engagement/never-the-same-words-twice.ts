@@ -37,7 +37,7 @@ export async function theSameWordsAgain(prisma: any, opts: { groundId: string; p
     const zone = (g?.organizationId ? await theOrganisationsZone(prisma, g.organizationId).catch(() => null) : null) ?? THE_PRODUCTS_OWN_ZONE;
     const sessions: ASessionOnRecord[] = (await prisma?.checkIn?.findMany?.({
       where: { groundId: opts.groundId, participantId: opts.participantId },
-      select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true },
+      select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } },
     })) ?? [];
     const day = theirDay(opts.participantId, sessions, now, zone);
     if (day.missedDays.length < 2) return null;

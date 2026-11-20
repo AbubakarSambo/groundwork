@@ -325,8 +325,7 @@
     ],
     "signalsSays": null,
     "whatWouldSettleIt": "A date from each client behind, and a slip, a message or the accounting system’s record for each payment said.",
-    "whoDecides": "You decide.",
-    "groundworkDoesNotChoose": "Groundwork lays out the outcomes and the proof. It doesn’t choose."
+    "whoDecides": "You decide."
    }
   },
   "brian": {
@@ -531,7 +530,7 @@
    "type": "invoices or fee notes",
    "billWord": "fee note",
    "question": "Are your fee notes being paid, and why not where they aren’t?",
-   "answer": "No fee note that you follow up is on record yet. Each one shows here once you name it in a check-in.",
+   "answer": "No fee note that you follow up is on record yet.",
    "answerFrom": "Payments count as proven where a bank slip, an M-Pesa message or the accounting system’s record is filed on the fee note; everything else is from what people said in their check-ins.",
    "bar": null,
    "needsYou": {
@@ -601,7 +600,7 @@
      "Next"
     ],
     "rows": [],
-    "empty": "No fee note that you follow up is on record yet. Each one shows here once you name it in a check-in.",
+    "empty": "No fee note that you follow up is on record yet.",
     "foot": null
    },
    "patterns": {
@@ -614,7 +613,7 @@
    "followUp": {
     "heading": "Follow-up given, and whether it helped",
     "rows": [],
-    "empty": "No follow-up is on record yet. It shows here once somebody says they sent a reminder or spoke to a client."
+    "empty": "No follow-up is on record yet."
    },
    "systems": {
     "heading": "What the systems show",
@@ -813,8 +812,7 @@
     ],
     "signalsSays": null,
     "whatWouldSettleIt": "A check-in from each borrower behind or not heard from, and a repayment record for each repayment said.",
-    "whoDecides": "You decide.",
-    "groundworkDoesNotChoose": "Groundwork lays out the outcomes and the proof. It doesn’t choose."
+    "whoDecides": "You decide."
    }
   },
   "musa": {

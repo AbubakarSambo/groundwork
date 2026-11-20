@@ -31,7 +31,7 @@ export function AddToTheProject({ groundId, what, participants }: { groundId: st
   )
   return (
     <form className="panel pad gw-col-10" onSubmit={(e) => { e.preventDefault(); save.mutate() }} aria-label={LINK[what]}>
-      {what === 'milestone' && <>{field('name', 'What is delivered', 'text', 'The inception report')}{field('due', 'When it is due', 'date')}{field('share', 'Its share of the contract, as a percentage', 'text', '30')}{field('amount', 'Its amount, if known', 'text', 'KES 1,800,000')}</>}
+      {what === 'milestone' && <>{field('name', 'What is delivered', 'text', 'The inception report')}{field('due', 'When it is due', 'date')}{field('share', 'Its share of the contract, as a percentage', 'text', '30')}{field('amount', 'Its amount, if known', 'text', 'KSh 1,800,000')}</>}
       {what === 'money' && <>{field('month', 'Which month', 'month')}{field('inFor', 'What comes in')}{field('in', 'How much comes in', 'text', 'KES 1,000,000')}{field('outFor', 'What goes out')}{field('out', 'How much goes out', 'text', 'KES 650,000')}</>}
       {what === 'stakeholder' && <>
         {field('name', 'Who they are', 'text', 'The funder’s programme lead')}

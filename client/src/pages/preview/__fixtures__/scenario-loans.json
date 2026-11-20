@@ -1,0 +1,233 @@
+{
+  "kind": "loans",
+  "title": "Asset loans, cohort 3",
+  "subtitle": "40 traders, freezer loans. Weekly, on WhatsApp. Week 14 of 26.",
+  "leadName": "Wairimu Kamau",
+  "updated": "Last updated on Wednesday 23 September at 6pm. The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.",
+  "answer": {
+    "label": "Is the cohort repaying, and why not where it isn’t?",
+    "answer": "71% of what’s due is repaid, on proof from the repayment system. 9 traders are behind but still trading.",
+    "bar": {
+      "value": 71,
+      "max": 100
+    },
+    "foot": "Repayments from the repayment system; trading from photos and M-Pesa till totals traders chose to share.",
+    "needsHeading": "What needs you",
+    "needs": [
+      {
+        "title": "3 traders not heard from in 3 weeks",
+        "text": "Field visits before anything else."
+      },
+      {
+        "title": "Move 11 repayment dates after market day",
+        "text": "Decide for the whole cohort, or trader by trader."
+      },
+      {
+        "title": "Solar backup for Kisumu",
+        "text": "6 traders; the partner has offered units."
+      }
+    ]
+  },
+  "stands": {
+    "heading": "Where the cohort stands",
+    "note": "40 traders",
+    "cards": [
+      {
+        "title": "Repaying and trading",
+        "count": "24",
+        "tone": "proven",
+        "text": "Repaying on time; business operating on proof."
+      },
+      {
+        "title": "Behind, but trading",
+        "count": "9",
+        "tone": "attention",
+        "text": "Selling, but the repayment date falls before market day."
+      },
+      {
+        "title": "Genuinely blocked",
+        "count": "4",
+        "tone": "attention",
+        "text": "Power cuts in Kisumu market; freezers idle."
+      },
+      {
+        "title": "Not heard from",
+        "count": "3",
+        "tone": "concern",
+        "text": "No check-in and no repayment for 3 weeks."
+      }
+    ]
+  },
+  "traders": {
+    "heading": "Every trader, and what shows it",
+    "note": "Filled is proven; ringed is their word",
+    "foot": "5 of 40 shown. Support given to each trader is on their page.",
+    "headers": {
+      "trader": "Trader",
+      "business": "Business",
+      "sales": "Sales, 4 weeks",
+      "repayment": "Repayment",
+      "way": "What’s in the way, in their words",
+      "next": "Next"
+    },
+    "rows": [
+      {
+        "name": "Achieng Otieno",
+        "place": "Kibuye, Kisumu",
+        "dot": "shown",
+        "business": "Trading",
+        "sales": "KES 38,000",
+        "repayment": "On time",
+        "tone": "proven",
+        "way": "Nothing",
+        "next": "None"
+      },
+      {
+        "name": "Musa Abdi",
+        "place": "Eastleigh",
+        "dot": "shown",
+        "business": "Trading",
+        "sales": "KES 52,000",
+        "repayment": "2 weeks behind",
+        "tone": "attention",
+        "way": "Repayment is due before market day",
+        "next": "Move her date to Monday"
+      },
+      {
+        "name": "Grace Wambui",
+        "place": "Kibuye, Kisumu",
+        "dot": "said",
+        "business": "Idle 9 days",
+        "sales": "KES 6,000",
+        "repayment": "1 week behind",
+        "tone": "attention",
+        "way": "Power cuts: three this month",
+        "next": "Solar backup, from the partner"
+      },
+      {
+        "name": "Peter Kiprop",
+        "place": "Gikomba",
+        "dot": "unknown",
+        "business": "Not heard",
+        "sales": "None",
+        "repayment": "3 weeks behind",
+        "tone": "concern",
+        "way": "Not answered",
+        "next": "Field visit this week"
+      },
+      {
+        "name": "Halima Noor",
+        "place": "Mombasa",
+        "dot": "shown",
+        "business": "Trading",
+        "sales": "KES 41,000",
+        "repayment": "On time",
+        "tone": "proven",
+        "way": "Nothing",
+        "next": "None"
+      }
+    ]
+  },
+  "patterns": {
+    "heading": "One person, a place, or the model?",
+    "note": "Patterns named after three check-ins in a row",
+    "items": [
+      {
+        "title": "Repayment falls before market day",
+        "text": "11 traders say it, for 4 weeks in a row. The repayment system shows they pay two days late, then in full.",
+        "tag": "The model",
+        "tone": "action"
+      },
+      {
+        "title": "Power cuts in Kisumu market",
+        "text": "6 traders, for 4 weeks in a row. Their freezers stand idle during cuts.",
+        "tag": "A place",
+        "tone": "attention"
+      },
+      {
+        "title": "Freezer too big for the shop",
+        "text": "3 traders with the 600L unit sell under half of it.",
+        "tag": "The model",
+        "tone": "action"
+      }
+    ]
+  },
+  "support": {
+    "heading": "Support given, and whether it helped",
+    "rows": [
+      {
+        "what": "Bookkeeping training, week 4",
+        "who": "31 of 40 attended",
+        "result": "Those who attended are 2 weeks less behind on average"
+      },
+      {
+        "what": "Repayment reminders on WhatsApp",
+        "who": "All 40",
+        "result": "No change in late payments; the timing is the issue"
+      },
+      {
+        "what": "One-to-one visit",
+        "who": "7 traders",
+        "result": "5 of 7 caught up within 3 weeks"
+      }
+    ]
+  },
+  "heading": {
+    "heading": "Where this is heading",
+    "note": "Check how the same role is going: a lending cohort",
+    "outcomesLabel": "The possible outcomes",
+    "outcomes": [
+      {
+        "title": "Support named traders",
+        "sub": "Visits, solar backup, bookkeeping."
+      },
+      {
+        "title": "Restructure repayments",
+        "sub": "Move dates after market day, cohort-wide."
+      },
+      {
+        "title": "Recovery for three",
+        "sub": "Only after field visits confirm they’ve stopped trading."
+      },
+      {
+        "title": "Change the model for cohort 4",
+        "sub": "Repayment timing and freezer size."
+      }
+    ],
+    "signalsLabel": "The signals behind them",
+    "signals": [
+      {
+        "line": "Late payers pay in full, two days late",
+        "from": "From the repayment system",
+        "kind": "shown",
+        "tag": {
+          "tag": "Watch",
+          "tone": "attention"
+        }
+      },
+      {
+        "line": "Idle freezers during power cuts in Kisumu",
+        "from": "From 6 traders, 4 weeks",
+        "kind": "said",
+        "tag": {
+          "tag": "Concern",
+          "tone": "concern"
+        }
+      },
+      {
+        "line": "Three traders silent for three weeks",
+        "from": "No check-ins, no repayments",
+        "kind": "unknown",
+        "tag": {
+          "tag": "Concern",
+          "tone": "concern"
+        }
+      }
+    ],
+    "settleLabel": "What would settle it",
+    "settle": "Field visits to the three silent traders, and a two-week trial of Monday repayment dates.",
+    "decider": "The credit committee decides.",
+    "deciderNote": "Groundwork lays out the outcomes and the proof. It doesn’t choose.",
+    "button": "Record the decision"
+  }
+}

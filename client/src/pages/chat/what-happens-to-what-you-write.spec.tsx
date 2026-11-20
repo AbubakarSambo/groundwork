@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { WHAT_HAPPENS_TO_WHAT_YOU_WRITE } from '@/components/gw/what-happens-to-what-you-write'
 
 /**
  * THE GATE IS GONE. THE CLAIMS ARE NOT.
@@ -21,8 +20,5 @@ describe('no page stands between a person and their first question', () => {
     expect(CHAT).not.toMatch(/Start my check-in\s*</)
   })
 
-  it('and the claims themselves are still one calibrated set, for the surfaces that keep them', () => {
-    expect(WHAT_HAPPENS_TO_WHAT_YOU_WRITE.length).toBe(4)
-    expect(WHAT_HAPPENS_TO_WHAT_YOU_WRITE.some(c => c.plain)).toBe(true)
-  })
+  /* The second test pinned components/gw/what-happens-to-what-you-write.ts, the old "Nobody you work with reads it" claims, which was deleted on 15 November 2026: that promise is untrue (admins and the lead read reports) and only specs imported it. */
 })

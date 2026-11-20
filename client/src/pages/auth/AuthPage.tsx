@@ -308,7 +308,8 @@ export function AuthPage() {
 
   const sendLink = useMutation({
     mutationFn: () => save(undefined),
-    onSuccess: () => { setSentBy('link'); setLinkSent(true) },
+    /* Somebody who was removed is told so, in the server's words, not that a link was sent (run 5, 19 November). */
+    onSuccess: (data: any) => { if (data?.removedSays) { setError(data.removedSays); return } setSentBy('link'); setLinkSent(true) },
     /**
      * A FAILURE IS NOT A SUCCESS. W10-2.
      *
@@ -382,7 +383,7 @@ export function AuthPage() {
       ? save({ payload: whatTheyTyped() }, signInBy === 'password' ? newPassword : undefined)
       : authApi.entrySave(email.trim().toLowerCase(), { payload: whatTheyTyped() }, trap.filled, signInBy === 'password' ? newPassword : undefined),
     /* The key for a password chosen here stays in this browser (the-password-key.ts, U.3 review). */
-    onSuccess: (data: any) => { keepThePasswordKey(data?.passwordKey); setSentBy('create'); setCreatedWithPassword(signInBy === 'password'); setLinkSent(true) },
+    onSuccess: (data: any) => { if (data?.removedSays) { setError(data.removedSays); return } keepThePasswordKey(data?.passwordKey); setSentBy('create'); setCreatedWithPassword(signInBy === 'password'); setLinkSent(true) },
     onError: (err: any) => {
       const status = err?.response?.status
       if (!status || status >= 500) {

@@ -112,7 +112,7 @@ it('draws a training programme the same way, with every trader group and the wor
     groundId: 'g-prog', renders: true, mode: 'SHARED', family: 'COHORT', sections: [], title: 'Trader training programme', scenario: 'COHORT_CHECK', kindOfWork: 'trader training programme',
     myParticipantId: 'p-lead', canEditFrame: true, readOnlyNote: null,
     participants: [{ id: 'p-lead', name: 'Lucy Wanjala', partyType: 'INITIATOR', managingOnly: true }, { id: 'p-k', name: 'Kevin Otieno', partyType: 'PARTICIPANT' }],
-    workRecords: [{ section: 'Deal grid', holds: 'trader groups', state: 'filled', stages: ['Enrolled', 'Session 1'], rows: [{ id: 'g1', kind: 'group', name: 'Kibera youth vendors', owner: 'Kevin Otieno', ownerParticipantId: 'p-k', stage: 'Enrolled', mark: 'proven', nextSays: 'Nobody has said what happens next.', contactHistory: [] }] }],
+    workRecords: [{ section: 'Deal grid', holds: 'trader groups', state: 'filled', stages: ['Enrolled', 'Check-in 1'], rows: [{ id: 'g1', kind: 'group', name: 'Kibera youth vendors', owner: 'Kevin Otieno', ownerParticipantId: 'p-k', stage: 'Enrolled', mark: 'proven', nextSays: 'Nobody has said what happens next.', contactHistory: [] }] }],
     byArea: { state: 'filled', heading: 'By county', areas: [{ area: 'Nairobi', records: 1, says: 'Nairobi has 1 group on record.' }] },
     reportedAgainstCriteria: { state: 'not-known', why: 'Nothing on record says what a group must show at each stage.', stages: [{ stage: 'Enrolled', reported: 1, withProof: 1, says: '' }] },
   })
@@ -127,7 +127,8 @@ it('draws a training programme the same way, with every trader group and the wor
   )
   expect(await screen.findByText('Every trader, and what shows it')).toBeTruthy()
   expect(screen.getByText('Officer')).toBeTruthy()
-  expect(screen.getByText('Drop-off by session')).toBeTruthy()
+  /* The drop-off by session is now one section with the women's share by county, as programme.jpg draws it (programme family, pilot). */
+  expect(screen.getByText('Women’s share by county, and drop-off by check-in')).toBeTruthy()
   expect(screen.getByText('By county')).toBeTruthy()
   expect(screen.getByRole('link', { name: 'See every other part of this board' })).toBeTruthy()
 })
@@ -180,12 +181,13 @@ it('draws a lending cohort with where it stands, every trader, and what keeps co
   expect(await screen.findByText('Where the cohort stands')).toBeTruthy()
   expect(screen.getByText('The loan records show 1 loan behind on repayment.')).toBeTruthy()
   expect(screen.getByText('Every trader, and what shows it')).toBeTruthy()
-  expect(screen.getByText('One person, a place, or the model?')).toBeTruthy()
-  expect(screen.getByText('Support given, and whether it helped')).toBeTruthy()
+  /* The cohort's patterns heading is the plain 'What keeps coming up' ('the model' was jargon), and 'Support given' is not drawn while nothing on record says what support was given. */
+  expect(screen.queryByText('One person, a place, or the model?')).toBeNull()
+  expect(screen.queryByText('Support given, and whether it helped')).toBeNull()
   expect(screen.getByRole('link', { name: 'See every other part of this board' })).toBeTruthy()
 })
 
-it('the cohort board says "yours to judge" to whoever runs it, and not to a trader in the cohort (browser test, 20 October)', async () => {
+it('the cohort board carries no note about whether a pattern is one person, a place or the way loans are set up, to the lead or to a trader', async () => {
   const cohort = (canEditFrame: boolean) => ({
     groundId: 'g-l', renders: true, mode: 'SHARED', family: 'COHORT', sections: [], title: 'Asset loans, cohort 3', scenario: 'COHORT_CHECK', kindOfWork: 'asset loans',
     myParticipantId: canEditFrame ? 'p-lead' : 'p-m', canEditFrame, readOnlyNote: null,
@@ -193,7 +195,7 @@ it('the cohort board says "yours to judge" to whoever runs it, and not to a trad
     workRecords: [], patterns: [],
     whereTheCohortStands: { heading: 'Where the cohort stands', says: '1 person is in this cohort.', groups: [] },
   })
-  for (const [canEditFrame, shown] of [[true, true], [false, false]] as const) {
+  for (const canEditFrame of [true, false]) {
     ;(boardApi.get as any).mockResolvedValue(cohort(canEditFrame))
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-lead', leadFirstName: 'Mercy', cadence: 'WEEKLY', cadenceAnchorDay: 1, participants: [], checkIns: [], roundCompletions: [], contextItems: [] })
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -204,8 +206,9 @@ it('the cohort board says "yours to judge" to whoever runs it, and not to a trad
         </MemoryRouter>
       </QueryClientProvider>,
     )
-    expect(await screen.findByText('One person, a place, or the model?')).toBeTruthy()
-    expect(!!screen.queryByText(/is yours to judge/)).toBe(shown)
+    expect(await screen.findByText('Where the cohort stands')).toBeTruthy()
+    expect(screen.queryByText(/is yours to judge/)).toBeNull()
+    expect(screen.queryByText('One person, a place, or the model?')).toBeNull()
     unmount()
   }
 })
@@ -216,7 +219,7 @@ it('draws people asked once with the report in short, each group, what they name
     myParticipantId: 'p-lead', canEditFrame: true, readOnlyNote: null,
     participants: [{ id: 'p-lead', name: 'Amina Bello', partyType: 'INITIATOR', managingOnly: true }, { id: 'p-a', name: 'Ade Adeyemi', role: 'Agroprocessor' }, { id: 'p-v', name: 'Victoria Oyelaran', role: 'Research organisation' }],
     checkInGrid: { sessions: [1], rows: [{ participantId: 'p-a', name: 'Ade Adeyemi', role: 'Agroprocessor', cells: { 1: 'done' } }, { participantId: 'p-v', name: 'Victoria Oyelaran', role: 'Research organisation', cells: { 1: 'empty' } }] },
-    workRecords: [{ section: 'Themes', holds: 'priorities people named', state: 'filled', rows: [{ id: 't1', kind: 'priority', name: 'Kano, then Kaduna', owner: 'Ade Adeyemi', fields: { theme: 'Markets and regions' } }] }],
+    workRecords: [{ section: 'Themes', holds: 'priorities people named', state: 'filled', rows: [{ id: 't1', kind: 'priority', name: 'Kano, then Kaduna', owner: 'Ade Adeyemi', /* The label the records extraction writes is 'Theme'; the old lowercase 'theme' was read by the board and written by nothing. */ fields: { Theme: 'Markets and regions' } }] }],
     divergence: { items: [{ topic: 'daily or monthly prices', positions: [{ who: 'Ade Adeyemi', view: 'Daily prices or it’s no use to us.' }, { who: 'Victoria Oyelaran', view: 'We need consistent monthly series.' }] }] },
     byWhoTheyAre: { heading: 'By who they are', state: 'filled', note: 'What each group said it needs', groups: [{ group: 'Agroprocessor', count: 1, answered: 1, says: '1 person, 1 answered.' }, { group: 'Research organisation', count: 1, answered: 0, says: '1 person, 0 answered.' }] },
     whereTheyDisagree: { heading: 'Where they disagree', state: 'filled', items: [{ topic: 'daily or monthly prices', positions: [{ who: 'Ade Adeyemi', view: 'Daily prices or it’s no use to us.' }, { who: 'Victoria Oyelaran', view: 'We need consistent monthly series.' }] }] },
@@ -236,7 +239,9 @@ it('draws people asked once with the report in short, each group, what they name
   expect(screen.getByText('Markets and regions')).toBeTruthy()
   expect(screen.getByText('1 person, 0 answered.')).toBeTruthy()
   expect(screen.getByText(/Daily prices or it’s no use to us/)).toBeTruthy()
-  expect(screen.getByText('Victoria has not answered, so what they would say is not here. And what people said they would do was said, not tested.')).toBeTruthy()
+  /* Only who has not answered: the disclaimer about 'said, not tested' went. */
+  expect(screen.getByText('Victoria has not checked in, so what they would say is not here.')).toBeTruthy()
+  expect(screen.queryByText(/said, not tested/)).toBeNull()
 })
 
 it('draws numbers from the systems beside what people said (mvq4-board.jpg)', async () => {
@@ -246,7 +251,7 @@ it('draws numbers from the systems beside what people said (mvq4-board.jpg)', as
     participants: [{ id: 'p-lead', name: 'Tunde Akande', partyType: 'INITIATOR', managingOnly: true }],
     headline: { question: 'Will MarketView reach 40 paying subscribers by 31 December?', answer: 'So far it is 31 of the 40 paying subscribers.' },
     objectives: [{ id: 'o1', name: 'The team is aiming for 40 paying subscribers.', count: 31, target: 40 }],
-    whatTheSystemsShow: { heading: 'What the systems show', state: 'filled', numbers: [{ key: 'paid', source: 'Paystack', value: 31, unit: null, measuredAt: '2026-09-23', says: 'Paystack shows 31 for paid subscriptions this quarter, as of 23 September.' }], whatANumberIsNot: ['These came from your own systems.'] },
+    whatTheSystemsShow: { heading: 'What the systems show', state: 'filled', numbers: [{ key: 'paid', label: 'Paid subscriptions this quarter', source: 'Paystack', value: 31, unit: null, measuredAt: '2026-09-23', says: 'Paystack shows 31 for paid subscriptions this quarter, as of 23 September.' }], whatANumberIsNot: ['These came from your own systems.'] },
     whereWhatWasSaidAndTheSystemsDiffer: { heading: 'Where what people said and the systems differ', state: 'filled', rows: [{ id: 'r1', participantId: 'p-i', said: 'Ife Okon said, "I closed three new subscriptions this week."', documentSays: 'A document on this check-in says it differently. It says, "Two paid, one invoice open."' }] },
   })
   ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-lead', leadFirstName: 'Tunde', cadence: 'DAILY', workingDays: [1, 2, 3, 4, 5], participants: [], checkIns: [], roundCompletions: [], contextItems: [] })
@@ -261,7 +266,9 @@ it('draws numbers from the systems beside what people said (mvq4-board.jpg)', as
   expect(await screen.findByText('So far it is 31 of the 40 paying subscribers.')).toBeTruthy()
   expect(screen.queryByText('Where each target stands')).toBeNull()
   expect(screen.getByText('What the systems show')).toBeTruthy()
-  expect(screen.getByText('Paystack shows 31 for paid subscriptions this quarter, as of 23 September.')).toBeTruthy()
+  const paid = screen.getByText('Paid subscriptions this quarter').closest('tr') as HTMLElement
+  expect(paid.textContent).toContain('31')
+  expect(paid.textContent).toContain('From Paystack, as of 23 September')
   expect(screen.getByText('Where what people said and the systems differ')).toBeTruthy()
 })
 
@@ -272,7 +279,7 @@ it('draws a law firm matter with where it stands, what you need to decide and wh
     participants: [{ id: 'p-lead', name: 'Njeri Mwangi', partyType: 'INITIATOR', managingOnly: true }],
     whereTheMatterStands: { heading: 'Where the matter stands', state: 'filled', says: ['Our reply is due on 2 October.'] },
     whatYouNeedToDecide: { heading: 'What you need to decide', state: 'filled', items: [{ question: 'Decide whether to argue the limitation point first', why: 'You wrote this down as still to decide.', owner: 'You' }] },
-    whatChangedThisWeek: { heading: 'What changed this week, and what it changed', state: 'filled', sessionNumber: 4, says: 'In session 4, 1 thing was said about the matter.', lines: [{ id: 'l1', participantId: 'p-l', text: 'Leila Hassan said, "My research found the defence was filed late."', mark: 'said', markSays: 'Only someone’s word' }], cannotTell: 'Nothing on record links each change to what it changed.' },
+    whatChangedThisWeek: { heading: 'What changed this week, and what it changed', state: 'filled', sessionNumber: 4, says: 'In check-in 4, 1 thing was said about the matter.', lines: [{ id: 'l1', participantId: 'p-l', text: 'Leila Hassan said, "My research found the defence was filed late."', mark: 'said', markSays: 'Only someone’s word' }], cannotTell: 'Nothing on record links each change to what it changed.' },
   })
   ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-lead', leadFirstName: 'Njeri', cadence: 'WEEKLY', cadenceAnchorDay: 1, participants: [], checkIns: [], roundCompletions: [], contextItems: [] })
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -309,7 +316,8 @@ it('draws a government programme with what each level understood, the visit log 
     </QueryClientProvider>,
   )
   expect(await screen.findByText('What each level understood')).toBeTruthy()
-  expect(screen.getByText('What the visit log shows')).toBeTruthy()
+  /* The visit log heading is not drawn while no numbers have been brought in: it had only an apology under it. */
+  expect(screen.queryByText('What the visit log shows')).toBeNull()
   expect(screen.getByText('The three counties')).toBeTruthy()
   expect(screen.getByText('Kiambu has no project on record yet.')).toBeTruthy()
 })

@@ -50,7 +50,7 @@ describe('the counts behind this, counted from the record', () => {
       lines: 3, backedLines: 1,
     });
     expect(counts!.says).toEqual([
-      '7 sessions were answered and 3 were missed.',
+      '7 check-ins were answered and 3 were missed.',
       '5 commitments were made. Of these, 2 were kept, 1 was not kept and 2 are still open.',
       '2 waits are still open and 1 has been cleared.',
       '1 of the 3 lines on the record is backed by a document.',
@@ -59,7 +59,7 @@ describe('the counts behind this, counted from the record', () => {
 
   it('says plainly when there is nothing to count', () => {
     expect(countTheRecord({ sessions: [], commitments: [], waits: [], lines: [] }).says).toEqual([
-      '0 sessions were answered and 0 were missed.',
+      '0 check-ins were answered and 0 were missed.',
       'Nobody has made a commitment on the record yet.',
       'Nobody has said they are waiting on anyone.',
       'Nothing is on the record yet.',
@@ -79,7 +79,7 @@ describe('who reads the counts', () => {
   it('the lead reads them under the judgement', async () => {
     const served = await withTheCountsBehindIt(aPrisma(), 'g1', theBoardsJudgementFor(THE_STORED_REPORT, { isLead: true }));
     expect((served.theJudgement as any).theGap).toBe('Two of five people count a price range as a budget.');
-    expect((served.theJudgement as any).theCountsBehindThis.says[0]).toBe('7 sessions were answered and 3 were missed.');
+    expect((served.theJudgement as any).theCountsBehindThis.says[0]).toBe('7 check-ins were answered and 3 were missed.');
     /* The engine's own table still reaches nobody. */
     expect(served.theTable).toBeNull();
   });

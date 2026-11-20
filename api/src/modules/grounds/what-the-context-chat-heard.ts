@@ -1,3 +1,4 @@
+import { howOftenItRuns } from './the-check-ins-own-schedule';
 import { theNumberIsOnlyADay } from '../conversation/a-day-is-not-a-target';
 import { worthRecording, verbatimQuote, verbatimExpectation, readablePhrase } from './what-setup-agreed';
 import { whoTheyMeant } from './who-they-meant';
@@ -51,10 +52,6 @@ export type Cadence = (typeof CADENCES)[number];
  * same words to open on what this check-in already holds (FIX 3), and two copies of "once a week"
  * drift the moment one of them is reworded.
  */
-export const CADENCE_WORDS: Record<Cadence, string> = {
-  DAILY: 'every day', WEEKLY: 'once a week', FORTNIGHTLY: 'every two weeks',
-  MONTHLY: 'once a month', ONE_TIME: 'once, at the end',
-};
 
 export interface Heard {
   /** Days, as the ground stores it. */
@@ -248,7 +245,7 @@ export function proposalFrom(
     if (!CADENCES.includes(c as Cadence)) {
       return { kind: 'none', why: 'No rhythm in that answer that maps to how often people can check in.' };
     }
-    return { kind: 'cadence', cadence: c as Cadence, say: `I will set people to check in ${CADENCE_WORDS[c as Cadence]}.` };
+    return { kind: 'cadence', cadence: c as Cadence, say: `I will set people to check in ${howOftenItRuns({ cadence: c })}.` };
   }
 
   if (gap === 'success') {
@@ -482,7 +479,7 @@ export function confirmedSay(proposal: Proposal): string {
         : `I have set this to run for ${proposal.days} days.`;
     }
     case 'cadence':
-      return `I have set people to check in ${CADENCE_WORDS[proposal.cadence]}.`;
+      return `I have set people to check in ${howOftenItRuns({ cadence: proposal.cadence })}.`;
     case 'success':
       /*
        * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: a colon joining two clauses

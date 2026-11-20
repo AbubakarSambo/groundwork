@@ -43,6 +43,8 @@ vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: { id: 
 vi.mock('@/api/board', () => ({ boardApi: { get: vi.fn() } }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn().mockResolvedValue({ initiatorId: 'u-lead', timelineDays: 90, cadence: 'WEEKLY' }) } }))
 vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn().mockResolvedValue({ count: 0, line: null, comingUp: [], needs: [] }) } }))
+/* Changed 15 November: "Over time" is drawn only once a session has closed (no heading over nothing), so this fixture gives it one closed session; and "Where people differ" is drawn only with something in it, so the fixture gives it one agreement. */
+vi.mock('@/api/reports', () => ({ reportsApi: { rounds: vi.fn().mockResolvedValue({ moved: [{ sessionNumber: 1, takenAt: '2026-11-01', differences: 0, says: '' }] }) } }))
 vi.mock('@/components/gw/HowThisHasMoved', () => ({ HowThisHasMoved: () => null }))
 vi.mock('@/components/gw/ResolutionPanel', () => ({ ResolutionPanel: () => null }))
 vi.mock('@/components/gw/WhatSuccessLooksLike', () => ({ WhatSuccessLooksLikeFor: () => null }))
@@ -83,7 +85,7 @@ function boardFor(scenario: string) {
       journey: { direction: 'up' as const, start: 0, now: 6, target: 12, say: '', covered: 50 },
     }],
     startingState: 'Agreed to close 12 sales by the end of the quarter.',
-    divergence: { items: [], agreements: [], centralQuestion: null, pointer: 'Nothing to compare yet.' },
+    divergence: { items: [], agreements: [{ topic: 'The target', text: 'Everybody agrees on the target.' }], centralQuestion: null, pointer: '' },
     whatTheRoomIsAbout: {
       aims: [{ aim: 'Close more deals', held: ['Amani Wekesa'] }],
       places: [], things: [], readAtSession: 1,

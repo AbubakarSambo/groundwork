@@ -232,7 +232,7 @@ describe('decision 75, item 48: every ending is one plain sentence, read the sam
       'The team is on course.',
       'The team can reach it, with a change in how the work is done.',
       'The target needs to change.',
-      'It is not settled yet, and more sessions are needed.',
+      'It is not settled yet, and more check-ins are needed.',
     ]);
     expect(board.outcomes.map((o) => o.says)).toEqual(panel.options.map((o: any) => o.label));
   });

@@ -1,10 +1,10 @@
+import { theAssistantsAddress } from './the-assistants-address';
 import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
 import { theOutboxKey, mayItGo, letItGoAgain } from '../../common/the-one-outbox';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { whatHappensWhenThisPersonJoins } from '../participants/named-when-an-admin-approved';
 import { theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
 import { aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
-import { reportReadyReminderSubject } from './the-report-is-ready-reminder';
 import { THE_EMAILS } from '../grounds/what-is-sent-in-simpler-words';
 import { connectWhatsAppFor, youCanAlsoAnswerOnWhatsApp } from '../whatsapp/connect-whatsapp';
 import { askName, isAMadeUpWorkspaceName } from '../assistant/ask-name';
@@ -22,18 +22,23 @@ import { PrismaService } from '../prisma/prisma.service';
 import { theCheckInForAnEmail } from './the-check-in-for-an-email';
 import { STOP_LINE } from '../conversation/ignoring-it-should-be-enough';
 import { ROUTINE_EMAILS, THEY_HAD_ONE_TODAY, theirRoutineMessagesToday, THE_SUMMARY_SENDERS, justAfterTheSummary, whoTheyAre, theyRunACheckIn } from '../engagement/one-routine-message-a-day';
+import { aPersonWhoWasRemoved } from '../participants/held-for-a-seat';
 import { NOT_SENT_WHILE_AWAY, aPauseStops, whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
 import { GROUNDWORK_IS_PAUSED_THERE, thisOrganisationIsPaused } from '../billing/the-trial-grace';
 import { whoIsAwayOn } from '../suites/who-is-away';
 import { inQuietHours, nextAllowedMoment } from './nothing-lands-at-3am';
+import { theQuietHoursNow } from '../../common/the-clock';
 import { Resend } from 'resend';
+import { type AnAttachment, holdTheAttachments, releaseTheAttachments, whyTheseCannotGo } from './attachments';
+import { markTheYearEndFilesSent } from '../year-end/the-year-end-log';
+import { markAnIntroductionSent } from '../executive-onboarding/the-introduction-delivery';
 import * as nodemailer from 'nodemailer';
 import { greeting } from './a-greeting-with-no-name';
 import { howLongInWords } from '../auth/how-long-a-link-lasts';
 import { shouldSayWhatGroundworkIs, withWhatGroundworkIs } from './what-groundwork-is';
 import { theOrganisationAMailIsAbout } from './the-organisation-a-mail-is-about';
 import { whatTheyReported } from '../engagement/what-they-reported';
-import { somebodyCheckedInDirectly, theInvitationDirectly, theReportIsStillWaitingDirectly, theReportReadyDirectly } from './the-direct-words';
+import { somebodyCheckedInDirectly, theInvitationDirectly, theReportReadyDirectly } from './the-direct-words';
 import { haveNotCheckedInSaid, type WhoIsLeft } from './who-has-not-checked-in-yet';
 import { whatTheTeamGets, whatTheLeadGets, THE_TEAM_BUTTON, THE_LEAD_BUTTON } from './one-line-one-link-one-report';
 import { thePartialPicture } from '../engagement/a-partial-picture-said-honestly';
@@ -42,6 +47,7 @@ import { theAnchorInvitation } from '../entry/the-anchor-people-step';
 import { aCheckInStartedFromTheAnchor, theCheckInWasStartedFromTheAnchor } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { MAIL_BUTTON, MAIL_FONT_UI, dressedInTheKitsLook } from './the-kits-look-in-an-email';
+import { REFERENCES_AND_RESOURCES } from '../../common/the-tab-names';
 
 /**
  * Groundwork email library. Per the product rules, every message names
@@ -114,7 +120,7 @@ export class EmailService implements OnModuleInit {
       : null;
     const groundId = context?.groundId ?? place?.groundId ?? null;
     const g = groundId
-      ? await Promise.resolve(theCheckInForAnEmail(this.prisma, groundId, { scenario: true, peersVisibleToEachOther: true, organization: { select: { name: true } }, initiator: { select: { email: true } } }))?.catch?.(() => null)
+      ? await Promise.resolve(theCheckInForAnEmail(this.prisma, groundId, { scenario: true, peersVisibleToEachOther: true, organization: { select: { name: true } }, initiator: { select: { email: true, firstName: true } } }))?.catch?.(() => null)
       : null;
     /* To the person who runs it, written for them (Hafsah, 19 October, point 5). */
     const runsIt = (!!to && !!g?.initiator?.email && String(g.initiator.email).trim().toLowerCase() === String(to).trim().toLowerCase())
@@ -208,6 +214,8 @@ export class EmailService implements OnModuleInit {
     }
 
     const address = to.trim().toLowerCase();
+    /* NOBODY WHO WAS REMOVED IS WRITTEN TO (run 7): what a sender "decided to send" or what was "asked for" about work they have left. One owner, asked here for every mail. */
+    if (await aPersonWhoWasRemoved(this.prisma as any, address)) return 'they were removed from the check-in, and nothing more is sent to them';
     /*
      * WE STOP WRITING TO A DEAD ADDRESS. A hard bounce was recorded and mirrored, and then the daily
      * sweeps kept mailing it, damaging the sending domain for every tenant. The latest delivery to
@@ -456,7 +464,7 @@ export class EmailService implements OnModuleInit {
 
   private async sendEmail(
     /** `text` only where the plain words cannot be read off the HTML well, as with a table (the daily delivery alert). */
-    options: { to: string; subject: string; html: string; text?: string },
+    options: { to: string; subject: string; html: string; text?: string; replyTo?: string; attachments?: AnAttachment[] },
     context?: DeliveryContext,
     /** Which sender this is. Defaulted so nothing breaks, and every sender passes it. */
     sender?: string,
@@ -508,7 +516,7 @@ export class EmailService implements OnModuleInit {
     }
     /* Every mail but the way back in and the running of the product (release plan Part 0, Drop Access run 1 item 12): "Joseph Kariuki has
        checked in" was an asked-for mail and went at half past two in the morning in Nairobi. Quiet hours hold it until seven. */
-    if (sender && (whatThisMailIs(sender) === 'we decided to send it' || whatThisMailIs(sender) === 'asked for' || whatThisMailIs(sender) === 'about paying')) {
+    if (!context?.answeringNow && sender && (whatThisMailIs(sender) === 'we decided to send it' || whatThisMailIs(sender) === 'asked for' || whatThisMailIs(sender) === 'about paying')) {
       const held = await this.holdForTheMorning(options, context, sender);
       if (held) { if (context) context.outcome = 'held'; return undefined; }
     }
@@ -528,13 +536,13 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Routine mail to a lead before the morning summary's hour is held until just after it. True when it was held. */
-  private async waitForTheLeadsSummary(options: { to: string; subject: string; html: string }, context: DeliveryContext | undefined, sender: string): Promise<boolean> {
+  private async waitForTheLeadsSummary(options: { to: string; subject: string; html: string; attachments?: AnAttachment[] }, context: DeliveryContext | undefined, sender: string): Promise<boolean> {
     try {
       const now = new Date();
       const after = justAfterTheSummary(now);
       if (now.getTime() >= after.getTime()) return false;
       if (!(await theyRunACheckIn(this.prisma, options.to))) return false;
-      await this.prisma.scheduledEmail.create({ data: { toAddress: options.to, subject: options.subject, html: options.html, sender, context: (context ?? null) as any, notBefore: after } });
+      await this.prisma.scheduledEmail.create({ data: { toAddress: options.to, subject: options.subject, html: options.html, sender, context: (context ?? null) as any, notBefore: after, ...this.heldCopyOfTheFiles(options) } });
       this.writeItDown(options, sender, 'held', `waits for the lead's morning summary; goes at ${after.toISOString()} only if the summary did not`);
       return true;
     } catch {
@@ -548,25 +556,43 @@ export class EmailService implements OnModuleInit {
     return had.email + had.whatsapp >= 1 ? THEY_HAD_ONE_TODAY : null;
   }
 
-  /** The recipient's zone and quiet hours, from their roster row. Nobody on the roster: no hold. */
-  private async holdForTheMorning(options: { to: string; subject: string; html: string }, context: DeliveryContext | undefined, sender: string): Promise<boolean> {
+  /**
+   * The one place quiet hours are read for a held mail: the person's own zone (else the organisation's) and their own quiet hours, from their
+   * roster row, as they are right now. The moment the mail may go when it is quiet, null when it may go now or nobody on the roster is meant.
+   */
+  private async quietUntil(to: string, now: Date): Promise<Date | null> {
+    const person = await this.prisma.person.findFirst({
+      where: { email: { equals: to.trim().toLowerCase(), mode: 'insensitive' } },
+      select: { organizationId: true, externalId: true, timezone: true },
+    });
+    if (!person) return null;
+    const prefs = await this.prisma.emailPreference.findUnique({
+      where: { organizationId_personExternalId: { organizationId: person.organizationId, personExternalId: person.externalId } },
+      select: { quietBeforeHour: true, quietAfterHour: true },
+    });
+    /* Their own zone, else the organisation's (Hafsah, 14 October): mail held overnight went at 8 in UTC, which is 11 in Nairobi. */
+    const zone = person.timezone ?? (await theOrganisationsZone(this.prisma as any, person.organizationId).catch(() => null));
+    if (!inQuietHours(now, zone, prefs)) return null;
+    return nextAllowedMoment(now, zone, prefs);
+  }
+
+  /** Whether a mail held for quiet hours may go now: its moment has come, or the person's hours or zone were changed and it is no longer quiet. */
+  async mayGoNow(to: string): Promise<boolean> {
+    return (await this.quietUntil(to, theQuietHoursNow()).catch(() => null)) === null;
+  }
+
+  /** Quiet hours hold the mail until the next allowed moment. True when it was held. */
+  private async holdForTheMorning(options: { to: string; subject: string; html: string; replyTo?: string; attachments?: AnAttachment[] }, context: DeliveryContext | undefined, sender: string): Promise<boolean> {
+    /* A reply to somebody who has just written to the assistant goes at once: they are awake, and a held copy would lose its Reply-To. */
+    if (sender === 'sendTheAssistantsReply') return false;
     try {
-      const person = await this.prisma.person.findFirst({
-        where: { email: { equals: options.to.trim().toLowerCase(), mode: 'insensitive' } },
-        select: { organizationId: true, externalId: true, timezone: true },
-      });
-      if (!person) return false;
-      const prefs = await this.prisma.emailPreference.findUnique({
-        where: { organizationId_personExternalId: { organizationId: person.organizationId, personExternalId: person.externalId } },
-        select: { quietBeforeHour: true, quietAfterHour: true },
-      });
-      const now = new Date();
-      /* Their own zone, else the organisation's (Hafsah, 14 October): mail held overnight went at 8 in UTC, which is 11 in Nairobi. */
-      const zone = person.timezone ?? (await theOrganisationsZone(this.prisma as any, person.organizationId).catch(() => null));
-      if (!inQuietHours(now, zone, prefs)) return false;
-      const notBefore = nextAllowedMoment(now, zone, prefs);
+      const notBefore = await this.quietUntil(options.to, theQuietHoursNow());
+      if (!notBefore) return false;
+      /* Marked as held for quiet hours, so that the sweep asks the person's hours again and lets it go as soon as they are no longer quiet. */
+      /* And with its Reply-To, which the held row has no column for: without it the copy that goes in the morning cannot be answered. */
+      const heldContext = { ...(context ?? { kind: 'OTHER' }), heldFor: 'quiet-hours', ...(options.replyTo ? { heldReplyTo: options.replyTo } : {}) };
       await this.prisma.scheduledEmail.create({
-        data: { toAddress: options.to, subject: options.subject, html: options.html, sender, context: (context ?? null) as any, notBefore },
+        data: { toAddress: options.to, subject: options.subject, html: options.html, sender, context: heldContext as any, notBefore, ...this.heldCopyOfTheFiles(options) },
       });
       this.logger.log(`Holding "${options.subject}" for ${options.to} until ${notBefore.toISOString()} (quiet hours).`);
       this.writeItDown(options, sender, 'held', `quiet hours; goes at ${notBefore.toISOString()}`);
@@ -578,8 +604,14 @@ export class EmailService implements OnModuleInit {
     }
   }
 
+  /** The files a held mail carries, in the form the column keeps. Nothing for a mail with none. */
+  private heldCopyOfTheFiles(options: { attachments?: AnAttachment[] }): { attachments?: any } {
+    const held = holdTheAttachments(options.attachments);
+    return held ? { attachments: held as any } : {};
+  }
+
   /** A held mail, when its moment has come. Skips the hold and the preference gate, both already asked. */
-  async deliverHeld(row: { toAddress: string; subject: string; html: string; sender: string | null; context: unknown }): Promise<void> {
+  async deliverHeld(row: { toAddress: string; subject: string; html: string; sender: string | null; context: unknown; attachments?: unknown }): Promise<void> {
     /* WHILE IT WAS HELD, SOMETHING MAY HAVE CHANGED: they may have stopped these emails, or been sent their one routine message another way. Asked again. */
     const options = { to: row.toAddress, subject: row.subject, html: row.html };
     if (row.sender) {
@@ -591,7 +623,7 @@ export class EmailService implements OnModuleInit {
         return;
       }
     }
-    await this.deliverNow({ to: row.toAddress, subject: row.subject, html: row.html }, (row.context ?? undefined) as DeliveryContext | undefined, row.sender ?? undefined);
+    await this.deliverNow({ to: row.toAddress, subject: row.subject, html: row.html, ...((row.context as any)?.heldReplyTo ? { replyTo: (row.context as any).heldReplyTo } : {}), attachments: releaseTheAttachments(row.attachments) }, (row.context ?? undefined) as DeliveryContext | undefined, row.sender ?? undefined);
   }
 
   /**
@@ -600,13 +632,20 @@ export class EmailService implements OnModuleInit {
    * and 22 January): how a session went is one mail a person a day; a report's news is one mail a check-in a day, the check-in read from its
    * own name. A sign-in link, a code or a password mail claims nothing: the person asked for it.
    */
-  private theMailsKey(options: { to: string; subject: string }, context?: DeliveryContext, sender?: string): string | null {
+  private theMailsKey(options: { to: string; subject: string; html: string; text?: string }, context?: DeliveryContext, sender?: string): string | null {
     const askedForNow = /sign-?in|magic|code|password|verify|security|otp|login/i.test(sender ?? '') || context?.kind === 'MAGIC_LINK';
     if (askedForNow) return null;
-    const family = /^(?:sendTheAnswerByEmail|sendTheMessageByEmail|sendRoundDigest|sendParticipantCheckedIn)$/.test(sender ?? '') ? 'session-news'
+    /* The year-end files go once for one job, one version and one person, whatever the day: the key is the send key the caller made, and nothing else. */
+    if (sender === 'sendTheYearEndFiles' && context?.sendKey) return theOutboxKey({ channel: 'email', to: options.to, kind: 'year-end-files', about: context.sendKey });
+    /* An introduction goes once for one person on one channel, whatever the day: the key is the send key the caller made (executive-onboarding/the-introduction-delivery.ts). */
+    if (sender === 'sendTheIntroduction' && context?.sendKey) return theOutboxKey({ channel: 'email', to: options.to, kind: 'introduction', about: context.sendKey });
+    /* WHAT IS SAID IN ANSWER TO SOMEBODY IS KEYED ON WHAT IT SAYS, NOT ON ITS SUBJECT (Fatima round 1, I-03): the picture of her first forward was dropped because a short thank-you with the same subject had gone that day, and the batch was marked answered. Two different mails with one subject are two mails; the very same words twice within a minute are one. */
+    const theWords = `${options.subject}\n${options.text ?? plainTextOf(options.html)}`;
+    if (sender && /^(?:sendTheAssistantsReply|sendTheAnswerByEmail|sendTheMessageByEmail)$/.test(sender)) return theOutboxKey({ channel: 'email', to: options.to, kind: 'reply', text: theWords });
+    const family = /^(?:sendRoundDigest|sendParticipantCheckedIn)$/.test(sender ?? '') ? 'session-news'
       : /^(?:sendReportReady|sendTheReportFollowUp)$/.test(sender ?? '') ? 'report-news' : null;
     const aboutWhich = family === 'report-news' ? (context?.groundId ?? /["“]([^"”]+)["”]/.exec(options.subject)?.[1] ?? null) : family === 'session-news' ? 'the-day' : (context?.groundId ?? context?.participantId ?? null);
-    return theOutboxKey({ channel: 'email', to: options.to, kind: family ?? sender ?? context?.kind ?? null, about: aboutWhich, text: options.subject });
+    return theOutboxKey({ channel: 'email', to: options.to, kind: family ?? sender ?? context?.kind ?? null, about: aboutWhich, text: theWords });
   }
 
   /**
@@ -615,7 +654,7 @@ export class EmailService implements OnModuleInit {
    * refused gives its key back. the-one-door.spec.ts fails if any other code reaches the mail service.
    */
   private async deliverNow(
-    options: { to: string; subject: string; html: string; text?: string },
+    options: { to: string; subject: string; html: string; text?: string; replyTo?: string; attachments?: AnAttachment[] },
     context?: DeliveryContext,
     sender?: string,
   ): Promise<string | undefined> {
@@ -633,11 +672,44 @@ export class EmailService implements OnModuleInit {
     }
   }
 
+  /** The assistant address of the organisation a reminder or an invitation belongs to, or null for everything else (sign-in links, lead invitations, billing). */
+  private async theAssistantTheyCanReplyTo(context?: DeliveryContext): Promise<string | null> {
+    if (!context || (context.kind !== 'REMINDER' && context.kind !== 'PARTICIPANT_INVITE')) return null;
+    try {
+      const prisma = this.prisma as any;
+      const found = context.participantId
+        ? await prisma.groundParticipant.findUnique({ where: { id: context.participantId }, select: { ground: { select: { organization: { select: { slug: true } } } } } })
+        : context.groundId
+          ? await prisma.ground.findUnique({ where: { id: context.groundId }, select: { organization: { select: { slug: true } } } })
+          : null;
+      const slug: string | undefined = (found?.ground ?? found)?.organization?.slug;
+      return slug ? theAssistantsAddress({ slug }) : null;
+    } catch {
+      return null;
+    }
+  }
+
   private async throughTheDoor(
-    options: { to: string; subject: string; html: string; text?: string },
+    options: { to: string; subject: string; html: string; text?: string; replyTo?: string; attachments?: AnAttachment[] },
     context?: DeliveryContext,
     sender?: string,
   ): Promise<string | undefined> {
+    /*
+     * A REPLY TO A REMINDER OR AN INVITATION REACHES THE ASSISTANT. Decided here, at the one place every mail (sent now or held and sent later)
+     * passes, from who the mail is for, so no sender has to remember it and a held copy does not lose it. Where the mail is about a check-in
+     * somebody is in, replying to it goes to their organisation's assistant address (the-assistants-address.ts), which reads the reply as theirs.
+     */
+    /* WHAT A MAIL MAY CARRY IS CHECKED HERE, AT THE ONE DOOR (attachments.ts): a mail with a file that may not go is refused whole, never sent without it. */
+    const whyNot = whyTheseCannotGo(options.attachments);
+    if (whyNot) {
+      this.logger.error(`Not sending "${options.subject}" to ${options.to}: ${whyNot}`);
+      this.writeItDown(options, sender, 'failed', whyNot);
+      throw new Error(whyNot);
+    }
+    if (!options.replyTo) {
+      const assistant = await this.theAssistantTheyCanReplyTo(context);
+      if (assistant) options = { ...options, replyTo: assistant };
+    }
     /* NO INTERNAL NAME OR PLACEHOLDER IS EVER MAILED (night quality run 2). The last line, for every sender. */
     options = { ...options, subject: aPersonNeverReadsAnInternalName(options.subject, `mail "${sender ?? 'unnamed'}" subject`, this.logger), html: aPersonNeverReadsAnInternalName(options.html, `mail "${sender ?? 'unnamed'}"`, this.logger) };
 
@@ -690,10 +762,12 @@ export class EmailService implements OnModuleInit {
         /* MAIL_CATCHER_PORT is for a test bed only (two testers, two catchers). Unset, it is 1025 as it always was. This branch is only ever reached when nothing is sent for real. */
         const transport = nodemailer.createTransport({ host: '127.0.0.1', port: Number(process.env.MAIL_CATCHER_PORT) || 1025, secure: false, ignoreTLS: true });
         /* The text part too (11 October): this copy is the one a person testing locally reads, and it went with the HTML only, so every mail looked as if its text part were empty. */
-        await transport.sendMail({ from: this.fromEmail, to: options.to, subject: options.subject, html: dressed, text });
+        await transport.sendMail({ from: this.fromEmail, to: options.to, subject: options.subject, html: dressed, text, ...(options.replyTo ? { replyTo: options.replyTo } : {}), ...(options.attachments?.length ? { attachments: options.attachments.map((a) => ({ filename: a.filename, content: a.content, contentType: a.contentType })) } : {}) });
       } catch (_) { /* mailcatcher not running - console log is still available */ }
       const devId = `dev-${crypto.randomUUID()}`;
       await this.delivery.recordSend(devId, options.to, context);
+      await markTheYearEndFilesSent(this.prisma, context?.sendKey, devId);
+      await markAnIntroductionSent(this.prisma, context?.sendKey, devId);
       /* A mail that is only logged is still written down as sent, the way a real one is: the once-only and one-a-day rules read this record, so without it a local run sends the same routine mail every morning, which production never does. */
       if (sender && ROUTINE_EMAILS.has(sender)) await this.writeItDown(options, sender, 'sent', null); else void this.writeItDown(options, sender, 'sent', null);
       // DEV BOUNCE CONVENTION: a recipient containing '+bounce' emits a
@@ -711,7 +785,8 @@ export class EmailService implements OnModuleInit {
       const match = options.html.match(/href="([^"]+)"/);
       return match?.[1];
     }
-    const { data, error } = await this.theResendClient().emails.send({ from: this.fromEmail, ...options, text, html: dressed, ...(headers ? { headers } : {}) });
+    const { attachments: theFiles, ...theRest } = options;
+    const { data, error } = await this.theResendClient().emails.send({ from: this.fromEmail, ...theRest, text, html: dressed, ...(headers ? { headers } : {}), ...(theFiles?.length ? { attachments: theFiles.map((a) => ({ filename: a.filename, content: a.content })) } : {}) });
     if (error) {
       this.logger.error(`Failed to send email to ${options.to}: ${error.name} - ${error.message}`);
       this.writeItDown(options, sender, 'failed', `${error.name}: ${error.message}`);
@@ -721,6 +796,8 @@ export class EmailService implements OnModuleInit {
     /* Waited for where it is counted: the day's one routine message is read from this record, and the next send in the same sweep must see it. */
     if (sender && ROUTINE_EMAILS.has(sender)) await this.writeItDown(options, sender, 'sent', null); else void this.writeItDown(options, sender, 'sent', null);
     if (data?.id) await this.delivery.recordSend(data.id, options.to, context);
+    await markTheYearEndFilesSent(this.prisma, context?.sendKey, data?.id);
+    await markAnIntroductionSent(this.prisma, context?.sendKey, data?.id);
     return undefined;
   }
 
@@ -757,8 +834,8 @@ export class EmailService implements OnModuleInit {
       subject: 'I have your request to speak to a coach',
       html: `
         <p>${greeting(name)}</p>
-        <p>Thanks for asking. Somebody reads these and will come back to you within two working days.</p>
-        <p>So there are no surprises, coaching is $700 per month with no retainer, or $7,500 a year for twelve sessions. I usually suggest two sessions per issue, back to back: one to understand it, the next to work through it.</p>
+        <p>Thanks for asking. Somebody reads these and will come back to you.</p>
+        <p>So there are no surprises, coaching is $700 per month with no retainer, or $7,500 a year for twelve check-ins. I usually suggest two check-ins per issue, back to back: one to understand it, the next to work through it.</p>
         <p>I find a coach suited to the situation: the scenario, the seniority, the language, the industry. You meet them before you commit to anything.</p>
         <p>Nothing has been created in Groundwork and nobody on your team has been contacted. If you would rather just get going, the software works on its own and most teams run it themselves.</p>
         <p>Groundwork</p>
@@ -846,7 +923,7 @@ export class EmailService implements OnModuleInit {
       to,
       subject: 'Your Groundwork access code',
       html: this.layout(
-        `<p>Here is your Groundwork access code. It gives you ${sessionsGranted} session${sessionsGranted !== 1 ? 's' : ''} free of charge.</p>
+        `<p>Here is your Groundwork access code. It gives you ${sessionsGranted} check-in${sessionsGranted !== 1 ? 's' : ''} free of charge.</p>
          <p style="font-size:22px;font-weight:700;letter-spacing:0.1em;background:#F7F1E5;border-radius:8px;padding:14px 20px;display:inline-block;font-variant-numeric:lining-nums tabular-nums;">${code}</p>
          <p>To use it: go to <a href="https://app.myground.work">app.myground.work</a>, sign up, set up a check-in, and enter this code when prompted. Your check-in stays private until the report is released.</p>
          <p>Any questions, reply to this email.</p>
@@ -880,7 +957,7 @@ export class EmailService implements OnModuleInit {
     await this.sendEmail({
       to: email,
       subject: named ? `You've been added to ${orgName} on Groundwork` : `You've been added to Groundwork`,
-      html: this.layout(`<p>${greeting(firstName)}</p><p>${named ? escapeHtml(orgName) : 'Your team'} has added you to Groundwork. Groundwork is where each person in a piece of work says how it is going in their own words, so problems are found sooner. The people in each check-in you join, and your organisation's admins, can read what you say in it. Your questions to ${escapeHtml(askName(orgName))} stay private.</p><p><a href="${url}">Accept invite</a></p><p style="color:#4E4236;font-size:13px;">If you were not expecting this, you can ignore this email. Nothing is active until you click the link.</p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>${named ? escapeHtml(orgName) : 'Your team'} has added you to Groundwork. Groundwork is where each person in a piece of work says how it is going in their own words, so problems are found sooner. Admins can read the board and the team reports. The people in a check-in see short lines from what you say once the team's report is shared. Nobody reads your conversation. Your questions to ${escapeHtml(askName(orgName))} stay private.</p><p><a href="${url}">Accept invite</a></p><p style="color:#4E4236;font-size:13px;">If you were not expecting this, you can ignore this email. Nothing is active until you click the link.</p>`),
     }, undefined, 'sendUserInvite');
   }
 
@@ -1014,12 +1091,7 @@ export class EmailService implements OnModuleInit {
         `<p>Hi,</p>
          <p><strong>${escapeHtml(adminName)}</strong> set up <strong>${escapeHtml(groundLabel)}</strong> on Groundwork and named you to lead it.</p>
          <p>You decide when to begin. Review the context they left, add or edit it, and confirm when you are ready. You will do your own check-in as part of this, and any people already invited will be waiting on you.</p>
-         <!--
-           W8-6. The Context tab has document upload and context notes, and
-           nothing anywhere told anybody it was there, so it went unused. One
-           sentence, in the email that gets opened before the check-in does.
-         -->
-         <p>The Context and resources tab on the check-in is where background goes - notes, and documents like a plan, a brief or a spreadsheet. What you upload is yours by default; mark it open to the check-in and everybody works from it, and their check-ins will have read it too.</p>
+         <p>The ${REFERENCES_AND_RESOURCES} tab on the check-in is where background goes - notes, and documents like a plan, a brief or a spreadsheet. What you upload is yours by default; mark it open to the check-in and everybody works from it, and their check-ins will have read it too.</p>
          <p><a href="${url}" style="${MAIL_BUTTON}">Review and begin →</a></p>`,
       ),
     }, context ?? { kind: 'LEAD_INVITE' }, 'sendLeadInvite');
@@ -1070,7 +1142,7 @@ export class EmailService implements OnModuleInit {
       subject: `Your invitation to ${groundLabel} lapses in two days`,
       html: this.layout(
         `<p>You were invited to say what you see in <strong>${escapeHtml(groundLabel)}</strong>, and the invitation has not been opened. It lapses in two days.</p>` +
-        `<p><a href="${inviteUrl}" style="${MAIL_BUTTON}">Add my account →</a></p>` +
+        `<p><a href="${inviteUrl}" style="${MAIL_BUTTON}">Read the check-in →</a></p>` +
         `<p style="font-size:13px;color:#4E4236;">You are never obligated to take part. If you would rather not, ignore this and nothing more comes about it.</p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`,
       ),
     }, context, 'sendInviteAboutToLapse');
@@ -1591,15 +1663,61 @@ export class EmailService implements OnModuleInit {
     return paragraphs.map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
   }
 
-  async sendTheRoutineMessageByEmail(email: string, subject: string, text: string, linkLabel: string | null, linkUrl: string | null, participantId?: string): Promise<'sent' | 'held' | 'suppressed'> {
+  async sendTheRoutineMessageByEmail(email: string, subject: string, text: string, linkLabel: string | null, linkUrl: string | null, participantId?: string, replyTo?: string): Promise<'sent' | 'held' | 'suppressed'> {
     const context: DeliveryContext = { kind: 'OTHER', ...(participantId ? { participantId } : {}) };
-    await this.sendEmail({ to: email, subject, html: this.layout(this.whatWhatsAppCouldNotTake(text) + (linkUrl ? `<p><a href="${linkUrl}">${escapeHtml(linkLabel || 'Open Groundwork')}</a></p>` : '')) }, context, 'sendTheRoutineMessageByEmail');
+    /* A mail that asks somebody a question carries the assistant's address as its Reply-To, so a plain reply reaches the assistant (Fatima round 1, H5: the team's asks had none and went to noreply). */
+    await this.sendEmail({ to: email, subject, html: this.layout(this.whatWhatsAppCouldNotTake(text) + (linkUrl ? `<p><a href="${linkUrl}">${escapeHtml(linkLabel || 'Open Groundwork')}</a></p>` : '')), ...(replyTo ? { replyTo } : {}) }, context, 'sendTheRoutineMessageByEmail');
     return context.outcome ?? 'sent';
   }
 
   async sendTheMessageByEmail(email: string, subject: string, text: string, linkLabel: string | null, linkUrl: string | null, participantId?: string): Promise<'sent' | 'held' | 'suppressed'> {
     const context: DeliveryContext = { kind: 'OTHER', ...(participantId ? { participantId } : {}) };
     await this.sendEmail({ to: email, subject, html: this.layout(this.whatWhatsAppCouldNotTake(text) + (linkUrl ? `<p><a href="${linkUrl}">${escapeHtml(linkLabel || 'Open Groundwork')}</a></p>` : '')) }, context, 'sendTheMessageByEmail');
+    return context.outcome ?? 'sent';
+  }
+
+  /**
+   * THE YEAR-END FILES, WITH THEIR WORDS (Fatima, increment 4; the-year-end-delivery.ts decides who may get them and writes the states).
+   * Asked for, so never counted as the day's routine message; held for quiet hours like any mail we decided to send, with its files kept in the
+   * held row. The send key is one per job, version and person, so the same files never go twice. Says what became of it, and the one door
+   * records "sent" itself, at the moment the mail service takes it.
+   */
+  async sendTheYearEndFiles(to: string, subject: string, text: string, files: AnAttachment[], sendKey: string, replyTo?: string, answeringNow = false): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER', sendKey, ...(answeringNow ? { answeringNow: true } : {}) };
+    const html = this.layout(text.split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join(''));
+    await this.sendEmail({ to, subject, html, text, attachments: files, ...(replyTo ? { replyTo } : {}) }, context, 'sendTheYearEndFiles');
+    return context.outcome ?? 'sent';
+  }
+
+  /**
+   * AN INTRODUCTION FROM GROUNDWORK TO SOMEBODY AN ADMIN OR A SENIOR PERSON NAMED (executive-onboarding). Plain words, the organisation's
+   * assistant address as the Reply-To so that answering it comes back to the right workspace, and a send key so it goes once. Held for the
+   * person's quiet hours like any mail Groundwork starts, and marked sent by this door at the moment it really goes.
+   */
+  async sendTheIntroduction(to: string, subject: string, text: string, replyTo: string, sendKey: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER', sendKey };
+    const html = this.layout(text.split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join(''));
+    await this.sendEmail({ to, subject, html, text, ...(replyTo ? { replyTo } : {}) }, context, 'sendTheIntroduction');
+    return context.outcome ?? 'sent';
+  }
+
+  /** A short note about the year-end work with no files: what is new, what is missing, or what waits for a decision. Counted as the day's routine message. */
+  async sendTheYearEndProgress(to: string, subject: string, text: string, replyTo?: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER' };
+    const html = this.layout(text.split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join(''));
+    await this.sendEmail({ to, subject, html, text, ...(replyTo ? { replyTo } : {}) }, context, 'sendTheYearEndProgress');
+    return context.outcome ?? 'sent';
+  }
+
+  /**
+   * THE ASSISTANT'S REPLY TO SOMETHING A TEAM MEMBER FORWARDED OR EMAILED IT. Plain words only, with the organisation's assistant address as
+   * the Reply-To so that answering this mail comes straight back (the-assistants-address.ts owns the address). Asked for, so it is never counted as the
+   * day's routine message.
+   */
+  async sendTheAssistantsReply(to: string, subject: string, text: string, replyTo: string, participantId?: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER', ...(participantId ? { participantId } : {}) };
+    const html = this.layout(text.split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join(''));
+    await this.sendEmail({ to, subject, html, text, replyTo }, context, 'sendTheAssistantsReply');
     return context.outcome ?? 'sent';
   }
 
@@ -1699,28 +1817,6 @@ export class EmailService implements OnModuleInit {
          <p><a href="${groundUrl}" style="${MAIL_BUTTON}">Read and release the report →</a></p>`,
       ),
     }, undefined, 'sendActivationReminder');
-  }
-
-  /**
-   * Reveal reminder: a party's report has been released, but they have not
-   * activated their own ReportActivation yet - their report is ready and
-   * they don't know. Distinct from sendActivationReminder above, which nudges
-   * the INITIATOR to release/activate billing on a ground - a different
-   * concept from a participant's own individual reveal.
-   */
-  /*
-   * THE DAY IT BECAME READY, NEVER "A FEW DAYS" (messages test, 19 October, finding 1). Drop Access's picture was released on Monday at
-   * 18:30 and four people were told at noon on Tuesday it "has been ready for a few days now", and to "confirm you are ready to see it",
-   * though a released picture is open to the person it is for and nothing is left to confirm. `readySince` is the report's release time,
-   * said in the organisation's own zone. Applies to everyone: it only makes the mail true.
-   */
-  async sendActivationRevealReminder(email: string, groundLabel: string, reportUrl: string, readySince?: Date | null, zone?: string | null): Promise<void> {
-    const since = readySince ? whenItWas(readySince, 'weekdayAndDay', zone ?? undefined) : '';
-    await this.sendEmail({
-      to: email,
-      subject: reportReadyReminderSubject(groundLabel),
-      html: this.layout(theReportIsStillWaitingDirectly(groundLabel, reportUrl, since)),
-    }, undefined, 'sendActivationRevealReminder');
   }
 
   /** Participant checked in. The lead is told by the person's name, with how many are still to come. */
@@ -1920,7 +2016,7 @@ export class EmailService implements OnModuleInit {
          free check-ins are used up. What a card buys: more of them, and more people. */
       html: this.layout(
         `<p>Your workspace (<strong>${escapeHtml(orgName)}</strong>) has used all of its free check-ins.</p>
-         <p>Every check-in you already have keeps running, with unlimited sessions and reports, and every record stays yours. Adding a card lets your team open more check-ins and add more people.</p>
+         <p>Every check-in you already have keeps running, with unlimited check-ins and reports, and every record stays yours. Adding a card lets your team open more check-ins and add more people.</p>
          <p><a href="${billingUrl}">Add a card</a></p>`,
       ),
     }, undefined, 'sendPaymentRequestEmail');
@@ -1934,10 +2030,10 @@ export class EmailService implements OnModuleInit {
     const name = who?.trim() || 'Somebody you invited';
     await this.sendEmail({
       to: adminEmail,
-      subject: `${name} tried to check in - add a session to unblock them`,
+      subject: `${name} tried to check in and could not`,
       html: this.layout(
-        `<p><strong>${escapeHtml(name)}</strong> tried to check in on <strong>${escapeHtml(groundLabel)}</strong> but there are no sessions remaining.</p>
-         <p>Resubscribe or apply an access code to unblock them. Their record and the report are safe in the meantime.</p>
+        `<p><strong>${escapeHtml(name)}</strong> tried to check in on <strong>${escapeHtml(groundLabel)}</strong> but the free check-ins have been used.</p>
+         <p>Resubscribe or apply an access code to unblock them. Nothing they have said is lost.</p>
          <p><a href="${groundUrl}">Go to the check-in</a></p>`,
       ),
     }, undefined, 'sendParticipantBlockedNudge');
@@ -1991,7 +2087,7 @@ export class EmailService implements OnModuleInit {
       subject: 'Your Groundwork organisation subscription is active',
       html: this.layout(
         `<p>Thank you for supporting Groundwork.</p>
-         <p>Your organisation is now on the <strong>${planLabel}</strong> plan. Unlimited check-ins and unlimited sessions are active for your team.</p>
+         <p>Your organisation is now on the <strong>${planLabel}</strong> plan. Unlimited check-ins and unlimited check-ins are active for your team.</p>
          <p>Your next billing date is ${renewal}. You can pause or cancel your subscription at any time from your billing page.</p>
          <p>Your payment helps us continue building a product that helps teams align, make better decisions, and solve problems together.</p>
          <p><a href="${this.frontendUrl}/billing">View your subscription</a></p>`,
@@ -2060,10 +2156,10 @@ export class EmailService implements OnModuleInit {
   async sendFreeExtensionClaimed(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `Free session added to ${groundLabel}`,
+      subject: `Free check-in added to ${groundLabel}`,
       html: this.layout(
-        `<p>Your free session extension has been added to <strong>${escapeHtml(groundLabel)}</strong>.</p>
-         <p>Check-ins on the free tier run unlimited sessions. Subscribe when your team needs more check-ins, or more people.</p>
+        `<p>Your free check-in extension has been added to <strong>${escapeHtml(groundLabel)}</strong>.</p>
+         <p>Check-ins on the free tier run unlimited check-ins. Subscribe when your team needs more check-ins, or more people.</p>
          <p><a href="${groundUrl}">Go to your check-in</a></p>`,
       ),
     }, undefined, 'sendFreeExtensionClaimed');
@@ -2073,9 +2169,9 @@ export class EmailService implements OnModuleInit {
   async sendApproachingSessionLimit(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `One session remaining on ${groundLabel}`,
+      subject: `One check-in left on ${groundLabel}`,
       html: this.layout(
-        `<p>Your check-in <strong>${escapeHtml(groundLabel)}</strong> has one session remaining.</p>
+        `<p>Your check-in <strong>${escapeHtml(groundLabel)}</strong> has one more check-in to run.</p>
          <p>Subscribe before your team's next check-in to keep this check-in running.</p>
          <p><a href="${groundUrl}">Go to your check-in</a></p>`,
       ),
@@ -2113,7 +2209,10 @@ export class EmailService implements OnModuleInit {
      * and look for it.
      */
     checkInUrl: string,
+    context?: DeliveryContext,
   ): Promise<void> {
+    /* The one owner's sentence about who reads what you say (grounds/who-may-read-this-check-in.ts), as every invitation says it. */
+    const whoSees = await this.whoSeesWhatYouSay(context, to);
     await this.sendEmail({
       to,
       subject: `Still time to say how ${groundName} is going`,
@@ -2129,7 +2228,7 @@ export class EmailService implements OnModuleInit {
         */
        `<p>${greeting(name)}</p>
          <p>We have not heard from you on <strong>${groundName}</strong> in a while.</p>
-         <p>There is still time. The shared picture cannot show what you are seeing until you say it. The people in this check-in can see what you say in it.</p>
+         <p>There is still time. The shared picture cannot show what you are seeing until you say it. ${escapeHtml(whoSees)}</p>
          <p><a href="${checkInUrl}">Say how it is going</a></p>`,
       ),
     }, undefined, 'sendAbsenceReminder');
@@ -2184,7 +2283,7 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>${greeting(name)}</p>
          <p>Your Groundwork subscription for <strong>${escapeHtml(orgName)}</strong> is now active.</p>
-         <p>Ten check-ins are free, each with unlimited sessions and reports. Your subscription lifts that cap - nobody is ever charged per session, and participants are never charged at all.</p>
+         <p>Your subscription lifts the limit on free check-ins. Nobody is ever charged per check-in, and participants are never charged at all.</p>
          <p>Your records are always yours, regardless of plan status.</p>`,
       ),
     }, undefined, 'sendCareFeeConfirmation');

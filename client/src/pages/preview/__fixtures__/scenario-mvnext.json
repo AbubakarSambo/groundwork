@@ -1,0 +1,165 @@
+{
+  "kind": "mvnext",
+  "title": "MarketView, where next",
+  "subtitle": "24 people: 10 agroprocessors, 10 input distributors, 4 research organisations. Answered once.",
+  "leadName": "Wairimu Kamau",
+  "updated": "Last updated on Wednesday 23 September at 6pm. The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.",
+  "short": {
+    "heading": "In short",
+    "lines": [
+      "Processors and distributors both point to Kano maize first, and processors would pay for it.",
+      "Researchers want the same markets but a different product: history, not daily prices."
+    ],
+    "foot": "21 of 24 answered, each on their own, once."
+  },
+  "groups": {
+    "heading": "By who they are",
+    "note": "What each group said it needs",
+    "cards": [
+      {
+        "title": "Agroprocessors",
+        "count": "10, 9 answered",
+        "lines": [
+          "Daily maize and soybean prices in Kano and Kaduna",
+          "Would pay: 7 of 9, for a named buyer feed",
+          "Want it in their ERP, not a new app"
+        ]
+      },
+      {
+        "title": "Input distributors",
+        "count": "10, 8 answered",
+        "lines": [
+          "Where farmers are buying, by LGA",
+          "Would pay: 3 of 8; want it free for a pilot",
+          "Wary of sharing their own sales figures"
+        ]
+      },
+      {
+        "title": "Research organisations",
+        "count": "4, 4 answered",
+        "lines": [
+          "Monthly averages, back to 2022",
+          "Would pay through grants, not subscriptions",
+          "Offer their survey data in exchange"
+        ]
+      }
+    ]
+  },
+  "ranked": {
+    "heading": "Where next, ranked",
+    "note": "From how many said it, and who",
+    "rows": [
+      {
+        "what": "Markets and regions",
+        "answer": "Kano, then Kaduna",
+        "count": "17 of 21: processors and distributors"
+      },
+      {
+        "what": "Value chains",
+        "answer": "Maize, then soybean",
+        "count": "15 of 21"
+      },
+      {
+        "what": "Who to serve first",
+        "answer": "Agroprocessors",
+        "count": "They’d pay; 7 of 9"
+      },
+      {
+        "what": "Information they need",
+        "answer": "Daily prices, named buyers",
+        "count": "14 of 21"
+      },
+      {
+        "what": "Integrations",
+        "answer": "Their ERP; WhatsApp for distributors",
+        "count": "9 processors; 6 distributors"
+      },
+      {
+        "what": "Networks",
+        "answer": "Distributor associations in Kano",
+        "count": "5 of 8 distributors"
+      },
+      {
+        "what": "Pilot",
+        "answer": "Kano maize, 3 processors and 3 distributors",
+        "count": "Named by 12"
+      }
+    ]
+  },
+  "disagree": {
+    "heading": "Where they disagree",
+    "sides": [
+      {
+        "who": "Processors",
+        "quote": "“Daily prices or it’s no use to us. Monthly is history.”"
+      },
+      {
+        "who": "Researchers",
+        "quote": "“Daily numbers without methodology won’t pass review. We need consistent monthly series.”"
+      }
+    ],
+    "foot": "Both can be served from the same collection: daily for processors, monthly averages for researchers."
+  },
+  "cant": {
+    "heading": "What this can’t tell you",
+    "text": "Whether anyone will actually pay: willingness was said, not tested. And the three who didn’t answer are all distributors outside Kano."
+  },
+  "heading": {
+    "heading": "Where this is heading",
+    "note": "Work out where to focus",
+    "outcomesLabel": "The possible outcomes",
+    "outcomes": [
+      {
+        "title": "Kano maize first",
+        "sub": "For processors, with a named-buyer feed."
+      },
+      {
+        "title": "Pilot before committing",
+        "sub": "Kano maize, 3 processors and 3 distributors, 8 weeks."
+      },
+      {
+        "title": "Research data partnership",
+        "sub": "Their surveys for monthly series."
+      },
+      {
+        "title": "Look further",
+        "sub": "Benue and Plateau, where nobody answered."
+      }
+    ],
+    "signalsLabel": "The signals behind them",
+    "signals": [
+      {
+        "line": "17 of 21 point to Kano",
+        "from": "From the workshop answers",
+        "kind": "said",
+        "tag": {
+          "tag": "Steady",
+          "tone": "proven"
+        }
+      },
+      {
+        "line": "7 of 9 processors say they’d pay",
+        "from": "Said, not tested",
+        "kind": "said",
+        "tag": {
+          "tag": "Watch",
+          "tone": "attention"
+        }
+      },
+      {
+        "line": "Distributors outside Kano didn’t answer",
+        "from": "3 of 10",
+        "kind": "unknown",
+        "tag": {
+          "tag": "Watch",
+          "tone": "attention"
+        }
+      }
+    ],
+    "settleLabel": "What would settle it",
+    "settle": "The pilot: do 3 processors pay after 8 weeks?",
+    "decider": "The MarketView team decides.",
+    "deciderNote": "Groundwork lays out the outcomes and the proof. It doesn’t choose.",
+    "button": "Record the decision"
+  }
+}

@@ -109,7 +109,7 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
     { value: 'ALIGNED', label: 'The team is on course.' },
     { value: 'REACH_WITH_A_CHANGE', label: 'The team can reach it, with a change in how the work is done.' },
     { value: 'GAPS_IDENTIFIED', label: 'The target needs to change.' },
-    { value: 'NOT_YET', label: 'It is not settled yet, and more sessions are needed.' },
+    { value: 'NOT_YET', label: 'It is not settled yet, and more check-ins are needed.' },
   ],
   WORKPLAN_BUDGET: [
     { value: 'APPROVED', label: 'The work plan and the budget are approved.' },
@@ -120,12 +120,12 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
   COLLECTIONS: [
     { value: 'ON_TRACK', label: 'What is owed is being paid as agreed.' },
     { value: 'ATTENTION_NEEDED', label: 'Some payments, each one named, need attention.' },
-    { value: 'NOT_YET', label: 'It is not settled yet, and it will be checked again next session.' },
+    { value: 'NOT_YET', label: 'It is not settled yet, and it will be checked again next check-in.' },
   ],
   PULSE_CHECK: [
     { value: 'ON_TRACK', label: 'Things are going as planned.' },
     { value: 'ATTENTION_NEEDED', label: 'Some things, each one named, need attention.' },
-    { value: 'NOT_YET', label: 'It is not settled yet, and it will be checked again next session.' },
+    { value: 'NOT_YET', label: 'It is not settled yet, and it will be checked again next check-in.' },
   ],
   /**
    * Deliberately the plainest set in the product. OPEN_READ is used when the shape was not known at
@@ -175,7 +175,7 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
    * half that was missing - what happened to the thing you were trying to achieve.
    */
   ACUTE_SHOCK: [
-    { value: 'OBJECTIVE_MET', label: 'What we set out to do is done.', description: 'The objective set after the first session was achieved, and the record shows what moved and who moved it.' },
+    { value: 'OBJECTIVE_MET', label: 'What we set out to do is done.', description: 'The objective set after the first check-in was achieved, and the record shows what moved and who moved it.' },
     { value: 'PARTLY_RECOVERED', label: 'Part of what was lost has been won back.', description: 'Some of the objective was achieved and some was not. The record shows which parts, and what was still stuck when the fortnight ended.' },
     { value: 'NOT_RECOVERED', label: 'What was lost has not been won back.', description: 'The objective was not met. The record shows what was tried and where it stalled. That is what the next decision should rest on.' },
     { value: 'OBJECTIVE_OVERTAKEN', label: 'Events changed what we were aiming for.', description: 'What we were aiming at stopped being the right aim partway through. The record shows when that became clear, and why.' },

@@ -46,6 +46,8 @@ const stubPrisma = (personObjectives: any[]) => {
 
 const service = (personObjectives: any[]) => {
   const s = Object.create(ConversationService.prototype) as any;
+  /* The model service, as the product always has it: composing the prompt names its fixed rules to it, to be sent once (#408). */
+  s.anthropic = { keepTheFixedInstructions: () => {} };
   s.prisma = stubPrisma(personObjectives);
   s.prompts = { getActiveContent: async () => null };
   s.logger = { log: () => {}, warn: () => {}, error: () => {}, debug: () => {} };

@@ -32,7 +32,8 @@ describe('no total means no total', () => {
      * disagreeing with the header's own count of the same check-in. `mySessionNumber` (computed
      * with the shared `whichSessionAreWeOn` rule, immune to a duplicate row) replaces it.
      */
-    expect(page).toMatch(/<span>This is your session \{mySessionNumber\}\.<\/span>/)
+    /* Changed 15 November 2026: said inside the title's one subtitle line, as "Check-in {n}." (no row of its own, and "check-in" not "session"). */
+    expect(page).toMatch(/`Check-in \$\{mySessionNumber\}\.`/)
   })
   it('and a session that opens later is dated, not numbered as current', () => {
     /*
@@ -42,7 +43,7 @@ describe('no total means no total', () => {
      * branch of the header says everywhere else; only the extra `tab !== 'checkin' &&` guard is
      * new.
      */
-    expect(page).toMatch(/opensLater \? \(\s*tab !== 'checkin' && <span>Your next session opens on/)
+    expect(page).toMatch(/opensLater\s*\? \(tab !== 'checkin' \? `Your next check-in opens on/)
   })
   it('the resolution gate stays closed on an unknown total', () => {
     expect(code('../components/gw/MyRecord.tsx')).toMatch(/totalSessions != null && completedCount >= totalSessions - 1/)
@@ -53,7 +54,7 @@ describe('no total means no total', () => {
 describe('the label says what is counted', () => {
   it('the board counts sessions everybody finished, never the running session number', () => {
     const board = code('board/BoardPage.tsx')
-    expect(board).not.toMatch(/session \{b\.phaseSpine\.currentSession\}/)
+    expect(board).not.toMatch(/check-in \{b\.phaseSpine\.currentSession\}/)
     expect(board).toMatch(/filter\(\(x\) => x\.state === 'done'\)\.length/)
   })
   it('the dashboard sums ground-creation reasons and says check-ins', () => {
@@ -69,9 +70,9 @@ describe('the label says what is counted', () => {
      * the live equivalent - same rule, a real count rather than an invented one, named against the
      * session it is for.
      */
-    expect(sessionAndWhoCheckedIn(3, 12, 2, 4)).toBe('Session 3 of 12. 2 of 4 people checked in.')
+    expect(sessionAndWhoCheckedIn(3, 12, 2, 4)).toBe('Check-in 3 of 12. 2 of 4 people checked in.')
     /* No planned total is said as "Session N." alone, never a fabricated "of M". */
-    expect(sessionAndWhoCheckedIn(3, null, 2, 4)).toBe('Session 3. 2 of 4 people checked in.')
+    expect(sessionAndWhoCheckedIn(3, null, 2, 4)).toBe('Check-in 3. 2 of 4 people checked in.')
   })
   it('the entry report labels the turn count as depth, with no bar and no grade word', () => {
     const entry = code('enter/EntryChatPage.tsx')
@@ -82,9 +83,8 @@ describe('the label says what is counted', () => {
        clause): "You gave {turns} answer(s)." with "More answers make the report stronger."
        appended below four. Still labels the turn count as depth of participation, not specificity. */
     expect(entry).toContain('You gave ${turns} ${turns === 1 ? \'answer\' : \'answers\'}.')
-    /* The "Change how many check-ins. ... planned from N days" label is gone from the entry page: setup is a conversation now
-       (batch 1, groups 5-6), so there is no pressable count to label. What is left to guard is that nothing there claims
-       the count is extracted from the talk. */
+    /* UPDATED (Hafsah, 3 November 2026, "the conversation screens"; f9a83cd1c): the "Change how many check-ins" control beside the
+       conversation went with everything else beside it, so there is no label left to check. */
     expect(entry).not.toContain('does not\n                yet extract cadence')
   })
 })

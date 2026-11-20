@@ -36,14 +36,14 @@ describe('a gap over time is served as its sentence', () => {
         participantId: 'p-ngozi',
         who: 'Ngozi Eze',
         say: 'Ngozi Eze is a relationship officer for Ikeja, with a goal of 14 approved facilities this quarter. '
-          + 'Since then, the record holds 1 session, 6 lines of what was said, 1 with a name, a number or a date in it, '
+          + 'Since then, the record holds 1 check-in, 6 lines of what was said, 1 with a name, a number or a date in it, '
           + 'none backed by a document and 1 commitment still open.',
       },
       {
         participantId: 'p-lead',
         who: 'You',
         say: 'The role written down for you is to manage the three relationship officers in Lagos, and to own the quarterly target. '
-          + 'Since then, the record holds 1 session, 9 lines of what was said, 4 with a name, a number or a date in them '
+          + 'Since then, the record holds 1 check-in, 9 lines of what was said, 4 with a name, a number or a date in them '
           + 'and 1 backed by a document.',
       },
     ]);
@@ -53,7 +53,7 @@ describe('a gap over time is served as its sentence', () => {
   });
 
   it('a stored row written the old way loses the raw description at the read too', () => {
-    const old = { ...overTime, gaps: [{ participantId: 'p-ngozi', who: 'Participant A', expected: 'Relationship officer, Ikeja. Target 14 approved facilities this quarter.', recordHolds: '1 session on record', say: 'x' }] };
+    const old = { ...overTime, gaps: [{ participantId: 'p-ngozi', who: 'Participant A', expected: 'Relationship officer, Ikeja. Target 14 approved facilities this quarter.', recordHolds: '1 check-in on record', say: 'x' }] };
     expect(readAs({ overTime: old }, 'p-lead', true).overTime.gaps[0]).toEqual({ participantId: 'p-ngozi', who: 'Ngozi Eze', say: 'x' });
   });
 

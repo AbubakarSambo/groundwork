@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Section, Note, Callout, Stack, FlexRow, FoldedLine, Text, Button, FieldLabel, TextArea, TextField, Select } from '@/components/gw/ui'
+import { Section, Note, Callout, Stack, FlexRow, Table, type TableRow, Text, Button, FieldLabel, TextArea, TextField, Select } from '@/components/gw/ui'
 import { boardApi, type YourTeamServed, type APersonOnYourBoard, type AnActionOnAPerson } from '@/api/board'
 
 /**
@@ -27,13 +27,47 @@ export function YourTeamPersonByPerson({ groundId, team }: { groundId: string; t
 
 function ThePerson({ groundId, p }: { groundId: string; p: APersonOnYourBoard }) {
   const otherCoaching = (p.record?.coaching ?? []).filter((c) => !p.whereTheyStand?.evidence.includes(c.said))
+  const list = (items: string[]) => <ul className="gwui-panel-list">{items.map((l) => <li key={l}>{l}</li>)}</ul>
+  const rows: TableRow[] = [
+    {
+      about: p.delivered.heading,
+      shows: (
+        <Stack gap={6}>
+          <Text size="14-5" as="p">{p.delivered.proven.length ? `${p.delivered.proven.length} delivered with proof.` : 'Nothing delivered with proof yet.'}</Text>
+          {p.delivered.empty ? <Note tone="muted">{p.delivered.empty}</Note> : list([...p.delivered.proven, ...p.delivered.onlySaid])}
+        </Stack>
+      ),
+    },
+    ...(p.record?.parts ?? []).map((part) => ({
+      about: part.heading,
+      shows: (
+        <Stack gap={6}>
+          {/* A sentence already beside where they stand is not said again. */}
+          {!p.whereTheyStand?.evidence.includes(part.says) && <Text size="14-5" as="p">{part.says}</Text>}
+          {part.toChange && <Callout tone="info">{part.toChange}</Callout>}
+          {part.evidence.length > 0 && list(part.evidence)}
+        </Stack>
+      ),
+    })),
+    /* The coaching Groundwork gave, when, and whether it worked; one already beside where they stand is not said again. */
+    ...(p.record && ((p.record.coaching.length === 0 && !!p.record.coachingEmpty) || otherCoaching.length > 0) ? [{
+      about: 'Coaching from Groundwork',
+      shows: p.record.coaching.length === 0 ? <Note tone="muted">{p.record.coachingEmpty}</Note> : (
+        <ul className="gwui-panel-list">
+          {otherCoaching.map((c) => <li key={c.said}><span>{c.said}</span><Note tone="muted">{c.since}</Note></li>)}
+        </ul>
+      ),
+    }] : []),
+    ...(p.fromYou.length > 0 ? [{ about: 'What you have done', shows: list(p.fromYou) }] : []),
+  ]
   return (
     <section aria-label={p.name} className="gwui-person-part">
       <Stack gap={8}>
-        <FlexRow gap={10} align="baseline" wrap>
+        {/* The role as described is its own line under the name, never run on after it. */}
+        <div>
           <h3 className="gwui-person-part-name">{p.name}</h3>
-          {p.role && <Text size="14-5" ink="sub" as="span">{p.role}</Text>}
-        </FlexRow>
+          {p.role && <Text size="14-5" ink="sub" as="p">{p.role}</Text>}
+        </div>
         {p.whereTheyStand && (
           <div data-where-they-stand={p.whereTheyStand.standing}>
             <Text size="14-5" as="p">{p.whereTheyStand.says}</Text>
@@ -44,49 +78,14 @@ function ThePerson({ groundId, p }: { groundId: string; p: APersonOnYourBoard })
             )}
           </div>
         )}
-        {/* Its fact on the folded line, so it reads without a tap: how many were delivered with proof (boards audit S6). */}
-        <FoldedLine name={p.delivered.heading} fact={p.delivered.proven.length ? `${p.delivered.proven.length} delivered with proof.` : 'Nothing delivered with proof yet.'}>
-          {p.delivered.empty ? <Note tone="muted">{p.delivered.empty}</Note> : (
-            <ul className="gwui-panel-list">
-              {[...p.delivered.proven, ...p.delivered.onlySaid].map((l) => <li key={l}>{l}</li>)}
-            </ul>
-          )}
-        </FoldedLine>
-        {p.record && p.record.parts.map((part) => (
-          /* A sentence already beside where they stand is not said again as the fold's fact. */
-          <FoldedLine key={part.heading} name={part.heading} fact={p.whereTheyStand?.evidence.includes(part.says) ? undefined : part.says}>
-            <Stack gap={8}>
-              {part.toChange && <Callout tone="info">{part.toChange}</Callout>}
-              {part.evidence.length > 0 && (
-                <ul className="gwui-panel-list">
-                  {part.evidence.map((e) => <li key={e}>{e}</li>)}
-                </ul>
-              )}
-            </Stack>
-          </FoldedLine>
-        ))}
-        {/* The coaching Groundwork gave, when, and whether it worked; one already beside where they stand is not said again. */}
-        {p.record && ((p.record.coaching.length === 0 && !!p.record.coachingEmpty) || otherCoaching.length > 0) && (
-          <FoldedLine name="Coaching from Groundwork">
-            {p.record.coaching.length === 0 ? <Note tone="muted">{p.record.coachingEmpty}</Note> : (
-              <ul className="gwui-panel-list">
-                {otherCoaching.map((c) => (
-                  <li key={c.said}>
-                    <span>{c.said}</span>
-                    <Note tone="muted">{c.since}</Note>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </FoldedLine>
-        )}
-        {p.fromYou.length > 0 && (
-          <FoldedLine name="What you have done" defaultOpen>
-            <ul className="gwui-panel-list">
-              {p.fromYou.map((l) => <li key={l}>{l}</li>)}
-            </ul>
-          </FoldedLine>
-        )}
+        {/* One open table for the person, a row for each thing the record holds, every row on the page: delivered with proof, the record's parts,
+            the coaching Groundwork gave, and what she has done (pilot, 12 November: lists are tables, not folded lines). */}
+        <Table
+          caption={`What the record shows about ${p.name}`}
+          phone="stack"
+          columns={[{ key: 'about', header: 'About', rowHeader: true, width: '28%' }, { key: 'shows', header: 'What the record shows' }]}
+          rows={rows}
+        />
         <TheActions groundId={groundId} p={p} />
       </Stack>
     </section>

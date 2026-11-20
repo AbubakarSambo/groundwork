@@ -42,10 +42,6 @@ describe('nothing pushes the page sideways', () => {
     expect(CODE.slice(Math.max(0, i - 200), i)).not.toMatch(/whiteSpace: 'nowrap'[^<]*$/)
   })
 
-  it('and so is the one on the party view, which says the opposite thing', () => {
-    const party = readFileSync(join(__dirname, 'GroundParticipantPage.tsx'), 'utf8')
-    const i = party.indexOf('Your own check-in. The report shows')
-    expect(i).toBeGreaterThan(-1)
-    expect(party.slice(Math.max(0, i - 200), i)).not.toMatch(/whiteSpace: 'nowrap'[^<]*$/)
-  })
+  /* "Your own check-in. The report shows where you and the others agree…" was an explainer, removed in batch 2 (issue 41), so
+     the party view no longer has a sentence of that kind for this rule to guard. */
 })

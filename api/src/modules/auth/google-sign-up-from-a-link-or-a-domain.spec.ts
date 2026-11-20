@@ -72,7 +72,6 @@ describe('Google, from an organisation\'s invite link', () => {
     expect(second.made.orgs).toHaveLength(0);
     expect(second.made.users[0]).toMatchObject({ organizationId: COAMANA.id, role: 'MEMBER', googleId: 'g-ama' });
     expect(second.made.memberships[0]).toMatchObject({ organizationId: COAMANA.id, joinedHow: 'link' });
-    expect(res.needsPassword).toBe(false);
     expect(res).not.toHaveProperty('passwordSetupToken');
     expect(res.next).toBe('/today');
   });

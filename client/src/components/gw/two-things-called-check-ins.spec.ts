@@ -40,12 +40,11 @@ describe('one word per object, on the screens', () => {
   it.each([
     ['chat/ChatPage.tsx', 'Ready to finish this check-in', 'the confirm at the one irreversible moment named the whole engagement'],
     ['chat/ChatPage.tsx', 'Finish check-in ✓', 'same button, same object'],
-    ['join/JoinConfirmPage.tsx', 'Starting your check-in…', 'what starts is their session'],
+    ['join/JoinConfirmPage.tsx', 'Starting your check-in…', 'what starts is their check-in'],
     ['enter/EntryChatPage.tsx', 'Starting your check-in…', 'same, on the entry flow'],
-    ['grounds/GroundAdminPage.tsx', 'final check-in', 'the closing round is a final session'],
-    ['grounds/GroundAdminPage.tsx', 'aria-label="Check-in cadence"', 'the cadence is of sessions'],
-    ['board/BoardPage.tsx', 'Check-ins this phase', 'counted from sessions, says the src'],
-    ['report/SessionReportPage.tsx', 'Open a follow-up check-in', 'it navigates to a brand-new check-in, so the label moved to the behaviour'],
+    ['grounds/GroundAdminPage.tsx', 'final check-in', 'the closing round is a final check-in'],
+    ['grounds/GroundAdminPage.tsx', 'aria-label="Check-in cadence"', 'the cadence is of check-ins'],
+    ['board/BoardPage.tsx', 'Check-ins this phase', 'counted from check-ins, says the src'],
     ['join/JoinPage.tsx', 'Join and start my check-in', 'the handler sends an email; the label said otherwise'],
   ])('%s no longer says "%s" - %s', (rel, gone) => {
     expect(read(rel)).not.toContain(gone)
@@ -63,7 +62,7 @@ describe('one word per object, on the screens', () => {
      * (own-report.txt, one-session.txt) offers at the foot of a report. It is removed, not reworded,
      * so there is no wording left here to pin.
      */
-    expect(read('report/SessionReportPage.tsx')).not.toContain('Start a new check-in')
+    expect(read('grounds/MyWorkPage.tsx')).not.toContain('Start a new check-in')
     expect(read('join/JoinPage.tsx')).toContain('Email me my link')
   })
 })

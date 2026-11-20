@@ -13,8 +13,8 @@ import type { Answers, Suite } from './the-ten-suites';
  * the old names stay in the row until the admin saves, and what she saves is written under the questions' ids.
  */
 const THE_OLD_NAMES: Record<string, Record<string, string[]>> = {
-  leave: { days: ['daysAYear', 'daysPerYear', 'perYear', 'days_a_year'], approver: ['approvedBy', 'approver_id'] },
-  time: { clients: ['projects'], approver: ['approvedBy', 'approver_id'] },
+  leave: { days: ['daysAYear', 'daysPerYear', 'perYear', 'days_a_year'] },
+  time: { clients: ['projects'] },
   reviews: { every: ['cadence', 'frequency', 'howOften'], writer: ['approver', 'reviewer', 'writtenBy'] },
   spend: { currency: ['currencyCode'], limit: ['managerLimit', 'approvalLimit', 'threshold'], above: ['approver', 'headApprover', 'approverAbove'] },
 };

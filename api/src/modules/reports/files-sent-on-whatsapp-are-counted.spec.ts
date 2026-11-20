@@ -29,12 +29,12 @@ describe('B-103: files sent with a check-in are counted in its report', () => {
   it('Amani reads that her three files were sent, never that nothing has a document behind it', async () => {
     const read = await theSessionReportAs(withAmanisFiles(), 'u-amani', 2);
     expect(theTile(read).value).toBe('3 files sent');
-    expect(theTile(read).sub).toBe("3 files were sent with this session's check-ins. Nothing said has been matched to one of them yet.");
-    expect(reportAsText(read, 'Sales team, Q3')).not.toContain('Nothing said this session has a document behind it.');
+    expect(theTile(read).sub).toBe("3 files were sent with this check-in's check-ins. Nothing said has been matched to one of them yet.");
+    expect(reportAsText(read, 'Sales team, Q3')).not.toContain('Nothing said this check-in has a document behind it.');
   });
 
   it('Rukia, the lead, is counted them as she would see them: not while they are private to Amani, and yes once open', async () => {
-    expect(theTile(await theSessionReportAs(withAmanisFiles('PRIVATE'), 'u-rukia', 2)).sub).toBe('Nothing said this session has a document behind it.');
+    expect(theTile(await theSessionReportAs(withAmanisFiles('PRIVATE'), 'u-rukia', 2)).sub).toBe('Nothing said this check-in has a document behind it.');
     expect(theTile(await theSessionReportAs(withAmanisFiles('OPEN'), 'u-rukia', 2)).value).toBe('3 files sent');
   });
 

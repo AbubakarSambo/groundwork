@@ -38,7 +38,9 @@ it('says the board fills in, and shows what was agreed, what is left to do and w
       </MemoryRouter>
     </QueryClientProvider>,
   )
-  expect(await screen.findByText('The board fills in after the first check-ins.')).toBeTruthy()
+  /* The second heading, 'The board fills in after the first check-ins.', is gone: it said the same as the heading above it. */
+  expect(await screen.findByText('What Faith and you agreed on day 1')).toBeTruthy()
+  expect(screen.queryByText('The board fills in after the first check-ins.')).toBeNull()
   expect(screen.getByText('What Faith and you agreed on day 1')).toBeTruthy()
   expect(screen.getByText('Visit all 12 supermarkets on the list')).toBeTruthy()
   expect(screen.getByText('Getting set up is kept apart')).toBeTruthy()

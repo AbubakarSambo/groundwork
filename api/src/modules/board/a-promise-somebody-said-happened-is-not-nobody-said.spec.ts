@@ -40,7 +40,7 @@ describe('a promise somebody else said happened never reads "nobody has said"', 
   it('Wanjiru reads who said it, and what, under What needs you', () => {
     const withIt = { ...HER_PROMISE, saidHappened: { ...LINES[1] } };
     const [own] = theLeadActions([withIt as any], [], SESSIONS as any, [], wanjiru);
-    expect(own.says).toContain('In session 1, you said, "I will draft the reply and ensure it is filed". The time you gave for it was "by Friday".');
+    expect(own.says).toContain('In check-in 1, you said, "I will draft the reply and ensure it is filed". The time you gave for it was "by Friday".');
     expect(own.says).toContain('Brian Otieno said on 13 October, "The reply in Kasarani Foods v. Tumaini Traders was filed today."');
     expect(own.says).not.toContain('nobody has said whether it happened');
   });

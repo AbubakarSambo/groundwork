@@ -1,3 +1,4 @@
+import { theDayZone } from '../../common/the-organisations-own-day';
 import { aLineIsAbout } from './a-deals-value-and-buying-date';
 import { anUnansweredAsk, type ADealToSay, type ADealsLine } from './what-a-deal-still-needs';
 import { theOtherQuotesPrice } from './what-needs-you-and-what-to-do';
@@ -19,8 +20,8 @@ export interface ADecisionTheLeadPromised {
 }
 
 const A_PROMISE_TO_DECIDE = /\b(?:decide|figure out|make a call|think about whether)\b/i;
-const aLagosDay = (at: Date | string) => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', timeZone: 'Africa/Lagos' }).format(new Date(at));
-const dayKey = (at: Date | string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(at));
+const aLagosDay = (at: Date | string) => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', timeZone: theDayZone() }).format(new Date(at));
+const dayKey = (at: Date | string) => new Intl.DateTimeFormat('en-CA', { timeZone: theDayZone(), year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(at));
 const money = (n: number) => `KES ${n.toLocaleString('en-GB')}`;
 
 export function theDecisionsTheLeadPromised(

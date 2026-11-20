@@ -63,8 +63,8 @@ describe('what is true about you comes first', () => {
     const member = YOURS.slice(YOURS.indexOf('const m = data as Member'))
     const at = (s: string) => { const i = member.indexOf(s); expect(i, s).toBeGreaterThan(-1); return i }
     expect(at('label="Your role"')).toBeLessThan(at('label="Your status"'))
-    expect(at('label="Your status"')).toBeLessThan(at('label="Your sessions"'))
-    expect(at('label="Your sessions"')).toBeLessThan(at('label="Runs it"'))
+    expect(at('label="Your status"')).toBeLessThan(at('label="Your check-ins"'))
+    expect(at('label="Your check-ins"')).toBeLessThan(at('label="Runs it"'))
     expect(at('label="Runs it"')).toBeLessThan(at('m.whoSeesWhat'))
   })
 })

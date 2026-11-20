@@ -49,6 +49,6 @@ export function everybodySaidLittle(parties: readonly WhatAPartySaid[], relative
     `about ${most} characters. This is a few sentences in total, not a conversation. Write what was ` +
     `actually said and no more: do not describe a sentence as a position, do not infer a stance ` +
     `nobody stated, and where there is not enough to compare, say that rather than composing a ` +
-    `difference out of two short answers. A further session is what this needs.\n\n`
+    `difference out of two short answers. A further check-in is what this needs.\n\n`
   );
 }

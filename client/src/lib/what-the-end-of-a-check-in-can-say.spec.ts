@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { whenTheNextOneOpens, theNextOpenCheckInId, whoElseAnswers, whoRunsThis } from './what-the-end-of-a-check-in-can-say'
+import { whenTheNextOneOpens, theNextOpenCheckInId, whoRunsThis } from './what-the-end-of-a-check-in-can-say'
 
 /* The sentence the end card and the Done page say about the next check-in (check-in-end-card.txt:
    "Your next check-in opens tomorrow at 4pm."). Dates are read in the test machine's time zone. */
@@ -76,36 +76,6 @@ describe('the id to open when the next check-in is already open', () => {
     expect(theNextOpenCheckInId([{ id: 'next', sessionNumber: 39, status: 'NOT_STARTED', availableFrom: null }], 'this', now))
       .toBeNull()
   })
-})
-
-/*
- * U.8 FOURTH REVIEW: THE REAL SHAPE, NOT THE OLD `participants` LOOKUP.
- *
- * `whoElseAnswers` used to search `ground.participants` for the lead's row, which is exactly the
- * field a hidden check-in filters down to the reader's own row alone (grounds.service.ts,
- * `participantsWithCheckIns`). The real payload for a participant on a hidden check-in is only her
- * own participant row, plus `leadFirstName` and `leadAnswersToo` at the top level of the ground -
- * never a lead row inside `participants` to find. These tests use that shape, not a fake one that
- * still has a `participants` row the server never sends.
- */
-describe('who else answers', () => {
-  it('names the lead to someone else', () =>
-    expect(whoElseAnswers({ leadFirstName: 'Wairimu', leadAnswersToo: true, viewerIsInitiator: false })).toBe('Wairimu'))
-  it('not to the lead', () =>
-    expect(whoElseAnswers({ leadFirstName: 'Wairimu', leadAnswersToo: true, viewerIsInitiator: true })).toBeNull())
-  it('not when the lead only manages', () =>
-    expect(whoElseAnswers({ leadFirstName: 'Wairimu', leadAnswersToo: false, viewerIsInitiator: false })).toBeNull())
-  it('not when there is no ground yet', () => expect(whoElseAnswers(null)).toBeNull())
-  /*
-   * THE REAL SHAPE A PARTICIPANT GETS ON A HIDDEN CHECK-IN: only her own row is on `participants`
-   * (not shown here, since these functions no longer read it at all), and `leadFirstName` /
-   * `leadAnswersToo` arrive regardless - which is the whole fix. Naming the lead does not depend on
-   * whether her own row survived the peer filter.
-   */
-  it('still names the lead on a check-in that hides everyone else', () =>
-    expect(whoElseAnswers({ leadFirstName: 'Rukia', leadAnswersToo: true, viewerIsInitiator: false })).toBe('Rukia'))
-  it('takes only the first word of a name signup stored whole', () =>
-    expect(whoElseAnswers({ leadFirstName: 'Wairimu Kamau', leadAnswersToo: true, viewerIsInitiator: false })).toBe('Wairimu'))
 })
 
 describe('who runs this ("Rukia knows who is here")', () => {

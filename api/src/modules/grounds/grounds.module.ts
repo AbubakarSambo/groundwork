@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { GroundsService } from './grounds.service';
 import { GroundsController } from './grounds.controller';
 import { GroundsCron } from './grounds.cron';
@@ -25,6 +25,8 @@ import { UsageModule } from '../usage/usage.module';
 import { ConversationModule } from '../conversation/conversation.module';
 import { SuggestionsModule } from '../suggestions/suggestions.module';
 import { SuitesModule } from '../suites/suites.module';
+import { KnowledgeModule } from '../knowledge/knowledge.module';
+import { DocumentsModule } from '../documents/documents.module';
 
 @Module({
   /**
@@ -36,9 +38,10 @@ import { SuitesModule } from '../suites/suites.module';
    * invisible to tsc and to unit tests that construct services by hand - only
    * starting the thing finds it.
    */
-  imports: [BillingModule, PatternsModule, UsageModule, ConversationModule, SuggestionsModule, SuitesModule],
+  /* KnowledgeModule and DocumentsModule for the Desk (S7): a document added there is read and kept the one way every document is. */
+  imports: [BillingModule, PatternsModule, UsageModule, ConversationModule, SuggestionsModule, SuitesModule, KnowledgeModule, forwardRef(() => DocumentsModule)],
   controllers: [GroundsController, ParticipantRequestsController, AskingForMoreTimeController, TodayController, YouController, CompanyController, DirectionController, CheckInLinksController, RecommendedCheckInsController],
   providers: [GroundsService, GroundsCron, AskingForMoreTimeService, WhatNeedsYouService, YourBoardService, CompanyService, DirectionService, CompanyPictureService, CheckInLinksService, APlanIsManyProposalsService, RecommendedCheckInsService],
-  exports: [GroundsService],
+  exports: [GroundsService, WhatNeedsYouService],
 })
 export class GroundsModule {}

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { GroundworkEvents, type AssessmentReadyEvent, type CommitmentsSettledEvent } from '../../common';
+import { GroundworkEvents, type AssessmentReadyEvent, type CommitmentsSettledEvent, type SetupReadEvent } from '../../common';
 import { ConversationService } from './conversation.service';
 
 /**
@@ -14,6 +14,16 @@ export class TheOpeningsPreparedAgainListener {
 
   @OnEvent(GroundworkEvents.ASSESSMENT_READY, { async: true })
   async afterASession(event: AssessmentReadyEvent) {
+    if (event?.groundId) await this.conversation.prepareTheOpeningsIn(event.groundId).catch(() => undefined);
+  }
+
+  /*
+   * ONCE SETUP IS SAVED AND READ (staging check S9, 4 November 2026): Rita's first question took 10 to 25 seconds, because nothing had
+   * prepared her first session's opener; it was written while she waited. The first sessions are prepared as soon as setup's words
+   * are on record, as every later session is at the end of the one before.
+   */
+  @OnEvent(GroundworkEvents.SETUP_READ, { async: true })
+  async afterSetup(event: SetupReadEvent) {
     if (event?.groundId) await this.conversation.prepareTheOpeningsIn(event.groundId).catch(() => undefined);
   }
 

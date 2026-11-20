@@ -19,7 +19,7 @@ describe('the paywall', () => {
   const p = strip(readFileSync(path.join(SRC, 'components/gw/checkin/SessionPaywallModal.tsx'), 'utf8'))
   const hook = strip(readFileSync(path.join(SRC, 'hooks/useOpenSession.ts'), 'utf8'))
   it('is a dialog, takes focus, closes on Escape and gives focus back', () => {
-    expect(p).toContain('role="dialog" aria-modal="true" aria-label="Your session is complete"')
+    expect(p).toContain('role="dialog" aria-modal="true" aria-label="Your check-in is complete"')
     expect(p).toMatch(/onKeyDown=\{e => \{ if \(e\.key === 'Escape'\) paywall\.close\(\) \}\}/)
     expect(p).toMatch(/<div tabIndex=\{-1\} ref=\{el => el\?\.focus\(\)\}/)
     expect(hook).toMatch(/if \(showPaywall\) paywallOpener\.current = document\.activeElement/)

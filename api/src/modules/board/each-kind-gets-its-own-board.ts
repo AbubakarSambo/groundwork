@@ -85,7 +85,7 @@ const rowsOf = (board: any, name: string, kind?: string) => ((sectionOf(board, n
  * ---------------------------------------------------------------------------------------------- */
 
 export const NO_NUMBERS_FROM_ANOTHER_SYSTEM =
-  'No numbers from another system are attached to this check-in yet, so the board cannot say what they show. They appear here once they are brought in from the system that keeps them.';
+  'No numbers from another system are attached to this check-in yet, so the board cannot say what they show.';
 
 /** One number, said as a sentence, never judged: "MarketView shows 162 for weekly active users, as of 1 October." */
 export function aNumberSaid(m: AMetric, now = new Date()): string {
@@ -101,7 +101,7 @@ function whatTheSystemsShow(metrics: AMetric[], heading: string, now: Date) {
   return {
     heading,
     state: 'filled' as const,
-    numbers: metrics.map((m) => ({ key: m.key, source: m.sourceSystem, value: m.value, unit: m.unit ?? null, measuredAt: new Date(m.asOf).toISOString().slice(0, 10), says: aNumberSaid(m, now) })),
+    numbers: metrics.map((m) => ({ key: m.key, label: String(m.says ?? '').trim().replace(/[.!?]+$/, ''), source: m.sourceSystem, value: m.value, unit: m.unit ?? null, measuredAt: new Date(m.asOf).toISOString().slice(0, 10), says: aNumberSaid(m, now) })),
     whatANumberIsNot: WHAT_A_NUMBER_IS_NOT,
   };
 }
@@ -178,26 +178,31 @@ function whereTheCohortStands(i: WhatTheKindsBoardIsBuiltFrom) {
   const at = (stages: string[]) => loans.filter((l) => stages.includes(String(l.stage ?? '').toLowerCase()));
   const whoOf = (ids: (string | null)[]) => (i.readerRunsIt ? ids.map((id) => cohort.find((p) => p.id === id)?.name).filter((n): n is string => !!n) : null);
   const groups: any[] = [];
+  /* A cause is only what people said in their check-ins, in their words, and it is left out where nobody said one. */
+  const saidWords = (xs: string[]) => [...new Set(xs.map((x) => x.trim()).filter(Boolean))].slice(0, 3).map((x) => `“${x.replace(/[.\s]+$/, '')}”`);
+  const causeSaid = (xs: string[], lead: string) => { const w = saidWords(xs); return w.length ? `${lead} ${listed(w)}.` : null; };
   if (loans.length) {
     const repaying = at(['repaying', 'repaid']);
     const behind = at(['late']);
     groups.push({
-      group: 'repaying', count: repaying.length,
+      group: 'repaying', title: 'Repaying', count: repaying.length, cause: null,
       says: repaying.length ? `The loan records show ${plural(repaying.length, 'loan', 'loans')} being repaid.` : 'The loan records show no loan being repaid yet.',
       who: whoOf(repaying.map((l) => l.ownerParticipantId ?? null)),
     });
     groups.push({
-      group: 'behind', count: behind.length,
+      group: 'behind', title: 'Behind on repayment', count: behind.length,
+      cause: (() => { const w = saidWords(behind.map((l) => String(l.fields?.['In the way'] ?? ''))); return w.length ? `They say ${listed(w)} ${w.length === 1 ? 'is' : 'are'} in the way.` : null; })(),
       says: behind.length ? `The loan records show ${plural(behind.length, 'loan', 'loans')} behind on repayment.` : 'The loan records show no loan behind on repayment.',
       who: whoOf(behind.map((l) => l.ownerParticipantId ?? null)),
     });
   } else {
-    groups.push({ group: 'repaying', state: 'not-known', why: NO_LOAN_RECORDS });
+    groups.push({ group: 'repaying', title: 'Repaying', state: 'not-known', why: NO_LOAN_RECORDS });
   }
   const blockedIds = [...new Set(((i.board.blockers ?? []) as any[]).filter((b) => b.state === 'blocking').map((b) => b.fromParticipantId as string))]
     .filter((id) => cohort.some((p) => p.id === id));
   groups.push({
-    group: 'blocked', count: blockedIds.length,
+    group: 'blocked', title: 'Stopped by something', count: blockedIds.length,
+    cause: causeSaid(((i.board.blockers ?? []) as any[]).filter((b) => b.state === 'blocking' && blockedIds.includes(b.fromParticipantId)).map((b) => String(b.name ?? '')), 'They say they are waiting on'),
     says: blockedIds.length
       ? `${plural(blockedIds.length, 'person is', 'people are')} waiting on something that stops them, and it has not been cleared.`
       : 'Nobody has said they are stopped by something.',
@@ -205,7 +210,7 @@ function whereTheCohortStands(i: WhatTheKindsBoardIsBuiltFrom) {
   });
   const silent = cohort.filter((p) => !p.answered);
   groups.push({
-    group: 'not heard from', count: silent.length,
+    group: 'not heard from', title: 'Not heard from', count: silent.length, cause: null,
     says: silent.length ? `${plural(silent.length, 'person has', 'people have')} not checked in yet.` : 'Everybody in the cohort has checked in.',
     who: whoOf(silent.map((p) => p.id)),
   });
@@ -247,6 +252,9 @@ function whereTheMatterStands(i: WhatTheKindsBoardIsBuiltFrom, now: Date) {
   const toDecide = whatNeedsDeciding(i).length;
   if (toDecide) says.push(`${plural(toDecide, 'thing is', 'things are')} waiting for a decision.`);
   if (!deadlines.length) says.unshift('No deadline is on record yet.');
+  /* How each line above is known (fix 3): from what is on record for the matter, and what people said is said, not proven. */
+  const answeredHere = i.people.filter((p) => !p.managingOnly && !p.isLead && p.answered).length;
+  says.push(answeredHere ? `This is from the matter’s record and from what ${plural(answeredHere, 'person', 'people')} said in their check-ins. A document counts only where it is attached to the matter.` : 'Nobody has answered yet, so this is only what is on the matter’s record.');
   /* `state`, like every other section of this board (request 134 item 7): filled once a deadline, a wait or a decision is on record. */
   return { heading, state: (deadlines.length || open || toDecide ? 'filled' : 'none-yet') as 'filled' | 'none-yet', says };
 }
@@ -259,7 +267,7 @@ function whatYouNeedToDecide(i: WhatTheKindsBoardIsBuiltFrom) {
 }
 
 export const WHAT_IT_CHANGED_IS_NOT_ON_RECORD =
-  'Nothing on record links each change to what it changed, so this shows what was said in the newest session and how each line is known.';
+  'Nothing on record links each change to what it changed, so this shows what was said in the newest check-in and how each line is known.';
 
 function whatChangedThisWeek(i: WhatTheKindsBoardIsBuiltFrom) {
   const heading = 'What changed this week, and what it changed';
@@ -276,7 +284,7 @@ function whatChangedThisWeek(i: WhatTheKindsBoardIsBuiltFrom) {
     heading,
     state: 'filled' as const,
     sessionNumber: newest,
-    says: `In session ${newest}, ${plural(lines.length, 'thing was', 'things were')} said about the matter.`,
+    says: `In check-in ${newest}, ${plural(lines.length, 'thing was', 'things were')} said about the matter.`,
     lines: lines.map((it) => ({ id: it.id, participantId: it.participantId ?? null, text: it.text, mark: it.mark, markSays: it.markSays })),
     cannotTell: WHAT_IT_CHANGED_IS_NOT_ON_RECORD,
   };
@@ -311,7 +319,7 @@ function byWhoTheyAre(i: WhatTheKindsBoardIsBuiltFrom) {
       says: someOfThemHave(answered, asked.length, 'answered.'),
       groups: [...groups.entries()].map(([group, ps]) => {
         const a = ps.filter((p) => p.answered).length;
-        return { group, count: ps.length, answered: a, says: `${ps.length} ${ps.length === 1 ? 'person' : 'people'}, ${a} answered.` };
+        return { group, count: ps.length, answered: a, says: `${ps.length} ${ps.length === 1 ? 'person' : 'people'}, ${a} answered.`, participantIds: ps.map((p) => p.id) };
       }),
     };
   }
@@ -353,9 +361,69 @@ function whereWhatWasSaidAndADocumentDiffer(i: WhatTheKindsBoardIsBuiltFrom) {
   return { heading, state: 'filled' as const, rows, whatANumberIsNot: WHAT_A_NUMBER_IS_NOT };
 }
 
+/* ------------------------------------------------------------------------------------------------
+ * THE OPENING SENTENCES (board assessment, 15 November, fix 3)
+ * ---------------------------------------------------------------------------------------------- */
+
+/**
+ * THE PLAIN SENTENCES EACH PICTURED BOARD OPENS WITH (gov.jpg, matter.jpg, loans.jpg, mvnext.jpg): the answer, where it stands and what
+ * puts it at risk, each with how it is known. Written from the record the board already holds and nothing else: a count is a count of
+ * what is on record, a figure is one a system sent, a sentence people said is said and not proven. Nothing is worked out beyond that, and
+ * where the record is blank the sentence says so ("Nobody has said yet ...") rather than filling the gap. No names are used, so
+ * every reader is served the same sentences; who is in each group stays where it was walled.
+ */
+function theOpeningSentences(i: WhatTheKindsBoardIsBuiltFrom, now: Date) {
+  const asked = i.people.filter((p) => !p.managingOnly && !p.isLead);
+  const answered = asked.filter((p) => p.answered).length;
+  const inTheWay = ((i.board.blockers ?? []) as any[]).filter((b) => b.state === 'blocking').length;
+  const aims = ((i.board.objectives ?? []) as any[]).filter((o) => !o.ownerParticipantId && typeof o.name === 'string' && o.name.trim()).map((o) => String(o.name).trim().replace(/[.\s]+$/, ''));
+  const risk = (n: number, what: string) => (n ? `${plural(n, `thing is ${what}`, `things are ${what}`)} and not cleared yet.` : null);
+  const said = answered ? `${plural(answered, 'person', 'people')} said this in their check-ins` : 'Nobody has checked in yet, so none of this is said by anybody';
+  let answer: string | null = null;
+  let standsAt: string | null = null;
+  let atRisk: string | null = null;
+  let known = '';
+  switch (i.kind) {
+    case 'a government programme': {
+      const levels = rowsOf(i.board, 'Deal grid', 'county').length;
+      const numbers = i.metrics.length;
+      answer = aims.length ? `The aim is “${aims[0]}”.` : null;
+      standsAt = numbers
+        ? aNumberSaid(i.metrics[0], now)
+        : `${levels ? plural(levels, 'county is', 'counties are') : 'No county is'} on record, and the visit log has sent no numbers yet, so visits cannot be set against the aim.`;
+      atRisk = risk(inTheWay, 'in the way');
+      known = `${said}, ${numbers ? 'and the figures come from the system that sent them' : 'and no figure comes from another system'}.`;
+      break;
+    }
+    case 'asset loans': {
+      const loans = rowsOf(i.board, 'Deal grid', 'loan');
+      const repaying = loans.filter((l) => ['repaying', 'repaid'].includes(String(l.stage ?? '').toLowerCase())).length;
+      const behind = loans.filter((l) => String(l.stage ?? '').toLowerCase() === 'late').length;
+      answer = loans.length ? `${plural(repaying, 'loan is', 'loans are')} being repaid and ${plural(behind, 'is', 'are')} behind, out of ${loans.length} on record.` : 'No loan is on record yet, so nobody can say who is repaying.';
+      standsAt = asked.length ? `${plural(asked.length, 'person is', 'people are')} in this cohort and ${answered} of them ${answered === 1 ? 'has' : 'have'} checked in.` : 'Nobody is in this cohort yet.';
+      atRisk = risk(inTheWay, 'stopping somebody');
+      known = loans.length ? `The loan counts come from the loan records, and what stops people is what they said.` : 'Nothing here is from a loan record yet.';
+      break;
+    }
+    default:
+      return null;
+  }
+  const lines = [
+    answer ?? 'Nobody has said yet what this is aiming for.',
+    standsAt,
+    atRisk ?? 'Nobody has said yet what is in the way.',
+  ].filter((x): x is string => !!x);
+  return { heading: 'Where it stands', says: lines, howKnown: known };
+}
+
 /** The fields this kind of work's board carries, or nothing for the six kinds that use the switchboard. */
 export function theBoardForThisKind(i: WhatTheKindsBoardIsBuiltFrom): Record<string, any> {
   const now = i.now ?? new Date();
+  const opening = theOpeningSentences(i, now);
+  return { ...(opening ? { theOpening: opening } : {}), ...theBoardForThisKindsSections(i, now) };
+}
+
+function theBoardForThisKindsSections(i: WhatTheKindsBoardIsBuiltFrom, now: Date): Record<string, any> {
   switch (i.kind) {
     case 'a government programme':
       return {
@@ -388,7 +456,7 @@ export function theBoardForThisKind(i: WhatTheKindsBoardIsBuiltFrom): Record<str
 
 /** Every field this file may put on a board, for the list a participant's board is cut to. */
 export const THE_KINDS_OWN_FIELDS = [
-  'whatEachLevelUnderstood', 'theCounties', 'whatTheVisitLogShows', 'whereTheCohortStands', 'supportGiven',
+  'theOpening', 'whatEachLevelUnderstood', 'theCounties', 'whatTheVisitLogShows', 'whereTheCohortStands', 'supportGiven',
   'whereTheMatterStands', 'whatYouNeedToDecide', 'whatChangedThisWeek', 'byWhoTheyAre', 'whereTheyDisagree',
-  'whatTheSystemsShow', 'whereWhatWasSaidAndTheSystemsDiffer',
+  'whatTheSystemsShow', 'whereWhatWasSaidAndTheSystemsDiffer', 'theBoardsOwnRead',
 ] as const;

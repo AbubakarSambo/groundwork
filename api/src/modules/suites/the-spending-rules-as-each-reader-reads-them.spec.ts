@@ -34,6 +34,7 @@ afterEach(() => jest.useRealTimers());
 
 /* ------------------------------------------- before and after ------------------------------------------- */
 
+/* Batch S, S2 (Hafsah, 19 November 2026): the default step now names the manager's manager before an admin, so the sentences say so. */
 describe('with no spending rules set, every reader reads exactly what they read before', () => {
   for (const [label, rules] of [['no rules row at all', undefined], ['an empty rules row', {}]] as const) {
     it(`${label}: Kamau's say-back for fuel, within the limit`, async () => {
@@ -75,7 +76,7 @@ describe('with no spending rules set, every reader reads exactly what they read 
     const read = await o.suites.spendRules(o.as('u-grace'));
     expect(read.rules).toEqual({ thresholds: [{ above: 20000, steps: [[{ named: 'u-grace' }]] }] });
     expect(read.said).toEqual([
-      'Up to KES 20,000, the person’s manager approves, or else an admin.',
+      'Up to KES 20,000, the person’s manager approves, or else their manager’s manager, or else an admin.',
       'Over KES 20,000, Grace approves.',
       'Once it is approved, Omar in finance checks it, notes the receipt or quote, and records it paid.',
       'There are no categories set, so a request to spend is kept in the person’s own words.',
@@ -92,7 +93,7 @@ describe('Grace, the admin, sets the rules', () => {
     const back = await o.suites.setSpendRules(o.as('u-grace'), RULES);
     /* The whole route comes first, with finance's part after the last approval; then categories and evidence (Hafsah's plan of 2 November, step 0). */
     expect(back.said).toEqual([
-      'Up to KES 100,000, the person’s manager approves, or else an admin.',
+      'Up to KES 100,000, the person’s manager approves, or else their manager’s manager, or else an admin.',
       'Over KES 100,000, the person’s manager approves first, and then whoever looks after finance approves.',
       'Over KES 500,000, whoever holds their team’s budget approves first, and then the chief executive approves.',
       'A request over more than one of these amounts follows the highest one.',

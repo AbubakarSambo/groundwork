@@ -1,4 +1,5 @@
 import { RecordEntryType } from '@prisma/client';
+import { THE_READ_IS_STILL_TO_COME } from '../conversation/the-read-is-owed';
 import { aDefinitionOfSuccessHolds } from '../grounds/a-dump-is-many-things';
 
 /**
@@ -173,6 +174,8 @@ export function sentenceWithANumber(brief: string | null | undefined): string | 
 }
 
 export interface WhereAgainstSuccessInputs {
+  /** How many conversations on this check-in have not been read yet (conversation/the-read-is-owed.ts). While any is, "nobody has said" is not known. */
+  readsStillToCome?: number;
   /** True when `stated` was read from the brief rather than set on Setup. */
   statedFromBrief?: boolean;
   /** See `counting` on the result: whether this read could see every account or only the reader's. */
@@ -321,7 +324,8 @@ export function whereYouAreAgainstWhatYouNamed(
     sides,
     saying:
       sides === 'nobody'
-        ? nobodyHasSaidIt(input)
+        /* Nothing found in a conversation that has not been read is not "nobody has said it" (fix plan 16 November, group 5: Joel's picture read "Nobody has said what success looks like" over three people saying 30 units). */
+        ? (input.readsStillToCome ?? 0) > 0 ? THE_READ_IS_STILL_TO_COME : nobodyHasSaidIt(input)
         : sides === 'only-the-lead' && !conditions.length
           ? input.counting === 'only-yours'
             ? 'What success looks like is stated. What you say about it appears here once you have checked in; everybody else\'s arrives with the report.'

@@ -177,7 +177,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
     if (!viewerIsLead || nearTheEnd === false) return null
     return (
       <Panel className="gwui-mb-12">
-        {lastSessionDone && <div className={headingClass}>The last session is done</div>}
+        {lastSessionDone && <div className={headingClass}>The last check-in is done</div>}
         <div className={paraClass} style={paraStyle}>It’s yours to decide how this ends.</div>
         <Button to={`/grounds/${groundId}/end`}>Decide how it ends</Button>
       </Panel>

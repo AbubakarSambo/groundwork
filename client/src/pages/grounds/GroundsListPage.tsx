@@ -6,11 +6,12 @@ import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { useHelpStore } from '@/stores/help'
 import {
-  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, TextArea, TextField, CheckInsTable, CheckInRow, EdgeList,
+  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, TextArea, TextField, CheckInsTable, CheckInRow, EdgeList, Skeleton
 } from '@/components/gw/ui'
 import { useAnUnfinishedSetup } from '@/pages/auth/entry-handover'
 import { TheSetupNotSavedYet } from '@/components/gw/TheSetupNotSavedYet'
 import { cadenceLabel } from '@/lib/cadence'
+import { howOftenTheTeamChecksIn } from '@/lib/the-closing-after-your-first-check-in'
 import { howARowReads, isFinished, type ListRow } from './how-a-row-reads'
 import { YouAreIn } from '@/pages/today/YouAreIn'
 
@@ -171,7 +172,7 @@ export function GroundsListPage() {
                 {/* A number the product chose is said to be one, so the admin approving it knows what
                     was decided and what was assumed (B13, P6-002). */}
                 {a.timelineDays ? ` It runs for ${a.timelineDays} days${a.timelineStated === false ? ', which Groundwork suggested' : ''}.` : ''}
-                {a.cadence ? ` ${a.cadence === 'SEQUENTIAL' ? 'People check in when the lead chooses' : `People check in ${cadenceLabel(a.cadence as never, (a as any).cadenceDays).toLowerCase()}`}${a.cadenceStated === false ? ', which Groundwork suggested' : ''}.` : ''}
+                {a.cadence ? ` ${a.cadence === 'SEQUENTIAL' ? 'People check in when the lead chooses' : `People check in ${howOftenTheTeamChecksIn(a as any) ?? cadenceLabel(a.cadence as never, (a as any).cadenceDays).toLowerCase()}`}${a.cadenceStated === false ? ', which Groundwork suggested' : ''}.` : ''}
               </p>
               {declining === a.id ? (
                 <div className="gwui-waiting-acts">
@@ -203,7 +204,7 @@ export function GroundsListPage() {
         </Panel>
       )}
 
-      {isLoading && <Note>Loading…</Note>}
+      {isLoading && <Skeleton what="Getting your check-ins" shape="rows" />}
 
       {!isLoading && isError && (
         /* Could not load. Say which of the two things happened, and offer the one that helps. */
@@ -282,7 +283,7 @@ export function GroundsListPage() {
       )}
       {/* An admin or a lead who runs none and is in none: said, so the list does not open on someone else's heading (U.5 review). */}
       {others.length > 0 && youRun.length === 0 && youreIn.length === 0 && (
-        <Note>No check-ins yet. Start one.</Note>
+        <Note>You do not run or take part in a check-in yet. You can start one.</Note>
       )}
       {others.length > 0 && (
         <Section heading={`Other check-ins in ${orgName}`} note={`${others.length} open`}>

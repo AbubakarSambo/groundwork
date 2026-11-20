@@ -57,6 +57,8 @@ export const GroundworkEvents = {
    * email/invite-bounced.listener.ts.
    */
   INVITE_BOUNCED: 'invite.bounced',
+  /** Mail arrived at an organisation's assistant address (not hello@). Handled in public-api/a-forward-from-a-team-member.service.ts. */
+  MAIL_FOR_AN_ASSISTANT: 'mail.for.an.assistant',
   /**
    * SOMETHING THEY SAID THEY WOULD DO WAS SETTLED, done or not done (week 9): by the check-in's own
    * words after it finished, or by the person by hand. Settling from a check-in is a model call that

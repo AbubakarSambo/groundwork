@@ -110,16 +110,18 @@ describe('between check-ins', () => {
 
   it('"Add a note for next time" opens the private note box, not a question', async () => {
     mount()
-    expect(screen.queryByPlaceholderText('Note something for your next check-in…')).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: 'Add a note for next time' }))
     expect(askApi.ask).not.toHaveBeenCalled()
-    expect(await screen.findByPlaceholderText('Note something for your next check-in…')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Save' })).toBeTruthy()
   })
 
-  it('the note box, once opened, still says notes are private and not part of the record', async () => {
+  /* Changed 15 November 2026 (Hafsah, audit row 9): the screen no longer carries a privacy note. Who can read a note is the backend's
+     rule (api/src/modules/conversation/a-note-is-not-the-record.spec.ts), the same whether or not the screen says it. */
+  it('the note box, once opened, carries no privacy note on the screen', async () => {
     mount()
     await userEvent.click(screen.getByRole('button', { name: 'Add a note for next time' }))
-    expect(await screen.findByText(/Notes are yours alone/)).toBeTruthy()
+    await screen.findByRole('button', { name: 'Save' })
+    expect(screen.queryByText(/Notes are yours alone/)).toBeNull()
   })
 
   /*
@@ -133,7 +135,6 @@ describe('between check-ins', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add a note for next time' }))
     /* Only one textbox on the whole card, and it is the note one - not two. */
     expect(await screen.findAllByRole('textbox')).toHaveLength(1)
-    expect(screen.queryByPlaceholderText('Ask, or add a note')).toBeNull()
     expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Send' })).toBeNull()
   })
@@ -142,12 +143,12 @@ describe('between check-ins', () => {
     const { groundsApi } = await import('@/api/grounds')
     mount()
     await userEvent.click(screen.getByRole('button', { name: 'Add a note for next time' }))
-    const field = screen.getByPlaceholderText('Note something for your next check-in…')
+    const field = screen.getByPlaceholderText('Write anything you want me to remember')
     await userEvent.type(field, 'Ask about the Westgate visit')
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     expect(groundsApi.addMyNote).toHaveBeenCalledWith('g1', 'Ask about the Westgate visit')
     expect(askApi.ask).not.toHaveBeenCalled()
-    expect(await screen.findByPlaceholderText('Ask, or add a note')).toBeTruthy()
+    expect(await screen.findByPlaceholderText('Write anything you want me to remember')).toBeTruthy()
   })
 
   it('"Change how often this runs" is reachable directly, under the card - not only from inside the note box', async () => {
@@ -164,15 +165,15 @@ describe('between check-ins', () => {
     expect(screen.queryByRole('button', { name: 'Change how often this runs' })).toBeNull()
   })
 
-  it('the composer says "Ask, or add a note"', () => {
+  it('the composer says the one thing every box of this kind says', () => {
     mount()
-    expect(screen.getByPlaceholderText('Ask, or add a note')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Write anything you want me to remember')).toBeTruthy()
   })
 
   it('typing into the composer and sending asks Ask Groundwork, and the answer arrives as a bubble', async () => {
     ;(askApi.ask as any).mockResolvedValue({ blocks: [{ type: 'text', body: 'Sure - here is what I have.' }], composedBy: 'model', lane: 'test' })
     mount()
-    const field = screen.getByPlaceholderText('Ask, or add a note')
+    const field = screen.getByPlaceholderText('Write anything you want me to remember')
     await userEvent.type(field, 'How is Green Mart looking?')
     await userEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(askApi.ask).toHaveBeenCalledWith('How is Green Mart looking?', 'g1')
@@ -195,7 +196,7 @@ describe('between check-ins', () => {
       composedBy: 'model', lane: 'test',
     })
     mount()
-    const field = screen.getByPlaceholderText('Ask, or add a note')
+    const field = screen.getByPlaceholderText('Write anything you want me to remember')
     await userEvent.type(field, 'I need leave from Monday to Friday next week.')
     await userEvent.click(screen.getByRole('button', { name: 'Send' }))
     await screen.findByText('Shall I send it to Daniel to approve?')

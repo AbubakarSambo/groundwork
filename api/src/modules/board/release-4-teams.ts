@@ -4,14 +4,9 @@
  * board draws each team type (support desk, operations, engineering, sales org, subscriptions, leadership) as its kit picture; off, the
  * board reads exactly as before. It changes how the board is laid out, never what it says or who reads what.
  */
-export async function theRelease4TeamsIsOn(prisma: any, organizationId: string | null | undefined): Promise<boolean> {
-  if (!organizationId) return false;
-  try {
-    const o = await prisma?.organization?.findUnique?.({ where: { id: organizationId }, select: { release4TeamsOn: true } });
-    return o?.release4TeamsOn === true;
-  } catch {
-    return false;
-  }
+/** ALWAYS ON (Hafsah, 15 November 2026: everything has a board; reverses the October hide, decisions 88 and 91). The column is no longer read and nothing stored is changed. */
+export async function theRelease4TeamsIsOn(_prisma?: any, _organizationId?: string | null): Promise<boolean> {
+  return true;
 }
 
 /** A target's unit: the one stored on it, else "%" for a rate (a share to keep at or above), else none. */

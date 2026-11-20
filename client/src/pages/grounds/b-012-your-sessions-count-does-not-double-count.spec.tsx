@@ -58,7 +58,7 @@ describe('"Your sessions" never reads more sessions done than are planned', () =
       boardRenders: true,
     })
     renderPage()
-    expect(await screen.findByText('1 of 6 sessions are done.')).toBeTruthy()
-    expect(screen.queryByText(/of 6 sessions are done/)?.textContent).not.toMatch(/^9 of 6/)
+    expect(await screen.findByText('1 of 6 check-ins are done.')).toBeTruthy()
+    expect(screen.queryByText(/of 6 check-ins are done/)?.textContent).not.toMatch(/^9 of 6/)
   })
 })

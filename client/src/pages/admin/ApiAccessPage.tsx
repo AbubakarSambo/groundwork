@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -152,7 +153,7 @@ export function ApiAccessPage() {
       </p>
 
       <h2 style={{ fontSize: 15, marginTop: 28 }}>Waiting on you{waiting.length ? ` (${waiting.length})` : ''}</h2>
-      {requests.isLoading && <p style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Reading…</p>}
+      {requests.isLoading && <Skeleton what="Getting the requests" shape="lines" count={1} />}
       {!requests.isLoading && waiting.length === 0 && <p style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Nobody is waiting.</p>}
       {waiting.map((r) => <Row key={r.id} request={r} />)}
 

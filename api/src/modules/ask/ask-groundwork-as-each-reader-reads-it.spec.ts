@@ -1,4 +1,5 @@
-import { askStarters } from '../assistant/ask-name';
+/* Batch S round 2, T11: the welcome no longer carries a privacy note ("What you ask me stays private."); the sentences below are what it says now. */
+import { askStartersFor } from '../assistant/ask-name';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
@@ -63,17 +64,17 @@ const STORED_REPORTS: Record<string, any> = {
       sessions: 2,
       commitments: [
         { participantId: 'p-kofi', who: 'you', what: 'send the price list', when: 'Friday', statedInSession: 1, restatedIn: [], status: 'OPEN', theySaidIt: true,
-          say: 'You said in session 1 that you would send the Harbor Foods price list by Friday.' },
+          say: 'You said in check-in 1 that you would send the Harbor Foods price list by Friday.' },
         { participantId: 'p-miriam', who: 'Miriam', what: 'call Westgate Deli', when: null, statedInSession: 1, restatedIn: [], status: 'OPEN', theySaidIt: true,
           say: 'MIRIAM-COMMITMENT: Miriam said she would call Westgate Deli.' },
       ],
       dependencies: [
         { what: 'delivery dates', from: 'you', fromParticipantId: 'p-kofi', on: 'Miriam', onParticipantId: 'p-miriam', sessionsWaiting: 1, chased: false, status: 'OPEN',
-          say: 'You are waiting on Miriam for the delivery dates, since session 1.' },
+          say: 'You are waiting on Miriam for the delivery dates, since check-in 1.' },
         { what: 'finance sign-off', from: 'Miriam', fromParticipantId: 'p-miriam', on: null, onParticipantId: null, sessionsWaiting: 2, chased: false, status: 'OPEN',
           say: 'MIRIAM-WAIT: Miriam is waiting on finance.' },
       ],
-      patterns: [{ participantId: 'p-miriam', say: 'PATTERN-SECRET: seen in three sessions.' }],
+      patterns: [{ participantId: 'p-miriam', say: 'PATTERN-SECRET: seen in three check-ins.' }],
       gaps: [],
       stillOpen: ['LEAD-OPEN: the Westgate owner.'],
       cannotTellYou: [],
@@ -271,7 +272,8 @@ const BARIDI_ASK = {
   oldContextChatIsOpen: false,
   /* Decision 101: four of the five need a check-in, so a reader with none is left with the one
      that does not. One true starter rather than four invented ones. */
-  starters: ["What are the company's priorities right now?", 'Ask for leave, or to spend money.'],
+  /* One line for each thing in the one guide (Batch S, S5): leave and spending are two lines now, not one joined line. */
+  starters: ["What are the company's priorities right now?", 'Ask for leave.', 'Ask to spend money.'],
 };
 /* And the five, in Hafsah's order, for somebody who has a check-in. */
 /* As shipped, with the switch for context in Ask off, the starter about adding context is left out. */
@@ -281,12 +283,13 @@ const STARTERS_WITH_A_CHECK_IN_AND_CONTEXT = [
   'When is my next check-in?',
   "What are the company's priorities right now?",
   'Add a document or some context to my check-in.',
-  'Ask for leave, or to spend money.',
+  'Ask for leave.',
+  'Ask to spend money.',
 ];
 const STARTERS_WITH_A_CHECK_IN = STARTERS_WITH_A_CHECK_IN_AND_CONTEXT.filter((l) => !/context/.test(l));
 /* As shipped, with adding context hidden (`release.contextInAskGroundwork` off): nothing is offered that cannot be done. */
-const BARIDI_WELCOME = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can also ask me for leave or to spend money. What you ask me stays private.';
-const BARIDI_WELCOME_WITH_CONTEXT = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. What you ask me stays private. Anything you choose to add to a check-in works differently. I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.';
+const BARIDI_WELCOME = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can also ask me for leave or to spend money.';
+const BARIDI_WELCOME_WITH_CONTEXT = 'This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here, and ask for leave or to spend money. Anything you add to a check-in is said back to you first, goes in only once you say yes, and from then on is part of that check-in.';
 
 const everything = (x: unknown) => JSON.stringify(x);
 
@@ -559,7 +562,7 @@ describe('a guest from another organisation', () => {
        the sentence he is already given says "so Ask Baridi can only answer...". (Decision 100.) */
     expect(await controller.mine(asUser(readers.kofi))).toEqual({
       /* Changed under the starters review: a guest is offered only what Ask answers a guest (their own check-in), never the company, leave or spending, and is welcomed as a guest. */
-      canAsk: true, about: [{ id: 'g-sales', label: 'Sales team, Q3' }], turns: [], ...BARIDI_ASK, starters: STARTERS_WITH_A_CHECK_IN.filter((l) => /my check-in|did I say|next check-in/.test(l)).filter((l) => !/priorities|leave/.test(l)), welcome: 'This is Ask Baridi. You are a guest here, so I answer you only about your own check-in. What you ask me stays private.',
+      canAsk: true, about: [{ id: 'g-sales', label: 'Sales team, Q3' }], turns: [], ...BARIDI_ASK, starters: STARTERS_WITH_A_CHECK_IN.filter((l) => /my check-in|did I say|next check-in/.test(l)).filter((l) => !/priorities|leave/.test(l)), welcome: 'This is Ask Baridi. You are a guest here, so I answer you only about your own check-in.',
     });
   });
 
@@ -569,10 +572,10 @@ describe('a guest from another organisation', () => {
       'The report on Sales team, Q3 says you agree on these things.\nGreen Mart buys in January.\nDeposits come before delivery.',
     );
     expect(await kofiAsks(f, 'What did I commit to?')).toBe(
-      'This is what you said you would do in Sales team, Q3.\nYou said in session 1 that you would send the Harbor Foods price list by Friday.',
+      'This is what you said you would do in Sales team, Q3.\nYou said in check-in 1 that you would send the Harbor Foods price list by Friday.',
     );
     expect(await kofiAsks(f, 'What is stuck?')).toBe(
-      'This is what is waiting in Sales team, Q3, for you or on you.\nYou are waiting on Miriam for the delivery dates, since session 1.',
+      'This is what is waiting in Sales team, Q3, for you or on you.\nYou are waiting on Miriam for the delivery dates, since check-in 1.',
     );
     expect(await kofiAsks(f, 'When is my next check-in?')).toBe(
       `Your next check-in on Sales team, Q3 opens on ${whenItWas(KOFI_NEXT, 'weekdayAndDay')}.`,
@@ -739,10 +742,10 @@ describe('a guest asks about their own work in their own check-in (week 24)', ()
       const f = fixture();
       const said = await kofiAsks(f, 'Who reads what I say?');
       expect(said).toBe(
-        'The people in Sales team, Q3, including the person who runs it, can see what you say in it. Admins of the organisation that runs this check-in can read every check-in. '
-        + 'Your own report and your questions to Ask Baridi stay private. '
-        + 'What you say is used to build the shared picture for this check-in and nothing else, and it does not train a model. '
-        + 'Your answers are stored on our servers, and they are processed by Google\'s models to build the record.',
+        'You see your own report straight away. The person who runs it shares a team report when it is ready. Nobody else reads your conversation. Admins of the organisation that runs this check-in can read its board and reports. '
+        + 'Your questions to Ask Baridi stay private. '
+        + 'What you say is used to build the shared picture for this check-in, and it does not train a model. '
+        + 'Your answers are stored on our servers and read by Google\'s models to build the record.',
       );
       /* A performance plan: admins do not read it. */
       f.db.ground.find((g) => g.id === 'g-sales')!.scenario = 'PIP';
@@ -754,7 +757,7 @@ describe('a guest asks about their own work in their own check-in (week 24)', ()
 
     it('does not turn "does the organisation read it" into a refusal, and still refuses "who are the other people here"', async () => {
       const f = fixture();
-      expect(await kofiAsks(f, 'Does the organisation see what I say?')).toContain('can see what you say in it');
+      expect(await kofiAsks(f, 'Does the organisation see what I say?')).toContain('Nobody else reads your conversation');
       expect(await kofiAsks(f, 'Who else can see the other check-ins?')).toBe(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN('Ask Baridi'));
     });
   });
@@ -974,13 +977,12 @@ describe('a guest asks about their own work in their own check-in (week 24)', ()
   });
 });
 
-/* The detectors read what people asked Ask Groundwork. A guest is not on the list, so theirs is left out. */
+/* The detectors read no Ask question at all (15 November 2026), which keeps a guest's questions out and everybody else's too. */
 describe('the detectors', () => {
-  it('leave a guest\'s questions out of what they read', () => {
+  it('read nobody\'s questions to Ask Groundwork, a guest\'s included', () => {
     const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     const src = strip(readFileSync(join(__dirname, '..', 'detectors', 'detectors.service.ts'), 'utf8'));
-    const read = src.match(/assistantTurn\.findMany\(\{[\s\S]*?where:\s*\{([^}]*\}[^}]*\}[^}]*)\}/);
-    expect(read?.[1]).toMatch(/NOT:\s*\{\s*personExternalId:\s*\{\s*startsWith:\s*A_GUESTS_KEY_BEGINS\s*\}/);
+    expect(src).not.toMatch(/assistantTurn|assistant_turns/);
   });
 });
 
@@ -1014,10 +1016,11 @@ describe('Ask is named for the organisation, and tells a person what it can do t
   });
 
   it('the starter about adding a document or context is offered only while that part is on', () => {
+    /* askStarters, the old fixed list, is gone: every starter is read from the one guide through askStartersFor (Batch S, S5). Same check, for the lead it is offered to. */
     const line = 'Add a document or some context to my check-in.';
-    expect(askStarters(true, false)).not.toContain(line);
-    expect(askStarters(true, true)).toContain(line);
-    expect(askStarters(true, false)).toHaveLength(askStarters(true, true).length - 1);
+    const lead = (contextIsHere: boolean) => askStartersFor({ isAGuest: false, takesPartInOne: true, hasOneToUse: true, runsOne: true, leaveIsOn: false, spendingIsOn: false, contextIsHere });
+    expect(lead(false)).not.toContain(line);
+    expect(lead(true)).toContain(line);
   });
 
   it('a member who has already asked is not welcomed again, and still reads the name', async () => {

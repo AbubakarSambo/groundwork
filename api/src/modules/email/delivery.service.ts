@@ -1,5 +1,7 @@
+import { markTheYearEndFilesDelivered } from '../year-end/the-year-end-log';
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { isSomethingSentToUs, whatArrived } from './a-message-sent-to-us';
+import { whatAForwardIs } from './a-forward-from-a-team-member';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -10,11 +12,19 @@ import { GroundworkEvents, InviteBouncedEvent } from '../../common/events';
  * participant/ground. Optional everywhere - sends without context are still
  * logged (kind OTHER) but never touch participant state. */
 export interface DeliveryContext {
+  /** The person has just asked for exactly this and is waiting: it goes now, in quiet hours too (Fatima round 5, Hafsah's judgement). */
+  answeringNow?: boolean;
   kind: 'PARTICIPANT_INVITE' | 'LEAD_INVITE' | 'MAGIC_LINK' | 'REMINDER' | 'OTHER';
   participantId?: string;
   groundId?: string;
   /** Set by the one door when it has decided what became of the mail, for a caller that must know (decision 109). */
   outcome?: 'sent' | 'held' | 'suppressed';
+  /** The year-end files' own key (one per job, version and person). Kept with a held mail, so the moment it really goes is recorded against it. */
+  sendKey?: string;
+  /** Written by the one door on a mail it holds for quiet hours, so the sweep can ask the person's hours again. */
+  heldFor?: 'quiet-hours';
+  /** The Reply-To of a mail held for quiet hours, given back when it goes. */
+  heldReplyTo?: string;
 }
 
 const INVITE_KINDS = new Set(['PARTICIPANT_INVITE', 'LEAD_INVITE', 'REMINDER']);
@@ -124,6 +134,16 @@ export class DeliveryService {
    * purpose, when we are slow to answer - must not become a second copy of somebody's email.
    */
   async applyEvent(event: { type?: string; data?: any }): Promise<{ ok: true }> {
+    /*
+     * MAIL TO AN ORGANISATION'S ASSISTANT IS NOT MAIL TO THE COMPANY. An address of the form assistant+<slug>@ goes to the team member's
+     * own path (public-api/a-forward-from-a-team-member.service.ts), handed over as an event so this module does not depend on the check-in.
+     * Everything else, hello@ included, falls through to the company's inbox below, which is unchanged and never evidence.
+     */
+    if (isSomethingSentToUs(event?.type) && whatAForwardIs(event)) {
+      await this.events.emitAsync(GroundworkEvents.MAIL_FOR_AN_ASSISTANT, { event })
+        .catch((err: any) => this.logger?.warn?.(`Handling a forward to an assistant failed: ${err?.message}`));
+      return { ok: true };
+    }
     if (isSomethingSentToUs(event?.type)) {
       const arrived = whatArrived(event);
       if (!arrived) return { ok: true };
@@ -155,6 +175,7 @@ export class DeliveryService {
     const resendId = event?.data?.email_id;
     if (!status || !resendId) return { ok: true };
 
+    if (status === 'DELIVERED') await markTheYearEndFilesDelivered(this.prisma, resendId);
     const delivery = await this.prisma.emailDelivery.findUnique({ where: { resendId } });
     if (!delivery) return { ok: true };
 

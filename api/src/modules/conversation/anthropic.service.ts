@@ -719,7 +719,9 @@ export class AnthropicService implements OnApplicationBootstrap {
         },
       }), options.patient ? A_HUNDRED_ACCOUNTS_WAIT : options.fast ? A_CALL_WAITS : A_BACKGROUND_CALL_WAITS, 'Gemini extract() timed out'), (n, err) => this.logger.warn(`extract() busy (${err?.message ?? err}); retry ${n}`));
     } catch (err: any) {
-      this.logger.error(`extract() Gemini call failed: ${err.message}`);
+      /* Named by its tool and its size: a refusal of the request itself ("Request contains an invalid argument") says nothing of which of the
+         twenty-six reads it was, and for a month the only trace of the assessment's was the provider's own sentence. */
+      this.logger.error(`extract(${tool?.name}, a request of ${JSON.stringify(tool?.input_schema ?? {}).length} characters of shape) Gemini call failed: ${err.message}`);
       this.noteFailure('extract', err);
       throw engineUnavailable(err);
     }

@@ -21,7 +21,7 @@ describe('request 121 (4): somebody waiting to be let in is not chased', () => {
     const b = await boardAs(review5(), ...RUKIA_RUNS_IT);
     const row = (b.eachPerson as any[]).find((r) => r.participantId === 'p-faraji');
     expect(row.notLetIn).toBe(false);
-    expect(row.says).toBe('Faraji Odhiambo has not checked in for this session yet.');
+    expect(row.says).toBe('Faraji Odhiambo has not checked in yet.');
   });
 
   it('nobody else is told anything about him that they were not told before', async () => {

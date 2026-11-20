@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ChatPage } from './ChatPage'
@@ -68,20 +68,24 @@ beforeEach(() => {
   ;(conversationApi.artifact as any).mockResolvedValue({ artifact: null })
 })
 
-describe('B-129: a completed check-in with no turns on this endpoint still shows Done, not the failure banner', () => {
-  it('shows the Done page from the transcript read alone, with zero turns served', async () => {
+/* Changed in batch 2, group 5: "Done" was the Done page, which is gone (items 54 and 55). The rule stays: a finished check-in is settled, never the failure banner. */
+describe('B-129: a completed check-in with no turns on this endpoint is settled, not the failure banner', () => {
+  it('is settled from the transcript read alone, with zero turns served', async () => {
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'COMPLETED', sessionNumber: 1, groundId: 'g1' },
       turns: [],
     })
     renderChat()
-    expect(await screen.findByRole('heading', { name: 'Done. Thanks, Esther.' }, { timeout: 5000 })).toBeTruthy()
+    await waitFor(() => expect(conversationApi.transcript).toHaveBeenCalled(), { timeout: 5000 })
+    await waitFor(() => expect(screen.queryByText(/Groundwork is writing/)).toBeNull(), { timeout: 5000 })
+    expect((screen.getByRole('textbox', { name: 'Your answer' }) as HTMLTextAreaElement).disabled).toBe(true)
+    expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.queryByText(/already finished this check-in/)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
     expect(screen.queryByText(/Groundwork is writing/)).toBeNull()
   })
 
-  it('also shows Done when the transcript read itself fails and open() reports "already finished" (the onError fallback)', async () => {
+  it('is settled too when the transcript read itself fails and open() reports "already finished" (the onError fallback)', async () => {
     ;(conversationApi.transcript as any)
       .mockRejectedValueOnce(new Error('network'))
       .mockResolvedValueOnce({ checkIn: { status: 'COMPLETED', sessionNumber: 1, groundId: 'g1' }, turns: [] })
@@ -89,7 +93,10 @@ describe('B-129: a completed check-in with no turns on this endpoint still shows
       response: { data: { message: 'You have already finished this check-in, so there is nothing more to add.' } },
     })
     renderChat()
-    expect(await screen.findByRole('heading', { name: 'Done. Thanks, Esther.' }, { timeout: 5000 })).toBeTruthy()
+    await waitFor(() => expect(conversationApi.transcript).toHaveBeenCalled(), { timeout: 5000 })
+    await waitFor(() => expect(screen.queryByText(/Groundwork is writing/)).toBeNull(), { timeout: 5000 })
+    expect((screen.getByRole('textbox', { name: 'Your answer' }) as HTMLTextAreaElement).disabled).toBe(true)
+    expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.queryByText(/already finished this check-in/)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
   })

@@ -141,7 +141,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
   if (variant === 'participant') {
     return (
       <Panel pad={false}>
-        <Callout tone="success" title="Session 1 is on record.">
+        <Callout tone="success" title="Check-in 1 is on record.">
           <Steps>
             <Step done>Your check-in is saved. The report shows where people agree, where they differ, and what to do next.</Step>
             <Step>Everyone else checks in independently. What they say is compared with what you said, to show where there is alignment and where there are gaps.</Step>
@@ -149,7 +149,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
           </Steps>
         </Callout>
         <Callout tone="info" title="Save this to receive the report.">
-          Enter the email where you received this invite. We will send you a link when the report is ready.
+          Enter the email where you received this invite. I will send you a link when the report is ready.
         </Callout>
         <div className="gwui-panel-row">
           <form onSubmit={save}>
@@ -180,7 +180,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
 
   return (
     <Panel pad={false}>
-      <Callout tone="info" title="Your first session is on record.">
+      <Callout tone="info" title="Your first check-in is on record.">
         {mode ? `${MODE_LABEL[mode]}. ` : ''}Enter your email to save it. The report builds as people check in - you will see alignment and gaps emerge over time.
       </Callout>
 
@@ -237,7 +237,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
       <div className="gwui-panel-row">
         <SubHeading>Invite someone to answer</SubHeading>
         <p className="gwui-panel-text-muted">
-          Add their email and we will send them an invite once you have saved.
+          Add their email and I will send them an invite once you have saved.
         </p>
         {participantError && <Note tone="error">{participantError}</Note>}
         {participantAdded ? (
@@ -273,7 +273,7 @@ function StartOver({ onClear }: { onClear: () => void }) {
   if (asking) {
     return (
       <Confirm
-        saying="This throws away this session and everything in it."
+        saying="This throws away this check-in and everything in it."
         confirmLabel="Start over" keepLabel="Keep going"
         onConfirm={onClear} onKeep={() => setAsking(false)}
       />

@@ -168,7 +168,7 @@ describe('the notice handed to the synthesis', () => {
   it('is not empty on a run where the pattern was there all along', () => {
     // The whole point. Zero gaps came back from this exact record.
     expect(notice).toContain('hafsah');
-    expect(notice).toContain('separate sessions');
+    expect(notice).toContain('separate check-ins');
   });
 
   it('routes the finding to leadershipGaps rather than divergences', () => {

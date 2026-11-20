@@ -1,5 +1,6 @@
-import { Section, Panel, Tag, Note, Stack, Callout, SubHeading, ShowAll, FlexRow } from '@/components/gw/ui'
+import { Section, Panel, Tag, Note, Stack, Callout, SubHeading, ShowAll, FlexRow, Table } from '@/components/gw/ui'
 import type { BoardPresent } from '@/api/board'
+import { TheMetricsTable } from './pictured/TheMetricsBoard'
 import { HowItIsGoing, type Glance } from '@/components/gw/how-it-is-going'
 
 /**
@@ -42,7 +43,7 @@ function SentenceRows({ rows }: { rows: { id: string; says: string; because?: st
 export function RisksSection({ rows }: { rows: BoardPresent['risks'] }) {
   if (!rows?.length) return null
   return (
-    <Section heading="What could go wrong" note="From the record, with the facts behind each one.">
+    <Section heading="What could go wrong">
       <SentenceRows rows={rows} />
     </Section>
   )
@@ -51,7 +52,7 @@ export function RisksSection({ rows }: { rows: BoardPresent['risks'] }) {
 export function WorkPlanSection({ rows }: { rows: BoardPresent['workPlan'] }) {
   if (!rows?.length) return null
   return (
-    <Section heading="Work plan" note="Who is doing what, and by when.">
+    <Section heading="Work plan">
       <SentenceRows rows={rows} />
     </Section>
   )
@@ -60,7 +61,7 @@ export function WorkPlanSection({ rows }: { rows: BoardPresent['workPlan'] }) {
 export function TimelineSection({ rows }: { rows: BoardPresent['timeline'] }) {
   if (!rows?.length) return null
   return (
-    <Section heading="Timeline" note="What happened, in order.">
+    <Section heading="Timeline">
       <Panel pad={false}>
         {rows.map((r, i) => (
           <div key={`${r.on}-${i}`} className="gwui-panel-row">
@@ -81,7 +82,7 @@ export function PersonHistorySection({ rows, heading }: { rows: BoardPresent['pe
      name}'s history" - "His history" in the prototype's own words, which names no pronoun, so the
      caller passes the new hire's first name instead. Every other family is unchanged. */
   return (
-    <Section heading={heading ?? 'What each person has done so far'} note="One person’s record over time.">
+    <Section heading={heading ?? 'What each person has done so far'}>
       <Panel pad={false}>
         {rows.map((p) => (
           <div key={p.participantId} className="gwui-panel-row">
@@ -127,7 +128,7 @@ export function PersonHistorySection({ rows, heading }: { rows: BoardPresent['pe
 export function BlockersSection({ blockers }: { blockers: BoardPresent['blockers'] }) {
   if (!blockers?.length) return null
   return (
-    <Section heading="Blockers" note="Each with its history and the one thing that would clear it.">
+    <Section heading="Blockers">
       <Stack gap={10}>
         {blockers.map((r) => (
           <Panel key={r.id}>
@@ -136,7 +137,7 @@ export function BlockersSection({ blockers }: { blockers: BoardPresent['blockers
               <Tag tone={r.state === 'blocking' ? 'concern' : 'plain'}>{r.state === 'blocking' ? 'Blocking' : 'Waiting'}</Tag>
             </div>
             <Stack gap={4}>
-              <div className="gwui-mt-8"><Note>{r.raised.says}</Note></div>
+              <Note>{r.raised.says}</Note>
               <Note>{r.proof.says}</Note>
               <Note>{r.timeGiven}</Note>
               <Note>{r.wouldClearItSays}</Note>
@@ -152,7 +153,7 @@ export function BlockersSection({ blockers }: { blockers: BoardPresent['blockers
 export function EvidenceIndexSection({ rows }: { rows: BoardPresent['evidenceIndex'] }) {
   if (!rows?.length) return null
   return (
-    <Section heading="Evidence index" note="Every piece of proof, in one list.">
+    <Section heading="Evidence index">
       <Panel pad={false}>
         {rows.map((r) => (
           <div key={r.id} className="gwui-panel-row">
@@ -174,7 +175,6 @@ export function BusyOrMovingSection({ data }: { data: BoardPresent['busyOrMoving
   return (
     <Section
       heading="Who is busy and who is free"
-      note="Whether activity is turning into progress."
       foot={data.cannotTellYou}
     >
       <Panel pad={false}>
@@ -201,7 +201,7 @@ export function BusyOrMovingSection({ data }: { data: BoardPresent['busyOrMoving
 export function LeadActionsSection({ rows }: { rows: BoardPresent['leadActions'] }) {
   if (!rows?.length) return null
   return (
-    <Section heading="What needs you in this check-in" note="Built from the record: who is waiting, and what has not been told yet.">
+    <Section heading="What needs you in this check-in">
       <SentenceRows rows={rows} />
     </Section>
   )
@@ -235,7 +235,7 @@ export function sameAsTheWorkPlan(leadActions: BoardPresent['leadActions'], work
 export function ObligationsSection({ rows }: { rows: BoardPresent['obligations'] }) {
   if (!rows?.length) return null
   return (
-    <Section heading="What each side promised" note="And what somebody here is still waiting on them for.">
+    <Section heading="What each side promised">
       <Panel pad={false}>
         {rows.map((r, i) => (
           <div key={r.participantId ?? `outside-${i}`} className="gwui-panel-row">
@@ -254,7 +254,7 @@ export function ObligationsSection({ rows }: { rows: BoardPresent['obligations']
 export function ForecastSection({ rows }: { rows: BoardPresent['forecast'] }) {
   if (!rows?.length) return null
   return (
-    <Section heading="Where this could end up" note="Carried forward from the pace the record shows, never a promise.">
+    <Section heading="Where this could end up">
       <Panel pad={false}>
         {rows.map((r) => (
           <div key={r.objectiveId} className="gwui-panel-row">
@@ -262,8 +262,8 @@ export function ForecastSection({ rows }: { rows: BoardPresent['forecast'] }) {
               <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: '23px' }}>{r.about}</div>
               <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: '23px' }}>{r.says}</div>
             </Stack>
-            <div className="gwui-mt-4"><Note tone="muted">{r.restsOn}</Note></div>
-            <div className="gwui-mt-2"><Note tone="muted"><em>{r.cannotTellYou}</em></Note></div>
+            <Note tone="muted">{r.restsOn}</Note>
+            <Note tone="muted"><em>{r.cannotTellYou}</em></Note>
           </div>
         ))}
       </Panel>
@@ -274,7 +274,7 @@ export function ForecastSection({ rows }: { rows: BoardPresent['forecast'] }) {
 export function ContradictionsSection({ rows }: { rows: BoardPresent['contradictions'] }) {
   if (!rows?.length) return null
   return (
-    <Section heading="Contradictions" note="Where one person’s own record says two different things.">
+    <Section heading="Contradictions">
       <SentenceRows rows={rows.map((r) => ({ id: r.id, says: r.says }))} />
     </Section>
   )
@@ -289,7 +289,7 @@ export function ContradictionsSection({ rows }: { rows: BoardPresent['contradict
 export function QuestionsForTheLeadSection({ rows }: { rows: BoardPresent['questionsForTheLead'] }) {
   if (!rows?.length) return null
   return (
-    <Section heading="Questions for you" note="Questions, never conclusions, built from the record.">
+    <Section heading="Questions for you">
       <Panel pad={false}>
         {rows.map((r) => (
           <div key={r.id} className="gwui-panel-row">
@@ -498,18 +498,16 @@ export function WhatEachLevelUnderstoodSection({ data }: { data: BoardPresent['w
       {data.state === 'none-yet' ? (
         <Note tone="muted">{data.says}</Note>
       ) : (
-        <Panel pad={false}>
-          {(data.levels ?? []).map((level) => (
-            <div key={level.participantId ?? level.who} className="gwui-panel-row">
-              <Stack gap={4}>
-                <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{level.who}</p>
-                {level.said.map((line, i) => (
-                  <p key={i} className="gwui-panel-text">{line}</p>
-                ))}
-              </Stack>
-            </div>
-          ))}
-        </Panel>
+        /* One open table: who, and what they said the aim means, each line as they said it. Only people who said something are in it. */
+        <Table
+          caption="What each person said the aim means to them"
+          phone="stack"
+          columns={[{ key: 'who', header: 'Who', rowHeader: true, width: '28%' }, { key: 'said', header: 'What they said the aim means' }]}
+          rows={(data.levels ?? []).map((level) => ({
+            who: level.who,
+            said: <>{level.said.map((line, i) => <span key={i} className="pb-row-more">{line}</span>)}</>,
+          }))}
+        />
       )}
       <Note tone="muted">{data.note}</Note>
     </Section>
@@ -517,14 +515,8 @@ export function WhatEachLevelUnderstoodSection({ data }: { data: BoardPresent['w
 }
 
 export function WhatTheVisitLogShowsSection({ data }: { data: BoardPresent['whatTheVisitLogShows'] }) {
-  if (!data) return null
-  if (data.state === 'not-known') {
-    return (
-      <Section heading={data.heading}>
-        <Note tone="muted">{data.why}</Note>
-      </Section>
-    )
-  }
+  /* Nothing is drawn when no numbers have been brought in: a heading with only an apology under it told the lead nothing. */
+  if (!data || data.state === 'not-known') return null
   return (
     <Section heading={data.heading}>
       <Panel pad={false}>
@@ -542,50 +534,11 @@ export function WhatTheVisitLogShowsSection({ data }: { data: BoardPresent['what
 }
 
 /**
- * THE MARKETVIEW Q4 BOARD'S OWN "WHAT THE SYSTEMS SHOW" (mvq4.txt), right after "What needs you",
- * before patterns. One row a number, drawn exactly as the engine's own sentence, never read apart
- * for a target or a goal of its own - the engine does not send those as separate fields (see
- * docs/answers-from-engine.md, "A MarketView Q4 test check-in"). Where a key repeats (weekly
- * active users is sent twice, a week apart), only the latest figure's sentence is a full row; the
- * earlier figure for the same key is shown as "Up from <earlier value>." underneath it, built only
- * from the two numbers' own values - nothing parsed out of either sentence.
+ * THE MARKETVIEW Q4 BOARD'S OWN "WHAT THE SYSTEMS SHOW" (mvq4.jpg), right after "What needs you". One open table with a row for each metric
+ * (pictured/TheMetricsBoard.tsx): the numbers a system sent and the metrics people stated, each as what a system shows or what somebody said.
  */
-export function WhatTheSystemsShowSection({ data }: { data: BoardPresent['whatTheSystemsShow'] }) {
-  if (!data) return null
-  if (data.state === 'not-known') {
-    return (
-      <Section heading={data.heading}>
-        <Note tone="muted">{data.why}</Note>
-      </Section>
-    )
-  }
-  const all = data.numbers ?? []
-  const latestByKey = new Map<string, (typeof all)[number]>()
-  for (const n of all) {
-    const current = latestByKey.get(n.key)
-    if (!current || n.measuredAt > current.measuredAt) latestByKey.set(n.key, n)
-  }
-  const rows = Array.from(latestByKey.values())
-  return (
-    <Section heading={data.heading}>
-      <Panel pad={false}>
-        {rows.map((n) => {
-          const earlier = all.find((o) => o.key === n.key && o.measuredAt < n.measuredAt)
-          return (
-            <div key={n.key} className="gwui-panel-row">
-              <Stack gap={2}>
-                <p className="gwui-panel-text">{n.says}</p>
-                {earlier && <Note tone="muted">{`Up from ${earlier.value.toLocaleString('en-GB')}.`}</Note>}
-              </Stack>
-            </div>
-          )
-        })}
-      </Panel>
-      {(data.whatANumberIsNot ?? []).map((line, i) => (
-        <Note key={i} tone="muted">{line}</Note>
-      ))}
-    </Section>
-  )
+export function WhatTheSystemsShowSection({ data, rows }: { data: BoardPresent['whatTheSystemsShow']; rows?: any[] }) {
+  return <TheMetricsTable data={data} rows={rows} />
 }
 
 /**
@@ -621,7 +574,16 @@ export function WhereWhatWasSaidAndTheSystemsDifferSection({ data }: { data: Boa
   )
 }
 
-export function TheCountiesSection({ data }: { data: BoardPresent['theCounties'] }) {
+/**
+ * THE COUNTIES (gov.jpg): one open table, a row for each county on record. The figures are what people said about the county in their
+ * own check-ins, as said (`Reached`, `Activity`, `In the way` on the county's record); one nobody has said reads "Not said yet". The
+ * projects on record under it are the board's own sentence. A county nobody has said any figure for is named under the table, so what
+ * has no data is listed, and nothing is made up for it.
+ */
+const COUNTY_FIGURES = ['Reached', 'Activity', 'In the way']
+const countyFigure = (r: any, label: string): string => String(r?.fields?.[label] ?? '').trim()
+
+export function TheCountiesSection({ data, rows = [] }: { data: BoardPresent['theCounties']; rows?: any[] }) {
   if (!data) return null
   if (data.state === 'none-yet') {
     return (
@@ -630,18 +592,35 @@ export function TheCountiesSection({ data }: { data: BoardPresent['theCounties']
       </Section>
     )
   }
+  const counties = data.counties ?? []
+  const recordOf = (id: string) => rows.find((r) => r.id === id)
+  const withNothing = counties.filter((c) => !COUNTY_FIGURES.some((l) => countyFigure(recordOf(c.id), l)))
+  const cell = (id: string, label: string) => countyFigure(recordOf(id), label) || 'Not said yet'
+  const names = withNothing.map((c) => c.name)
+  const listed = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0]
   return (
     <Section heading={data.heading}>
-      <Panel pad={false}>
-        {(data.counties ?? []).map((c) => (
-          <div key={c.id} className="gwui-panel-row">
-            <Stack gap={2}>
-              <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{c.name}</p>
-              <Note tone="muted">{c.says}</Note>
-            </Stack>
-          </div>
-        ))}
-      </Panel>
+      <Table
+        caption="Each county, with what people said it has reached and done, and what is in its way"
+        phone="stack"
+        columns={[
+          { key: 'name', header: 'County', rowHeader: true, width: '16%' },
+          { key: 'reached', header: 'Reached', width: '20%' },
+          { key: 'activity', header: 'Activity', width: '20%' },
+          { key: 'way', header: 'In the way', width: '22%' },
+          { key: 'says', header: 'Projects on record' },
+        ]}
+        rows={counties.map((c) => ({
+          name: c.name,
+          reached: cell(c.id, 'Reached'),
+          activity: cell(c.id, 'Activity'),
+          way: cell(c.id, 'In the way'),
+          says: c.says,
+        }))}
+      />
+      {names.length > 0 && (
+        <Note tone="muted">{`Nobody has said any figure for ${listed} yet.`}</Note>
+      )}
     </Section>
   )
 }
@@ -651,17 +630,65 @@ export function TheCountiesSection({ data }: { data: BoardPresent['theCounties']
  * glance in BoardPage.tsx, only for this kind, only when the engine sends it - a short list of
  * plain sentences, each drawn exactly as sent.
  */
-export function WhereTheMatterStandsSection({ data }: { data: BoardPresent['whereTheMatterStands'] }) {
-  if (!data) return null
+/**
+ * THE OPENING SENTENCES of a pictured board (gov, loans and where-next), as the server wrote them from the record: the answer, where it
+ * stands, what puts it at risk, then in one line how it is known. Drawn exactly as sent, never built up here.
+ */
+/**
+ * HOW A BOARD THAT HAS NO CHECK-IN QUESTION OF ITS OWN STARTS (Hafsah, 15 November): the heading in normal type as the quiet question, then
+ * the first sentence large as the answer, then the rest as plain lines. The same two classes every other board's opening uses, so one set
+ * of gaps is read everywhere.
+ */
+function TheStandsHeader({ heading, says, howKnown }: { heading: string; says: string[]; howKnown?: string | null }) {
+  const [first, ...rest] = says
   return (
-    <Section heading={data.heading}>
-      <Stack gap={6}>
-        {(data.says ?? []).map((line, i) => (
-          <p key={i} className="gwui-panel-text">{line}</p>
-        ))}
-      </Stack>
-    </Section>
+    <section aria-label={heading} className="pb-stand">
+      <p className="pb-q">{heading}</p>
+      <p className="pb-answer">{first}</p>
+      {rest.map((line, i) => <p key={i} className="gwui-panel-text pb-stand-line">{line}</p>)}
+      {howKnown && <p className="pb-note">{howKnown}</p>}
+    </section>
   )
+}
+
+export function TheOpeningSentences({ data }: { data: BoardPresent['theOpening'] }) {
+  if (!data || !(data.says ?? []).length) return null
+  return <TheStandsHeader heading={data.heading} says={data.says} howKnown={data.howKnown} />
+}
+
+/**
+ * THE BOARD'S OWN READ (15 November 2026; api: the-boards-own-read.ts): the pieces of the prototype's boards that only a written read of
+ * the record can give, such as matter.jpg's "More confident than the evidence allows" and gov.jpg's "Performance, or different
+ * conditions?". The server writes them from the record this reader is served, checks every sentence against it, and says how each is
+ * known. Drawn only where the server sends a piece; where it sends none, nothing is drawn and no heading stands over nothing.
+ * A passage of one or two sentences is a callout; a list is a section of lines.
+ */
+const THE_TONE_OF_A_PIECE: Record<string, 'warning' | 'info'> = { moreConfident: 'warning' }
+export function TheBoardsOwnReadSection({ data, place }: { data: BoardPresent['theBoardsOwnRead']; place: 'top' | 'end' }) {
+  const pieces = (data?.pieces ?? []).filter((p) => p.place === place && (p.sentences ?? []).length)
+  if (!pieces.length) return null
+  /* One container for every piece, a list or a passage (Hafsah, 15 November). That a line was said in a check-in is said once, where the board starts; only the exception, a line a document or a system shows, is marked. */
+  return (
+    <>
+      {pieces.map((p) => (
+        <div key={p.id} className="pb-own-read">
+          <Callout tone={THE_TONE_OF_A_PIECE[p.id] ?? 'info'} title={p.heading}>
+            {p.sentences.map((s, i) => (
+              <span key={i} className="pb-own-read-line">
+                {s.says}
+                {s.how === 'shown' && <span className="t-small"> Shown by a document.</span>}
+              </span>
+            ))}
+          </Callout>
+        </div>
+      ))}
+    </>
+  )
+}
+
+export function WhereTheMatterStandsSection({ data }: { data: BoardPresent['whereTheMatterStands'] }) {
+  if (!data || !(data.says ?? []).length) return null
+  return <TheStandsHeader heading={data.heading} says={data.says} />
 }
 
 /**
@@ -737,28 +764,35 @@ export function WhatChangedThisWeekSection({ data }: { data: BoardPresent['whatC
  * can also come back `not-known` (no loan record at all yet), which reads as one plain sentence
  * instead of a tile.
  */
+/* The colour of each group's count, the loans board's own (loans.jpg): repaying is green, behind or stopped is amber, not heard from is red. A group nobody is in stays plain, as the bills' board draws it. */
+const COHORT_TONE: Record<string, 'proven' | 'attention' | 'concern'> = { repaying: 'proven', behind: 'attention', blocked: 'attention', 'not heard from': 'concern' }
+
 export function WhereTheCohortStandsSection({ data }: { data: BoardPresent['whereTheCohortStands'] }) {
   if (!data) return null
+  const title = (g: { group: string; title?: string }) => g.title ?? g.group
   return (
-    <Section heading={data.heading} note={data.says}>
-      <Panel pad={false}>
+    <Section heading={data.heading}>
+      <div className="pb-cards4">
         {(data.groups ?? []).map((g) => (
-          <div key={g.group} className="gwui-panel-row">
+          <Panel key={g.group}>
             {'state' in g && g.state === 'not-known' ? (
-              <Note tone="muted">{g.why}</Note>
+              <>
+                <div className="pb-card-top"><b>{title(g)}</b></div>
+                <p className="gwui-panel-text pb-sub">{g.why}</p>
+              </>
             ) : (
-              <Stack gap={4}>
-                <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{(g as { count: number }).count}</p>
-                <p className="gwui-panel-text">{(g as { says: string }).says}</p>
-                {(g as { who: string[] | null }).who && (g as { who: string[] | null }).who!.length > 0 && (
+              <>
+                <div className="pb-card-top"><b>{title(g)}</b><Tag tone={(g as { count: number }).count ? (COHORT_TONE[g.group] ?? 'plain') : 'plain'}>{(g as { count: number }).count}</Tag></div>
+                <p className="gwui-panel-text pb-sub">{(g as { says: string }).says}</p>
+                {(g as { cause?: string | null }).cause && <p className="gwui-panel-text pb-sub">{(g as { cause: string }).cause}</p>}
+                {(g as { who: string[] | null }).who && (g as { who: string[] }).who.length > 0 && (
                   <Note tone="muted">{(g as { who: string[] }).who.join(', ')}</Note>
                 )}
-              </Stack>
+              </>
             )}
-          </div>
+          </Panel>
         ))}
-      </Panel>
-      {data.whyNoNames && <Note tone="muted">{data.whyNoNames}</Note>}
+      </div>
     </Section>
   )
 }
@@ -776,7 +810,7 @@ export function ByWhoTheyAreSection({ data }: { data: BoardPresent['byWhoTheyAre
     return (
       <Section heading={data.heading} note={data.note ?? data.says}>
         <div className="pb-cards3">
-          {(data.groups ?? []).map((g) => (
+          {(data.groups ?? []).filter((g) => g.says).map((g) => (
             <Panel key={g.group}>
               <p className="pb-card-h">{g.group}</p>
               <p className="gwui-panel-text">{g.says}</p>
@@ -804,6 +838,8 @@ export function ByWhoTheyAreSection({ data }: { data: BoardPresent['byWhoTheyAre
 export function WhereTheyDisagreeSection({ data }: { data: BoardPresent['whereTheyDisagree'] }) {
   if (!data) return null
   const items = data.state === 'filled' ? (data.items ?? []) : []
+  /* No heading over nothing. */
+  if (!items.length && !data.says) return null
   return (
     <Section heading={data.heading}>
       {items.length > 0 ? (
@@ -842,14 +878,8 @@ export function WhereTheyDisagreeSection({ data }: { data: BoardPresent['whereTh
  * engine that does keep it can send `says` and/or `rows`, drawn exactly as sent.
  */
 export function SupportGivenSection({ data }: { data: BoardPresent['supportGiven'] }) {
-  if (!data) return null
-  if (data.state === 'not-known') {
-    return (
-      <Section heading={data.heading}>
-        <Note tone="muted">{data.why}</Note>
-      </Section>
-    )
-  }
+  /* Nothing is drawn when nothing on record says what support was given. */
+  if (!data || data.state === 'not-known') return null
   return (
     <Section heading={data.heading} note={data.says}>
       {!!data.rows?.length && (
@@ -954,7 +984,6 @@ export function WhereThisIsHeadingSection({ data, onRecordTheDecision }: {
           <div className="gwui-panel-row">
             <Stack gap={4}>
               <p className="gwui-panel-text">{data.whoDecides}</p>
-              <Note tone="muted">{data.groundworkDoesNotChoose}</Note>
             </Stack>
           </div>
         </Panel>

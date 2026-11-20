@@ -35,12 +35,13 @@ const read = (...p: string[]) => strip(readFileSync(join(__dirname, ...p), 'utf8
 const SURFACES: [string, string][] = [
   /* 'the report page' (ReportPage.tsx) came off this list when ReportBody - its only content -
      was deleted: the file left behind is a redirect, not a surface that can carry a reveal. */
-  ['the per-session report page', 'SessionReportPage.tsx'],
+  /* The per-session report page went in batch 2, group 5; your own report is drawn in My work. */
+  ['your own report, in My work', '../grounds/MyWorkPage.tsx'],
 ]
 const ELSEWHERE: [string, string][] = [
   ["a party's shared report", '../../components/gw/SharedReportForAParty.tsx'],
-  ["the session's shared report", '../../components/gw/TheSessionsReport.tsx'],
-  ['the end-of-session card', '../../components/gw/TheCheckInYouJustFinished.tsx'],
+  ["the check-in's shared report", '../../components/gw/TheSessionsReport.tsx'],
+  ['the end-of-check-in card', '../../components/gw/TheCheckInYouJustFinished.tsx'],
 ]
 
 describe('nothing stands between a released report and the person it is for', () => {

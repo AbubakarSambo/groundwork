@@ -12,10 +12,10 @@ describe('time off asked for with no days', () => {
     expect(mentionsTimeOff(said)).toBe(true);
   });
 
+  /* Changed with Batch S (20 November 2026): Ask's model-led reading replaced the time_off kind. "I want to apply for leave" is now read as wants, with the guide's key for asking for leave, and Ask asks for the days the same way. */
   it('the model can say so, and nothing else it says is read', () => {
-    expect(UNDERSTAND_SCHEMA.input_schema.properties.kind.enum).toContain('time_off');
-    expect(UNDERSTAND_PROMPT).toMatch(/- time_off: they want time off for themselves/);
-    expect(whatTheModelSaid({ kind: 'time_off' })?.kind).toBe('time_off');
+    expect(UNDERSTAND_SCHEMA.input_schema.properties.kind.enum).toContain('wants');
+    expect(UNDERSTAND_PROMPT).toMatch(/- wants: they want one of the things in the list below done for them now, in any words \("I want to apply for leave", "can I get 3 days off\?"/);
     expect(whatTheModelSaid({ kind: 'send_the_leave' })?.kind).toBe('other');
   });
 
@@ -33,13 +33,11 @@ describe('time off asked for with no days', () => {
     }
   });
 
-  it('Ask reads it before any lane, after the days the rules can read', () => {
+  it('Ask reads it after the days the rules can read, and acts on what the model says they want', () => {
     const service = fs.readFileSync(path.join(__dirname, '..', 'assistant', 'assistant.service.ts'), 'utf8');
-    expect(service).toMatch(/isACorrection\(message\) \|\| mentionsTimeOff\(message\)\)/);
-    const rulesRead = service.indexOf("if (plainlyAsksForLeave(message)) return rules('ask_for_leave'");
-    const modelRead = service.indexOf("understood?.kind === 'time_off'");
+    const rulesRead = service.indexOf('if (plainlyAsksForLeave(message)) return this.leaveFromADraft(');
+    const modelRead = service.indexOf("understood?.kind === 'wants'");
     expect(rulesRead).toBeGreaterThan(0);
     expect(modelRead).toBeGreaterThan(rulesRead);
-    expect(modelRead).toBeLessThan(service.indexOf('return this.howWeWork('));
   });
 });

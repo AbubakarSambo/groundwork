@@ -1,6 +1,14 @@
 import { GroundsCron } from '../grounds/grounds.cron';
 import { itIsOverdue } from './what-goes-to-a-phone';
 
+/* A WORKING DAY, WHATEVER DAY THE TESTS RUN (CI after batch 1, 7 November 2026). The morning sweep skips a day the team does not work
+   (isAWorkingDay), so on a Saturday or a Sunday it rightly sent nothing and these failed. Only the date is fixed: Wednesday 4 November,
+   21:30 UTC, when CI last ran them; timers stay real. */
+const ALL_BUT_THE_DATE = ['hrtime', 'nextTick', 'performance', 'queueMicrotask', 'requestAnimationFrame', 'cancelAnimationFrame', 'requestIdleCallback', 'cancelIdleCallback', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout'] as const;
+beforeAll(() => { jest.useFakeTimers({ now: new Date('2026-11-04T21:30:00Z'), doNotFake: [...ALL_BUT_THE_DATE] }); });
+afterAll(() => { jest.useRealTimers(); });
+
+
 /**
  * NOBODY HELD FOR A SEAT IS REMINDED, NUDGED OR ANNOUNCED TO (privacy row 5, kept by decision 93; second review, new leak C).
  *

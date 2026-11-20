@@ -76,7 +76,7 @@ describe('the clinic admin saves her setup', () => {
   it('with Emeka written over, one press saves the three and says he is not on the check-in yet', async () => {
     seedHerSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
     await screen.findByLabelText('Your team, one per line')
     addThroughTheTeamBox(['Aisha Musa, aisha@clinic.test', 'Chinedu Obi, chinedu@clinic.test', 'Fatima Bello, fatima@clinic.test'].join('\n'))
     fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
@@ -89,7 +89,7 @@ describe('the clinic admin saves her setup', () => {
   it('what she said each person does goes with them into the check-in', async () => {
     seedHerSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
     await screen.findByLabelText('Your team, one per line')
     addThroughTheTeamBox(['Aisha Musa', 'Chinedu Obi', 'Fatima Bello', 'Emeka Nnamdi, emeka@clinic.test'].join('\n'))
     fireEvent.click(screen.getByRole('button', { name: 'Save this' }))

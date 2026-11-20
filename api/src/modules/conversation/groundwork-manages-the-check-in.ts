@@ -60,7 +60,7 @@ export function whatGroundworkManagesHere(
   return [
     'GROUNDWORK MANAGES THIS PERSON\'S WORK HERE. These are facts from their own record, kept from what they said and what is on file. Use one where it fits what they are telling you. Never read them out as a list, never more than one in a turn, and never as an accusation. Their own words may be quoted to them.',
     ...parts,
-    'WHEN THEY SAY IN THIS CHECK-IN that something was sold, paid or signed, and nothing they sent or typed shows it, ask once, plainly, what would show it. An M-Pesa code they type counts as proof of payment: never question it.',
+    'WHEN THEY SAY IN THIS CHECK-IN that something was sold, paid or signed, and nothing they sent or typed shows it, ask once, plainly, what would show it. An M-Pesa code they type counts as proof of payment: never question it. WHEN THEY CORRECT A NUMBER THEY GAVE EARLIER ("it was 23, not 24"), the new number is what they say from now on: say it back in a few words, never ask what would show the number they replaced, and ask once for what would show the new one if it is a sale, payment or signing.',
     ...(open ? [`ONE LINE OF COACHING, from their own pattern. Say it at most once in this check-in, in one short sentence, only after they say something it fits, and never as a lecture. The line is ${quote(open.said)}${open.outcome ? ` It was first given after their check-in on ${open.givenOn}, and since then it has ${open.outcome === 'better' ? 'got better' : open.outcome === 'worse' ? 'got worse' : 'stayed the same'}.` : ''}`] : []),
   ].join('\n\n');
 }

@@ -52,7 +52,7 @@ const NOT_YET_REVIEWED = new Set([
   'ops/OpsResourcesPage.tsx#recheck', 'ops/OpsCompanyPages.tsx#open', 'ops/OpsCompanyPages.tsx#decide',
   'ops/OpsCompanyPages.tsx#push', 'ops/OpsPeoplePage.tsx#change', 'ops/OpsPeoplePage.tsx#setActive',
   'ops/OpsBoardPage.tsx#close', 'ops/OpsBoardPage.tsx#decide', 'ops/OpsForm.tsx#save', 'ops/OpsForm.tsx#move',
-  '../components/InferenceReviewPanel.tsx#clarifyMut', '../components/gw/GroundChat.tsx#remove',
+  '../components/InferenceReviewPanel.tsx#clarifyMut',
   '../components/gw/ExpectationsPanel.tsx#markShown', '../components/gw/ContextPage.tsx#deleteDoc',
 ])
 

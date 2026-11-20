@@ -47,8 +47,8 @@ describe('both paths repair what the model invented', () => {
      */
     const b = body(sig);
     expect(b).toMatch(/SentenceGate|screen\(/);
-    /* And the person is asked again rather than shown an empty bubble when nothing survives. */
-    expect(b).toMatch(/ASK_AGAIN/);
+    /* And the person is asked again rather than shown an empty bubble when nothing survives (changed 16 November 2026: asked again through whatIsSaidWhenNothingIsLeft, which says a thank-you on the turn that closes). */
+    expect(b).toMatch(/whatIsSaidWhenNothingIsLeft/);
   });
 
   it.each(paths)('%s records what it dropped', (_name, sig) => {

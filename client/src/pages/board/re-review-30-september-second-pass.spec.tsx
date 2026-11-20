@@ -121,6 +121,6 @@ describe('re-review, 30 September, second pass - item 7: Reports, for a reader w
     }
     renderAs({ id: 'u-juma' }, board, ground)
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
-    expect(await screen.findByText('Each session has a team report, once Rukia shares it.')).toBeTruthy()
+    expect(await screen.findByText('Each check-in has a team report, once Rukia shares it.')).toBeTruthy()
   })
 })

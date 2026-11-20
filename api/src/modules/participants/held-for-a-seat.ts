@@ -1,4 +1,49 @@
 import { ForbiddenException } from '@nestjs/common';
+import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
+
+/** What somebody who was removed reads if they open the check-in anyway (fix plan 17 November, group C2). */
+export const REMOVED_FROM_THE_CHECK_IN = 'You were removed from this check-in, so you can no longer open it. If that is a mistake, ask the person who runs it.';
+
+/** The same, for somebody who opens an old invitation link of a check-in they were removed from. */
+export const REMOVED_FROM_THE_CHECK_IN_BY_LINK = 'You were removed from this check-in, so this link no longer opens it. If that is a mistake, ask the person who runs it.';
+
+/** What the sign-in page reads for an address whose person was removed (run 5, 19 November: it said "I sent a sign-in link", which was not true). */
+export const REMOVED_FROM_THE_CHECK_IN_AT_SIGN_IN = 'You were removed from the check-in this address was on, so I did not send a sign-in link. If that is a mistake, ask the person who runs it.';
+
+/**
+ * AN ADDRESS THAT BELONGS TO SOMEBODY WHO WAS REMOVED (run 4, 18 November). Removing a person who has no other organisation turns their
+ * sign-in off and clears its address, so the sign-in page took their own address for a stranger's and mailed a sign-up link "If this is
+ * your first time ...". The check-ins they were removed from still hold the address (`leftAt`), and that is the one place it is known.
+ * True only where no live sign-in holds the address and no seat is still held. THE ONE OWNER of "who may no longer be written to or answered"
+ * (run 7, 22 November): the mail door, the WhatsApp send door and the WhatsApp inbound path all ask this, by address or by number.
+ */
+export async function aPersonWhoWasRemoved(
+  prisma: any,
+  who: string | { email?: string | null; phone?: string | null },
+): Promise<boolean> {
+  const from = typeof who === 'string' ? { email: who } : who;
+  if (!prisma?.groundParticipant?.findFirst || (!from.email && !from.phone)) return false;
+  /* An address and a number are one person: the roster and the sign-in hold both, and a removed person's sign-in is turned off but its number stays. */
+  const emails = new Set<string>(from.email ? [from.email.trim().toLowerCase()] : []);
+  const userIds = new Set<string>();
+  if (from.phone) {
+    const forms = formsOfTheSameNumber(from.phone);
+    const people: any[] = await Promise.resolve(prisma.person?.findMany?.({ where: { phone: { in: forms } }, select: { email: true, linkedUserId: true } })).then((r) => r ?? []).catch(() => []);
+    for (const p of people) { if (p.email) emails.add(String(p.email).trim().toLowerCase()); if (p.linkedUserId) userIds.add(p.linkedUserId); }
+    const users: any[] = await Promise.resolve(prisma.user?.findMany?.({ where: { phoneNumber: { in: forms } }, select: { id: true } })).then((r) => r ?? []).catch(() => []);
+    for (const u of users) userIds.add(u.id);
+  }
+  const byEmail = emails.size ? [{ email: { in: [...emails], mode: 'insensitive' } }] : [];
+  const mine = [...byEmail, ...(userIds.size ? [{ userId: { in: [...userIds] } }] : [])];
+  if (!mine.length) return false;
+  const left = await Promise.resolve(prisma.groundParticipant.findFirst({ where: { OR: mine, leftAt: { not: null } }, select: { id: true } })).catch(() => null);
+  if (!left) return false;
+  /* Still here anywhere else: a live sign-in on the address, or a seat that has not been left. Then the mail and the answers go on. */
+  const live = await Promise.resolve(prisma.user?.findFirst?.({ where: { OR: [...byEmail, ...(userIds.size ? [{ id: { in: [...userIds] } }] : [])], deletedAt: null, isActive: true }, select: { id: true } })).catch(() => null);
+  if (live) return false;
+  const seated = await Promise.resolve(prisma.groundParticipant.findFirst({ where: { OR: mine, leftAt: null }, select: { id: true } })).catch(() => null);
+  return !seated;
+}
 
 /** What somebody held for a seat reads if they open the link anyway (U.4 re-review). */
 export const HELD_FOR_A_SEAT = 'This check-in cannot start for you yet, because there is no seat for you on the plan. You will get your invitation as soon as there is one.';
@@ -20,8 +65,9 @@ export async function refuseSomeoneHeldForASeat(
 ): Promise<void> {
   const find = prisma?.groundParticipant?.findFirst;
   if (!find || !groundId || !userId) return;
-  const row: any = await Promise.resolve(find.call(prisma!.groundParticipant, { where: { groundId, userId }, select: { awaitingSeat: true } }))
+  const row: any = await Promise.resolve(find.call(prisma!.groundParticipant, { where: { groundId, userId }, select: { awaitingSeat: true, leftAt: true } }))
     .catch(() => ({ awaitingSeat: true }));
+  if (row?.leftAt) throw new ForbiddenException(REMOVED_FROM_THE_CHECK_IN);
   if (row?.awaitingSeat === true) throw new ForbiddenException(HELD_FOR_A_SEAT);
 }
 
@@ -80,11 +126,16 @@ export async function theCheckInsHeldForASeat(
  * Somebody waiting for the organisation to let them in (row 5) is left out the same way: they cannot open or answer the check-in yet.
  * Every sweep already asks for `userId: { not: null }`, so the sign-in is there to ask about.
  */
-export const NOT_HELD_FOR_A_SEAT = { awaitingSeat: false, user: { awaitingOrgApproval: false } } as const;
+/*
+ * AND NOBODY WHO HAS LEFT (fix plan 17 November, group C). Mary was removed on day 28 and the sweeps went on opening her rounds, mailing
+ * "Your next check-in is open" and "You've missed your last four check-ins. Lucy will see this", because the filter every sweep spreads asked
+ * about seats and approval and never about having left. It is asked here, once, so no sweep has to remember it.
+ */
+export const NOT_HELD_FOR_A_SEAT = { awaitingSeat: false, leftAt: null, user: { awaitingOrgApproval: false } } as const;
 
 /** What somebody held for a seat who has already answered reads at the top of their own page (decision 110, B3). */
 export const HELD_BUT_KEEPS_WHAT_THEY_SAID =
-  'There is no seat for you on the plan right now, so you cannot answer a new session yet. What you already said and your own report are still yours to read. You will get your invitation as soon as there is a seat.';
+  'There is no seat for you on the plan right now, so you cannot answer a new check-in yet. What you already said and your own report are still yours to read. You will get your invitation as soon as there is a seat.';
 
 /**
  * A PERSON HELD FOR A SEAT WHO HAS ALREADY ANSWERED KEEPS THEIR OWN PAGE (decision 110, B3; privacy row 5 and finding 7).

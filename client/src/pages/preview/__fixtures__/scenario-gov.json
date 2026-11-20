@@ -1,0 +1,52 @@
+{
+  "kind": "gov",
+  "title": "Extension Access Programme",
+  "subtitle": "The ministry, three counties, their projects and extension officers. Weekly. Month 9 of 24.",
+  "leadName": "Wairimu Kamau",
+  "updated": "Last updated on Wednesday 23 September at 6pm. The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.",
+  "aim": "Ministry of Agriculture. Aim: 30% more farmers get advice from an extension officer, within two years. Month 9 of 24.",
+  "whereItStands": "Counties are making more visits, but few new farmers are being reached. In Kiambu, the aim changed on the way down: from more farmers to more visits.",
+  "levels": {
+    "heading": "What each level understood",
+    "note": "From the ministry down to the officers",
+    "rows": [
+      { "who": "The ministry", "said": "30% more farmers get advice from an extension officer, within two years.", "onRecord": true },
+      { "who": "Kiambu county", "said": "30% more extension visits.", "flag": "The meaning changed here: from more farmers to more visits.", "onRecord": false },
+      { "who": "The Kiambu project", "said": "Buy 20 motorbikes, so officers can make more visits.", "onRecord": false },
+      { "who": "Extension officers", "said": "Visit registered farmers on weekdays. Many visits go to the same farmers again.", "onRecord": false },
+      { "who": "What the visit log shows", "said": "Visits are up 25%. New farmers reached are up only 8%.", "onRecord": true }
+    ]
+  },
+  "counties": {
+    "heading": "The three counties",
+    "note": "Each county is its own organisation. You see summaries, never officers’ own words.",
+    "rows": [
+      { "county": "Kiambu", "numbers": "Visits up 25%, new farmers up 8%.", "why": "The motorbikes are still being bought. Procurement is 3 months late." },
+      { "county": "Nakuru", "numbers": "New farmers up 6%.", "why": "The second payment from the county treasury has not been released." },
+      { "county": "Machakos", "numbers": "New farmers up 21%.", "why": "Officers hold advice days at markets, where farmers already are." }
+    ],
+    "foot": { "lead": "Performance, or different conditions?", "text": "Nakuru is behind because money has not arrived, not because of how officers work. Kiambu is behind because the aim changed. These are not ranked." }
+  },
+  "questions": {
+    "heading": "1 question for the ministry, from the counties",
+    "text": "The registration rule may not fit how farmers use the service.",
+    "button": "See the questions"
+  },
+  "heading": {
+    "heading": "Where this is heading",
+    "note": "Keep a read on live work",
+    "outcomesLabel": "The possible outcomes",
+    "outcomes": ["Look closer at named areas", "Step in", "Keep watching"],
+    "signalsLabel": "The signals behind them",
+    "signals": [
+      { "line": "Officers in 3 counties raised the registration rule", "from": "In 3 check-ins in a row", "onRecord": false },
+      { "line": "Visits up 25%, new farmers up 8%", "from": "From the visit log", "onRecord": true },
+      { "line": "Machakos’ market days work", "from": "New farmers up 21%, from the visit log", "onRecord": true }
+    ],
+    "settleLabel": "What would settle it",
+    "settle": "Whether advice to unregistered farmers counts.",
+    "decider": "Joseph, the programme lead, decides.",
+    "deciderNote": "Groundwork lays out the outcomes and the proof. It doesn’t choose.",
+    "button": "Record the decision"
+  }
+}

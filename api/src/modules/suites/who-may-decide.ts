@@ -1,7 +1,8 @@
 import type { PrismaService } from '../prisma/prisma.service';
 import { theirSignIn, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { readDuties, whoHolds, type Duties } from './who-holds-each-duty';
-import type { AWorkflow } from './the-approval-steps';
+import { THE_LINE_STEP, type AWorkflow } from './the-approval-steps';
+export { THE_LINE_STEP };
 import { coverToday, type Lookups } from './the-lookups';
 import { theThresholdCrossed, THE_STEPS_BELOW_EVERY_AMOUNT, type AThreshold } from './the-spending-rules';
 
@@ -14,8 +15,10 @@ import { theThresholdCrossed, THE_STEPS_BELOW_EVERY_AMOUNT, type AThreshold } fr
  * sheets, reviews and spending all ask here, and nowhere else.
  *
  * THE RULES.
- *   - `manager`: the requester's line manager in the staff directory, when that manager signs in here
- *     as a lead or an admin (a-roster-entry-and-its-sign-in.ts matches a sign-in by link or address).
+ *   - `manager`: the requester's manager, whatever their app role: the line manager in the staff directory when that
+ *     manager signs in here (a-roster-entry-and-its-sign-in.ts matches a sign-in by link or address), or else the line an
+ *     admin set on the People page or by chat;
+ *   - `managersManager`: the step above, that manager's own manager.
  *   - `budgetOwner`, `departmentHead`: whoever holds that duty for the request's team, or for the
  *     requester's team in the staff directory when the request names none (who-holds-each-duty.ts).
  *   - `finance`, `hr`, `chiefExecutive`: whoever holds that duty for the whole organisation.
@@ -34,18 +37,17 @@ import { theThresholdCrossed, THE_STEPS_BELOW_EVERY_AMOUNT, type AThreshold } fr
  * An admin may set the steps for leave, time sheets and spending (the-approval-steps.ts). With nothing
  * set, TODAY'S ANSWERS ARE ONE STEP EACH, a list tried in order, ending with an admin, so every request
  * has somebody who may decide it:
- *   - leave and time sheets: the manager, else an admin (the one answer of 1 October 2026, which does
- *     not read the admin's "Who approves?" answer);
- *   - reviews: "Their manager" is the manager, else an admin; "An admin" is an admin;
+ *   - leave and time sheets: the manager, else the manager's manager, else an admin (`THE_LINE_STEP`);
+ *   - reviews: "Their manager" is the same; "An admin" is an admin;
  *   - spending: its steps by amount, and nothing else (the-spending-rules.ts). Below the lowest amount,
- *     the manager, else an admin. The settings card's limit and "Who approves anything above that?"
+ *     the same step. The settings card's limit and "Who approves anything above that?"
  *     are the lowest amount and its step. Finance is never an approver unless a step names it: its
  *     part (check, note the receipt or quote, record it paid) comes after the last approval.
  * Leave's thresholds by working days are laid over its steps (the-leave-rules.ts). Leave takes its
  * length as the third argument; with no length, or no thresholds, its steps are exactly as above.
  */
 
-export type Rule = 'manager' | 'budgetOwner' | 'departmentHead' | 'finance' | 'hr' | 'chiefExecutive' | 'admin';
+export type Rule = 'manager' | 'managersManager' | 'budgetOwner' | 'departmentHead' | 'finance' | 'hr' | 'chiefExecutive' | 'admin';
 /** One rule, or one person an admin named on a suite. */
 export type ARule = Rule | { named: string };
 /** One approval step: the rules tried in order. The first that names somebody decides it. */
@@ -113,7 +115,8 @@ async function aPersonWhoMay(prisma: PrismaService, request: ARequest, userId: s
 export async function whoMayDecide(prisma: PrismaService, rule: ARule, request: ARequest, known: Known = {}): Promise<WhoDecides | null> {
   if (rule === 'admin') return { kind: 'admin', rule: 'admin' };
   if (typeof rule === 'object') return (await aPersonWhoMay(prisma, request, rule.named, known)) ? { kind: 'person', rule: 'named', userId: rule.named } : null;
-  if (rule === 'manager') return (await theManager(prisma, request, known)) ?? theReportingLine(prisma, request, known);
+  if (rule === 'manager') return theManager(prisma, request, known);
+  if (rule === 'managersManager') return theManagersManager(prisma, request, known);
 
   const duty = DUTY_OF[rule];
   let holder: string | null;
@@ -258,10 +261,13 @@ export async function couldBeNamed(prisma: PrismaService, steps: ARule[], organi
   let duties: Duties | null = null;
   for (const step of steps) {
     if (step === 'admin') { if (reader.role === 'ADMIN') return true; continue; }
-    if (step === 'manager') { if (reader.role === 'LEAD' || reader.role === 'ADMIN') return true; continue; }
+    if (step === 'manager' || step === 'managersManager') {
+      if (reader.role === 'LEAD' || reader.role === 'ADMIN' || (await isSomebodysManager(prisma, organizationId, reader.userId))) return true;
+      continue;
+    }
     if (typeof step === 'object') { if (step.named === reader.userId) return true; continue; }
     duties ??= await readDuties(prisma, organizationId);
-    const d = DUTY_OF[step];
+    const d = DUTY_OF[step as keyof typeof DUTY_OF];
     if (d === 'budgetOwners' || d === 'departmentHeads') { if (Object.values(duties[d] ?? {}).includes(reader.userId)) return true; }
     else if (duties[d] === reader.userId) return true;
   }
@@ -273,19 +279,22 @@ export async function couldBeNamed(prisma: PrismaService, steps: ARule[], organi
  * set (the-approval-steps.ts), which the services pass as `answers.workflow`. With no workflow, one
  * step, exactly the list each suite had before steps existed.
  */
-export function theStepsFor(suite: 'leave' | 'time', answers?: { workflow?: AWorkflow | null } | unknown, days?: number): Step[];
+export function theStepsFor(suite: 'leave' | 'time', answers?: { workflow?: AWorkflow | null } | unknown, days?: number, kind?: string | null): Step[];
 export function theStepsFor(suite: 'reviews', answers: { writer: string | null }): Step[];
 export function theStepsFor(suite: 'spend', answers: { thresholds?: AThreshold[] | null }, amount: number): Step[];
-export function theStepsFor(suite: 'leave' | 'time' | 'reviews' | 'spend', answers?: any, amount?: number): Step[] {
-  if (suite === 'reviews') return [answers?.writer === 'Their manager' ? ['manager', 'admin'] : ['admin']];
+export function theStepsFor(suite: 'leave' | 'time' | 'reviews' | 'spend', answers?: any, amount?: number, kind?: string | null): Step[] {
+  if (suite === 'reviews') return [answers?.writer === 'Their manager' ? THE_LINE_STEP : ['admin']];
   /* Spending: its steps by amount alone. Above one amount, its steps; above two, the higher one's; below them all, the manager, else an admin. */
   if (suite === 'spend') return theThresholdCrossed({ thresholds: answers?.thresholds ?? undefined }, Number(amount ?? 0))?.steps ?? THE_STEPS_BELOW_EVERY_AMOUNT;
   const workflow = (answers?.workflow ?? null) as AWorkflow | null;
   /* Leave by length (the-leave-rules.ts): longer than a threshold of working days, its own steps; longer than two, the higher one's. None set, or no length given: as before. */
   const longer = suite === 'leave' && amount != null ? theThresholdCrossed({ thresholds: answers?.rules?.thresholds ?? answers?.thresholds ?? undefined }, Number(amount)) : null;
   if (longer) return longer.steps;
+  /* A type of leave with its own approval steps (the leave policy, 21 November 2026): those, in place of the steps for all leave. */
+  const own = suite === 'leave' && kind ? (answers?.rules?.kinds ?? []).find((k: any) => k?.key === kind)?.steps : null;
+  if (Array.isArray(own) && own.length) return own as Step[];
   if (workflow?.steps?.length) return workflow.steps;
-  return [['manager', 'admin']];
+  return [THE_LINE_STEP];
 }
 
 /** Every rule in these steps, in order: what a board asks `couldBeNamed`. */
@@ -298,66 +307,82 @@ export function everyStepFor(suite: 'spend', answers: { thresholds?: AThreshold[
 
 // -------------------------------------------------------------------------------------------------
 
-/** The requester's line manager, when they sign in here as a lead or an admin and are not the requester. */
-async function theManager(prisma: PrismaService, request: ARequest, known: Known = {}): Promise<WhoDecides | null> {
-  const L = known.lookups;
-  let managerExternalId = request.managerExternalId;
-  if (managerExternalId === undefined) {
-    const me = request.requesterUserId
-      ? (L ? L.entryOf.get(request.requesterUserId) ?? null : await theirRosterEntry(prisma, request.organizationId, request.requesterUserId, { managerExternalId: true }))
-      : null;
-    managerExternalId = me?.managerExternalId ?? null;
-  }
-  if (!managerExternalId) return null;
-  if (L) {
-    /* The same answer from what was read once: the manager's entry, the sign-in it matches, and their role here. */
-    const m = L.byExternalId.get(managerExternalId);
-    if (!m?.userId || m.userId === request.requesterUserId) return null;
-    const role = L.roles.get(m.userId) ?? null;
-    if (role !== 'LEAD' && role !== 'ADMIN') return null;
-    return { kind: 'manager', rule: 'manager', userId: m.userId, firstName: m.givenName?.trim() || m.displayName?.trim().split(/\s+/)[0] || null };
-  }
-  const m = await prisma.person.findFirst({
-    where: { organizationId: request.organizationId, externalId: managerExternalId, active: true },
-    select: { linkedUserId: true, email: true, givenName: true, displayName: true },
-  });
-  /* A manager whose entry is matched to their sign-in by address decides too (decision 82, item 6). */
-  const managerUserId = await theirSignIn(prisma, request.organizationId, m);
-  if (!m || !managerUserId || managerUserId === request.requesterUserId) return null;
-  const role = await roleIn(prisma, request.organizationId, managerUserId);
-  if (role !== 'LEAD' && role !== 'ADMIN') return null;
-  const firstName = m.givenName?.trim() || m.displayName?.trim().split(/\s+/)[0] || null;
-  return { kind: 'manager', rule: 'manager', userId: managerUserId, firstName };
-}
-
 /**
- * The manager an admin set on the People page ("Chidi reports to Bola", the membership's reporting
- * line), when the staff directory names no manager who may decide. The journey of 12 October found
- * the People page writing this line and the suites reading only the directory, so Chidi's leave went
- * to an admin. The same conditions as the directory's manager: a lead or an admin here, never the
- * requester.
+ * WHO SOMEBODY REPORTS TO (Batch S, S2 and round 2, T7): the line an admin set on the People page or by chat ("Chidi reports to
+ * Bola", the membership's reporting line), or else the manager the staff directory names, when that manager signs in here. The
+ * People page shows the same line (the-people-and-their-lines.ts), so the two never disagree. Whatever their
+ * app role: a field supervisor who signs in as a member decides for the people who report to them. Never the person
+ * themselves, and never a guest or somebody no longer here. `managerExternalId` is the directory's line when already read.
  */
-async function theReportingLine(prisma: PrismaService, request: ARequest, known: Known = {}): Promise<WhoDecides | null> {
-  if (!request.requesterUserId) return null;
+async function theLineAbove(prisma: PrismaService, organizationId: string, userId: string, managerExternalId: string | null | undefined, known: Known = {}): Promise<{ userId: string; firstName: string | null } | null> {
   const L = known.lookups;
-  let to: string | null | undefined = L?.reportsTo ? L.reportsTo.get(request.requesterUserId) : undefined;
+  let mx = managerExternalId;
+  if (mx === undefined) {
+    const me = L ? L.entryOf.get(userId) ?? null : await theirRosterEntry(prisma, organizationId, userId, { managerExternalId: true });
+    mx = me?.managerExternalId ?? null;
+  }
+  const firstOf = (e: { givenName?: string | null; displayName?: string | null } | null | undefined) => e?.givenName?.trim() || e?.displayName?.trim().split(/\s+/)[0] || null;
+  const here = async (id: string | null | undefined) => {
+    if (!id || id === userId) return false;
+    const role = await roleIn(prisma, organizationId, id, known);
+    return !!role && role !== 'GUEST';
+  };
+  let to: string | null | undefined = L?.reportsTo ? L.reportsTo.get(userId) : undefined;
   if (!L?.reportsTo) {
     const m = await (prisma as any).organizationMembership?.findUnique?.({
-      where: { userId_organizationId: { userId: request.requesterUserId, organizationId: request.organizationId } },
+      where: { userId_organizationId: { userId, organizationId } },
       select: { reportsToUserId: true },
     })?.catch?.(() => null);
     to = m?.reportsToUserId ?? null;
   }
-  if (!to || to === request.requesterUserId) return null;
-  const role = await roleIn(prisma, request.organizationId, to, known);
-  if (role !== 'LEAD' && role !== 'ADMIN') return null;
-  const entry = L?.entryOf.get(to);
-  let firstName = entry?.givenName?.trim() || entry?.displayName?.trim().split(/\s+/)[0] || null;
-  if (!firstName) {
-    const u = await (prisma as any).user?.findUnique?.({ where: { id: to }, select: { firstName: true } })?.catch?.(() => null);
-    firstName = u?.firstName?.trim() || null;
+  if (await here(to)) {
+    let firstName = firstOf(L?.entryOf.get(to!));
+    if (!firstName) {
+      const u = await (prisma as any).user?.findUnique?.({ where: { id: to }, select: { firstName: true } })?.catch?.(() => null);
+      firstName = u?.firstName?.trim() || null;
+    }
+    return { userId: to!, firstName };
   }
-  return { kind: 'manager', rule: 'manager', userId: to, firstName };
+  if (mx) {
+    if (L) {
+      const m = L.byExternalId.get(mx);
+      if (m?.userId && (await here(m.userId))) return { userId: m.userId, firstName: firstOf(m) };
+    } else {
+      const m = await prisma.person.findFirst({
+        where: { organizationId, externalId: mx, active: true },
+        select: { linkedUserId: true, email: true, givenName: true, displayName: true },
+      });
+      /* A manager whose entry is matched to their sign-in by address decides too (decision 82, item 6). */
+      const id = await theirSignIn(prisma, organizationId, m);
+      if (id && (await here(id))) return { userId: id, firstName: firstOf(m) };
+    }
+  }
+  return null;
+}
+
+/** The requester's manager, never the requester. */
+async function theManager(prisma: PrismaService, request: ARequest, known: Known = {}): Promise<WhoDecides | null> {
+  if (!request.requesterUserId) return null;
+  const m = await theLineAbove(prisma, request.organizationId, request.requesterUserId, request.managerExternalId, known);
+  return m ? { kind: 'manager', rule: 'manager', userId: m.userId, firstName: m.firstName } : null;
+}
+
+/** The manager's manager: the step above the manager. Never the requester. */
+async function theManagersManager(prisma: PrismaService, request: ARequest, known: Known = {}): Promise<WhoDecides | null> {
+  if (!request.requesterUserId) return null;
+  const m = await theLineAbove(prisma, request.organizationId, request.requesterUserId, request.managerExternalId, known);
+  const above = m ? await theLineAbove(prisma, request.organizationId, m.userId, undefined, known) : null;
+  return above && above.userId !== request.requesterUserId ? { kind: 'person', rule: 'managersManager', userId: above.userId } : null;
+}
+
+/** Whether anybody here reports to this person, so they open a board as somebody who may decide. */
+async function isSomebodysManager(prisma: PrismaService, organizationId: string, userId: string): Promise<boolean> {
+  const set = await (prisma as any).organizationMembership?.count?.({ where: { organizationId, reportsToUserId: userId } })?.catch?.(() => 0);
+  if (set) return true;
+  const me = await theirRosterEntry(prisma, organizationId, userId, { externalId: true }).catch(() => null);
+  if (!me?.externalId) return false;
+  const below = await (prisma as any).person?.count?.({ where: { organizationId, managerExternalId: me.externalId, active: true } })?.catch?.(() => 0);
+  return !!below;
 }
 
 /** The request's team, or else the requester's department in the staff directory. */
@@ -385,8 +410,9 @@ export async function nobodyElseCanDecide(
   try {
     const now = await whoDecidesNow(prisma, steps, request);
     if (now.who.kind !== 'admin') return false;
-    const others = await (prisma as any).user.count({
-      where: { organizationId: request.organizationId, role: 'ADMIN', isActive: true, deletedAt: null, id: { not: request.requesterUserId } },
+    /* Admins are counted by their membership here, the same role every board reads, not by the account's own role. */
+    const others = await (prisma as any).organizationMembership.count({
+      where: { organizationId: request.organizationId, role: 'ADMIN', userId: { not: request.requesterUserId } },
     });
     return others === 0;
   } catch {

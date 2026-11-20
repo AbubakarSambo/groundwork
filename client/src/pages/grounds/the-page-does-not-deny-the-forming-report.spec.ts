@@ -31,7 +31,10 @@ describe('waiting for the others', () => {
 
   it('and the lead can see who is still out from the end of their own session', () => {
     const CHAT = read('..', 'chat', 'ChatPage.tsx')
-    expect(CHAT).toContain('<WhoIsStillOut')
+    /* Changed in batch 2 (group 5): the end of a session is the conversation and one pop-up, so who is still out is read on the
+       board's team rows, with the way to ask them (BoardPage), and WhoIsStillOut stays on the check-in page itself. */
+    expect(read('..', 'board', 'BoardPage.tsx')).toContain('theCountSays=')
+    expect(CHAT).not.toContain('<WhoIsStillOut')
     const WHO = read('..', '..', 'components', 'gw', 'WhoIsStillOut.tsx')
     /* U.8 REVIEW: "n people still to answer session N" (a count next to the word "session") became
        a sentence naming who ("Baraka and Neema still have to answer."). What this test guards - that

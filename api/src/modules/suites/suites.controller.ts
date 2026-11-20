@@ -48,6 +48,9 @@ class AnswerDto {
 class ReviewDecisionDto {
   @IsOptional() @IsString() @MaxLength(1000) decision?: string;
   @IsOptional() @IsString() @MaxLength(2000) reasons?: string;
+  /** Batch S, S4: what happens next, and the day to look at it again (YYYY-MM-DD). */
+  @IsOptional() @IsString() @MaxLength(2000) nextSteps?: string | null;
+  @IsOptional() @IsString() @MaxLength(10) lookAgainOn?: string | null;
 }
 
 class AppealDto {
@@ -108,6 +111,21 @@ class LeaveRulesDto {
   @IsOptional() @IsArray() blackouts?: Record<string, unknown>[] | null;
   @IsOptional() @IsNumber() eligibleAfterDays?: number | null;
   @IsOptional() @IsString() tellHr?: 'approved' | 'every' | null;
+  @IsOptional() @IsArray() thresholds?: Record<string, unknown>[] | null;
+  /* The leave policy (21 November 2026). Each is checked again by the leave rules, which refuse in a full sentence. */
+  @IsOptional() @IsArray() workingWeek?: number[] | null;
+  @IsOptional() @IsBoolean() weekendsCount?: boolean | null;
+  @IsOptional() @IsBoolean() holidaysCount?: boolean | null;
+  @IsOptional() @IsString() country?: string | null;
+  @IsOptional() @IsString() accrual?: 'start' | 'monthly' | null;
+  @IsOptional() @IsNumber() yearStarts?: number | null;
+  @IsOptional() carryOver?: number | 'all' | null;
+  @IsOptional() @IsNumber() carryExpires?: number | null;
+}
+
+class LeavePlacesDto {
+  @IsOptional() @IsArray() offices?: Record<string, unknown>[] | null;
+  @IsOptional() @IsArray() holidays?: Record<string, unknown>[] | null;
 }
 
 class SpendRulesDto {
@@ -115,6 +133,12 @@ class SpendRulesDto {
   @IsOptional() @IsString() @MaxLength(30) categoryCalled?: string | null;
   @IsOptional() @IsObject() evidence?: Record<string, unknown> | null;
   @IsOptional() @IsArray() thresholds?: Record<string, unknown>[] | null;
+}
+
+class ForWhomDto {
+  @IsString() @MaxLength(30) setting!: string;
+  @IsObject() who!: Record<string, unknown>;
+  @IsOptional() @IsNumber() value?: number | null;
 }
 
 class TimeRulesDto {
@@ -275,6 +299,18 @@ export class SuitesController {
   @ApiOperation({ summary: 'An admin sets the leave rules. A part given as null is cleared; one left out is kept.' })
   setLeaveRules(@CurrentUser() user: CurrentUserData, @Body() dto: LeaveRulesDto) {
     return this.suites.setLeaveRules({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Get('leave/places')
+  @ApiOperation({ summary: 'The leave policy\'s offices, who works from each, and each place\'s public holidays. For an admin or whoever looks after HR.' })
+  leavePlaces(@CurrentUser() user: CurrentUserData) {
+    return this.suites.leavePlaces({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Put('leave/places')
+  @ApiOperation({ summary: 'Set the offices (an office left out is removed) and each place\'s public holidays for a year. Only a confirmed holiday counts.' })
+  setLeavePlaces(@CurrentUser() user: CurrentUserData, @Body() dto: LeavePlacesDto) {
+    return this.suites.setLeavePlaces({ userId: user.id, organizationId: user.organizationId }, dto);
   }
 
   @Get('leave/requests/:id/history')
@@ -532,6 +568,24 @@ export class SuitesController {
   @ApiOperation({ summary: 'An admin changes who has an item, or how it is' })
   changeEquipment(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: EquipmentChangeDto) {
     return this.equipment.change({ userId: user.id, organizationId: user.organizationId }, id, dto);
+  }
+
+  @Get('for-whom')
+  @ApiOperation({ summary: 'The numbers set for some people: days of leave, hours a week and how much a manager approves on their own, by job title, app role, team or person.' })
+  forWhom(@CurrentUser() user: CurrentUserData) {
+    return this.suites.forWhom({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Put('for-whom')
+  @ApiOperation({ summary: 'Set one number for some people, or remove it with a value of null. The most specific wins: a person, then a team, then a job title or app role.' })
+  setForWhom(@CurrentUser() user: CurrentUserData, @Body() dto: ForWhomDto) {
+    return this.suites.setForWhom({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Get('setup/:key')
+  @ApiOperation({ summary: 'What a suite is missing before its approvals follow the reporting lines, and the step that fixes each, in plain sentences.' })
+  setupCheck(@Param('key') key: string, @CurrentUser() user: CurrentUserData) {
+    return this.suites.setupCheck({ userId: user.id, organizationId: user.organizationId }, key);
   }
 
   @Get('duties')

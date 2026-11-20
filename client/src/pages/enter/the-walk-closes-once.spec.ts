@@ -16,8 +16,9 @@ describe('the setup chat closes once', () => {
 describe('the check-in gets a plain name from what Esther described', () => {
   const esther = 'I run a field sales team of four selling solar home kits across Nyanza. I want a weekly check-in so I can see who sold what, with proof, and what is getting in their way.'
 
-  it('is "Weekly sales check-in", never "A check-in at Lakeshore Solar"', () => {
-    expect(effectiveFallbackGroundName(undefined, [], esther, 'Lakeshore Solar', undefined)).toBe('Weekly sales check-in')
+  /* Changed 7 November 2026 (staging check S18): the name says what it is about, never how often ("Weekly" was read on a weekday check-in). */
+  it('is "Sales updates", never "A check-in at Lakeshore Solar"', () => {
+    expect(effectiveFallbackGroundName(undefined, [], esther, 'Lakeshore Solar')).toBe('Sales updates')
   })
 
   it('never carries her own sentence', () => {
@@ -35,13 +36,13 @@ describe('the check-in gets a plain name from what Esther described', () => {
 describe('the check-in gets a plain name from what Naomi described, on the path the run took', () => {
   const naomi = 'I run Ridge Bakery in Eldoret with seven staff: two bakers, three counter staff and two delivery riders. I want a weekly check-in to see what is going wrong with late orders and wasted bread, and who is carrying what.'
 
-  it('is "Weekly operations check-in", never the situation label, with the situation known', () => {
-    expect(effectiveFallbackGroundName('NEW_PROJECT', [], naomi, undefined, undefined)).toBe('Weekly operations check-in')
-    expect(fallbackGroundName('NEW_PROJECT', undefined, naomi)).toBe('Weekly operations check-in')
+  it('is "Operations updates", never the situation label, with the situation known', () => {
+    expect(effectiveFallbackGroundName('NEW_PROJECT', [], naomi, undefined)).toBe('Operations updates')
+    expect(fallbackGroundName('NEW_PROJECT', undefined, naomi)).toBe('Operations updates')
   })
 
   it('the placeholder "A check-in at Ridge Bakery" goes once she describes it', () => {
-    expect(effectiveFallbackGroundName(undefined, [], '', 'Ridge Bakery', undefined)).toBe('A check-in at Ridge Bakery')
-    expect(effectiveFallbackGroundName(undefined, [], naomi, 'Ridge Bakery', undefined)).toBe('Weekly operations check-in')
+    expect(effectiveFallbackGroundName(undefined, [], '', 'Ridge Bakery')).toBe('A check-in at Ridge Bakery')
+    expect(effectiveFallbackGroundName(undefined, [], naomi, 'Ridge Bakery')).toBe('Operations updates')
   })
 })

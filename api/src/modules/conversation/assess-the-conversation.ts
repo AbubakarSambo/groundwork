@@ -13,12 +13,13 @@
  * MEASURED. Each assessment logs one line, "assessment-measure", with the model calls it made and the milliseconds from the
  * close to ready, and keeps both on the assessment, so the with-against-without test can read them.
  */
+import { whoTheyMeant } from '../grounds/who-they-meant';
 import { theSpeakerLine } from './the-person-speaking';
 import { everybodyMayOpen } from './a-private-documents-numbers-stay-with-it';
 import { GroundworkEvents, type AssessmentReadyEvent } from '../../common/events';
 import {
-  ASSESSMENT_PROMPT_KEY, THE_ASSESSMENT_PROMPT, THE_ASSESSMENT_SCHEMA, THE_ASSESSMENT_KIND, THE_ASSESSMENT_VERSION,
-  theFilesPromptVersion, theMaterialAsText, theUnmatchedAsText, thePartsFrom, theUnmatched, withTheSecondRead, withWhatIsLeftKeptWhole, withWhatIsAboutTheLeadSetAside, theTwoPartsOfSetup,
+  ASSESSMENT_PROMPT_KEY, THE_ASSESSMENT_PROMPT, theAssessmentSchemaFor, THE_ASSESSMENT_KIND, THE_ASSESSMENT_VERSION,
+  theFilesPromptVersion, theMaterialAsText, theUnmatchedAsText, thePartsFrom, theUnmatched, withTheSecondRead, withWhatIsLeftKeptWhole, withWhatIsAboutTheLeadSetAside, withWhomEachItemIsAbout, theTwoPartsOfSetup,
   theItemsToCompareAgainst, thePreviousWithItsCorrections, theAssessmentIn, theColumnWith,
   type AMessage, type HowItEnded, type TheAssessment, type TheMaterial, type TheReadParts,
 } from './the-assessment';
@@ -119,7 +120,14 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
     const givenRole = row.participant?.user?.jobTitle ?? (isTheLead ? row.participant?.roleAsDescribed ?? null : null);
     const earlier = await theirEarlierAssessments(deps.prisma, row.participantId, row.sessionNumber);
     const previous = earlier[earlier.length - 1] ?? null;
-    const priorities = (((await deps.prisma.groundObjective?.findMany?.({ where: { groundId: row.groundId }, select: { name: true } })?.catch?.(() => [])) ?? []) as any[])
+    /*
+     * THE TEAM'S PRIORITIES ARE THE TEAM'S, PLUS THIS PERSON'S OWN, AND NEVER ANOTHER PERSON'S (fix plan 17 November, group B). Every aim on
+     * the ground was handed to every person's read as "the team's priorities", Mary's own "35" among them, so the read of Sam and of Asha
+     * wrote "My own aim is 35." as theirs, and the board and Today then said Mary, Sam and Asha aim for 35, though the invitation promises
+     * that only she and the lead see her share. Said once here, where the read's material is made, so no later page has to hide it.
+     */
+    const priorities = (((await deps.prisma.groundObjective?.findMany?.({ where: { groundId: row.groundId }, select: { name: true, ownerParticipantId: true } })?.catch?.(() => [])) ?? []) as any[])
+      .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === row.participantId)
       .map((o) => String(o.name ?? '').trim()).filter(Boolean);
     /* Their promises open on the record from before this conversation began: the read says what happened to each, and the settling reads that. */
     const openPromises = (((await deps.prisma.groundCommitment?.findMany?.({
@@ -159,7 +167,8 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
     /* Which instructions run: a stored version wins over the file, as with every prompt, and the one that ran is recorded. */
     const stored = deps.prompts?.getActive ? await deps.prompts.getActive(ASSESSMENT_PROMPT_KEY).catch(() => null) : null;
     const instructions = stored?.content ?? THE_ASSESSMENT_PROMPT;
-    const opts = { hasSetup: !!setup, previous: previous ? { checkInId: previous.checkInId, on: previous.on } : null, givenRole, compares: openOnce.length > 0 };
+    const opts = { hasSetup: !!setup, previous: previous ? { checkInId: previous.checkInId, on: previous.on } : null, givenRole, compares: openOnce.length > 0, isTheLead };
+    const schema = theAssessmentSchemaFor({ hasSetup: opts.hasSetup, compares: !!opts.previous || opts.compares, isTheLead });
 
     let parts: TheReadParts = thePartsFrom(null, said, { ...opts, read: 1 });
     let matchedFirst = 0;
@@ -167,7 +176,7 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
     let keptWhole = 0;
     if (messages.length) {
       modelCalls += 1;
-      const first = await deps.anthropic.extract<any>(instructions, [{ role: 'user', content: theMaterialAsText(material) }], THE_ASSESSMENT_SCHEMA as any, { patient: true })
+      const first = await deps.anthropic.extract<any>(instructions, [{ role: 'user', content: theMaterialAsText(material) }], schema as any, { patient: true })
         .catch((err: any) => { modelFailed = true; log.warn(`Assessment of ${checkInId}: the first read failed: ${err?.message ?? err}`); return null; });
       if (!first) modelFailed = true;
       parts = thePartsFrom(first, said, { ...opts, read: 1 });
@@ -176,7 +185,7 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
       /* THE COMPLETENESS CHECK: a second read only for what the first left unmatched. */
       if (unmatched.length && first) {
         modelCalls += 1;
-        const second = await deps.anthropic.extract<any>(instructions, [{ role: 'user', content: theUnmatchedAsText(material, unmatched) }], THE_ASSESSMENT_SCHEMA as any, { patient: true })
+        const second = await deps.anthropic.extract<any>(instructions, [{ role: 'user', content: theUnmatchedAsText(material, unmatched) }], schema as any, { patient: true })
           .catch((err: any) => { log.warn(`Assessment of ${checkInId}: the second read failed: ${err?.message ?? err}`); return null; });
         if (second) {
           parts = withTheSecondRead(parts, thePartsFrom(second, said, { ...opts, read: 2 }));
@@ -189,7 +198,7 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
       parts = withWhatIsLeftKeptWhole(parts, unmatched, said);
     }
     /* A complaint about the lead, and all read from the same messages, leaves every section before anything reads them. */
-    const setAside = withWhatIsAboutTheLeadSetAside(parts);
+    const setAside = withWhatIsAboutTheLeadSetAside(isTheLead ? withWhomEachItemIsAbout(parts, await theTeamByName(deps.prisma, row.groundId, row.participantId)) : parts);
     const { herUpdate, ...theParts } = setAside.parts;
     parts = theParts;
 
@@ -243,6 +252,16 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
     log.warn(`Assessment of ${checkInId} could not be written: ${err?.message ?? err}`);
     return null;
   }
+}
+
+/** The people on the check-in other than the speaker, matched by the name the speaker used (whoTheyMeant: never a guess between two). */
+async function theTeamByName(prisma: any, groundId: string, speakerId: string): Promise<(name: string) => string | null> {
+  const people = ((await Promise.resolve(prisma.groundParticipant?.findMany?.({
+    where: { groundId, id: { not: speakerId } },
+    select: { id: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
+  })).catch(() => [])) ?? []) as any[];
+  const parties = people.map((p) => ({ id: String(p.id), email: String(p.email ?? ''), name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || null }));
+  return (name: string) => whoTheyMeant(name, parties)?.id ?? null;
 }
 
 /**

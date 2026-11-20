@@ -273,8 +273,8 @@ describe('People and setup, with the journey round 4 people', () => {
     )
     const text = document.body.textContent ?? ''
     console.log(`PEOPLE AND SETUP READS: ${text}`)
-    expect(text).not.toContain('Dara Delta has checked in for this session.')
-    expect(text).toContain('Dara Delta has not checked in for this session yet.')
+    expect(text).not.toContain('Dara Delta has checked in for this check-in.')
+    expect(text).toContain('Dara Delta has not checked in for this check-in yet.')
     expect(screen.getByText('Not joined yet')).toBeTruthy()
     expect(text).not.toMatch(/Eli Epsilon has (not )?checked in/)
   })

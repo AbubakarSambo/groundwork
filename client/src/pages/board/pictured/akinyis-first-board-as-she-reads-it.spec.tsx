@@ -51,7 +51,7 @@ describe('Akinyi’s first board, the first screen', () => {
       const at = (s: string) => { const i = t.indexOf(s); expect(i, s).toBeGreaterThanOrEqual(0); return i }
       const q = at('Will we reach 25 sales by 31 December?')
       const a = at('Not known yet. Nobody has given the quarter’s number. Jane and John named 3 deals today; they are on the board below.')
-      const differ = at('Each account, side by side')
+      const differ = at('What each person said')
       at('“Westgate is waiting on a quote.”')
       at('“The Westgate quote went last week.”')
       const unknown = at('What’s known, believed and unknown')

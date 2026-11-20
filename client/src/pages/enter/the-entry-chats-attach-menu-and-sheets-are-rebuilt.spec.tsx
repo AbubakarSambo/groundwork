@@ -54,7 +54,7 @@ const DOC_CONTEXT_RANGE = stripComments(FULL_SOURCE.slice(DOC_CONTEXT_START, DOC
 
 const END_CONFIRM_START = FULL_SOURCE.indexOf('{/* End session confirmation modal */}')
 if (END_CONFIRM_START === -1) {
-  throw new Error('the 4d-2 end-session marker moved - update this spec to find the new one')
+  throw new Error('the 4d-2 end-check-in marker moved - update this spec to find the new one')
 }
 const END_CONFIRM_RANGE = stripComments(FULL_SOURCE.slice(END_CONFIRM_START))
 
@@ -147,7 +147,7 @@ describe('the quick-action chip row, once a check-in is under way', () => {
     expect(screen.queryByText('Attach a document')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Patterns' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Add a document or a photo' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'End session' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'End check-in' })).toBeTruthy()
     expectAtMostOnePrimaryButton(container)
   })
 
@@ -156,13 +156,13 @@ describe('the quick-action chip row, once a check-in is under way', () => {
     seedCheckInSession()
     const { container } = renderPage()
     await waitFor(() => expect(screen.getAllByText('Once, in July. Not formally.').length).toBeGreaterThan(0))
-    fireEvent.click(screen.getByRole('button', { name: 'End session' }))
-    expect(await screen.findByRole('dialog', { name: 'End this session?' })).toBeTruthy()
-    expect(screen.getByText(/Ending this session generates your report/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'End check-in' }))
+    expect(await screen.findByRole('dialog', { name: 'End this check-in?' })).toBeTruthy()
+    expect(screen.getByText(/Ending this check-in generates your report/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Keep going' })).toBeTruthy()
     /* The confirmation's own "End session" is the one inside the dialog now, a solid red danger
        button, not a second navy primary alongside the chip row's. */
-    const dialog = screen.getByRole('dialog', { name: 'End this session?' })
+    const dialog = screen.getByRole('dialog', { name: 'End this check-in?' })
     expect(dialog.querySelector('.btn.danger')).toBeTruthy()
     expectAtMostOnePrimaryButton(container)
     expect(entryApi.chat).not.toHaveBeenCalled()
@@ -170,7 +170,7 @@ describe('the quick-action chip row, once a check-in is under way', () => {
 
     /* Keep going closes it without ending anything. */
     fireEvent.click(screen.getByRole('button', { name: 'Keep going' }))
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'End this session?' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'End this check-in?' })).toBeNull())
     expect(entryApi.report).not.toHaveBeenCalled()
   })
 
@@ -184,7 +184,7 @@ describe('the quick-action chip row, once a check-in is under way', () => {
     seedCheckInSession()
     renderPage()
     await waitFor(() => expect(screen.getAllByText('Once, in July. Not formally.').length).toBeGreaterThan(0))
-    fireEvent.click(screen.getByRole('button', { name: 'End session' }))
+    fireEvent.click(screen.getByRole('button', { name: 'End check-in' }))
     expect(await screen.findByText(/Your answers are saved on this device\./)).toBeTruthy()
   })
 
@@ -193,10 +193,10 @@ describe('the quick-action chip row, once a check-in is under way', () => {
     seedCheckInSession()
     renderPage()
     await waitFor(() => expect(screen.getAllByText('Once, in July. Not formally.').length).toBeGreaterThan(0))
-    fireEvent.click(screen.getByRole('button', { name: 'End session' }))
-    expect(await screen.findByRole('dialog', { name: 'End this session?' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'End check-in' }))
+    expect(await screen.findByRole('dialog', { name: 'End this check-in?' })).toBeTruthy()
     expect(screen.queryByText(/saved on this device/)).toBeNull()
-    expect(screen.getByText(/Ending this session generates your report/)).toBeTruthy()
+    expect(screen.getByText(/Ending this check-in generates your report/)).toBeTruthy()
   })
 })
 
@@ -217,7 +217,7 @@ describe('the doc-context dialog, once a document is chosen', () => {
     expect(screen.getByText(/What context does this document support/)).toBeTruthy()
     expect(screen.getByPlaceholderText(/the brief I referenced/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Add to session' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Add to check-in' })).toBeTruthy()
     expectAtMostOnePrimaryButton(container)
     expect(entryApi.chat).not.toHaveBeenCalled()
 

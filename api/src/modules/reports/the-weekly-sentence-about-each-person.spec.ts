@@ -11,7 +11,8 @@ import { theSentenceAbout, theSentenceIsSafe, theWeekOf, thingsNamedIn } from '.
  */
 
 const L = 'Participant A';
-const line = (text: string, type = 'PROGRESS', documented = false) => ({ text, type, documented });
+/* Typed word for word unless said otherwise: only those are quoted (batch 2, group 3, their-words-as-said.ts). */
+const line = (text: string, type = 'PROGRESS', documented = false, saidWordForWord = true) => ({ text, type, documented, saidWordForWord });
 
 describe('the sentence about one person', () => {
   /* What they said this week, in their own words, from their assessments (1 November 2026). It used to count and name. */
@@ -22,6 +23,13 @@ describe('the sentence about one person', () => {
       line('Green Mart owes KES 380,000.', 'numbers'),
     ] })!;
     expect(s).toBe('This week Participant A said “Green Mart owes KES 380,000” and “I will send the quote on Friday”. One more thing Participant A said is on the record.');
+  });
+
+  /* Batch 2, group 3 (round 50): a reworded line is never shown in quotation marks as theirs. */
+  it('says a line they did not type word for word plainly, with no quotation marks', () => {
+    const s = theSentenceAbout({ label: L, checkedIn: true, lines: [line("I've promised to send the draft to Wanjiru by Wednesday, 4 November.", 'promises', false, false)] })!;
+    expect(s).toBe("This week Participant A said I've promised to send the draft to Wanjiru by Wednesday, 4 November.");
+    expect(s).not.toMatch(/[“”"]/);
   });
 
   it('says one thing as one quotation, with nothing about how many more', () => {

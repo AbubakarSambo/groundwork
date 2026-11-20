@@ -1,9 +1,11 @@
+import { theMatterWithoutTheClient } from '@/lib/the-matter-without-the-client'
 import type { ReactNode } from 'react'
-import { Section, Panel, ProofMark } from '@/components/gw/ui'
+import { Section, Panel, ProofMark, Table } from '@/components/gw/ui'
 import type { TheMatterBoard as TheBoard } from '@/lib/collect-whats-owed'
 import './pictured-board.css'
 import { theMorningNeedsNotOnTheBoard, WhatIsClosing, YourTeamToday } from './TheMorningOnTheBoard'
 import { WhereThisIsHeading } from './ThePicturedSalesBoard'
+import { ContradictionsSection } from '../TheSwitchboardsSections'
 
 /**
  * THE MATTER BOARD, AS PICTURED (Release 2, pull request 3 of 3; the kit's matter board,
@@ -27,25 +29,32 @@ export function TheMatterBoard({ board: m, b = null, renderActions, onRecordTheD
   const morningNeeds = theMorningNeedsNotOnTheBoard(b, new Set((m.decide?.rows ?? []).map((d) => d.ref ?? d.question)))
   return (
     <div className="pb" data-matter-board>
-      <p className="pb-matter-intro">{m.intro}</p>
+      <section aria-label={m.question}>
+        <p className="pb-q">{m.question}</p>
+        <p className="pb-answer">{m.intro}</p>
+        {m.matters.length ? (
+          <Table
+            caption="Where each matter stands, with one line for its fees"
+            phone="stack"
+            minWidth={640}
+            columns={[
+              { key: 'matter', header: 'Matter', rowHeader: true, width: '24%' },
+              { key: 'stands', header: 'Where it stands', width: '38%' },
+              { key: 'fees', header: 'Its fees' },
+            ]}
+            rows={m.matters.map((x) => ({
+              matter: x.name,
+              stands: x.stands,
+              fees: <>{x.feeMark !== 'none' && <ProofMark mark={x.feeMark} />} {x.fees}</>,
+            }))}
+          />
+        ) : <p className="pb-answer">{m.mattersEmpty}</p>}
+        <p className="pb-note">{m.feesNote}</p>
+      </section>
 
-      <section className={m.decide ? 'pb-head' : undefined} aria-label={m.question}>
-        <div>
-          <p className="pb-q">{m.question}</p>
-          {m.matters.length ? m.matters.map((x) => (
-            <div className="pb-card" key={x.key} data-matter={x.key} style={{ marginTop: 14 }}>
-              <p className="pb-card-h">{x.name}</p>
-              <p className="pb-matter-stands">{x.stands}</p>
-              <p className="pb-matter-fees">
-                {x.feeMark !== 'none' && <ProofMark mark={x.feeMark} />}
-                <span>{x.fees}</span>
-              </p>
-            </div>
-          )) : <p className="pb-answer">{m.mattersEmpty}</p>}
-          <p className="pb-note">{m.feesNote}</p>
-        </div>
-        {m.decide && (
-          <Panel heading={m.decide.heading}>
+      {m.decide && (
+        <Section heading={m.decide.heading}>
+          <Panel>
             {m.decide.rows.length ? m.decide.rows.map((d) => (
               <div className="pb-kv-list" key={d.question}>
                 <p className="pb-card-h">{d.question}</p>
@@ -61,32 +70,42 @@ export function TheMatterBoard({ board: m, b = null, renderActions, onRecordTheD
               </div>
             ))}
           </Panel>
-        )}
-      </section>
+        </Section>
+      )}
 
       {/* What is due in the next seven days and who has it, and the team's check-ins with a nudge for each, from her morning (boards audit M1). */}
       <WhatIsClosing b={b} />
       <YourTeamToday b={b} />
 
+      {/* Where one person's own record says two different things, as the server served it to this reader (it walls them). */}
+      {!!b?.contradictions?.length && <ContradictionsSection rows={b.contradictions} />}
+
       <Section heading={m.changed.heading} foot={m.changed.note}>
         {m.changed.rows.length ? (
-          <div>
-            {m.changed.rows.map((r) => (
-              <div className="pb-changed" key={r.id} data-changed={r.id}>
-                <ProofMark mark={r.mark} />
-                <span className="pb-changed-who">{r.matter ? `${r.who}, on ${r.matter}` : r.who}</span>
-                <span>
-                  {r.said}
-                  {r.itChanged && <span className="pb-sub">{` ${r.itChanged}`}</span>}
-                </span>
-              </div>
-            ))}
+          <>
+            <Table
+              caption="What changed this week, one row for each line"
+              phone="stack"
+              minWidth={640}
+              columns={[
+                { key: 'who', header: 'Who and what about', rowHeader: true, width: '20%' },
+                { key: 'said', header: 'What was said' },
+                { key: 'known', header: 'How it is known', width: '24%' },
+                ...(m.changed.rows.some((r) => r.itChanged) ? [{ key: 'changed', header: 'What it changed', width: '24%' }] : []),
+              ]}
+              rows={m.changed.rows.map((r) => ({
+                who: theMatterWithoutTheClient(r.who, r.matter, false) ? `${r.who}, on ${theMatterWithoutTheClient(r.who, r.matter, false)}` : r.who,
+                said: r.said,
+                known: <><ProofMark mark={r.mark} /> {r.markSays}</>,
+                changed: r.itChanged,
+              }))}
+            />
             <div className="pb-legend" role="list" aria-label="How each line is known">
               {m.changed.legend.map((l) => (
                 <span role="listitem" key={l.mark}><ProofMark mark={l.mark} /> {l.says}</span>
               ))}
             </div>
-          </div>
+          </>
         ) : <Panel><p className="gwui-panel-text">{m.changed.empty}</p></Panel>}
       </Section>
 

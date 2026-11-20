@@ -1,3 +1,4 @@
+/* S18 (staging check, 4 November): how often is said in the one wording every page uses (howOftenTheTeamChecksIn); "Weekly, Mondays." was a second wording. */
 /**
  * TWICE A WEEK, AS EACH PAGE SAYS IT (2 November 2026): the check-in's row, its label and the rhythm sentence all read
  * "Twice a week, on Monday and Thursday.", and the count of sessions is two a week. Once a week reads as before.
@@ -23,7 +24,7 @@ describe('a check-in that meets twice a week', () => {
 
   it('once a week reads as before', () => {
     expect(timesAWeek('WEEKLY', [1])).toBeNull()
-    expect(howOften({ cadence: 'WEEKLY', cadenceAnchorDay: 1 } as any)).toBe('Weekly, Mondays.')
+    expect(howOften({ cadence: 'WEEKLY', cadenceAnchorDay: 1 } as any)).toBe('Every Monday.')
     expect(cadenceLabel('WEEKLY', null)).toBe('Every week')
     expect(plannedSessionsFor(28, 'WEEKLY')).toBe(4)
   })
@@ -34,9 +35,9 @@ describe('every cadence line reads the days', () => {
   const field = { cadence: 'WEEKLY', cadenceDays: [1, 4], cadenceAnchorDay: 4, workingDays: [1, 2, 3, 4, 5], timelineDays: 46 }
   it('the board and the report headers say "Twice a week, on Monday and Thursday."', () => {
     expect(theScheduleInWords(field, null)).toBe('Twice a week, on Monday and Thursday.')
-    expect(theScheduleInWords({ ...field, cadenceDays: [] }, null)).toBe('Weekly, Thursdays.')
+    expect(theScheduleInWords({ ...field, cadenceDays: [] }, null)).toBe('Every Thursday.')
   })
   it('People and setup says the rhythm and the one count, with no single day it lands on', () => {
-    expect(theRhythmLine(field)).toBe('Twice a week, on Monday and Thursday. 13 sessions in total.')
+    expect(theRhythmLine(field)).toBe('Twice a week, on Monday and Thursday. 13 check-ins in total.')
   })
 })
