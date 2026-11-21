@@ -268,6 +268,8 @@ html.design-pass .dp-empty > p { margin: 0; }
 /* A line of quiet links under a section (Today's "Your own requests", People's "Send the guide"). */
 html.design-pass .dp-links { display: flex; flex-wrap: wrap; column-gap: 24px; align-items: center; }
 html.design-pass .dp-links > p { margin: 0; }
+/* You, ported (TheYouBoardAsPictured): the prototype's "Your data" panel, its sentence and "Download it" on one line. */
+html.design-pass .dp-your-data { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: center; }
 
 /* A page's one main action, at the top of the page, under the title. */
 html.design-pass .dp-page-action { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }

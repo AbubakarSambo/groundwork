@@ -213,7 +213,9 @@ function AddADocument() {
   const said = (add.error as { response?: { data?: { message?: string | string[] } } } | null)?.response?.data?.message
   const ready = !!file || (!!title.trim() && !!text.trim())
   if (designPass) {
-    /* Open, as it is with the switch off: the form is on the page, quieter, with nothing to press first. */
+    /* Open, as it is with the switch off: the form is on the page, quieter, with nothing to press first.
+       PRIMARY-BUTTONS-NEVER-TOGETHER: "Add it to the Desk" is drawn only with the switch on, inside the ported Desk, where Ask is the
+       prototype's secondary button; "Ask about the whole organisation" is the primary only with the switch off. A reader sees one. */
     return (
       <Panel as="section" aria-label="Add a document">
         <div className="dp-form">

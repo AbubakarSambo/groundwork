@@ -32,6 +32,9 @@ import {
 import { css, DOT, DOT_FILL } from './the-prototype-markup'
 import './the-prototype-boards.css'
 
+/** Each person's own page on this check-in, where The team today links their name. */
+const theirPage = (groundId: string, participantId: string) => `/grounds/${groundId}/person/${participantId}`
+
 type Any = any
 
 /** board-as-lead.txt, under the tab bar: the sentence that follows "Last updated on …" (Hafsah, 21 November: back, in the prototype's words). */
@@ -292,7 +295,7 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
                     {b.headline?.question && <span className="t-small mut">{b.headline.question}</span>}
                     {b.headline?.answer && <p className="t-title" style={css('font-size:32px')}>{b.headline.answer}</p>}
                     {target != null && done != null && (
-                      <div style={css('display:flex;height:14px;border-radius:7px;overflow:hidden;background:#F3ECDF')} role="img" aria-label={`${done} of ${target} done, ${likely} more likely.`}>
+                      <div style={css('display:flex;height:14px;border-radius:7px;overflow:hidden;' + DOT_FILL.empty)} role="img" aria-label={`${done} of ${target} done, ${likely} more likely.`}>
                         <i style={css(`width:${pct(proven ?? done)};background:var(--rec);display:block`)} />
                         <i style={css(`width:${pct(Math.max(0, done - (proven ?? done)))};background:var(--act);display:block`)} />
                         <i style={css(`width:${pct(likely)};background:var(--att-soft);display:block`)} />
@@ -462,7 +465,7 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
                       const squares = lastTen(b, r.participantId)
                       return (
                         <div key={r.participantId} style={css('display:grid;grid-template-columns:120px minmax(0,1.4fr) 190px 150px minmax(0,1fr);gap:18px;align-items:center;padding:14px 18px;border-top:1px solid var(--rule)')}>
-                          <b className="t-body"><Link to={`/grounds/${groundId}/person/${r.participantId}`} style={css('color:inherit;text-decoration:none')}>{firstName(r.who)}</Link></b>
+                          <b className="t-body"><Link to={theirPage(groundId, r.participantId)} style={css('color:inherit;text-decoration:none')}>{firstName(r.who)}</Link></b>
                           <span className="t-small">{r.line}</span>
                           <span>{tag && <span className={`tag ${tone}`}>{tag.word}</span>}</span>
                           <span style={css('display:flex;gap:3px')} aria-label="Last 10 check-ins">

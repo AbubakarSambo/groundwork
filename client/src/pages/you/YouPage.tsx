@@ -327,7 +327,7 @@ export function YourData({ asPictured = false }: { asPictured?: boolean } = {}) 
   }
   /* The ported You (TheYouBoardAsPictured): the prototype's own panel, the sentence and "Download it" on one line. */
   if (asPictured) return (
-    <section className="panel pad" aria-label="Your data" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 20, alignItems: 'center' }}>
+    <section className="panel pad dp-your-data" aria-label="Your data">
       <p className="t-body">Everything you’ve written, in every check-in, as one file.</p>
       <button type="button" className="btn sec" onClick={download} disabled={busy}>Download it</button>
       {failed && <p role="alert" className="t-small mut">Your file did not download. Try again.</p>}

@@ -19,7 +19,11 @@ const CSS = readFileSync(join(__dirname, 'gw-ui.css'), 'utf8')
 describe('phone tap targets, release walkthrough 5 October', () => {
   /* 21 October: Hafsah's 44px rule covers everything you can tap, at every width, so the floor is 44px and no longer only on a phone. */
   it('.gwui-tap-44 gives any control a 44px floor without changing its own look', () => {
-    expect(CSS).toMatch(/\.gwui-tap-44 \{ min-height: 44px; display: inline-flex; align-items: center; \}/)
+    /* Changed 21 November 2026: the 44px is the invisible layer drawn round the link (::after, as on .gwui-toggle), so a link inside a
+       sentence stays on the text's line; it used to grow its own box with inline-flex, which pulled it off the baseline. */
+    expect(CSS).toMatch(/\.gwui-tap-44 \{ min-height: 0; \}/)
+    expect(CSS).toMatch(/\.gwui-tap-44::after[^{]*\{\s*content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max\(100%, 44px\);/)
+    expect(CSS).toMatch(/\.gwui-tap-44 \{ position: relative; \}|, \.gwui-tap-44 \{ position: relative; \}/)
   })
 
   it('.gwui-icon-btn is a 44px square at every width', () => {

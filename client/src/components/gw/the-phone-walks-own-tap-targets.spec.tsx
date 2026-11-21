@@ -51,8 +51,10 @@ describe('the check-in header', () => {
 
 describe('People\'s "Open" link (.gwui-open-link)', () => {
   it('carries a 44px floor in gw-ui.css (21 October: links in lists are held to 44px too)', () => {
-    const rule = GW_UI_CSS.slice(GW_UI_CSS.indexOf('.gwui-open-link {'))
-    expect(rule.slice(0, 900)).toContain('min-height: 44px')
+    /* Changed 21 November 2026: the link stays inline on its line, and its 44px is the invisible layer drawn round it (::after, the
+       technique .gwui-toggle uses), no longer a min-height on the link's own box. */
+    expect(GW_UI_CSS).toMatch(/\.gwui-open-link::after[^{]*\{\s*content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max\(100%, 44px\);/)
+    expect(GW_UI_CSS).toMatch(/\.gwui-open-link, \.gwui-tap-44 \{ position: relative; \}/)
   })
 })
 
