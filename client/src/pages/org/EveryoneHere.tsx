@@ -7,6 +7,7 @@ import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { PLAN_LABELS, type SubscriptionPlan } from '@/api/billing'
 import { groundsApi } from '@/api/grounds'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
+import { Paged } from '@/components/gw/ui/Paged'
 import {
   Section, Stack, Folded, TextField, Select, Choices, Button, PeopleTable, PeopleTableHead, PersonRow, Tag, Note, Empty,
   type TagTone, Skeleton
@@ -214,10 +215,30 @@ function TheTree({ people }: { people: OrgMember[] }) {
   return <ul className="gwui-tree">{top.map(branch)}</ul>
 }
 
+/**
+ * ONE PERSON'S LINE ON PEOPLE, IN SENTENCES (the design pass): who they are and who they report to, their team, what they can do
+ * here, and how they are doing, in the same words the table's columns used. A status that needs something is said by its tag
+ * beside the row instead, so it is never said twice.
+ */
+export function aPersonsLine(m: OrgMember, role: string, status: string): string {
+  const where = whereTheySitLine(m)
+  const team = m.team?.trim() ? `In ${m.team.trim()}.` : 'No team yet.'
+  const can = ({
+    Owner: 'Owns the organisation.',
+    Admin: 'An admin.',
+    'Can open check-ins': 'Can open check-ins.',
+    'Takes part': 'Takes part in check-ins.',
+    Guest: 'A guest.',
+  } as Record<string, string>)[role] ?? `${role}.`
+  const how = needsSomething(m) ? '' : `${status}.`
+  return [where ? `${where}.` : '', team, can, how].filter(Boolean).join(' ')
+}
+
 export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: string | null }) {
   const whatsappOn = useWhatsAppIsOn()
   const me = useAuthStore((st) => st.user)
-  const columns = useTheDesignPass() ? EXTRA_COLUMNS_IN_THE_DESIGN_PASS : EXTRA_COLUMNS
+  const designPass = useTheDesignPass()
+  const columns = designPass ? EXTRA_COLUMNS_IN_THE_DESIGN_PASS : EXTRA_COLUMNS
   const [removing, setRemoving] = useState<OrgMember | null>(null)
   const { data, isLoading, isError } = useQuery({ queryKey: ['org-members'], queryFn: fetchMembers })
   /* Same query the sidebar already makes (AppShell.tsx), read here only for when each check-in
@@ -262,6 +283,105 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
   const waitingWithNoCheckIn = everybody.filter((m) => m.heldForASeat && (m.checkInsOn ?? 0) === 0).map(firstNameOf)
   const notLetIn = everybody.filter((m) => m.notLetIn).map(firstNameOf)
   const invitedWithNoAccount = everybody.filter((m) => m.noAccountYet && !m.heldForASeat && !m.notLetIn && !m.awaitingOrgApproval).map(firstNameOf)
+
+  const headCount = howManyHere(
+    status.data?.people?.count ?? everybody.length,
+    status.data?.subscription?.plan ?? status.data?.onTheHouse?.plan,
+    status.data?.people?.cap,
+    waitingToBeLetIn,
+    heldForASeat,
+    notLetIn,
+    waitingWithNoCheckIn,
+    data?.overThePlanSays ?? null,
+    invitedWithNoAccount,
+    !status.data?.subscription?.plan && !status.data?.onTheHouse && status.data?.onTheFreePlan === false,
+  )
+
+  /*
+   * THE DESIGN PASS (21 November 2026): the full list, each person one quiet row. Their name first; one line saying who they are,
+   * where they sit, what they can do and how they are doing, in sentences; their phone number with Change; the check-ins they
+   * are on; and Open and Remove as quiet links. A problem with somebody's status is the only coloured tag. The filters are one
+   * row, with a Show picker in place of seven chips. Who each person reports to is in their own row ("..., reports to Grace Achieng"),
+   * so the separate tree is not drawn again with the pass on: it would repeat every row as fifteen more lines.
+   */
+  if (designPass) {
+    const directReportsOf = (m: OrgMember) => everybody.filter((p) => p.reportsTo?.id === m.id && p.id !== m.id).map(nameOf)
+    return (
+      <>
+        <Section heading={`Everyone at ${orgName}`} note={headCount}>
+          <Stack gap={18}>
+            {status.data?.people && everybody.some((m) => m.role === 'GUEST') && <Note>Guests with no account don’t take a seat.</Note>}
+            {(
+              <div className="gwui-filters-row">
+                <TextField value={find} onChange={(e) => setFind(e.target.value)} placeholder="Find a person or a check-in"
+                  aria-label="Find somebody by name, email or a check-in they are in" style={{ maxWidth: 240 }} />
+                <label className="gwui-inline-label">
+                  Team{' '}
+                  <Select value={team} onChange={(e) => setTeam(e.target.value)} aria-label="Team" style={{ width: 'auto' }}>
+                    <option value="">All teams</option>
+                    {teams.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </Select>
+                </label>
+                <label className="gwui-inline-label">
+                  Show{' '}
+                  <Select value={filter} onChange={(e) => setFilter(e.target.value as RoleFilter)} aria-label="Show" style={{ width: 'auto' }}>
+                    {ROLE_FILTERS.map((f) => <option key={f} value={f}>{f}</option>)}
+                  </Select>
+                </label>
+              </div>
+            )}
+            <p className="dp-count">{shown.length === 1 ? '1 person shown.' : `${shown.length} people shown.`}</p>
+            {shown.length === 0 ? (
+              <Empty>{find.trim() ? `Nobody here matches "${find.trim()}".` : 'Nobody here matches that.'}</Empty>
+            ) : (
+              <ul className="dp-rows dp-people" aria-label={`Everyone at ${orgName}`}>
+                {/* The table's own headings, on a computer; on a phone each row says the same in a sentence. */}
+                <li className="dp-row dp-people-row dp-people-head" aria-hidden="true">
+                  <span>Person</span><span>Team</span><span>Role</span><span>Status</span><span>Check-ins</span><span />
+                </li>
+                <Paged items={shown} label="people" render={(m: OrgMember) => {
+                    const name = nameOf(m)
+                    const st = statusWord(m)
+                    const role = roleWord(m, ownerId)
+                    const where = whereTheySitLine(m)
+                    const theirCheckIns = checkInsPartsApart(m, startOf).map((c) => `“${c}”`)
+                    return (
+                      <li key={m.id} className="dp-row dp-people-row">
+                        <span className="dp-row-main">
+                          <span className="dp-row-title">{name}</span>
+                          {where && <span className="dp-row-line">{where}</span>}
+                          {directReportsOf(m).length > 0 && <span className="dp-row-line">{`${namesAnd(directReportsOf(m))} ${directReportsOf(m).length === 1 ? 'reports' : 'report'} to them.`}</span>}
+                          {m.email && <span className="dp-row-line">{m.email}</span>}
+                          <span className="dp-row-line dp-on-a-phone">{aPersonsLine({ ...m, level: null, reportsTo: null } as OrgMember, role, st)}</span>
+                          <TheirNumberInTheRow m={m} first={firstNameOf(m)} whatsappOn={whatsappOn} />
+                          {/* Each check-in in quotes, so a name with a comma of its own still reads as one check-in. */}
+                          <span className="dp-row-line dp-on-a-phone">{theirCheckIns.length > 0 ? `On ${namesAnd(theirCheckIns)}.` : 'On none of the check-ins yet.'}</span>
+                        </span>
+                        <span className="dp-cell">{m.team?.trim() || 'No team'}</span>
+                        <span className="dp-cell">{role}</span>
+                        <span className="dp-cell">{needsSomething(m) ? <Tag tone={statusTagTone(st)}>{st}</Tag> : st}</span>
+                        <span className="dp-cell">{theirCheckIns.length > 0 ? namesAnd(theirCheckIns) : 'None'}</span>
+                        <span className="dp-row-acts">
+                          {needsSomething(m) && <span className="dp-on-a-phone"><Tag tone={statusTagTone(st)}>{st}</Tag></span>}
+                          {!m.noAccountYet && <Link className="gwui-plain-link" aria-label={`Open ${name}`} to={`/org/members/${m.id}`}>Open</Link>}
+                          {!m.noAccountYet && m.id !== me?.id && m.id !== ownerId && (
+                            <button type="button" className="gwui-plain-link" aria-label={`Remove ${name}`} onClick={() => setRemoving(m)}>Remove</button>
+                          )}
+                        </span>
+                      </li>
+                    )
+                  }} />
+              </ul>
+            )}
+            {data?.meta?.total != null && data.meta.total > everybody.length && <Note>{`Showing ${everybody.length} of ${data.meta.total} people.`}</Note>}
+          </Stack>
+        </Section>
+        {removing && (
+          <RemoveFromTheOrganisation id={removing.id} name={nameOf(removing)} orgName={orgName} alsoIn={removing.alsoIn} onClose={() => setRemoving(null)} />
+        )}
+      </>
+    )
+  }
 
   return (
     <>

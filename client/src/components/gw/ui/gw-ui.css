@@ -154,10 +154,10 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 
 /* A TAP TARGET 44px TALL AROUND A SMALL DRAWN SHAPE: an invisible layer, centred on the control, at least 44px tall, so nothing drawn
    moves or grows. Only as wide as the control itself, so it never reaches over the one beside it. */
-.gwui-tap-target, .gwui-toggle, button.tag, .gw-rl-ini { position: relative; }
+.gwui-tap-target, .gwui-toggle, button.tag, .gw-rl-ini, .gwui-plain-link, .gwui-open-link, .gwui-tap-44 { position: relative; }
 /* The switches and a hand-drawn small control keep the height they are drawn at; the floor above would otherwise stretch them. */
 .gwui-tap-target, .gwui-toggle { min-height: 0; }
-.gwui-tap-target::after, .gwui-toggle::after, button.tag::after, .gw-rl-ini::after {
+.gwui-tap-target::after, .gwui-toggle::after, button.tag::after, .gw-rl-ini::after, .gwui-plain-link::after, .gwui-open-link::after, .gwui-tap-44::after {
   content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max(100%, 44px); transform: translateY(-50%);
 }
 
@@ -461,7 +461,9 @@ a.gwui-person-row:hover { background: var(--gw-page); }
  * tappable row control already has. Same technique as `.gwui-tap-44`/`.gwui-plain-link` just
  * above, on this class's own name since every caller already uses it unchanged.
  */
-.gwui-open-link { min-height: 44px; display: inline-flex; align-items: center; }
+/* 21 NOVEMBER: the link stays on its line, on the text's baseline; its 44px tap target is the invisible layer above (with
+   .gwui-tap-target), so the box round the words never grows and a link inside a sentence no longer drops below it. */
+.gwui-open-link { min-height: 0; display: inline; }
 /* A plain text link that still does something (not a navigation), for a control that must not
    compete with the page's one real primary button (Hafsah, 30 September, item 2). Same look as
    .gwui-open-link, under its own name for anywhere that isn't a list row. */
@@ -477,8 +479,13 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-plain-link {
   font-size: 14px; font-weight: 700; color: var(--gw-navy); background: none; border: 0;
   padding: 0; cursor: pointer; font-family: inherit; text-decoration: underline;
-  min-height: 44px; display: inline-flex; align-items: center; vertical-align: top;
+  /* 21 NOVEMBER (Hafsah, "Rather pick from a list? See every situation."): it grew itself to 44px with inline-flex, which pulled
+     a link inside a sentence off the text's baseline and left the full stop floating. It stays inline now; the 44px tap target is
+     the invisible layer drawn round it (.gwui-tap-target's rule, above), so nothing around it moves. */
+  min-height: 0; display: inline; vertical-align: baseline; text-align: inherit;
 }
+/* Inside a sentence it reads as part of it: the sentence's own size and line height. */
+:is(p, .gwui-note, .gw-line, .gwui-panel-text, .gwui-panel-text-muted, .t-small, .t-body, .gw-auth-small) .gwui-plain-link { font-size: inherit; line-height: inherit; }
 /*
  * RELEASE WALKTHROUGH, 5 OCTOBER: THE SAME 40px FLOOR, FOR A CONTROL THAT CANNOT TAKE
  * .gwui-plain-link's OWN LOOK. That class fixes a tap target by growing the box around text that
@@ -493,7 +500,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
  */
 /* 21 OCTOBER: 44px, AT EVERY WIDTH. Hafsah's 44px rule covers everything you can tap, links in lists and chips as well as buttons,
    so the floor this comment describes is now 44px and no longer only on a phone (the class was `.gwui-tap-40`). */
-.gwui-tap-44 { min-height: 44px; display: inline-flex; align-items: center; }
+.gwui-tap-44 { min-height: 0; }
 /*
  * THE CONTEXT CHAT'S "ATTACH A DOCUMENT" BUTTON (ContextChat.tsx), 34px SQUARE AT EVERY WIDTH
  * BEFORE THIS. Needs its own class, not `.gwui-tap-44`, because it grows in both directions, not

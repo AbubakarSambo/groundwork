@@ -8,6 +8,8 @@ import { Page, PageTitle, Section, Panel, Tag, Button } from '@/components/gw/ui
 import { aShortDay } from './pictured/ThePicturedSalesBoard'
 import { THE_LEGEND } from './pictured/TheBar'
 import './pictured/pictured-board.css'
+import { useTheDesignPass } from '@/lib/the-design-pass'
+import { TheirPartOfYourTeam } from './pictured/YourTeamPersonByPerson'
 
 /**
  * ONE PERSON IN A CHECK-IN, FOR WHOEVER RUNS IT (screen match, 16 October; the target is
@@ -62,6 +64,7 @@ export function oneOfEach(lines: string[]): string[] {
 export function ThePersonPage() {
   const { id, participantId } = useParams<{ id: string; participantId: string }>()
   const user = useAuthStore((s) => s.user)
+  const designPass = useTheDesignPass()
   const { data: board } = useQuery({ queryKey: ['board', id], queryFn: () => boardApi.get(id!), enabled: !!id })
   const { data: ground } = useQuery({ queryKey: ['ground', id], queryFn: () => groundsApi.get(id!), enabled: !!id })
   const b: Any = board
@@ -115,6 +118,9 @@ export function ThePersonPage() {
         subtitle={subtitle || undefined}
         action={<Button kind="secondary" to={`/grounds/${id}?tab=context`}>{`Ask ${first} something`}</Button>}
       />
+
+      {/* With the design pass on, what the record shows about this person, with Praise and Start a plan, moved here from the board. */}
+      {designPass && <TheirPartOfYourTeam groundId={id!} team={b.yourTeam} participantId={participantId!} />}
 
       {/* Only a check-in that keeps deals has a section for them (a performance plan's case has none). */}
       {dealSection && (

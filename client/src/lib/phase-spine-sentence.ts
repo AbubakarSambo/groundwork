@@ -20,11 +20,13 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 export function phaseSpineSentence(
   phaseSpine: { startsAt: string | null; endsAt: string | null; currentSession: number } | null | undefined,
   planned: number | null,
+  /* The boards behind the design switch say "Session", the prototype's word (Hafsah, 21 November); everywhere else, "Check-in". */
+  word: 'Check-in' | 'Session' = 'Check-in',
 ): string | null {
   if (!phaseSpine) return null
   const parts: string[] = []
   if (phaseSpine.currentSession) {
-    parts.push(planned ? `Check-in ${phaseSpine.currentSession} of ${planned}.` : `Check-in ${phaseSpine.currentSession}.`)
+    parts.push(planned ? `${word} ${phaseSpine.currentSession} of ${planned}.` : `${word} ${phaseSpine.currentSession}.`)
   }
   if (phaseSpine.endsAt) parts.push(`Runs until ${whenItWas(phaseSpine.endsAt, 'dayAndMonthLong')}.`)
   return parts.length ? parts.join(' ') : null

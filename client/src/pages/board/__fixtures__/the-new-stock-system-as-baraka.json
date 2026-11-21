@@ -1,0 +1,1547 @@
+{
+ "groundId": "b86bc94e-6c6c-40a3-8c44-925f7442d209",
+ "renders": true,
+ "mode": "SHARED",
+ "family": "DELIVERY",
+ "peopleWorkTogether": true,
+ "sections": [
+  "phaseSpine",
+  "quickRead",
+  "objectives",
+  "startingState",
+  "divergence",
+  "whatTheRoomIsAbout",
+  "whoOwnsWhat",
+  "dependencies",
+  "checkInGrid",
+  "contribution",
+  "coverage",
+  "cascade",
+  "hiddenContributors",
+  "patterns",
+  "decisions",
+  "poll"
+ ],
+ "title": "The new stock system, four depots",
+ "scenario": "NEW_PROJECT",
+ "kindOfWork": "distribution operations",
+ "releaseOneSalesBoard": true,
+ "releaseFourTeams": true,
+ "template": null,
+ "switchboard": {
+  "type": "incidents",
+  "typeConfirmed": false,
+  "board": "the tickets board",
+  "drawnAs": "distribution operations",
+  "reports": "today"
+ },
+ "kindsOffered": [
+  "sales team",
+  "sales org",
+  "engineering release",
+  "support desk",
+  "distribution operations",
+  "trader training programme",
+  "founder's own check-in",
+  "asset loans",
+  "MarketView where next",
+  "MarketView Q4",
+  "a law firm matter",
+  "a government programme",
+  "leadership",
+  "a funded project",
+  "client delivery"
+ ],
+ "theCount": {
+  "session": 2,
+  "planned": 12,
+  "bySession": {
+   "1": {
+    "sessionNumber": 1,
+    "onTheCheckIn": [
+     "6e3c4887-333c-482f-9efe-d87740ade025",
+     "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+     "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+     "246fff2d-b33f-481a-81da-2037451ddd73",
+     "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2"
+    ],
+    "answered": [
+     "6e3c4887-333c-482f-9efe-d87740ade025",
+     "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+     "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+     "246fff2d-b33f-481a-81da-2037451ddd73",
+     "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2"
+    ],
+    "notYet": [],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "2": {
+    "sessionNumber": 2,
+    "onTheCheckIn": [
+     "6e3c4887-333c-482f-9efe-d87740ade025",
+     "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+     "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+     "246fff2d-b33f-481a-81da-2037451ddd73",
+     "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2"
+    ],
+    "answered": [
+     "6e3c4887-333c-482f-9efe-d87740ade025",
+     "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+     "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+     "246fff2d-b33f-481a-81da-2037451ddd73"
+    ],
+    "notYet": [
+     "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "3": {
+    "sessionNumber": 3,
+    "onTheCheckIn": [
+     "6e3c4887-333c-482f-9efe-d87740ade025",
+     "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+     "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+     "246fff2d-b33f-481a-81da-2037451ddd73",
+     "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2"
+    ],
+    "answered": [
+     "6e3c4887-333c-482f-9efe-d87740ade025",
+     "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+     "02153e0c-1714-4a4a-9a5b-c7b5d1f94453"
+    ],
+    "notYet": [
+     "246fff2d-b33f-481a-81da-2037451ddd73",
+     "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "4": {
+    "sessionNumber": 4,
+    "onTheCheckIn": [
+     "6e3c4887-333c-482f-9efe-d87740ade025",
+     "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+     "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+     "246fff2d-b33f-481a-81da-2037451ddd73",
+     "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2"
+    ],
+    "answered": [
+     "6e3c4887-333c-482f-9efe-d87740ade025",
+     "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726"
+    ],
+    "notYet": [
+     "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+     "246fff2d-b33f-481a-81da-2037451ddd73",
+     "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "5": {
+    "sessionNumber": 5,
+    "onTheCheckIn": [
+     "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+     "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+     "246fff2d-b33f-481a-81da-2037451ddd73",
+     "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2"
+    ],
+    "answered": [],
+    "notYet": [
+     "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+     "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+     "246fff2d-b33f-481a-81da-2037451ddd73",
+     "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "6": {
+    "sessionNumber": 6,
+    "onTheCheckIn": [
+     "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+     "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+     "246fff2d-b33f-481a-81da-2037451ddd73",
+     "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2"
+    ],
+    "answered": [],
+    "notYet": [
+     "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+     "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+     "246fff2d-b33f-481a-81da-2037451ddd73",
+     "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   }
+  },
+  "said": {
+   "says": "4 of 5 have checked in; Imani hasn\u2019t started yet.",
+   "whoSays": "Imani hasn\u2019t started yet.",
+   "notJoinedSays": null,
+   "notCountedSays": null,
+   "everyoneIn": false,
+   "othersHaveAnswered": true
+  }
+ },
+ "howItIsGoing": {
+  "latestSummary": null,
+  "glance": {
+   "progress": {
+    "roundsDone": 1,
+    "roundsPlanned": 12,
+    "answeredThisRound": 4,
+    "ofPeople": 5,
+    "waitingOn": [
+     "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2"
+    ]
+   },
+   "inTheWay": {
+    "count": 0,
+    "oldest": null,
+    "daysWaiting": null,
+    "since": null,
+    "sinceSays": null,
+    "says": "No wait is listed against a named person, but 4 worries are on record."
+   }
+  }
+ },
+ "groundStatus": "ACTIVE",
+ "endState": null,
+ "coverageVariant": "text",
+ "startingState": null,
+ "whatTheAnswersSay": null,
+ "theJudgement": null,
+ "theTable": null,
+ "overTime": null,
+ "myParticipantId": "6e3c4887-333c-482f-9efe-d87740ade025",
+ "canEditFrame": true,
+ "readOnlyNote": null,
+ "lastChangedAt": "2026-11-13T08:47:29.656Z",
+ "participants": [
+  {
+   "id": "6e3c4887-333c-482f-9efe-d87740ade025",
+   "name": "Baraka Mutua",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "INITIATOR"
+  },
+  {
+   "id": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+   "name": "Kito Dube",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  },
+  {
+   "id": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+   "name": "Lerato Nkosi",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  },
+  {
+   "id": "246fff2d-b33f-481a-81da-2037451ddd73",
+   "name": "Tobi Adeyemi",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  },
+  {
+   "id": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+   "name": "Imani Hassan",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  }
+ ],
+ "aTeamReportComes": true,
+ "waitingToBeLetIn": null,
+ "whoIsAway": [],
+ "phaseSpine": {
+  "startsAt": "2026-10-16T07:40:49.627Z",
+  "endsAt": "2027-01-14T07:40:49.627Z",
+  "currentSession": 2,
+  "plannedSessions": 12,
+  "sessions": [
+   {
+    "n": 1,
+    "state": "done",
+    "date": "2026-10-23T08:47:29.632Z",
+    "opensOn": "2026-10-23T07:40:49.632Z",
+    "openedOn": "2026-10-23T07:40:49.634Z",
+    "says": "Check-in 1 finished on 23 October."
+   },
+   {
+    "n": 2,
+    "state": "current",
+    "date": "2026-10-30T08:47:29.641Z",
+    "opensOn": "2026-10-30T07:40:49.641Z",
+    "openedOn": "2026-10-30T07:40:49.643Z",
+    "says": "Check-in 2 opened on 30 October, and it is still open."
+   },
+   {
+    "n": 3,
+    "state": "current",
+    "date": "2026-11-06T08:47:29.649Z",
+    "opensOn": "2026-11-06T07:40:49.649Z",
+    "openedOn": "2026-11-06T07:40:49.650Z",
+    "says": "Check-in 3 has started for some people, while check-in 2 is still open."
+   },
+   {
+    "n": 4,
+    "state": "current",
+    "date": "2026-11-13T08:47:29.654Z",
+    "opensOn": "2026-11-13T07:40:49.654Z",
+    "openedOn": "2026-11-13T07:40:49.656Z",
+    "says": "Check-in 4 has started for some people, while check-in 2 is still open."
+   },
+   {
+    "n": 5,
+    "state": "upcoming",
+    "date": null,
+    "opensOn": "2026-11-19T07:40:49.659Z",
+    "openedOn": "2026-11-19T07:40:49.659Z",
+    "says": "Check-in 5 opened on 19 November, while check-in 2 is still open."
+   }
+  ]
+ },
+ "targetsNobodyOwns": null,
+ "objectives": [],
+ "eachPersonsOwn": [],
+ "whyTheNumbersDoNotMatch": [],
+ "stillUnanswered": [],
+ "eachPerson": [
+  {
+   "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+   "who": "Imani Hassan",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "has not answered",
+   "says": "Imani Hassan has not checked in yet.",
+   "ask": "Ask Imani Hassan to check in.",
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null
+  },
+  {
+   "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+   "who": "Kito Dube",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "nothing to do",
+   "says": "Kito Dube has checked in, and nothing here needs you this week.",
+   "ask": null,
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null
+  },
+  {
+   "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+   "who": "Lerato Nkosi",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "nothing to do",
+   "says": "Lerato Nkosi has checked in, and nothing here needs you this week.",
+   "ask": null,
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null
+  },
+  {
+   "participantId": "246fff2d-b33f-481a-81da-2037451ddd73",
+   "who": "Tobi Adeyemi",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "nothing to do",
+   "says": "Tobi Adeyemi has checked in, and nothing here needs you this week.",
+   "ask": null,
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null
+  }
+ ],
+ "toLookAt": [],
+ "checkInGrid": {
+  "sessions": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "rows": [
+   {
+    "participantId": "6e3c4887-333c-482f-9efe-d87740ade025",
+    "name": "Baraka Mutua",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "done",
+     "4": "done",
+     "5": "not-started"
+    }
+   },
+   {
+    "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+    "name": "Kito Dube",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "done",
+     "4": "done",
+     "5": "not-started"
+    }
+   },
+   {
+    "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+    "name": "Lerato Nkosi",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "done",
+     "4": "not-started",
+     "5": "na"
+    }
+   },
+   {
+    "participantId": "246fff2d-b33f-481a-81da-2037451ddd73",
+    "name": "Tobi Adeyemi",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "not-started",
+     "4": "na",
+     "5": "na"
+    }
+   },
+   {
+    "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+    "name": "Imani Hassan",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "not-started",
+     "3": "na",
+     "4": "na",
+     "5": "na"
+    }
+   }
+  ]
+ },
+ "whoOwnsWhat": [
+  {
+   "participantId": "6e3c4887-333c-482f-9efe-d87740ade025",
+   "name": "You",
+   "role": null,
+   "items": [
+    {
+     "id": "5b60a4a1-26db-4f71-8f98-a75b1b7d1bf1",
+     "type": "PROGRESS",
+     "text": "You have reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "975c05d9-d2cf-43d4-bead-6186b3862912",
+     "type": "COMMITMENT",
+     "text": "You have made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "3e0e6d9f-2201-4f88-97a4-6c87d7d2863d",
+     "type": "PROGRESS",
+     "text": "You have reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "1366fa4c-a2d1-415e-91c1-c308b9fba0a8",
+     "type": "COMMITMENT",
+     "text": "You have made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "504575e1-ec82-4131-827b-64bba3f929f5",
+     "type": "PROGRESS",
+     "text": "You have reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 3,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "ff7f0a15-279d-4287-ac44-465586f78d71",
+     "type": "COMMITMENT",
+     "text": "You have made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 3,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "a2c61f06-b7c9-4e30-8bde-9c802fe161a8",
+     "type": "PROGRESS",
+     "text": "You have reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 4,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "d219a620-99a3-44c4-9ff4-f131613d4159",
+     "type": "COMMITMENT",
+     "text": "You have made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 4,
+     "settled": false,
+     "itsKindIsSaid": true
+    }
+   ]
+  },
+  {
+   "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+   "name": "Kito Dube",
+   "role": null,
+   "items": [
+    {
+     "id": "67cb2ba9-5908-4853-8201-a6ad13ee7e86",
+     "type": "PROGRESS",
+     "text": "Kito Dube has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "6d7a89cf-06ac-4d9a-ac64-9af6851bf64b",
+     "type": "COMMITMENT",
+     "text": "Kito Dube has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "a7533166-7ede-4c3e-bf01-207c1f93bf7f",
+     "type": "PROGRESS",
+     "text": "Kito Dube has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "993693bb-8a4e-4580-903d-62c4579c3545",
+     "type": "COMMITMENT",
+     "text": "Kito Dube has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "581e0f4e-56df-4d53-b6a7-9f439e4119ae",
+     "type": "PROGRESS",
+     "text": "Kito Dube has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 3,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "7e2ccf76-8eac-4f9d-b707-f814b8d78671",
+     "type": "COMMITMENT",
+     "text": "Kito Dube has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 3,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "bc083b5e-c977-4aad-9670-ba60be6ff9b7",
+     "type": "PROGRESS",
+     "text": "Kito Dube has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 4,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "eecb09de-adf7-4aa0-ac7c-ec70f3402334",
+     "type": "COMMITMENT",
+     "text": "Kito Dube has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 4,
+     "settled": false,
+     "itsKindIsSaid": true
+    }
+   ]
+  },
+  {
+   "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+   "name": "Lerato Nkosi",
+   "role": null,
+   "items": [
+    {
+     "id": "020d9dad-d1b2-4b8b-96ef-427c44d2bb24",
+     "type": "PROGRESS",
+     "text": "Lerato Nkosi has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "241d6b34-71d5-44ec-98aa-f856272bbe66",
+     "type": "COMMITMENT",
+     "text": "Lerato Nkosi has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "38949d3a-906c-41d4-8340-165791b4de51",
+     "type": "PROGRESS",
+     "text": "Lerato Nkosi has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "6eecde23-be00-4df3-b617-f851ae69c448",
+     "type": "COMMITMENT",
+     "text": "Lerato Nkosi has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "12e1126e-2eb4-4cc7-9f47-c8fbf4102561",
+     "type": "PROGRESS",
+     "text": "Lerato Nkosi has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 3,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "546e7f38-99d4-47f4-b837-17d0b50944fb",
+     "type": "COMMITMENT",
+     "text": "Lerato Nkosi has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 3,
+     "settled": false,
+     "itsKindIsSaid": true
+    }
+   ]
+  },
+  {
+   "participantId": "246fff2d-b33f-481a-81da-2037451ddd73",
+   "name": "Tobi Adeyemi",
+   "role": null,
+   "items": [
+    {
+     "id": "cc15b478-e60c-4aca-be89-65b1ed16557a",
+     "type": "PROGRESS",
+     "text": "Tobi Adeyemi has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "93303494-efe8-48cb-9170-72edc4d00317",
+     "type": "COMMITMENT",
+     "text": "Tobi Adeyemi has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "8d802144-66a0-4d7a-8fd4-2418e903a612",
+     "type": "PROGRESS",
+     "text": "Tobi Adeyemi has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "d6e392f6-514e-4be5-87fe-4ba676c421a4",
+     "type": "COMMITMENT",
+     "text": "Tobi Adeyemi has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    }
+   ]
+  },
+  {
+   "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+   "name": "Imani Hassan",
+   "role": null,
+   "items": [
+    {
+     "id": "a842977b-b1f0-4651-95f1-e2ac299050b2",
+     "type": "PROGRESS",
+     "text": "Imani Hassan has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "c374da2c-a8d3-4159-9f7e-caa74d20ee48",
+     "type": "COMMITMENT",
+     "text": "Imani Hassan has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    }
+   ]
+  }
+ ],
+ "dependencies": [],
+ "decisions": [],
+ "objectivesPrompt": "No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this ground is aiming for.",
+ "whatTheRoomIsAbout": null,
+ "whatTheRoomIsAboutNote": "This is read when a round closes. Nothing has closed yet, so there is nothing to add up.",
+ "quickRead": [
+  {
+   "label": "Differences",
+   "value": "Nothing to compare yet",
+   "sub": "1 person has still to answer.",
+   "tone": "flat"
+  },
+  {
+   "label": "Movement",
+   "value": "No target set",
+   "sub": "Nobody has set anything to measure this against.",
+   "tone": "flat"
+  },
+  {
+   "label": "Blockers",
+   "value": "4 worries",
+   "sub": "4 worries are on record. None was kept in the words it was said, so none is quoted here. No wait has been recorded against a named person.",
+   "tone": "warn"
+  },
+  {
+   "label": "How much was said",
+   "value": "All from memory",
+   "sub": "Nothing said this check-in has a document behind it.",
+   "tone": "warn"
+  }
+ ],
+ "contribution": [
+  {
+   "participantId": "6e3c4887-333c-482f-9efe-d87740ade025",
+   "name": "Baraka Mutua",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "reason": null,
+   "note": null,
+   "shown": false,
+   "basis": "No role was defined, so there is nothing to read against.",
+   "saidOnceAbove": true
+  },
+  {
+   "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+   "name": "Kito Dube",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  },
+  {
+   "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+   "name": "Lerato Nkosi",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  },
+  {
+   "participantId": "246fff2d-b33f-481a-81da-2037451ddd73",
+   "name": "Tobi Adeyemi",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  },
+  {
+   "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+   "name": "Imani Hassan",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  }
+ ],
+ "coverage": {
+  "scope": "role",
+  "reads": [
+   {
+    "participantId": "6e3c4887-333c-482f-9efe-d87740ade025",
+    "name": "Baraka Mutua",
+    "scope": "role",
+    "remitDefined": false,
+    "shown": false
+   },
+   {
+    "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+    "name": "Kito Dube",
+    "scope": "role",
+    "remitDefined": false,
+    "shown": false
+   },
+   {
+    "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+    "name": "Lerato Nkosi",
+    "scope": "role",
+    "remitDefined": false,
+    "shown": false
+   },
+   {
+    "participantId": "246fff2d-b33f-481a-81da-2037451ddd73",
+    "name": "Tobi Adeyemi",
+    "scope": "role",
+    "kind": "STABLE",
+    "trend": "stable",
+    "what": null,
+    "reason": "CANNOT_DETERMINE",
+    "reasonText": null,
+    "ownVoice": null,
+    "coupledToBlocker": false,
+    "remitDefined": false,
+    "shown": true,
+    "saidOnceAbove": true
+   },
+   {
+    "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+    "name": "Imani Hassan",
+    "scope": "role",
+    "kind": "STABLE",
+    "trend": "stable",
+    "what": null,
+    "reason": "CANNOT_DETERMINE",
+    "reasonText": null,
+    "ownVoice": null,
+    "coupledToBlocker": false,
+    "remitDefined": false,
+    "shown": true,
+    "saidOnceAbove": true
+   }
+  ],
+  "saysOnce": [
+   "The role was never defined, so there is no boundary to measure against. This is true of Tobi Adeyemi and Imani Hassan.",
+   "The role was never clearly defined, so there is no boundary to measure work against. Define what this role owns before reading anything into where work is landing."
+  ]
+ },
+ "coaching": {
+  "yours": {
+   "aboutYou": [
+    "Everything in your check-in came from memory, so there is nothing here that anybody else could open and check."
+   ],
+   "showingUp": null,
+   "whyItMatters": "This is check-in 4 of 12 of this work. Nothing has come up often enough yet to be called a pattern.",
+   "beforeNextTime": [
+    "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+   ],
+   "general": true,
+   "role": {
+    "label": "What you said",
+    "onTrack": "What you said can be checked later, because it has a date, a number or a name on it. You also say what you did about anything that stalled.",
+    "goingWrong": "What you said is hard to check later: it has no dates, numbers or names, or things were named and not carried through.",
+    "protectAgainst": "You said little, and little may have happened yet, or nobody may have asked the right question.",
+    "noticed": null,
+    "lookingLike": null
+   },
+   "whyNoRoleMap": "No role was given, so this is about where you are in the check-in rather than about a kind of work."
+  },
+  "eachPerson": [
+   {
+    "who": "Kito Dube",
+    "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+    "probe": [],
+    "encourage": [],
+    "triedToUnblock": "Nothing in the record says Kito Dube's work is waiting on a named person."
+   },
+   {
+    "who": "Lerato Nkosi",
+    "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+    "probe": [],
+    "encourage": [],
+    "triedToUnblock": "Nothing in the record says Lerato Nkosi's work is waiting on a named person."
+   },
+   {
+    "who": "Tobi Adeyemi",
+    "participantId": "246fff2d-b33f-481a-81da-2037451ddd73",
+    "probe": [],
+    "encourage": [],
+    "triedToUnblock": "Nothing in the record says Tobi Adeyemi's work is waiting on a named person."
+   },
+   {
+    "who": "Imani Hassan",
+    "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+    "probe": [
+     "Imani Hassan has not answered this check-in, so nothing below is from this round."
+    ],
+    "encourage": [],
+    "triedToUnblock": "Nothing in the record says Imani Hassan's work is waiting on a named person."
+   }
+  ]
+ },
+ "patterns": [],
+ "poll": null,
+ "eachPersonToday": [
+  {
+   "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+   "who": "Imani Hassan",
+   "line": "Imani Hassan has not checked in yet.",
+   "nudge": {
+    "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+    "firstName": "Imani",
+    "nudgedAt": null,
+    "says": "Nudge Imani"
+   }
+  },
+  {
+   "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+   "who": "Kito Dube",
+   "line": "Kito Dube has checked in, and nothing here needs you this week.",
+   "nudge": {
+    "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+    "firstName": "Kito",
+    "nudgedAt": null,
+    "says": "Nudge Kito"
+   }
+  },
+  {
+   "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+   "who": "Lerato Nkosi",
+   "line": "Lerato Nkosi has checked in, and nothing here needs you this week.",
+   "nudge": {
+    "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+    "firstName": "Lerato",
+    "nudgedAt": null,
+    "says": "Nudge Lerato"
+   }
+  },
+  {
+   "participantId": "246fff2d-b33f-481a-81da-2037451ddd73",
+   "who": "Tobi Adeyemi",
+   "line": "Tobi Adeyemi has checked in, and nothing here needs you this week.",
+   "nudge": {
+    "participantId": "246fff2d-b33f-481a-81da-2037451ddd73",
+    "firstName": "Tobi",
+    "nudgedAt": null,
+    "says": "Nudge Tobi"
+   }
+  }
+ ],
+ "workRecords": [
+  {
+   "section": "Deal grid",
+   "holds": "incidents",
+   "state": "filled",
+   "rows": [
+    {
+     "id": "9f344921-584b-41e2-9043-db4c154baea1",
+     "kind": "incident",
+     "name": "The one thing slowing me down",
+     "stage": null,
+     "owner": "Baraka Mutua",
+     "ownerParticipantId": "6e3c4887-333c-482f-9efe-d87740ade025",
+     "due": null,
+     "lastSaidOn": "2026-11-20",
+     "fields": {
+      "Cause": "waiting on a decision from another team"
+     },
+     "from": "said",
+     "said": "The one thing slowing me down is waiting on a decision from another team.",
+     "saidBy": "You",
+     "saidByParticipantId": "6e3c4887-333c-482f-9efe-d87740ade025",
+     "saidByLine": "In your words,",
+     "known": "said",
+     "knownSays": "Someone said it.",
+     "mark": "said",
+     "next": null,
+     "nextKnown": null,
+     "nextSays": "Nobody has said what happens next.",
+     "evidence": []
+    },
+    {
+     "id": "9bb1df8e-857b-4ac5-a986-47e438275f62",
+     "kind": "incident",
+     "name": "waiting on a decision from another team",
+     "stage": null,
+     "owner": "Kito Dube",
+     "ownerParticipantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+     "due": null,
+     "lastSaidOn": "2026-11-20",
+     "fields": {
+      "Cause": "waiting on a decision from another team",
+      "Impact": "slowing me down"
+     },
+     "from": "said",
+     "said": "The one thing slowing me down is waiting on a decision from another team.",
+     "saidBy": "Kito",
+     "saidByParticipantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+     "saidByLine": "In Kito's words,",
+     "known": "said",
+     "knownSays": "Someone said it.",
+     "mark": "said",
+     "next": null,
+     "nextKnown": null,
+     "nextSays": "Nobody has said what happens next.",
+     "evidence": []
+    }
+   ]
+  }
+ ],
+ "timeline": [
+  {
+   "on": "2026-10-23",
+   "says": "On 23 October, the first answers for check-in 1 came in."
+  },
+  {
+   "on": "2026-10-30",
+   "says": "On 30 October, the first answers for check-in 2 came in."
+  },
+  {
+   "on": "2026-11-06",
+   "says": "On 6 November, the first answers for check-in 3 came in."
+  },
+  {
+   "on": "2026-11-13",
+   "says": "On 13 November, the first answers for check-in 4 came in."
+  }
+ ],
+ "personHistory": [
+  {
+   "participantId": "6e3c4887-333c-482f-9efe-d87740ade025",
+   "who": "You",
+   "says": "You have answered 4 check-ins, and have made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-10-23",
+     "says": "In check-in 1, you answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 2,
+     "on": "2026-10-30",
+     "says": "In check-in 2, you answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 3,
+     "on": "2026-11-06",
+     "says": "In check-in 3, you answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 4,
+     "on": "2026-11-13",
+     "says": "In check-in 4, you answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  },
+  {
+   "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+   "who": "Kito Dube",
+   "says": "Kito Dube has answered 4 check-ins, and has made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-10-23",
+     "says": "In check-in 1, Kito Dube answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 2,
+     "on": "2026-10-30",
+     "says": "In check-in 2, Kito Dube answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 3,
+     "on": "2026-11-06",
+     "says": "In check-in 3, Kito Dube answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 4,
+     "on": "2026-11-13",
+     "says": "In check-in 4, Kito Dube answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  },
+  {
+   "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+   "who": "Lerato Nkosi",
+   "says": "Lerato Nkosi has answered 3 check-ins, and has made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-10-23",
+     "says": "In check-in 1, Lerato Nkosi answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 2,
+     "on": "2026-10-30",
+     "says": "In check-in 2, Lerato Nkosi answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 3,
+     "on": "2026-11-06",
+     "says": "In check-in 3, Lerato Nkosi answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  },
+  {
+   "participantId": "246fff2d-b33f-481a-81da-2037451ddd73",
+   "who": "Tobi Adeyemi",
+   "says": "Tobi Adeyemi has answered 2 check-ins, and has made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-10-23",
+     "says": "In check-in 1, Tobi Adeyemi answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 2,
+     "on": "2026-10-30",
+     "says": "In check-in 2, Tobi Adeyemi answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  },
+  {
+   "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+   "who": "Imani Hassan",
+   "says": "Imani Hassan has answered 1 check-in, and has made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-10-23",
+     "says": "In check-in 1, Imani Hassan answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  }
+ ],
+ "whereThisIsHeading": {
+  "heading": "Where this is heading",
+  "about": "Get a new project off to a good start",
+  "outcomes": [
+   {
+    "value": "COMPLETE",
+    "says": "The project is complete.",
+    "more": null
+   },
+   {
+    "value": "CONTINUE",
+    "says": "The project carries on.",
+    "more": null
+   },
+   {
+    "value": "DESCOPE",
+    "says": "The project carries on with less in it.",
+    "more": null
+   },
+   {
+    "value": "STOP",
+    "says": "The project stops.",
+    "more": null
+   }
+  ],
+  "outcomesSays": null,
+  "signals": [],
+  "signalsSays": "Nothing on record points towards one outcome or another yet.",
+  "whatWouldSettleIt": [],
+  "whatWouldSettleItSays": "Nothing on record says yet what would settle it.",
+  "whoDecides": "You decide.",
+  "recordTheDecision": "Record the decision",
+  "decided": null
+ },
+ "byArea": {
+  "state": "not-known",
+  "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+ },
+ "openIssues": {
+  "state": "not-known",
+  "why": ""
+ },
+ "contributionSaysOnce": "No position is shown for you, Kito Dube, Lerato Nkosi, Tobi Adeyemi or Imani Hassan, because nobody's role was clearly defined. Define what each role is responsible for before assessing anyone against it. An undefined role is often the real problem, not the person.",
+ "theMorning": {
+  "groundId": "b86bc94e-6c6c-40a3-8c44-925f7442d209",
+  "kind": "matter",
+  "parts": [
+   {
+    "key": "team",
+    "heading": "Your team today",
+    "lines": [
+     "Kito hasn't checked in the last 5 times the check-in opened, on Friday 23 October, Friday 30 October, Friday 6 November, Friday 13 November and Thursday 19 November, so call Kito.",
+     "Lerato hasn't checked in the last 4 times the check-in opened, on Friday 23 October, Friday 30 October, Friday 6 November and Friday 13 November, so call Lerato.",
+     "Tobi hasn't checked in the last 3 times the check-in opened, on Friday 23 October, Friday 30 October and Friday 6 November, so call Tobi.",
+     "Imani hasn't checked in the last 2 times the check-in opened, on Friday 23 October and Friday 30 October, so call Imani."
+    ],
+    "about": [
+     {
+      "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726"
+     },
+     {
+      "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453"
+     },
+     {
+      "participantId": "246fff2d-b33f-481a-81da-2037451ddd73"
+     },
+     {
+      "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2"
+     }
+    ]
+   }
+  ],
+  "nudges": [
+   {
+    "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+    "firstName": "Kito",
+    "nudgedAt": null,
+    "says": "Nudge Kito"
+   },
+   {
+    "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+    "firstName": "Lerato",
+    "nudgedAt": null,
+    "says": "Nudge Lerato"
+   },
+   {
+    "participantId": "246fff2d-b33f-481a-81da-2037451ddd73",
+    "firstName": "Tobi",
+    "nudgedAt": null,
+    "says": "Nudge Tobi"
+   },
+   {
+    "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+    "firstName": "Imani",
+    "nudgedAt": null,
+    "says": "Nudge Imani"
+   }
+  ]
+ },
+ "yourTeam": {
+  "heading": "Your team, person by person",
+  "note": "",
+  "people": [
+   {
+    "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+    "name": "Kito Dube",
+    "role": "Depot supervisor",
+    "delivered": {
+     "heading": "What Kito delivered, with proof",
+     "proven": [],
+     "onlySaid": [],
+     "empty": "Nothing Kito said was paid, signed or done is on record yet."
+    },
+    "record": null,
+    "whereTheyStand": null,
+    "fromYou": [],
+    "actions": [
+     {
+      "kind": "praise",
+      "label": "Praise Kito",
+      "does": "Keeps your words in Kito\u2019s record, where Kito reads them on My work and in Kito\u2019s own report. No message is sent."
+     },
+     {
+      "kind": "plan",
+      "label": "Start a plan",
+      "does": "Keeps what you want to help Kito with, here and under People on References and resources. Only you read it. Nothing is sent to Kito."
+     },
+     {
+      "kind": "deadline",
+      "label": "Set a deadline",
+      "does": "Puts a due day on one of Kito\u2019s records. It shows on that record on your board, and nothing is sent to Kito.",
+      "items": [
+       {
+        "id": "9bb1df8e-857b-4ac5-a986-47e438275f62",
+        "name": "waiting on a decision from another team",
+        "due": null
+       }
+      ]
+     },
+     {
+      "kind": "reassign",
+      "label": "Reassign work",
+      "does": "Gives one of Kito\u2019s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.",
+      "items": [
+       {
+        "id": "9bb1df8e-857b-4ac5-a986-47e438275f62",
+        "name": "waiting on a decision from another team",
+        "due": null
+       }
+      ],
+      "to": [
+       {
+        "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+        "name": "Lerato"
+       },
+       {
+        "participantId": "246fff2d-b33f-481a-81da-2037451ddd73",
+        "name": "Tobi"
+       },
+       {
+        "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+        "name": "Imani"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+    "name": "Lerato Nkosi",
+    "role": "Logistics officer",
+    "delivered": {
+     "heading": "What Lerato delivered, with proof",
+     "proven": [],
+     "onlySaid": [],
+     "empty": "Nothing Lerato said was paid, signed or done is on record yet."
+    },
+    "record": null,
+    "whereTheyStand": null,
+    "fromYou": [],
+    "actions": [
+     {
+      "kind": "praise",
+      "label": "Praise Lerato",
+      "does": "Keeps your words in Lerato\u2019s record, where Lerato reads them on My work and in Lerato\u2019s own report. No message is sent."
+     },
+     {
+      "kind": "plan",
+      "label": "Start a plan",
+      "does": "Keeps what you want to help Lerato with, here and under People on References and resources. Only you read it. Nothing is sent to Lerato."
+     },
+     {
+      "kind": "deadline",
+      "label": "Set a deadline",
+      "does": "Puts a due day on one of Lerato\u2019s records. It shows on that record on your board, and nothing is sent to Lerato.",
+      "items": []
+     },
+     {
+      "kind": "reassign",
+      "label": "Reassign work",
+      "does": "Gives one of Lerato\u2019s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.",
+      "items": [],
+      "to": [
+       {
+        "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+        "name": "Kito"
+       },
+       {
+        "participantId": "246fff2d-b33f-481a-81da-2037451ddd73",
+        "name": "Tobi"
+       },
+       {
+        "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+        "name": "Imani"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "participantId": "246fff2d-b33f-481a-81da-2037451ddd73",
+    "name": "Tobi Adeyemi",
+    "role": "Engineer",
+    "delivered": {
+     "heading": "What Tobi delivered, with proof",
+     "proven": [],
+     "onlySaid": [],
+     "empty": "Nothing Tobi said was paid, signed or done is on record yet."
+    },
+    "record": null,
+    "whereTheyStand": null,
+    "fromYou": [],
+    "actions": [
+     {
+      "kind": "praise",
+      "label": "Praise Tobi",
+      "does": "Keeps your words in Tobi\u2019s record, where Tobi reads them on My work and in Tobi\u2019s own report. No message is sent."
+     },
+     {
+      "kind": "plan",
+      "label": "Start a plan",
+      "does": "Keeps what you want to help Tobi with, here and under People on References and resources. Only you read it. Nothing is sent to Tobi."
+     },
+     {
+      "kind": "deadline",
+      "label": "Set a deadline",
+      "does": "Puts a due day on one of Tobi\u2019s records. It shows on that record on your board, and nothing is sent to Tobi.",
+      "items": []
+     },
+     {
+      "kind": "reassign",
+      "label": "Reassign work",
+      "does": "Gives one of Tobi\u2019s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.",
+      "items": [],
+      "to": [
+       {
+        "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+        "name": "Kito"
+       },
+       {
+        "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+        "name": "Lerato"
+       },
+       {
+        "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+        "name": "Imani"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "participantId": "b9fa3fd5-f429-4ac2-8e64-d9fc37ba70a2",
+    "name": "Imani Hassan",
+    "role": "Operations analyst (new)",
+    "delivered": {
+     "heading": "What Imani delivered, with proof",
+     "proven": [],
+     "onlySaid": [],
+     "empty": "Nothing Imani said was paid, signed or done is on record yet."
+    },
+    "record": null,
+    "whereTheyStand": null,
+    "fromYou": [],
+    "actions": [
+     {
+      "kind": "praise",
+      "label": "Praise Imani",
+      "does": "Keeps your words in Imani\u2019s record, where Imani reads them on My work and in Imani\u2019s own report. No message is sent."
+     },
+     {
+      "kind": "plan",
+      "label": "Start a plan",
+      "does": "Keeps what you want to help Imani with, here and under People on References and resources. Only you read it. Nothing is sent to Imani."
+     },
+     {
+      "kind": "deadline",
+      "label": "Set a deadline",
+      "does": "Puts a due day on one of Imani\u2019s records. It shows on that record on your board, and nothing is sent to Imani.",
+      "items": []
+     },
+     {
+      "kind": "reassign",
+      "label": "Reassign work",
+      "does": "Gives one of Imani\u2019s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.",
+      "items": [],
+      "to": [
+       {
+        "participantId": "9c4d7b62-eb2d-4c6b-9b1d-455b126f7726",
+        "name": "Kito"
+       },
+       {
+        "participantId": "02153e0c-1714-4a4a-9a5b-c7b5d1f94453",
+        "name": "Lerato"
+       },
+       {
+        "participantId": "246fff2d-b33f-481a-81da-2037451ddd73",
+        "name": "Tobi"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import './gw-ui.css'
+import { useTheDesignPass } from '../../../lib/the-design-pass'
 
 /**
  * THE FOLDED LINE (light prototype, s56 and s57): a name, a one-line fact, a chevron. It opens in
@@ -17,6 +18,19 @@ export function FoldedLine({ name, fact, defaultOpen, children, id }: {
   children: ReactNode
   id?: string
 }) {
+  /* The design pass (Hafsah, 21 November: "remove the fold line"): the line's name and fact as a plain row, what it held shown under it. */
+  const designPass = useTheDesignPass()
+  if (designPass) {
+    return (
+      <div id={id} className="dp-row dp-unfolded-row">
+        <span className="dp-row-main">
+          <span className="dp-row-title">{name}</span>
+          {fact == null || fact === '' ? null : <span className="dp-row-line">{fact}</span>}
+        </span>
+        <div className="dp-row-body">{children}</div>
+      </div>
+    )
+  }
   return (
     <details id={id} className={`gwui-fold${fact == null || fact === '' ? ' gwui-fold-nofact' : ''}`} open={defaultOpen || undefined}>
       <summary className="gwui-fold-sum">
@@ -41,6 +55,16 @@ export function Box({ name, facts, defaultOpen, children, id }: {
   children: ReactNode
   id?: string
 }) {
+  const designPass = useTheDesignPass()
+  if (designPass) {
+    return (
+      <section id={id} className="dp-unfolded" aria-label={name}>
+        <h3 className="dp-unfolded-h">{name}</h3>
+        {facts.filter(Boolean).length > 0 && <p className="dp-row-line">{facts.filter(Boolean).slice(0, 2).join(' ')}</p>}
+        <div className="dp-unfolded-body">{children}</div>
+      </section>
+    )
+  }
   return (
     <details id={id} className="gwui-box" open={defaultOpen || undefined}>
       <summary className="gwui-box-sum">

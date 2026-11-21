@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { apiClient } from '@/api/client'
-import { Section, Panel, Stack, SwitchRow, Note, Button, Modal } from '@/components/gw/ui'
+import { Section, Panel, Stack, SwitchRow, Note, Button, Modal, Toggle } from '@/components/gw/ui'
 import { TheInviteLink } from './TheInviteLink'
 import { AChoiceOfTwo } from './a-choice-of-two'
 import { useAuthStore } from '@/stores/auth'
+import { useTheDesignPass } from '@/lib/the-design-pass'
 
 /** The domain of an email address, or null for one with no "@" (never expected, but typed). */
 function domainOfAddress(email: string | undefined | null): string | null {
@@ -71,6 +72,7 @@ export function WhoCanJoin({ orgName }: { orgName: string }) {
   const myDomain = domainOfAddress(user?.email)
   const [problem, setProblem] = useState('')
   const [confirming, setConfirming] = useState(false)
+  const designPass = useTheDesignPass()
   const { data } = useQuery({
     queryKey: ['org-joining'],
     queryFn: () => apiClient.get('/users/organization/joining').then(r => (r.data.data ?? r.data) as Joining),
@@ -115,9 +117,49 @@ export function WhoCanJoin({ orgName }: { orgName: string }) {
      joining on when it was off; when it is already on, this only moves which domain it reads. */
   const willTurnOn = !data.on
 
+  /* The design pass: hairline rows, not a card in the section. The domain is its sentence, its switch and a quiet "Change". */
+  const joining = designPass ? (
+    <ul className="dp-rows" aria-label="Who can join">
+      <li className="dp-row">
+        <span className="dp-row-main">
+          <span className="dp-row-title">{data.domain ? `Anyone with an @${data.domain} email` : 'Anyone at your email domain'}</span>
+          <span className="dp-row-line">
+            {data.domain ? `They can join ${orgName} without an invitation, as “Takes part”. You can change their role after.` : data.whyNot}{' '}
+            {/* Which domain is a second setting: changed from its own line, so the row has one control, its switch. */}
+            <button type="button" className="gwui-plain-link" onClick={() => setConfirming(true)} disabled={change.isPending}>{data.domain ? 'Change the domain' : 'Name it'}</button>
+          </span>
+          {problem && <Note tone="error">{problem}</Note>}
+        </span>
+        {data.domain && (
+          <span className="dp-row-acts">
+            <Toggle on={data.on} onChange={() => set.mutate(!data.on)} label={`Anyone with an @${data.domain} email`} disabled={set.isPending} />
+          </span>
+        )}
+      </li>
+      <li className="dp-row"><div className="dp-row-main"><TheInviteLink orgName={orgName} /></div></li>
+      <li className="dp-row">
+        <span className="dp-row-main">
+          <span className="dp-row-title">Guests</span>
+          <span className="dp-row-line">{guestsLine(how.guestsMayJoin)}</span>
+        </span>
+        <span className="dp-row-acts"><Toggle on={how.guestsMayJoin} onChange={() => setHow.mutate({ guestsMayJoin: !how.guestsMayJoin })} label="Guests can join" disabled={setHow.isPending || !adding.data} /></span>
+      </li>
+      <li className="dp-row">
+        <span className="dp-row-main">
+          <span className="dp-row-title">Who can add people</span>
+          <span className="dp-row-line">{whoCanAddLine(how.whoMayAddPeople, orgName)}</span>
+        </span>
+        <span className="dp-row-acts"><button type="button" className="gwui-plain-link" aria-expanded={changingWho} onClick={() => setChangingWho((c) => !c)} disabled={!adding.data}>{changingWho ? 'Done' : 'Change'}</button></span>
+        {changingWho && <AChoiceOfTwo label="Who can add people" name="who-may-add-people" value={how.whoMayAddPeople} options={WHO_OPTIONS} onChange={(k) => setHow.mutate({ whoMayAddPeople: k as HowPeopleAreAdded['whoMayAddPeople'] })} disabled={setHow.isPending} />}
+      </li>
+      {howProblem && <li className="dp-row"><Note tone="error">{howProblem}</Note></li>}
+    </ul>
+  ) : null
+
   return (
     <Section heading="Who can join">
-      <Panel pad={false}>
+      {joining}
+      {!designPass && <Panel pad={false}>
         <div className="gwui-panel-row">
           {data.domain ? (
             <Stack gap={10}>
@@ -164,7 +206,7 @@ export function WhoCanJoin({ orgName }: { orgName: string }) {
             {howProblem && <Note tone="error">{howProblem}</Note>}
           </Stack>
         </div>
-      </Panel>
+      </Panel>}
       {confirming && (
         <Modal title={data.domain ? 'Change the domain' : 'Name the domain'} onClose={() => setConfirming(false)}>
           <Stack gap={18}>

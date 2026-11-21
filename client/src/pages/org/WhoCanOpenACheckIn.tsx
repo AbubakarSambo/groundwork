@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTheDesignPass } from '@/lib/the-design-pass'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
-import { Section, Stack, FieldRows, FieldRow, Choices, SwitchRow } from '@/components/gw/ui'
+import { Section, Stack, FieldRows, FieldRow, Choices, SwitchRow, Toggle } from '@/components/gw/ui'
 import { A_FAILURE } from './people-here'
 
 /**
@@ -38,6 +39,47 @@ export function WhoCanOpenACheckIn({ orgName }: { orgName: string }) {
     ['NAMED_LEADS', 'Only the people you name', 'Choose who can open check-ins. Everybody else takes part.'],
     ['EVERYONE', 'Anybody signed in here', `Anyone at ${orgName} can start a check-in.`],
   ]
+
+  /*
+   * THE DESIGN PASS: each setting said as it is now, with its control. Who may open check-ins is its sentence, then both choices
+   * as plain radio rows (a chosen option never looks like a button). Whether new
+   * check-ins wait for an admin is its sentence and its switch, nothing else.
+   */
+  const designPass = useTheDesignPass()
+  if (designPass) {
+    return (
+      <Section heading="Who can open a check-in">
+        <ul className="dp-rows" aria-label="Who can open a check-in">
+          <li className="dp-row">
+            <span className="dp-row-main">
+              <span className="dp-row-title">Opening check-ins</span>
+              <span className="dp-row-line">{how.whoMayOpen === 'EVERYONE' ? `Anyone at ${orgName} can start a check-in.` : 'Only the people you choose. Everyone else takes part in the ones they’re invited to.'}</span>
+            </span>
+            {/* Both choices are always shown, as plain radio rows; choosing one saves it. */}
+            {(
+              <fieldset className="dp-row-body dp-fieldset">
+                <legend className="gwui-sr-only">Who can open a check-in</legend>
+                {OPTIONS.map(([key, label, description]) => (
+                  <label key={key} className="dp-choice">
+                    <input type="radio" name="who-may-open" checked={how.whoMayOpen === key} disabled={set.isPending}
+                      onChange={() => key !== how.whoMayOpen && set.mutate({ whoMayOpen: key })} />
+                    <span><span className="dp-choice-title">{label}</span><span className="dp-choice-says">{description}</span></span>
+                  </label>
+                ))}
+              </fieldset>
+            )}
+          </li>
+          <li className="dp-row">
+            <span className="dp-row-main">
+              <span className="dp-row-title">Check-ins wait for an admin</span>
+              <span className="dp-row-line">{how.needsApproval ? 'Each new check-in waits for an admin before invitations go out.' : 'New check-ins start straight away.'}</span>
+            </span>
+            <span className="dp-row-acts"><Toggle on={how.needsApproval} onChange={() => set.mutate({ needsApproval: !how.needsApproval })} label="Check-ins wait for an admin" disabled={set.isPending} /></span>
+          </li>
+        </ul>
+      </Section>
+    )
+  }
 
   return (
     <Section heading="Who can open a check-in">

@@ -1,0 +1,566 @@
+{
+ "groundId": "3bf5ecb2-9ad5-4eb7-b8a4-5a0f74d0cd5c",
+ "renders": true,
+ "mode": "SHARED",
+ "family": "ONBOARDING",
+ "peopleWorkTogether": true,
+ "sections": [
+  "quickRead",
+  "phaseSpine",
+  "objectives",
+  "startingState",
+  "changeSinceLast",
+  "dependencies",
+  "checkInGrid",
+  "divergence",
+  "contribution",
+  "patterns"
+ ],
+ "title": "Imani Hassan, first ninety days",
+ "scenario": "NEW_HIRE",
+ "kindOfWork": "distribution operations",
+ "releaseOneSalesBoard": true,
+ "releaseFourTeams": true,
+ "template": null,
+ "switchboard": {
+  "type": "incidents",
+  "typeConfirmed": false,
+  "board": "the tickets board",
+  "drawnAs": "distribution operations",
+  "reports": "today"
+ },
+ "kindsOffered": [
+  "sales team",
+  "sales org",
+  "engineering release",
+  "support desk",
+  "distribution operations",
+  "trader training programme",
+  "founder's own check-in",
+  "asset loans",
+  "MarketView where next",
+  "MarketView Q4",
+  "a law firm matter",
+  "a government programme",
+  "leadership",
+  "a funded project",
+  "client delivery"
+ ],
+ "theCount": {
+  "session": 2,
+  "planned": 6,
+  "bySession": {
+   "1": {
+    "sessionNumber": 1,
+    "onTheCheckIn": [
+     "1070a554-4a32-46e0-963c-ed220811f5d0",
+     "8f94325d-3064-41bb-88aa-02b06a7ac23c"
+    ],
+    "answered": [
+     "1070a554-4a32-46e0-963c-ed220811f5d0",
+     "8f94325d-3064-41bb-88aa-02b06a7ac23c"
+    ],
+    "notYet": [],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "2": {
+    "sessionNumber": 2,
+    "onTheCheckIn": [
+     "1070a554-4a32-46e0-963c-ed220811f5d0",
+     "8f94325d-3064-41bb-88aa-02b06a7ac23c"
+    ],
+    "answered": [
+     "1070a554-4a32-46e0-963c-ed220811f5d0"
+    ],
+    "notYet": [
+     "8f94325d-3064-41bb-88aa-02b06a7ac23c"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "3": {
+    "sessionNumber": 3,
+    "onTheCheckIn": [
+     "8f94325d-3064-41bb-88aa-02b06a7ac23c"
+    ],
+    "answered": [],
+    "notYet": [
+     "8f94325d-3064-41bb-88aa-02b06a7ac23c"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   }
+  },
+  "said": {
+   "says": "1 of 2 has checked in; Imani hasn\u2019t started yet.",
+   "whoSays": "Imani hasn\u2019t started yet.",
+   "notJoinedSays": null,
+   "notCountedSays": null,
+   "everyoneIn": false,
+   "othersHaveAnswered": false
+  }
+ },
+ "howItIsGoing": {
+  "latestSummary": null,
+  "glance": {
+   "progress": {
+    "roundsDone": 1,
+    "roundsPlanned": 6,
+    "answeredThisRound": 1,
+    "ofPeople": 2,
+    "waitingOn": [
+     "8f94325d-3064-41bb-88aa-02b06a7ac23c"
+    ]
+   },
+   "inTheWay": {
+    "count": 0,
+    "oldest": null,
+    "daysWaiting": null,
+    "since": null,
+    "sinceSays": null,
+    "says": "No wait is listed against a named person, but 2 worries are on record."
+   }
+  }
+ },
+ "groundStatus": "ACTIVE",
+ "endState": null,
+ "coverageVariant": "text",
+ "startingState": null,
+ "whatTheAnswersSay": null,
+ "theJudgement": null,
+ "theTable": null,
+ "overTime": null,
+ "myParticipantId": "1070a554-4a32-46e0-963c-ed220811f5d0",
+ "canEditFrame": true,
+ "readOnlyNote": null,
+ "lastChangedAt": "2026-11-06T08:47:29.624Z",
+ "participants": [
+  {
+   "id": "1070a554-4a32-46e0-963c-ed220811f5d0",
+   "name": "Baraka Mutua",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "INITIATOR"
+  },
+  {
+   "id": "8f94325d-3064-41bb-88aa-02b06a7ac23c",
+   "name": "Imani Hassan",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  }
+ ],
+ "aTeamReportComes": true,
+ "waitingToBeLetIn": null,
+ "whoIsAway": [],
+ "phaseSpine": {
+  "startsAt": "2026-10-23T07:40:49.618Z",
+  "endsAt": "2027-01-21T07:40:49.618Z",
+  "currentSession": 2,
+  "plannedSessions": 6,
+  "sessions": [
+   {
+    "n": 1,
+    "state": "done",
+    "date": "2026-10-23T08:47:29.620Z",
+    "opensOn": "2026-10-23T07:40:49.620Z",
+    "openedOn": "2026-10-23T07:40:49.622Z",
+    "says": "Check-in 1 finished on 23 October."
+   },
+   {
+    "n": 2,
+    "state": "current",
+    "date": "2026-11-06T08:47:29.624Z",
+    "opensOn": "2026-11-06T07:40:49.624Z",
+    "openedOn": "2026-11-06T07:40:49.626Z",
+    "says": "Check-in 2 opened on 6 November, and it is still open."
+   }
+  ]
+ },
+ "targetsNobodyOwns": null,
+ "objectives": [],
+ "eachPersonsOwn": [],
+ "whyTheNumbersDoNotMatch": [],
+ "stillUnanswered": [],
+ "eachPerson": [
+  {
+   "participantId": "8f94325d-3064-41bb-88aa-02b06a7ac23c",
+   "who": "Imani Hassan",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "nothing to do",
+   "says": "Imani Hassan has checked in, and nothing here needs you this week.",
+   "ask": null,
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null
+  }
+ ],
+ "toLookAt": [],
+ "checkInGrid": {
+  "sessions": [
+   1,
+   2
+  ],
+  "rows": [
+   {
+    "participantId": "1070a554-4a32-46e0-963c-ed220811f5d0",
+    "name": "Baraka Mutua",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done"
+    }
+   },
+   {
+    "participantId": "8f94325d-3064-41bb-88aa-02b06a7ac23c",
+    "name": "Imani Hassan",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "not-started"
+    }
+   }
+  ]
+ },
+ "dependencies": [],
+ "objectivesPrompt": "No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this ground is aiming for.",
+ "quickRead": [
+  {
+   "label": "Differences",
+   "value": "Nothing to compare yet",
+   "sub": "Everybody has answered, and the written report names no agreement and no gap yet.",
+   "tone": "flat"
+  },
+  {
+   "label": "Movement",
+   "value": "No target set",
+   "sub": "Nobody has set anything to measure this against.",
+   "tone": "flat"
+  },
+  {
+   "label": "Blockers",
+   "value": "2 worries",
+   "sub": "2 worries are on record. None was kept in the words it was said, so none is quoted here. No wait has been recorded against a named person.",
+   "tone": "warn"
+  },
+  {
+   "label": "How much was said",
+   "value": "All from memory",
+   "sub": "Nothing said this check-in has a document behind it.",
+   "tone": "warn"
+  }
+ ],
+ "contribution": [
+  {
+   "participantId": "1070a554-4a32-46e0-963c-ed220811f5d0",
+   "name": "Baraka Mutua",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "reason": null,
+   "note": null,
+   "shown": false,
+   "basis": "No role was defined, so there is nothing to read against.",
+   "saidOnceAbove": true
+  },
+  {
+   "participantId": "8f94325d-3064-41bb-88aa-02b06a7ac23c",
+   "name": "Imani Hassan",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  }
+ ],
+ "coaching": {
+  "yours": {
+   "aboutYou": [
+    "Everything in your check-in came from memory, so there is nothing here that anybody else could open and check."
+   ],
+   "showingUp": null,
+   "whyItMatters": "This is check-in 2 of 6 of this work. Nothing repeats yet, which is normal this early. What decides whether the later check-ins are worth anything is what you can point at.",
+   "beforeNextTime": [
+    "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+   ],
+   "general": true,
+   "role": {
+    "label": "What you said",
+    "onTrack": "What you said can be checked later, because it has a date, a number or a name on it. You also say what you did about anything that stalled.",
+    "goingWrong": "What you said is hard to check later: it has no dates, numbers or names, or things were named and not carried through.",
+    "protectAgainst": "You said little, and little may have happened yet, or nobody may have asked the right question.",
+    "noticed": null,
+    "lookingLike": null
+   },
+   "whyNoRoleMap": "No role was given, so this is about where you are in the check-in rather than about a kind of work."
+  },
+  "eachPerson": [
+   {
+    "who": "Imani Hassan",
+    "participantId": "8f94325d-3064-41bb-88aa-02b06a7ac23c",
+    "probe": [
+     "Imani Hassan has not answered this check-in, so nothing below is from this round."
+    ],
+    "encourage": [],
+    "triedToUnblock": "Nothing in the record says Imani Hassan's work is waiting on a named person."
+   }
+  ]
+ },
+ "patterns": [],
+ "eachPersonToday": [
+  {
+   "participantId": "8f94325d-3064-41bb-88aa-02b06a7ac23c",
+   "who": "Imani Hassan",
+   "line": "Imani Hassan has checked in, and nothing here needs you this week.",
+   "nudge": {
+    "participantId": "8f94325d-3064-41bb-88aa-02b06a7ac23c",
+    "firstName": "Imani",
+    "nudgedAt": null,
+    "says": "Nudge Imani"
+   }
+  }
+ ],
+ "workRecords": [
+  {
+   "section": "Deal grid",
+   "holds": "incidents",
+   "state": "filled",
+   "rows": [
+    {
+     "id": "52b270b2-07f3-4caf-af56-7a03d65bbd8c",
+     "kind": "incident",
+     "name": "The one thing slowing me down",
+     "stage": null,
+     "owner": "Imani Hassan",
+     "ownerParticipantId": "8f94325d-3064-41bb-88aa-02b06a7ac23c",
+     "due": null,
+     "lastSaidOn": "2026-11-20",
+     "fields": {
+      "Cause": "waiting on a decision from another team"
+     },
+     "from": "said",
+     "said": "The one thing slowing me down is waiting on a decision from another team.",
+     "saidBy": "Imani",
+     "saidByParticipantId": "8f94325d-3064-41bb-88aa-02b06a7ac23c",
+     "saidByLine": "In Imani's words,",
+     "known": "said",
+     "knownSays": "Someone said it.",
+     "mark": "said",
+     "next": null,
+     "nextKnown": null,
+     "nextSays": "Nobody has said what happens next.",
+     "evidence": []
+    }
+   ]
+  }
+ ],
+ "timeline": [
+  {
+   "on": "2026-10-23",
+   "says": "On 23 October, the first answers for check-in 1 came in."
+  },
+  {
+   "on": "2026-11-06",
+   "says": "On 6 November, the first answers for check-in 2 came in."
+  }
+ ],
+ "personHistory": [
+  {
+   "participantId": "1070a554-4a32-46e0-963c-ed220811f5d0",
+   "who": "You",
+   "says": "You have answered 2 check-ins, and have made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-10-23",
+     "says": "In check-in 1, you answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 2,
+     "on": "2026-11-06",
+     "says": "In check-in 2, you answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  },
+  {
+   "participantId": "8f94325d-3064-41bb-88aa-02b06a7ac23c",
+   "who": "Imani Hassan",
+   "says": "Imani Hassan has answered 1 check-in, and has made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-10-23",
+     "says": "In check-in 1, Imani Hassan answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  }
+ ],
+ "ninetyDays": {
+  "heading": "The 90 days, in three steps",
+  "steps": [
+   {
+    "step": "After 30 days",
+    "day": 30,
+    "question": "Is Imani Hassan settled in?",
+    "says": "No goal was agreed for Imani Hassan to be met by day 30.",
+    "reached": true
+   },
+   {
+    "step": "After 60 days",
+    "day": 60,
+    "question": "Is Imani Hassan doing the job?",
+    "says": "This step comes on 21 December. No goal was agreed for Imani Hassan to be met by day 60.",
+    "reached": false
+   },
+   {
+    "step": "After 90 days",
+    "day": 90,
+    "question": "What you need to decide",
+    "says": "This step comes on 20 January. No goal was agreed for Imani Hassan to be met by day 90.",
+    "reached": false
+   }
+  ]
+ },
+ "whereThisIsHeading": {
+  "heading": "Where this is heading",
+  "about": "Help a new hire get started",
+  "outcomes": [
+   {
+    "value": "KEEP",
+    "says": "Imani stays in the role.",
+    "more": null
+   },
+   {
+    "value": "RESTRUCTURE",
+    "says": "The role is set up differently.",
+    "more": null
+   },
+   {
+    "value": "EXIT",
+    "says": "Imani's role does not continue. Imani's history stays as it is.",
+    "more": null
+   },
+   {
+    "value": "EXTEND",
+    "says": "The time to decide is made longer.",
+    "more": "Both agree the evaluation period should continue, with a defined extension timeline."
+   },
+   {
+    "value": "NOT_YET",
+    "says": "It is not decided yet, and what is missing is named so it can be looked at again.",
+    "more": null
+   }
+  ],
+  "outcomesSays": null,
+  "signals": [],
+  "signalsSays": "Nothing on record points towards one outcome or another yet.",
+  "whatWouldSettleIt": [],
+  "whatWouldSettleItSays": "Nothing on record says yet what would settle it.",
+  "whoDecides": "You decide.",
+  "recordTheDecision": "Record the decision",
+  "decided": null
+ },
+ "byArea": {
+  "state": "not-known",
+  "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+ },
+ "contributionSaysOnce": "No position is shown for you or Imani Hassan, because nobody's role was clearly defined. Define what each role is responsible for before assessing anyone against it. An undefined role is often the real problem, not the person.",
+ "theMorning": {
+  "groundId": "3bf5ecb2-9ad5-4eb7-b8a4-5a0f74d0cd5c",
+  "kind": "matter",
+  "parts": [
+   {
+    "key": "team",
+    "heading": "Your team today",
+    "lines": [
+     "Imani hasn't checked in the last 2 times the check-in opened, on Friday 23 October and Friday 6 November, so call Imani."
+    ],
+    "about": [
+     {
+      "participantId": "8f94325d-3064-41bb-88aa-02b06a7ac23c"
+     }
+    ]
+   }
+  ],
+  "nudges": [
+   {
+    "participantId": "8f94325d-3064-41bb-88aa-02b06a7ac23c",
+    "firstName": "Imani",
+    "nudgedAt": null,
+    "says": "Nudge Imani"
+   }
+  ]
+ },
+ "yourTeam": {
+  "heading": "Your team, person by person",
+  "note": "",
+  "people": [
+   {
+    "participantId": "8f94325d-3064-41bb-88aa-02b06a7ac23c",
+    "name": "Imani Hassan",
+    "role": "Operations analyst (new)",
+    "delivered": {
+     "heading": "What Imani delivered, with proof",
+     "proven": [],
+     "onlySaid": [],
+     "empty": "Nothing Imani said was paid, signed or done is on record yet."
+    },
+    "record": null,
+    "whereTheyStand": null,
+    "fromYou": [],
+    "actions": [
+     {
+      "kind": "praise",
+      "label": "Praise Imani",
+      "does": "Keeps your words in Imani\u2019s record, where Imani reads them on My work and in Imani\u2019s own report. No message is sent."
+     },
+     {
+      "kind": "plan",
+      "label": "Start a plan",
+      "does": "Keeps what you want to help Imani with, here and under People on References and resources. Only you read it. Nothing is sent to Imani."
+     },
+     {
+      "kind": "deadline",
+      "label": "Set a deadline",
+      "does": "Puts a due day on one of Imani\u2019s records. It shows on that record on your board, and nothing is sent to Imani.",
+      "items": [
+       {
+        "id": "52b270b2-07f3-4caf-af56-7a03d65bbd8c",
+        "name": "The one thing slowing me down",
+        "due": null
+       }
+      ]
+     },
+     {
+      "kind": "reassign",
+      "label": "Reassign work",
+      "does": "Gives one of Imani\u2019s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.",
+      "items": [
+       {
+        "id": "52b270b2-07f3-4caf-af56-7a03d65bbd8c",
+        "name": "The one thing slowing me down",
+        "due": null
+       }
+      ],
+      "to": []
+     }
+    ]
+   }
+  ]
+ }
+}

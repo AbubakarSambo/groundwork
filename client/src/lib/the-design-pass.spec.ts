@@ -1,11 +1,11 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { describe, it, expect, beforeEach } from 'vitest'
-import { isTheDesignPassOn, readTheSwitchFromTheAddress, applyTheDesignPass, theDesignPassAppliesHere, isABoardPage } from './the-design-pass'
+import { isTheDesignPassOn, readTheSwitchFromTheAddress, applyTheDesignPass, theDesignPassAppliesHere } from './the-design-pass'
 
 /**
- * THE DESIGN PASS IS A SWITCH, OFF UNTIL THIS BROWSER TURNS IT ON (Hafsah, 21 November 2026), AND
- * IT NEVER REACHES A BOARD.
+ * THE DESIGN PASS IS A SWITCH, OFF UNTIL THIS BROWSER TURNS IT ON (Hafsah, 21 November 2026). Since
+ * the afternoon it reaches the boards too, so the boards can be brought to the prototype behind it.
  */
 /** A selector list split at its own commas, not at the commas inside :is(), :not() or :where(). */
 function topLevelParts(sel: string): string[] {
@@ -51,16 +51,18 @@ describe('the design pass switch', () => {
     expect(isTheDesignPassOn()).toBe(true)
   })
 
-  it('never applies on a board page, with the switch on', () => {
-    localStorage.setItem('gw-design-pass', 'on')
-    for (const board of ['/boards', '/grounds/abc/board', '/grounds/abc/person/p1', '/grounds/abc/trace', '/scenario-boards', '/scenario-boards/sales']) {
-      expect(isABoardPage(board), board).toBe(true)
-      expect(theDesignPassAppliesHere(board), board).toBe(false)
-      applyTheDesignPass(board)
-      expect(document.documentElement.classList.contains('design-pass'), board).toBe(false)
+  it('reaches the boards when it is on, and nothing when it is off', () => {
+    const pages = ['/boards', '/grounds/abc/board', '/grounds/abc/person/p1', '/grounds/abc/trace', '/scenario-boards', '/today', '/company']
+    for (const page of pages) {
+      expect(theDesignPassAppliesHere(page), page).toBe(false)
+      applyTheDesignPass(page)
+      expect(document.documentElement.classList.contains('design-pass'), page).toBe(false)
     }
-    for (const page of ['/today', '/company', '/grounds/abc', '/grounds/abc/report', '/suite/leave', '/settings/suites']) {
+    localStorage.setItem('gw-design-pass', 'on')
+    for (const page of pages) {
       expect(theDesignPassAppliesHere(page), page).toBe(true)
+      applyTheDesignPass(page)
+      expect(document.documentElement.classList.contains('design-pass'), page).toBe(true)
     }
   })
 

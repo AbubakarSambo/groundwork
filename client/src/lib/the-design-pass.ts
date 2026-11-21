@@ -10,9 +10,10 @@
  * written under `html.design-pass` in styles/the-design-pass.css. Markup or inline-style changes read
  * `theDesignPassAppliesHere()`.
  *
- * The boards never change (rule 2 of the brief): on a board page the class is taken off and
- * `theDesignPassAppliesHere()` is false, so neither the stylesheet nor any markup change can reach
- * a board, whatever it shares with the other pages.
+ * The boards are part of it (Hafsah, 21 November, afternoon: "ensure the boards and board content
+ * match the prototype 100%", behind this switch). Until then the boards were kept out of it, which
+ * is why the morning's pass could not reach them. With the switch off, every page, boards included,
+ * is exactly as it was.
  */
 
 const KEY = 'gw-design-pass'
@@ -27,19 +28,9 @@ export function isTheDesignPassOn(): boolean {
   }
 }
 
-/** The board pages, which the design pass never touches: the boards list, a check-in's board, the example boards, and the pages that are part of a board (one person on it, where a blocker started). */
-export function isABoardPage(pathname: string): boolean {
-  return (
-    pathname === '/boards' ||
-    pathname.startsWith('/boards/') ||
-    pathname.startsWith('/scenario-boards') ||
-    /^\/grounds\/[^/]+\/(board|person|trace)(\/|$)/.test(pathname)
-  )
-}
-
-/** True when the design pass is on and this page is not a board. */
-export function theDesignPassAppliesHere(pathname: string = window.location.pathname): boolean {
-  return isTheDesignPassOn() && !isABoardPage(pathname)
+/** True when the design pass is on. The page is still asked for, so a caller can say which page it means. */
+export function theDesignPassAppliesHere(_pathname: string = window.location.pathname): boolean {
+  return isTheDesignPassOn()
 }
 
 /** Reads `?design=on` or `?design=off` from the address and remembers it. */
@@ -65,8 +56,7 @@ export function startTheDesignPass(): void {
 }
 
 /**
- * For markup and inline-style changes: true when the pass is on and the page that is open is not a
- * board. Read from the address at each render, so it needs no router around it (a part drawn in a
+ * For markup and inline-style changes: true when the pass is on. Read from the address at each render, so it needs no router around it (a part drawn in a
  * test, or outside the pages), and a page drawn after a change of page reads the new one.
  */
 export function useTheDesignPass(): boolean {

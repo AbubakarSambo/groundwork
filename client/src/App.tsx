@@ -601,7 +601,7 @@ export default function App() {
             {/* The Company page (D2, U.15) and its context: what each reader is given is the server's. */}
             <Route path="/company" element={<RequireOrgSetup><CompanyPage /></RequireOrgSetup>} />
             {/* Company context is part of the Desk now (S7): an old link lands on the Desk. */}
-            <Route path="/company/context" element={<Navigate to="/company" replace />} />
+            <Route path="/company/context" element={<Navigate to="/company#goals" replace />} />
             {/* THE SUITES PAGE (E, U.17). What each reader is given is the server's (GET /suites). */}
             <Route path="/settings/suites" element={<RequireOrgSetup><SuitesPage /></RequireOrgSetup>} />
             {/* Release 4: the template library (B1, #/templates). */}

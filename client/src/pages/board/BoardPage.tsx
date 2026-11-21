@@ -170,6 +170,10 @@ import { initialsOf } from '@/pages/org/people-here'
 import { theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
 import { theClocksSessionSaid } from '@/lib/the-one-count'
+import { useTheDesignPass } from '@/lib/the-design-pass'
+import { TheSalesBoardAsPictured } from './prototype/TheSalesBoardAsPictured'
+import { TheNewHireBoardAsPictured } from './prototype/TheNewHireBoardAsPictured'
+import { TheNewProjectBoardAsPictured } from './prototype/TheNewProjectBoardAsPictured'
 import { KindOfWorkBanner, WorkRecordsSections, YourOwnRecordsSections, sectionHeading } from './WorkRecords'
 import {
   RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockersSection,
@@ -1013,6 +1017,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const qc = useQueryClient()
   /* The lead's answer to a line that came close to the event a fee note waits for (Release 2), through the same gate as every board action. */
   const answerOnTheCollectionsBoard = useRunBoardAction(id ?? '')
+  /* THE DESIGN PASS (Hafsah, 21 November: "ensure the boards and board content match the prototype"). With it on, the board leads with
+     the work, and who has checked in sits where the prototype puts it, with "Who checked in", "Over time" and "Reports". Off, nothing moves. */
+  const designPass = useTheDesignPass()
   const [variant, setVariant] = useState<CoverageVariant | undefined>(undefined)
 
   /*
@@ -1603,8 +1610,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const picturedOtherKind = picturedSituation || !theWholeBoard && !groundId && (((b as any).releaseFourTeams && (b as any).kindOfWork === 'leadership') || ((b as any).releaseFiveProjects && (b as any).project) || (viewerRunsThisCheckIn && !isParticipantView
     && ([...['engineering release', 'support desk', 'distribution operations', 'trader training programme', "founder's own check-in", 'asset loans', 'MarketView where next', 'MarketView Q4', 'a law firm matter', 'a government programme'], ...((b as any).releaseFourTeams ? ['sales org'] : [])]).includes(String((b as any).kindOfWork ?? ''))))
   /* An admin who only reads a sales check-in reads the same board as pictured, with nothing to press (read-only-view.jpg). */
+  /* An admin who reads a sales check-in reads the lead's board without the lead's buttons (A4 read-only-view.txt). With the design pass
+     on, that is so before the first deal too, as it is for the lead; off, a board with no deal yet is the light board, as before. */
   const picturedReader = !theWholeBoard && isSalesOrg && !viewerRunsThisCheckIn && !isParticipantView && !groundId && !!b.readOnlyNote
-    && (b.workRecords ?? []).some((s: any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: any) => r.kind === 'deal'))
+    && (designPass || (b.workRecords ?? []).some((s: any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: any) => r.kind === 'deal')))
   /* And a person in it reads their own part of the same board as pictured (board-as-participant.jpg). */
   const picturedParticipant = !theWholeBoard && isSalesOrg && isParticipantView && !groundId
     && (b.workRecords ?? []).some((s: any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: any) => r.kind === 'deal'))
@@ -2223,6 +2232,322 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     </>
   )
 
+  /* The one thing this check-in asks the team to settle: the general board's question, which opens it with the design pass on. */
+  const theQuestion = () => (
+    <>
+        {b.divergence?.centralQuestion && (
+          <Placed as="What to settle together">
+            <Panel>
+              <PartBoundary><WhatToSettleTogether question={b.divergence.centralQuestion} /></PartBoundary>
+            </Panel>
+          </Placed>
+        )}
+    </>
+  )
+  /* What success looks like and what the team is aiming for. With the design pass on they follow what needs you, near the top, as the
+     prototype's targets do (board-as-lead.txt: the question, the targets, what needs you, then the work); off, where they were. */
+  const theTargets = () => (
+    <>
+        {(shown.objectives || shown.divergence) && (
+          <Section heading="What success looks like">
+            <Panel>
+              <PartBoundary><WhatSuccessLooksLikeFor groundId={id!} yourName={myName} headingIsTheCallers /></PartBoundary>
+            </Panel>
+          </Section>
+        )}
+
+        {shown.objectives && b.objectives && (
+          <Section
+            heading="What the team is aiming for"
+            /* Board review, 1 October, item 4: "The lead sets these targets." said "the lead" even
+               to the lead themselves, and even where a colleague's reader already knows their name
+               from elsewhere on this board (leadFirstName). */
+            note={viewerRunsThisCheckIn ? 'You set these targets.' : `${(groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'} sets these targets.`}
+          >
+
+            {/* The privacy setting is on and some numbers still have nobody's name on them, so
+                everybody can read those. Said to the only person who can fix it. */}
+            {/* One total, ten people, from the export they already have. Above the form, because
+                somebody with a team and a committed number reaches for this before typing.
+                NOT ON A ONE-PERSON CHECK-IN (the founder's own check-in board among them) - there
+                is nobody to split a total across. */}
+            {b.canEditFrame && !onlyOnePersonHere && <SplitOneTotalAcrossPeople groundId={id!} />}
+            <Stack gap={8}>
+            {b.targetsNobodyOwns && (
+              <Callout tone="warning">{b.targetsNobodyOwns}</Callout>
+            )}
+            {b.objectivesPrompt && (
+              <Callout tone="warning">{b.objectivesPrompt}</Callout>
+            )}
+            <Panel pad={false}>
+              <RowList label="What the team is aiming for">
+              {b.objectives.map((o) => {
+                /*
+                  A MEASURE THAT GOES DOWN IS STILL GOING WELL.
+
+                  This was count/target, so a ceiling - "first response under four hours", "no more
+                  than two stock-outs" - filled backwards: a team getting faster watched their bar
+                  shrink. The server now sends the journey, worked out from where it started rather
+                  than from a column anybody has to set. The old arithmetic is the fallback for a
+                  board whose rounds predate any snapshot.
+                */
+                const pct = o.journey?.covered ?? (o.target && o.target > 0 ? Math.min(100, Math.round((o.count / o.target) * 100)) : 0)
+                return (
+                  <Row key={o.id} columns="1fr" inset="panel">
+                    <FlexRow gap={12} align="center" wrap>
+                      <div className="gwui-fs-16" style={{flex: 1, fontWeight: 700, minWidth: 160}}>
+                        {o.name}
+                        {o.isNew && <span className="gwui-ml-7"><Tag tone="plain">new</Tag></span>}
+                        {/*
+                          WHOSE NUMBER IT IS, on its own line. "12 shops· Rukia Otieno" read live: the
+                          name sat right after the target with only a CSS margin between them, no
+                          space in the text itself. Said as a plain sentence below the name instead.
+                        */}
+                        {o.owner && (
+                          /* Re-review, 30 September: to Rukia herself this read "Rukia Otieno's
+                             own target" - the reader is "you" here too. */
+                          <div className="gwui-ink-sub gwui-fs-13-5 gwui-mt-2" style={{fontWeight: 400}}>
+                            {o.ownerParticipantId && o.ownerParticipantId === b.myParticipantId ? 'Your own target' : `${o.owner}’s own target`}
+                          </div>
+                        )}
+                        {/*
+                          WHOSE GOAL IT IS, SET BY THE LEAD (polish round 1, 25 October). With nobody named it is the goal of whoever
+                          runs this check-in, and that is who recommits it when the direction changes. The lead names somebody else here.
+                        */}
+                        {b.canEditFrame && (
+                          <label className="gwui-ink-sub gwui-fs-14 gwui-mt-2">
+                            <FlexRow gap={8} align="center">
+                            Whose goal
+                            <select
+                              className="gwui-input" style={{width: 'auto', minHeight: 44}}
+                              value={o.ownerParticipantId ?? ''}
+                              onChange={async (e) => {
+                                try { await boardApi.updateObjective(id!, o.id, { ownerParticipantId: e.target.value || null }); invalidate() }
+                                catch { toast.error('That was not changed. Try again.') }
+                              }}
+                            >
+                              <option value="">Yours, as you run this check-in</option>
+                              {(b.participants ?? []).filter((p) => p.name && p.id !== b.myParticipantId && !p.managingOnly).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                            </FlexRow>
+                          </label>
+                        )}
+                        {/*
+                          A NUMBER NOBODY HAS DEFINED IS NOT AN AGREED NUMBER, AND THE ROW SAYS SO.
+                          "signed 12m" read as settled while the lead's own note, one page away, said
+                          nobody had decided whether the 12m is signed or recognised revenue. The
+                          sentence is the lead's own; it does not change or block the target.
+                        */}
+                        {o.notSettled && <span className="gwui-ml-7"><Tag tone="attention">definition not settled</Tag></span>}
+                        {/* REQUEST 108 (b): the word for where this target stands, next to its name. */}
+                        {(o as any).stands?.word && (
+                          <>{' '}<Tag tone={standsTone((o as any).stands.word)}>{(o as any).stands.word}</Tag></>
+                        )}
+                      </div>
+                      {/*
+                        NOTHING TO MEASURE MEANS NOTHING TO DRAW. An aim with no number got an empty
+                        bar, a "0" and "no change" beside it - read live as "Confirm her in the role ·
+                        0 · no change", which says the decision did not happen. Without a target the
+                        row is the aim and nothing else.
+                      */}
+                      {o.target != null ? (
+                        <>
+                          <div style={{width: 140, height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden'}}>
+                            <div style={{height: '100%', width: `${pct}%`, background: 'var(--gw-navy)', borderRadius: 6}} />
+                          </div>
+                          {/* Three numbers a person can check, rather than a share of a target that
+                              means the opposite thing on a ceiling. */}
+                          {/*
+                            U.10 RE-REVIEW ITEM 3: TWO SENTENCES, NOT COMMA-JOINED PIECES.
+                            "12, up from 0, aiming for 12" and "up 12 this session" read as
+                            fragments strung together rather than something said to a reader.
+                          */}
+                          <div className="gwui-fs-15 gwui-ink-sub" style={{minWidth: 96, textAlign: 'right'}}>
+                            {/*
+                              RE-REVIEW: "0 NOW, UP FROM 0." IS NOT A MOVE. Read live on "You are
+                              aiming for 4 shops.", with nothing counted yet: `journey.start` (0)
+                              equalling `o.count` (0) still drew "up from 0", claiming a rise that
+                              never happened. "Up"/"down" is only true when the count has actually
+                              moved from where it started; unmoved reads the same plain "X of Y."
+                              the line below already uses when there is no start to compare against.
+                            */}
+                            {/* REQUEST 132: THOUSANDS SEPARATORS, SO A LARGE COUNT READS AS A
+                                NUMBER, NOT A STRING OF DIGITS ("4,100 now, up from 0. The aim is
+                                6,000.", not "4100 now, up from 0. The aim is 6000."). */}
+                            {o.journey?.start != null && o.journey.start !== o.count
+                              ? (<><b className="gwui-ink-dark">{o.count.toLocaleString('en-GB')}</b>{` now, ${o.count > o.journey.start ? 'up' : 'down'} from ${o.journey.start.toLocaleString('en-GB')}. The aim is ${o.target.toLocaleString('en-GB')}.`}</>)
+                              : (<><b className="gwui-ink-dark">{o.count.toLocaleString('en-GB')}</b>{` of ${o.target.toLocaleString('en-GB')}.`}</>)}
+                          </div>
+                          <div className={`gwui-fs-13 ${o.delta > 0 ? 'gwui-ink-green' : 'gwui-ink-muted'}`} style={{fontWeight: 700, minWidth: 92, textAlign: 'right'}}>
+                            {o.delta > 0 ? `Up ${o.delta.toLocaleString('en-GB')} this check-in.` : 'No change.'}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="gwui-fs-15 gwui-ink-muted" style={{minWidth: 92, textAlign: 'right'}}>No number is set yet.</div>
+                      )}
+                    </FlexRow>
+                    {o.notSettled && (
+                      <div className="gwui-fs-15 gwui-ink-amber gwui-mt-5" style={{lineHeight: '23px', maxWidth: '68ch'}}>{o.notSettled}</div>
+                    )}
+                    {/* "What the target assumes" is drawn once, above everything, right after the
+                        headline - see the new top-level section near the top of this component.
+                        Not repeated here, so the fact is said once rather than twice on one page. */}
+                      {/*
+                        WORDS, NOT SYMBOLS. "-", "+" and "x" read as three unlabelled glyphs to
+                        anybody looking at the screen, even though each already carried an
+                        aria-label for a screen reader - an accessible name is not the same thing
+                        as a word a sighted person can read.
+                      */}
+                      {b.canEditFrame && (
+                        editingTargetId === o.id ? (
+                          <FlexRow gap={6} align="center" as="span">
+                            <UIButton
+                              kind="secondary" size="small"
+                              onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: Math.max(0, o.count - 1) })}
+                              disabled={(bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id) || o.count === 0}
+                              aria-label={`One fewer: ${o.name}`}
+                            >Lower</UIButton>
+                            <UIButton
+                              kind="secondary" size="small"
+                              onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.count + 1 })}
+                              disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
+                              aria-label={`One more: ${o.name}`}
+                            >Raise</UIButton>
+                            <UIButton
+                              kind="quiet" size="small"
+                              onClick={() => sureAboutTarget.arm(o.id)}
+                              disabled={removeObjective.isPending}
+                              aria-label={`Remove target: ${o.name}`}
+                            >Remove</UIButton>
+                            <UIButton kind="quiet" size="small" onClick={() => setEditingTargetId(null)}>Done</UIButton>
+                          </FlexRow>
+                        ) : (
+                          <UIButton kind="quiet" size="small" onClick={() => setEditingTargetId(o.id)} aria-label={`Change target: ${o.name}`}>Change</UIButton>
+                        )
+                      )}
+                      {sureAboutTarget.isArmed(o.id) && (
+                        <Confirm
+                          saying={`Remove the target "${o.name}"? Its count and history go with it.`}
+                          confirmLabel="Remove it" keepLabel="Keep it" pending={removeObjective.isPending} pendingLabel="Removing…"
+                          onConfirm={() => removeObjective.mutate(o.id)} onKeep={sureAboutTarget.disarm}
+                        />
+                      )}
+                    {/* The record suggests, the lead decides. Never auto-applied:
+                        a number a person set is theirs until they change it. */}
+                    {o.suggestedCount != null && b.canEditFrame && (
+                      <FlexRow gap={8} align="center" wrap className="gwui-fs-15 gwui-ink-navy gwui-mt-6">
+                        <span>
+                          The record shows <b>{o.suggestedCount}</b> for this, not {o.count}.
+                        </span>
+                        {/* THE LINE IT CAME FROM, because a number from nowhere is one a lead has no
+                            way to judge. Asking somebody to accept a figure without showing them
+                            what it was read from is asking them to trust rather than to check. */}
+                        {o.suggestedSaid && (
+                          <span className="gwui-ink-sub" style={{display: 'block', width: '100%', fontStyle: 'italic'}}>
+                            &ldquo;{o.suggestedSaid}&rdquo;
+                          </span>
+                        )}
+                        <button
+                          onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.suggestedCount! })}
+                          disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
+                          /*
+                            PHONE CHECK, ITEM 9: "USE N" WAS 55 BY 25 - under the 40px tap area a
+                            finger needs. `inline-flex`/`minHeight` grows the hit area; the pill's
+                            own padding, border, colour and corner radius are unchanged.
+                          */
+                          className="gwui-fs-13 gwui-pt-2 gwui-pr-9 gwui-pb-2 gwui-pl-9 gwui-rule-blue gwui-ink-blue" style={{fontWeight: 700, borderRadius: 11, background: 'var(--gw-blue-bg)', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', minHeight: 44, boxSizing: 'border-box'}}
+                        >
+                          Use {o.suggestedCount}
+                        </button>
+                      </FlexRow>
+                    )}
+                    {/* A new target means nothing until people have checked in against it. */}
+                    {o.isNew && o.askedOf && (
+                      <div className="gwui-fs-13 gwui-ink-sub gwui-mt-6">
+                        {(() => {
+                          const asked = o.askedOf.filter((a) => a.asked).map((a) => a.name)
+                          const notYet = o.askedOf.filter((a) => !a.asked).map((a) => a.name)
+                          const askedSaid = asked.length ? `So far this has been asked of ${asked.join(', ')}.` : 'Nobody has been asked about this yet.'
+                          return notYet.length ? `${askedSaid} It still needs to be asked of ${notYet.join(', ')}.` : askedSaid
+                        })()}
+                      </div>
+                    )}
+                  </Row>
+                )
+              })}
+              {/* The lead sets the frame. A target, never an assessment of a person. */}
+              {b.canEditFrame && (
+                <Row columns="1fr" inset="panel">
+                  <FlexRow gap={8} align="center" wrap>
+                    <input
+                      value={newObjName}
+                      onChange={(e) => setNewObjName(e.target.value)}
+                      placeholder="Add a target, e.g. Paying companies"
+                      className="gwui-input" style={{flex: 1, minWidth: 200}}
+                    />
+                    <input
+                      value={newObjTarget}
+                      onChange={(e) => setNewObjTarget(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="how many"
+                      className="gwui-input" style={{flex: '0 0 120px', width: 120}}
+                    />
+                    {/* What the number counts: "units", "%", "KES", "hours" (round 1 dead end, 25 October). */}
+                    <input
+                      value={newObjUnit}
+                      onChange={(e) => setNewObjUnit(e.target.value.slice(0, 12))}
+                      placeholder="unit, e.g. units or %"
+                      aria-label="Unit"
+                      className="gwui-input" style={{flex: '0 0 160px', width: 160}}
+                    />
+                    {/*
+                      SECONDARY, NOT NAVY (Hafsah, 30 September, item 2: "at most one primary
+                      (navy) button per screen"). The board's one primary is "Your check-in", in
+                      the header, as the prototype's own board-as-lead.txt draws it; every other
+                      action on this page, including adding a target, is secondary or quiet.
+                    */}
+                    <UIButton
+                      kind="secondary" size="small"
+                      onClick={() => addObjective.mutate()}
+                      disabled={!newObjName.trim() || addObjective.isPending}
+                    >
+                      {addObjective.isPending ? 'Adding...' : 'Add target'}
+                    </UIButton>
+                  </FlexRow>
+                </Row>
+              )}
+              </RowList>
+            </Panel>
+            </Stack>
+          </Section>
+        )}
+    </>
+  )
+  /* How far the check-in has got and who has answered (the glance): the top of the board with the design pass off; with it on, the
+     first line of the check-in status, above "Who checked in", where the prototype keeps attendance (board-as-lead.txt). */
+  const theGlance = () => {
+    if (!((b as any).howItIsGoing?.glance && !((b as any).headline && !(b as any).headline.answer))) return null
+    return (
+          <div className="gwui-mt-16">
+            <PartBoundary><HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere && viewerChecksIn} theCountSays={theClocksSessionSaid(b)?.says ?? null} /></PartBoundary>
+            {/* The way to what each person said, once somebody else has answered this session (round 6; GroundAdminPage says the same). */}
+            {theClocksSessionSaid(b)?.othersHaveAnswered && (
+              <Note>
+                <Link className="gwui-plain-link" to={`/grounds/${id}/session/${theClocksSessionSaid(b)!.session}`}>{SEE_WHAT_EACH_PERSON_SAID}</Link>
+              </Note>
+            )}
+          </div>
+    )
+  }
+  /* Each person's record, praise and plan, served to the lead alone. With the design pass on it is on their own page instead. */
+  const yourTeamGoesAtTheTop = !groundId && !!(b as any).yourTeam && !!id && !(!picturedCollections && !picturedMatter && (((picturedLead && picturedManyInTeams) || picturedOtherKind) || (picturedLead && !picturedManyInTeams)))
+  /* The check-in status, together, in the prototype's place: with the design pass on, how far it has got comes first. Each person's
+     record is on their own page then (TheirPartOfYourTeam on ThePersonPage), as the prototype has it. */
+  const theCheckInStatus = () => (
+    <>
+      {designPass && theGlance()}
+      {whoCheckedIn()}
+    </>
+  )
   const whoCheckedIn = () => {
     if (!shown.checkInGrid || !b.checkInGrid) return null
           /** Does any row have a role worth a column of its own? */
@@ -2373,7 +2698,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         <EdgeList label="Reports">
           {sessionRows.slice(0, 5).map((r) => {
             const leadName = (groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'
-            const notSharedText = viewerRunsThisCheckIn ? EVERY_SESSION.notShared : `Not shared yet. ${leadName} shares it.`
+            const notSharedText = viewerRunsThisCheckIn ? EVERY_SESSION.notShared : designPass ? 'Not shared yet.' : `Not shared yet. ${leadName} shares it.`
             return (
               <EdgeRow
                 key={r.sessionNumber}
@@ -2459,6 +2784,77 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
       ? <DivergenceSectionBody heading={heading} divergence={b.divergence} whyNothingYet={b.divergence.whyNothingYet} onlyOnePersonHere={onlyOnePersonHere} myName={myName} />
       : null
   )
+
+  /*
+   * THE SALES BOARD, PORTED FROM THE PROTOTYPE'S OWN MARKUP (Hafsah, 21 November 2026: "port the prototype's sales board one-to-one:
+   * its markup, its class names and its stylesheet, with real data in its slots"). With the design switch on, a sales team's board
+   * is prototype/TheSalesBoardAsPictured.tsx, header and all, for whoever runs it. With the switch off, nothing here runs.
+   */
+  /* A new project, ported from the prototype's own markup (engineering-release-as-lead.html, "Get a new project off to a good start"), for whoever runs it. */
+  /* And a sales organisation's goals (sales-org-as-lead.html, "set goals"), drawn the same way with its words for sales and its "By team". */
+  const portedGoals = designPass && (b as any).kindOfWork === 'sales org' && b.scenario === 'OKR_ALIGNMENT'
+  if (designPass && (b.scenario === 'NEW_PROJECT' || portedGoals) && !groundId && !theWholeBoard && viewerRunsThisCheckIn && !isParticipantView) {
+    return (
+      <Page>
+        <PartBoundary>
+          <TheNewProjectBoardAsPictured
+            b={b}
+            ground={groundForSignals}
+            groundId={id!}
+            sessionRows={sessionRows as any[]}
+            tabs={headerTabs}
+            addSomething={!groundEnded ? <AddSomething groundId={id!} /> : null}
+            renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
+            showAsk={showAsk}
+            askWith={(q) => useAskStore.getState().showWith(q)}
+            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
+            goals={portedGoals}
+          />
+        </PartBoundary>
+      </Page>
+    )
+  }
+  /* A new hire's first ninety days, ported from the prototype's own markup (kwame-first-90-days-as-lead.html), for whoever runs it. */
+  if (designPass && b.family === 'ONBOARDING' && !groundId && !theWholeBoard && viewerRunsThisCheckIn && !isParticipantView) {
+    return (
+      <Page>
+        <PartBoundary>
+          <TheNewHireBoardAsPictured
+            b={b}
+            ground={groundForSignals}
+            groundId={id!}
+            tabs={headerTabs}
+            addSomething={!groundEnded ? <AddSomething groundId={id!} /> : null}
+            showAsk={showAsk}
+            askWith={(q) => useAskStore.getState().showWith(q)}
+            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
+          />
+        </PartBoundary>
+      </Page>
+    )
+  }
+  if (designPass && isSalesOrg && (b as any).kindOfWork !== 'sales org' && !groundId && !theWholeBoard && viewerRunsThisCheckIn && !isParticipantView) {
+    return (
+      <Page>
+        <PartBoundary>
+          <TheSalesBoardAsPictured
+            b={b}
+            groundId={id!}
+            ground={groundForSignals}
+            sessionRows={sessionRows as any[]}
+            reader="lead"
+            tabs={headerTabs}
+            renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
+            addSomething={!groundEnded ? <AddSomething groundId={id!} /> : null}
+            showAsk={showAsk}
+            askWith={(q) => useAskStore.getState().showWith(q)}
+            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
+            navigate={navigate}
+          />
+        </PartBoundary>
+      </Page>
+    )
+  }
 
   return (
     <TheDirectMorning on={direct}>
@@ -2630,7 +3026,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {/* The direct morning is no longer one block above the board (Hafsah, 24 October): each of its lines is drawn once where it belongs on the board (pictured/TheMorningOnTheBoard.tsx). */}
         {/* Your team, person by person (pictured/YourTeamPersonByPerson.tsx): served to the lead alone, beside the direct morning, for her monthly look. */}
         {/* On the pictured board it is drawn after the team today, where the prototype puts the people (see `yourTeam` below); elsewhere it stays here. */}
-        {!groundId && (b as any).yourTeam && id && !(!picturedCollections && !picturedMatter && (((picturedLead && picturedManyInTeams) || picturedOtherKind) || (picturedLead && !picturedManyInTeams))) && <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} />}
+        {!designPass && yourTeamGoesAtTheTop && <YourTeamPersonByPerson groundId={id!} team={(b as any).yourTeam} />}
         {picturedCollections && b.collections && (
           <PartBoundary>
           <TheCollectionsBoard
@@ -3105,17 +3501,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </Panel>
         )}
 
-        {(b as any).howItIsGoing?.glance && !((b as any).headline && !(b as any).headline.answer) && (
-          <div className="gwui-mt-16">
-            <PartBoundary><HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere && viewerChecksIn} theCountSays={theClocksSessionSaid(b)?.says ?? null} /></PartBoundary>
-            {/* The way to what each person said, once somebody else has answered this session (round 6; GroundAdminPage says the same). */}
-            {theClocksSessionSaid(b)?.othersHaveAnswered && (
-              <Note>
-                <Link className="gwui-plain-link" to={`/grounds/${id}/session/${theClocksSessionSaid(b)!.session}`}>{SEE_WHAT_EACH_PERSON_SAID}</Link>
-              </Note>
-            )}
-          </div>
-        )}
+        {!designPass && theGlance()}
 
         {/*
           THE QUESTION THIS CHECK-IN TURNS ON, UNDER THE HEADLINE AREA, FOR EVERY FAMILY (real-user
@@ -3131,15 +3517,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           then what needs you, then where people differ and what nobody knows yet. "What needs you" used to sit below the kind of
           work's own sections and what the target assumes (the lead's own setup words); it now follows the headline here.
         */}
+        {/* With the design pass on, the board opens on its question and its targets, then what needs you (board-as-lead.txt). */}
+        {designPass && theQuestion()}
+        {designPass && theTargets()}
         {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'a law firm matter' && whatNeedsYouSection()}
         {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'a law firm matter' && groundworkRecommendsSection()}
-        {b.divergence?.centralQuestion && (
-          <Placed as="What to settle together">
-            <Panel>
-              <PartBoundary><WhatToSettleTogether question={b.divergence.centralQuestion} /></PartBoundary>
-            </Panel>
-          </Placed>
-        )}
+        {!designPass && theQuestion()}
 
         {/*
           THE LAW FIRM MATTER BOARD'S OWN THREE SECTIONS, STRAIGHT AFTER THE GLANCE, IN MATTER.TXT'S
@@ -3527,7 +3910,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           drawn from the server's own `blockers` field - every sentence built and ordered server
           side, so this file no longer joins `blockerCheck` and `whoWaitedOnWhom` by hand.
         */}
-        {(isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
+        {(isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && theCheckInStatus()}
         <PartBoundary><BlockersSection blockers={(b as any).blockers} /></PartBoundary>
         {patternsAndCoachingSection()}
 
@@ -3542,7 +3925,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         <PartBoundary><ReportedAgainstCriteriaSection data={(b as any).reportedAgainstCriteria} kindOfWork={(b as any).kindOfWork ?? null} /></PartBoundary>
 
-        {!(isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
+        {!(isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && theCheckInStatus()}
 
         {/*
           U.10 ITEM 7: "OVER TIME" MOVES OUT OF THE FOLD, TO THE PROTOTYPE'S OWN PLACE
@@ -3861,278 +4244,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           U.10 (c1): its own heading, from the shared Section - `headingIsTheCallers` tells the
           component to leave its own internal heading out, since the section above it now draws one.
         */}
-        {(shown.objectives || shown.divergence) && (
-          <Section heading="What success looks like">
-            <Panel>
-              <PartBoundary><WhatSuccessLooksLikeFor groundId={id!} yourName={myName} headingIsTheCallers /></PartBoundary>
-            </Panel>
-          </Section>
-        )}
-
-        {shown.objectives && b.objectives && (
-          <Section
-            heading="What the team is aiming for"
-            /* Board review, 1 October, item 4: "The lead sets these targets." said "the lead" even
-               to the lead themselves, and even where a colleague's reader already knows their name
-               from elsewhere on this board (leadFirstName). */
-            note={viewerRunsThisCheckIn ? 'You set these targets.' : `${(groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'} sets these targets.`}
-          >
-
-            {/* The privacy setting is on and some numbers still have nobody's name on them, so
-                everybody can read those. Said to the only person who can fix it. */}
-            {/* One total, ten people, from the export they already have. Above the form, because
-                somebody with a team and a committed number reaches for this before typing.
-                NOT ON A ONE-PERSON CHECK-IN (the founder's own check-in board among them) - there
-                is nobody to split a total across. */}
-            {b.canEditFrame && !onlyOnePersonHere && <SplitOneTotalAcrossPeople groundId={id!} />}
-            <Stack gap={8}>
-            {b.targetsNobodyOwns && (
-              <Callout tone="warning">{b.targetsNobodyOwns}</Callout>
-            )}
-            {b.objectivesPrompt && (
-              <Callout tone="warning">{b.objectivesPrompt}</Callout>
-            )}
-            <Panel pad={false}>
-              <RowList label="What the team is aiming for">
-              {b.objectives.map((o) => {
-                /*
-                  A MEASURE THAT GOES DOWN IS STILL GOING WELL.
-
-                  This was count/target, so a ceiling - "first response under four hours", "no more
-                  than two stock-outs" - filled backwards: a team getting faster watched their bar
-                  shrink. The server now sends the journey, worked out from where it started rather
-                  than from a column anybody has to set. The old arithmetic is the fallback for a
-                  board whose rounds predate any snapshot.
-                */
-                const pct = o.journey?.covered ?? (o.target && o.target > 0 ? Math.min(100, Math.round((o.count / o.target) * 100)) : 0)
-                return (
-                  <Row key={o.id} columns="1fr" inset="panel">
-                    <FlexRow gap={12} align="center" wrap>
-                      <div className="gwui-fs-16" style={{flex: 1, fontWeight: 700, minWidth: 160}}>
-                        {o.name}
-                        {o.isNew && <span className="gwui-ml-7"><Tag tone="plain">new</Tag></span>}
-                        {/*
-                          WHOSE NUMBER IT IS, on its own line. "12 shops· Rukia Otieno" read live: the
-                          name sat right after the target with only a CSS margin between them, no
-                          space in the text itself. Said as a plain sentence below the name instead.
-                        */}
-                        {o.owner && (
-                          /* Re-review, 30 September: to Rukia herself this read "Rukia Otieno's
-                             own target" - the reader is "you" here too. */
-                          <div className="gwui-ink-sub gwui-fs-13-5 gwui-mt-2" style={{fontWeight: 400}}>
-                            {o.ownerParticipantId && o.ownerParticipantId === b.myParticipantId ? 'Your own target' : `${o.owner}’s own target`}
-                          </div>
-                        )}
-                        {/*
-                          WHOSE GOAL IT IS, SET BY THE LEAD (polish round 1, 25 October). With nobody named it is the goal of whoever
-                          runs this check-in, and that is who recommits it when the direction changes. The lead names somebody else here.
-                        */}
-                        {b.canEditFrame && (
-                          <label className="gwui-ink-sub gwui-fs-14 gwui-mt-2">
-                            <FlexRow gap={8} align="center">
-                            Whose goal
-                            <select
-                              className="gwui-input" style={{width: 'auto', minHeight: 44}}
-                              value={o.ownerParticipantId ?? ''}
-                              onChange={async (e) => {
-                                try { await boardApi.updateObjective(id!, o.id, { ownerParticipantId: e.target.value || null }); invalidate() }
-                                catch { toast.error('That was not changed. Try again.') }
-                              }}
-                            >
-                              <option value="">Yours, as you run this check-in</option>
-                              {(b.participants ?? []).filter((p) => p.name && p.id !== b.myParticipantId && !p.managingOnly).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </select>
-                            </FlexRow>
-                          </label>
-                        )}
-                        {/*
-                          A NUMBER NOBODY HAS DEFINED IS NOT AN AGREED NUMBER, AND THE ROW SAYS SO.
-                          "signed 12m" read as settled while the lead's own note, one page away, said
-                          nobody had decided whether the 12m is signed or recognised revenue. The
-                          sentence is the lead's own; it does not change or block the target.
-                        */}
-                        {o.notSettled && <span className="gwui-ml-7"><Tag tone="attention">definition not settled</Tag></span>}
-                        {/* REQUEST 108 (b): the word for where this target stands, next to its name. */}
-                        {(o as any).stands?.word && (
-                          <>{' '}<Tag tone={standsTone((o as any).stands.word)}>{(o as any).stands.word}</Tag></>
-                        )}
-                      </div>
-                      {/*
-                        NOTHING TO MEASURE MEANS NOTHING TO DRAW. An aim with no number got an empty
-                        bar, a "0" and "no change" beside it - read live as "Confirm her in the role ·
-                        0 · no change", which says the decision did not happen. Without a target the
-                        row is the aim and nothing else.
-                      */}
-                      {o.target != null ? (
-                        <>
-                          <div style={{width: 140, height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden'}}>
-                            <div style={{height: '100%', width: `${pct}%`, background: 'var(--gw-navy)', borderRadius: 6}} />
-                          </div>
-                          {/* Three numbers a person can check, rather than a share of a target that
-                              means the opposite thing on a ceiling. */}
-                          {/*
-                            U.10 RE-REVIEW ITEM 3: TWO SENTENCES, NOT COMMA-JOINED PIECES.
-                            "12, up from 0, aiming for 12" and "up 12 this session" read as
-                            fragments strung together rather than something said to a reader.
-                          */}
-                          <div className="gwui-fs-15 gwui-ink-sub" style={{minWidth: 96, textAlign: 'right'}}>
-                            {/*
-                              RE-REVIEW: "0 NOW, UP FROM 0." IS NOT A MOVE. Read live on "You are
-                              aiming for 4 shops.", with nothing counted yet: `journey.start` (0)
-                              equalling `o.count` (0) still drew "up from 0", claiming a rise that
-                              never happened. "Up"/"down" is only true when the count has actually
-                              moved from where it started; unmoved reads the same plain "X of Y."
-                              the line below already uses when there is no start to compare against.
-                            */}
-                            {/* REQUEST 132: THOUSANDS SEPARATORS, SO A LARGE COUNT READS AS A
-                                NUMBER, NOT A STRING OF DIGITS ("4,100 now, up from 0. The aim is
-                                6,000.", not "4100 now, up from 0. The aim is 6000."). */}
-                            {o.journey?.start != null && o.journey.start !== o.count
-                              ? (<><b className="gwui-ink-dark">{o.count.toLocaleString('en-GB')}</b>{` now, ${o.count > o.journey.start ? 'up' : 'down'} from ${o.journey.start.toLocaleString('en-GB')}. The aim is ${o.target.toLocaleString('en-GB')}.`}</>)
-                              : (<><b className="gwui-ink-dark">{o.count.toLocaleString('en-GB')}</b>{` of ${o.target.toLocaleString('en-GB')}.`}</>)}
-                          </div>
-                          <div className={`gwui-fs-13 ${o.delta > 0 ? 'gwui-ink-green' : 'gwui-ink-muted'}`} style={{fontWeight: 700, minWidth: 92, textAlign: 'right'}}>
-                            {o.delta > 0 ? `Up ${o.delta.toLocaleString('en-GB')} this check-in.` : 'No change.'}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="gwui-fs-15 gwui-ink-muted" style={{minWidth: 92, textAlign: 'right'}}>No number is set yet.</div>
-                      )}
-                    </FlexRow>
-                    {o.notSettled && (
-                      <div className="gwui-fs-15 gwui-ink-amber gwui-mt-5" style={{lineHeight: '23px', maxWidth: '68ch'}}>{o.notSettled}</div>
-                    )}
-                    {/* "What the target assumes" is drawn once, above everything, right after the
-                        headline - see the new top-level section near the top of this component.
-                        Not repeated here, so the fact is said once rather than twice on one page. */}
-                      {/*
-                        WORDS, NOT SYMBOLS. "-", "+" and "x" read as three unlabelled glyphs to
-                        anybody looking at the screen, even though each already carried an
-                        aria-label for a screen reader - an accessible name is not the same thing
-                        as a word a sighted person can read.
-                      */}
-                      {b.canEditFrame && (
-                        editingTargetId === o.id ? (
-                          <FlexRow gap={6} align="center" as="span">
-                            <UIButton
-                              kind="secondary" size="small"
-                              onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: Math.max(0, o.count - 1) })}
-                              disabled={(bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id) || o.count === 0}
-                              aria-label={`One fewer: ${o.name}`}
-                            >Lower</UIButton>
-                            <UIButton
-                              kind="secondary" size="small"
-                              onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.count + 1 })}
-                              disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
-                              aria-label={`One more: ${o.name}`}
-                            >Raise</UIButton>
-                            <UIButton
-                              kind="quiet" size="small"
-                              onClick={() => sureAboutTarget.arm(o.id)}
-                              disabled={removeObjective.isPending}
-                              aria-label={`Remove target: ${o.name}`}
-                            >Remove</UIButton>
-                            <UIButton kind="quiet" size="small" onClick={() => setEditingTargetId(null)}>Done</UIButton>
-                          </FlexRow>
-                        ) : (
-                          <UIButton kind="quiet" size="small" onClick={() => setEditingTargetId(o.id)} aria-label={`Change target: ${o.name}`}>Change</UIButton>
-                        )
-                      )}
-                      {sureAboutTarget.isArmed(o.id) && (
-                        <Confirm
-                          saying={`Remove the target "${o.name}"? Its count and history go with it.`}
-                          confirmLabel="Remove it" keepLabel="Keep it" pending={removeObjective.isPending} pendingLabel="Removing…"
-                          onConfirm={() => removeObjective.mutate(o.id)} onKeep={sureAboutTarget.disarm}
-                        />
-                      )}
-                    {/* The record suggests, the lead decides. Never auto-applied:
-                        a number a person set is theirs until they change it. */}
-                    {o.suggestedCount != null && b.canEditFrame && (
-                      <FlexRow gap={8} align="center" wrap className="gwui-fs-15 gwui-ink-navy gwui-mt-6">
-                        <span>
-                          The record shows <b>{o.suggestedCount}</b> for this, not {o.count}.
-                        </span>
-                        {/* THE LINE IT CAME FROM, because a number from nowhere is one a lead has no
-                            way to judge. Asking somebody to accept a figure without showing them
-                            what it was read from is asking them to trust rather than to check. */}
-                        {o.suggestedSaid && (
-                          <span className="gwui-ink-sub" style={{display: 'block', width: '100%', fontStyle: 'italic'}}>
-                            &ldquo;{o.suggestedSaid}&rdquo;
-                          </span>
-                        )}
-                        <button
-                          onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.suggestedCount! })}
-                          disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
-                          /*
-                            PHONE CHECK, ITEM 9: "USE N" WAS 55 BY 25 - under the 40px tap area a
-                            finger needs. `inline-flex`/`minHeight` grows the hit area; the pill's
-                            own padding, border, colour and corner radius are unchanged.
-                          */
-                          className="gwui-fs-13 gwui-pt-2 gwui-pr-9 gwui-pb-2 gwui-pl-9 gwui-rule-blue gwui-ink-blue" style={{fontWeight: 700, borderRadius: 11, background: 'var(--gw-blue-bg)', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', minHeight: 44, boxSizing: 'border-box'}}
-                        >
-                          Use {o.suggestedCount}
-                        </button>
-                      </FlexRow>
-                    )}
-                    {/* A new target means nothing until people have checked in against it. */}
-                    {o.isNew && o.askedOf && (
-                      <div className="gwui-fs-13 gwui-ink-sub gwui-mt-6">
-                        {(() => {
-                          const asked = o.askedOf.filter((a) => a.asked).map((a) => a.name)
-                          const notYet = o.askedOf.filter((a) => !a.asked).map((a) => a.name)
-                          const askedSaid = asked.length ? `So far this has been asked of ${asked.join(', ')}.` : 'Nobody has been asked about this yet.'
-                          return notYet.length ? `${askedSaid} It still needs to be asked of ${notYet.join(', ')}.` : askedSaid
-                        })()}
-                      </div>
-                    )}
-                  </Row>
-                )
-              })}
-              {/* The lead sets the frame. A target, never an assessment of a person. */}
-              {b.canEditFrame && (
-                <Row columns="1fr" inset="panel">
-                  <FlexRow gap={8} align="center" wrap>
-                    <input
-                      value={newObjName}
-                      onChange={(e) => setNewObjName(e.target.value)}
-                      placeholder="Add a target, e.g. Paying companies"
-                      className="gwui-input" style={{flex: 1, minWidth: 200}}
-                    />
-                    <input
-                      value={newObjTarget}
-                      onChange={(e) => setNewObjTarget(e.target.value.replace(/[^0-9]/g, ''))}
-                      placeholder="how many"
-                      className="gwui-input" style={{flex: '0 0 120px', width: 120}}
-                    />
-                    {/* What the number counts: "units", "%", "KES", "hours" (round 1 dead end, 25 October). */}
-                    <input
-                      value={newObjUnit}
-                      onChange={(e) => setNewObjUnit(e.target.value.slice(0, 12))}
-                      placeholder="unit, e.g. units or %"
-                      aria-label="Unit"
-                      className="gwui-input" style={{flex: '0 0 160px', width: 160}}
-                    />
-                    {/*
-                      SECONDARY, NOT NAVY (Hafsah, 30 September, item 2: "at most one primary
-                      (navy) button per screen"). The board's one primary is "Your check-in", in
-                      the header, as the prototype's own board-as-lead.txt draws it; every other
-                      action on this page, including adding a target, is secondary or quiet.
-                    */}
-                    <UIButton
-                      kind="secondary" size="small"
-                      onClick={() => addObjective.mutate()}
-                      disabled={!newObjName.trim() || addObjective.isPending}
-                    >
-                      {addObjective.isPending ? 'Adding...' : 'Add target'}
-                    </UIButton>
-                  </FlexRow>
-                </Row>
-              )}
-              </RowList>
-            </Panel>
-            </Stack>
-          </Section>
-        )}
+        {!designPass && theTargets()}
 
         {/* What was agreed at the start, so the rest of the board has something
             to be read against. This section has been in the DELIVERY family's

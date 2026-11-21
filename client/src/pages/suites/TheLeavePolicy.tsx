@@ -2,6 +2,15 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { leavePolicyApi, type ALeavePlacesChange, type ALeaveType, type TheLeavePlaces, type TheLeaveRules } from '@/api/suites'
 import { Button, FieldLabel, Note, Select, TextField, ToggleChoices } from '@/components/gw/ui'
+import { useTheDesignPass } from '@/lib/the-design-pass'
+
+/**
+ * THE DESIGN PASS (21 November 2026): the policy in its sentences first, then each part under its own heading, split by hairlines,
+ * with no paragraph explaining the page. Everything stays visible, and each part keeps its own save, beside what it saves.
+ */
+function APart({ children }: { children: string }) {
+  return useTheDesignPass() ? <h3 className="dp-part-h">{children}</h3> : <p className="gwui-panel-text"><b>{children}</b></p>
+}
 
 /**
  * THE LEAVE POLICY ON THE SUITES PAGE (Hafsah, 20 November 2026). Under the leave suite's settings: the whole policy in the server's
@@ -22,6 +31,7 @@ const problemOf = (e: any) => e?.response?.data?.message || DID_NOT_GO
 
 export function TheLeavePolicy() {
   const qc = useQueryClient()
+  const designPass = useTheDesignPass()
   const rules = useQuery({ queryKey: ['leave-rules'], queryFn: leavePolicyApi.rules, retry: false })
   const places = useQuery({ queryKey: ['leave-places'], queryFn: leavePolicyApi.places, retry: false })
   if (rules.isError) return <Note tone="muted">{problemOf(rules.error)}</Note>
@@ -30,10 +40,10 @@ export function TheLeavePolicy() {
   const savedRules = (r: TheLeaveRules) => { qc.setQueryData(['leave-rules'], r); qc.invalidateQueries({ queryKey: ['leave-places'] }) }
   const savedPlaces = (p: TheLeavePlaces) => qc.setQueryData(['leave-places'], p)
   return (
-    <div className="gwui-suite-ask" aria-label="The leave policy">
+    <div className={designPass ? 'gwui-suite-ask dp-leave-policy' : 'gwui-suite-ask'} aria-label="The leave policy">
       <p className="gwui-panel-text"><b>The leave policy</b></p>
       {[...rules.data.said, ...places.data.said].map(line => <p key={line} className="gwui-panel-text">{line}</p>)}
-      <p className="gwui-panel-text">You can change any of this below, or tell Groundwork, for example “sick leave is 10 days a year”. You can also paste your written leave policy to Groundwork and it will set it up from that.</p>
+      {!designPass && <p className="gwui-panel-text">You can change any of this below, or tell Groundwork, for example “sick leave is 10 days a year”. You can also paste your written leave policy to Groundwork and it will set it up from that.</p>}
       <TypesOfLeave page={rules.data} onSaved={savedRules} />
       <TheWorkingWeek page={rules.data} onSaved={savedRules} />
       <AnnualLeave page={rules.data} onSaved={savedRules} />
@@ -59,7 +69,7 @@ function TypesOfLeave({ page, onSaved }: { page: TheLeaveRules; onSaved: (r: The
   const num = (v: string) => (v.trim() === '' ? null : Number(v))
   return (
     <form onSubmit={e => { e.preventDefault(); save(kinds) }} aria-label="Types of leave">
-      <p className="gwui-panel-text"><b>Types of leave</b></p>
+      <APart>Types of leave</APart>
       {kinds.length === 0 && <p className="gwui-panel-text">No types of leave are set, so every request is simply leave.</p>}
       {kinds.map((k, i) => {
         const id = `leave-type-${i}`
@@ -131,7 +141,7 @@ function TheWorkingWeek({ page, onSaved }: { page: TheLeaveRules; onSaved: (r: T
   }), onSaved)
   return (
     <form onSubmit={e => { e.preventDefault(); if (week.length) save(undefined as never) }} aria-label="The working week">
-      <p className="gwui-panel-text"><b>The working week and what counts as leave</b></p>
+      <APart>The working week and what counts as leave</APart>
       <div className="gwui-suite-q">
         <FieldLabel htmlFor="leave-week">Which days do people work?</FieldLabel>
         <ToggleChoices label="Which days do people work?" options={WEEK} values={week} onToggle={k => setWeek(w => (w.includes(k) ? w.filter(x => x !== k) : [...w, k]))} />
@@ -177,7 +187,7 @@ function AnnualLeave({ page, onSaved }: { page: TheLeaveRules; onSaved: (r: TheL
   }), onSaved)
   return (
     <form onSubmit={e => { e.preventDefault(); save(undefined as never) }} aria-label="Annual leave">
-      <p className="gwui-panel-text"><b>How annual leave builds up</b></p>
+      <APart>How annual leave builds up</APart>
       <div className="gwui-suite-q">
         <FieldLabel htmlFor="leave-accrual">How is annual leave given?</FieldLabel>
         <Select id="leave-accrual" value={accrual} onChange={e => setAccrual(e.target.value as 'start' | 'monthly')}>
@@ -229,7 +239,7 @@ function Offices({ page, onSaved }: { page: TheLeavePlaces; onSaved: (p: TheLeav
   const { save, busy, problem } = useSave((o: ALeavePlacesChange['offices']) => leavePolicyApi.setPlaces({ offices: o }), onSaved)
   return (
     <form onSubmit={e => { e.preventDefault(); save(offices) }} aria-label="Offices">
-      <p className="gwui-panel-text"><b>Offices in other countries</b></p>
+      <APart>Offices in other countries</APart>
       {offices.length === 0 && <p className="gwui-panel-text">There are no offices in other countries, so everybody follows the public holidays of {page.country ?? 'your organisation'}.</p>}
       {offices.map((o, i) => (
         <fieldset key={o.name} className="gwui-suite-q" aria-label={o.name}>
@@ -264,14 +274,15 @@ function PublicHolidays({ page, onSaved }: { page: TheLeavePlaces; onSaved: (p: 
   ]
   return (
     <div aria-label="Public holidays">
-      <p className="gwui-panel-text"><b>Public holidays</b></p>
-      <p className="gwui-panel-text">Only a holiday you have confirmed counts. Groundwork can draft a country’s list when you set up leave by talking to it, and you check each date here.</p>
+      <APart>Public holidays</APart>
+      {!useTheDesignPass() && <p className="gwui-panel-text">Only a holiday you have confirmed counts. Groundwork can draft a country’s list when you set up leave by talking to it, and you check each date here.</p>}
       {placesHere.map(p => <HolidaysOfOnePlace key={p.office ?? ''} page={page} office={p.office} label={p.label} onSaved={onSaved} />)}
     </div>
   )
 }
 
 function HolidaysOfOnePlace({ page, office, label, onSaved }: { page: TheLeavePlaces; office: string | null; label: string; onSaved: (p: TheLeavePlaces) => void }) {
+  const designPass = useTheDesignPass()
   const mine = page.holidays.filter(h => h.office === office)
   const [on, setOn] = useState('')
   const [name, setName] = useState('')
@@ -292,7 +303,7 @@ function HolidaysOfOnePlace({ page, office, label, onSaved }: { page: TheLeavePl
           <Button kind="quiet" size="small" disabled={busy} onClick={() => write(asKept.filter(x => x.on !== h.on), yearOf(h.on))}>Remove it</Button>
         </p>
       ))}
-      <FieldLabel htmlFor={`${id}-on`}>Add a public holiday: its date</FieldLabel>
+      <FieldLabel htmlFor={`${id}-on`}>{designPass ? 'The date of a public holiday to add' : 'Add a public holiday: its date'}</FieldLabel>
       <TextField id={`${id}-on`} type="date" value={on} onChange={e => setOn(e.target.value)} />
       <FieldLabel htmlFor={`${id}-name`}>Its name</FieldLabel>
       <TextField id={`${id}-name`} value={name} placeholder="For example, Madaraka Day" onChange={e => setName(e.target.value)} />

@@ -1,0 +1,1684 @@
+{
+ "groundId": "f114832a-7de0-43ea-b0ba-84f8b9716458",
+ "renders": true,
+ "mode": "SHARED",
+ "family": "DELIVERY",
+ "peopleWorkTogether": true,
+ "sections": [
+  "phaseSpine",
+  "quickRead",
+  "objectives",
+  "startingState",
+  "divergence",
+  "whatTheRoomIsAbout",
+  "whoOwnsWhat",
+  "dependencies",
+  "checkInGrid",
+  "contribution",
+  "coverage",
+  "cascade",
+  "hiddenContributors",
+  "patterns",
+  "decisions",
+  "poll"
+ ],
+ "title": "Sales team, Q4",
+ "scenario": "OKR_ALIGNMENT",
+ "kindOfWork": null,
+ "releaseOneSalesBoard": false,
+ "releaseFourTeams": true,
+ "template": null,
+ "switchboard": {
+  "type": null,
+  "typeConfirmed": false,
+  "board": "today",
+  "drawnAs": null,
+  "reports": "today"
+ },
+ "kindsOffered": [
+  "sales team",
+  "sales org",
+  "engineering release",
+  "support desk",
+  "distribution operations",
+  "trader training programme",
+  "founder's own check-in",
+  "asset loans",
+  "MarketView where next",
+  "MarketView Q4",
+  "a law firm matter",
+  "a government programme",
+  "leadership",
+  "a funded project",
+  "client delivery"
+ ],
+ "theCount": {
+  "session": 2,
+  "planned": 12,
+  "bySession": {
+   "1": {
+    "sessionNumber": 1,
+    "onTheCheckIn": [
+     "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+     "7a215377-91ea-49c5-afa7-98b361cb81b5",
+     "508aeef3-ce4c-4b24-9a50-83231799c970",
+     "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+     "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+     "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d"
+    ],
+    "answered": [
+     "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+     "7a215377-91ea-49c5-afa7-98b361cb81b5",
+     "508aeef3-ce4c-4b24-9a50-83231799c970",
+     "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+     "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+     "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d"
+    ],
+    "notYet": [],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "2": {
+    "sessionNumber": 2,
+    "onTheCheckIn": [
+     "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+     "7a215377-91ea-49c5-afa7-98b361cb81b5",
+     "508aeef3-ce4c-4b24-9a50-83231799c970",
+     "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+     "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+     "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d"
+    ],
+    "answered": [
+     "508aeef3-ce4c-4b24-9a50-83231799c970",
+     "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+     "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+     "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d"
+    ],
+    "notYet": [
+     "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+     "7a215377-91ea-49c5-afa7-98b361cb81b5"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "3": {
+    "sessionNumber": 3,
+    "onTheCheckIn": [
+     "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+     "7a215377-91ea-49c5-afa7-98b361cb81b5",
+     "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+     "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+     "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d"
+    ],
+    "answered": [
+     "b1e92f3a-a715-410b-9ae1-e7ef02614652"
+    ],
+    "notYet": [
+     "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+     "7a215377-91ea-49c5-afa7-98b361cb81b5",
+     "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+     "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "4": {
+    "sessionNumber": 4,
+    "onTheCheckIn": [
+     "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+     "7a215377-91ea-49c5-afa7-98b361cb81b5",
+     "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+     "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+     "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d"
+    ],
+    "answered": [
+     "b1e92f3a-a715-410b-9ae1-e7ef02614652"
+    ],
+    "notYet": [
+     "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+     "7a215377-91ea-49c5-afa7-98b361cb81b5",
+     "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+     "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "5": {
+    "sessionNumber": 5,
+    "onTheCheckIn": [
+     "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+     "7a215377-91ea-49c5-afa7-98b361cb81b5",
+     "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+     "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+     "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d"
+    ],
+    "answered": [],
+    "notYet": [
+     "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+     "7a215377-91ea-49c5-afa7-98b361cb81b5",
+     "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+     "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+     "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "6": {
+    "sessionNumber": 6,
+    "onTheCheckIn": [
+     "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+     "7a215377-91ea-49c5-afa7-98b361cb81b5",
+     "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+     "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+     "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d"
+    ],
+    "answered": [],
+    "notYet": [
+     "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+     "7a215377-91ea-49c5-afa7-98b361cb81b5",
+     "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+     "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+     "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   }
+  },
+  "said": {
+   "says": "4 of 6 have checked in; Zawadi and Juma haven’t started yet.",
+   "whoSays": "Zawadi and Juma haven’t started yet.",
+   "notJoinedSays": null,
+   "notCountedSays": null,
+   "everyoneIn": false,
+   "othersHaveAnswered": true
+  }
+ },
+ "howItIsGoing": {
+  "latestSummary": "Most report that the work is on track but that they are waiting for a decision from another team. One person has mentioned a target of 40 shops which is not in the record.",
+  "glance": {
+   "progress": {
+    "roundsDone": 2,
+    "roundsPlanned": 12,
+    "answeredThisRound": 4,
+    "ofPeople": 6,
+    "waitingOn": [
+     "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+     "7a215377-91ea-49c5-afa7-98b361cb81b5"
+    ]
+   },
+   "inTheWay": {
+    "count": 2,
+    "oldest": "the Naivas purchase order",
+    "daysWaiting": null,
+    "since": "2026-11-20T07:56:46.857Z",
+    "sinceSays": "since 20 November",
+    "says": "2 things are in the way. The one waiting longest is the Naivas purchase order, since 20 November."
+   }
+  }
+ },
+ "groundStatus": "ACTIVE",
+ "endState": null,
+ "coverageVariant": "text",
+ "startingState": null,
+ "whatTheAnswersSay": null,
+ "theJudgement": null,
+ "theTable": null,
+ "overTime": null,
+ "myParticipantId": null,
+ "canEditFrame": false,
+ "readOnlyNote": "You can read this check-in’s board and reports. Wairimu Njoroge runs it.",
+ "lastChangedAt": "2026-11-20T08:16:28.094Z",
+ "participants": [
+  {
+   "id": "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+   "name": "Zawadi Mwangi",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  },
+  {
+   "id": "7a215377-91ea-49c5-afa7-98b361cb81b5",
+   "name": "Juma Otieno",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  },
+  {
+   "id": "508aeef3-ce4c-4b24-9a50-83231799c970",
+   "name": "Wairimu Njoroge",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "INITIATOR"
+  },
+  {
+   "id": "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+   "name": "Amani Wekesa",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  },
+  {
+   "id": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+   "name": "Chidi Okeke",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  },
+  {
+   "id": "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d",
+   "name": "Neema Kamau",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  }
+ ],
+ "aTeamReportComes": true,
+ "waitingToBeLetIn": null,
+ "whoIsAway": [],
+ "phaseSpine": {
+  "startsAt": "2026-10-30T07:40:49.580Z",
+  "endsAt": "2027-01-28T07:40:49.580Z",
+  "currentSession": 2,
+  "plannedSessions": 12,
+  "sessions": [
+   {
+    "n": 1,
+    "state": "done",
+    "date": "2026-11-06T08:47:29.595Z",
+    "opensOn": "2026-11-06T07:40:49.590Z",
+    "openedOn": "2026-11-06T07:40:49.595Z",
+    "says": "Check-in 1 finished on 6 November."
+   },
+   {
+    "n": 2,
+    "state": "current",
+    "date": "2026-11-13T08:47:29.606Z",
+    "opensOn": "2026-11-13T07:40:49.606Z",
+    "openedOn": "2026-11-13T07:40:49.608Z",
+    "says": "Check-in 2 opened on 13 November, and it is still open."
+   },
+   {
+    "n": 3,
+    "state": "current",
+    "date": "2026-11-20T07:56:46.857Z",
+    "opensOn": "2026-11-20T07:40:49.616Z",
+    "openedOn": "2026-11-20T07:40:49.616Z",
+    "says": "Check-in 3 has started for some people, while check-in 2 is still open."
+   },
+   {
+    "n": 4,
+    "state": "done",
+    "date": "2026-11-20T08:12:39.495Z",
+    "opensOn": "2026-11-20T08:04:52.881Z",
+    "openedOn": "2026-11-20T08:04:52.881Z",
+    "says": "Check-in 4 finished on 20 November."
+   },
+   {
+    "n": 5,
+    "state": "current",
+    "date": null,
+    "opensOn": "2026-11-20T18:27:46.066Z",
+    "openedOn": "2026-11-20T18:27:46.066Z",
+    "says": "Check-in 5 has started for some people, while check-in 2 is still open."
+   }
+  ]
+ },
+ "targetsNobodyOwns": null,
+ "objectives": [
+  {
+   "journey": {
+    "direction": "unknown",
+    "start": null,
+    "now": 0,
+    "target": 40,
+    "say": "It is 0 now, and the aim is 40.",
+    "covered": null
+   },
+   "direction": null,
+   "directionSuggested": null,
+   "kind": null,
+   "dueOn": null,
+   "directionQuestion": null,
+   "notSettled": null,
+   "id": "44de3635-a3cf-4aa2-bc43-11f5f48cf8c2",
+   "name": "Neema Kamau's own aim is idk 40 shops.",
+   "count": 0,
+   "prevCount": 0,
+   "target": 40,
+   "fromTheDeals": null,
+   "assumes": [],
+   "assumesSays": "Nobody has written down what this target assumes yet.",
+   "ownerParticipantId": "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d",
+   "owner": "Neema Kamau",
+   "saidBy": [],
+   "delta": 0,
+   "isNew": false,
+   "suggestedCount": null,
+   "suggestedSaid": null,
+   "askedOf": null,
+   "unit": null,
+   "stands": null
+  }
+ ],
+ "eachPersonsOwn": [],
+ "whyTheNumbersDoNotMatch": [],
+ "divergence": {
+  "items": [
+   {
+    "topic": "How progress against the team's target of 40 new shops a week is described.",
+    "atStake": "If this difference in reporting holds, the team will not have a clear or accurate picture of its collective progress towards the quarterly target.",
+    "evidence": [
+     "Chidi Okeke's record for the week of 16 November shows a closed deal for 40 cartons a week with Naivas Thika.",
+     "Wairimu Njoroge's record for the week of 9 November describes progress as being on track without specifics."
+    ],
+    "positions": [
+     {
+      "view": "closing a deal for 40 cartons a week with Naivas Thika and pursuing another with Quickmart.",
+      "participantLabel": "Chidi Okeke",
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "who": "Chidi Okeke"
+     },
+     {
+      "view": "Wairimu Njoroge and other team members describe progress in general terms, stating that the work is on track without reporting specific new shops.",
+      "participantLabel": "Wairimu Njoroge",
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "who": "Wairimu Njoroge"
+     }
+    ],
+    "settledBy": "Agree on a standard way to report progress each week that includes the number of shops closed and their value, and have each team member report in that format next week.",
+    "mark": "said",
+    "markSays": "Only someone’s word",
+    "evidenceMarks": [
+     {
+      "mark": "memory",
+      "figureIs": "from memory",
+      "markSays": "From memory only"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "whoSeesIt": "Chidi Okeke and Wairimu Njoroge said different things about this."
+   }
+  ],
+  "agreements": [
+   "Every person on the team is waiting for a decision or a reply from someone outside the team."
+  ],
+  "agreementMarks": [
+   {
+    "mark": "said",
+    "markSays": "Only someone’s word"
+   }
+  ],
+  "centralQuestion": "What specific, measurable progress has each team member made towards the goal of 40 new shops this week?",
+  "settled": [
+   "Every person on the team is waiting for a decision or a reply from someone outside the team."
+  ],
+  "stillOpen": [
+   "How progress against the team's target of 40 new shops a week is described."
+  ]
+ },
+ "stillUnanswered": [
+  {
+   "who": "Chidi Okeke",
+   "what": "What do you need from other people?",
+   "says": "In check-in 3, Chidi Okeke was asked, \"What do you need from other people?\" Chidi Okeke has not answered it yet.",
+   "sinceRound": 3,
+   "certain": true
+  },
+  {
+   "who": "Chidi Okeke",
+   "what": "How are you making your number?",
+   "says": "In check-in 3, Chidi Okeke was asked, \"How are you making your number?\" Chidi Okeke has not answered it yet.",
+   "sinceRound": 3,
+   "certain": true
+  }
+ ],
+ "eachPerson": [
+  {
+   "participantId": "7a215377-91ea-49c5-afa7-98b361cb81b5",
+   "who": "Juma Otieno",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "has not answered",
+   "says": "Juma Otieno has not checked in yet.",
+   "ask": "Ask Juma Otieno to check in.",
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null,
+   "finding": "Juma Otieno reported in the week of 2 November that the main piece of work is on track and that it is waiting for a decision from another team.",
+   "hasGap": false,
+   "findingMark": "said",
+   "findingMarkSays": "Only someone’s word"
+  },
+  {
+   "participantId": "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+   "who": "Zawadi Mwangi",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "has not answered",
+   "says": "Zawadi Mwangi has not checked in yet.",
+   "ask": "Ask Zawadi Mwangi to check in.",
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null,
+   "finding": "Zawadi Mwangi reported in the week of 16 November that the main piece of work is on track and that it is waiting for a decision from another team.",
+   "hasGap": false,
+   "findingMark": "said",
+   "findingMarkSays": "Only someone’s word"
+  },
+  {
+   "participantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+   "who": "Chidi Okeke",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "waiting on someone",
+   "says": "Chidi Okeke has checked in, and has been waiting on procurement at Naivas for the Naivas purchase order since 20 November.",
+   "ask": "Nobody has said yet what was tried. Find out who owns this, so that Chidi Okeke is not left waiting.",
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null,
+   "finding": "In the week of 16 November, Chidi Okeke closed a deal with Naivas Thika for 40 cartons a week and a 450k deal with Kilele. Chidi is waiting for a buyer to reply.",
+   "hasGap": false,
+   "findingMark": "memory",
+   "findingMarkSays": "From memory only"
+  },
+  {
+   "participantId": "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+   "who": "Amani Wekesa",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "nothing to do",
+   "says": "Amani Wekesa has checked in, and nothing here needs you this week.",
+   "ask": null,
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null,
+   "finding": "Amani Wekesa reported in the week of 9 November that the main piece of work is on track and that it is waiting for a decision from another team.",
+   "hasGap": false,
+   "findingMark": "said",
+   "findingMarkSays": "Only someone’s word"
+  },
+  {
+   "participantId": "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d",
+   "who": "Neema Kamau",
+   "nameIsTheirRole": false,
+   "target": 40,
+   "count": 0,
+   "reason": "nothing to do",
+   "says": "Neema Kamau has checked in, and nothing here needs you this week.",
+   "ask": null,
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null,
+   "finding": "In the week of 16 November, Neema Kamau met with three shops in Westlands. Neema mentioned a target of 40 shops, but the record shows zero progress against it.",
+   "hasGap": false,
+   "findingMark": "memory",
+   "findingMarkSays": "From memory only"
+  }
+ ],
+ "toLookAt": [],
+ "checkInGrid": {
+  "sessions": [
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "rows": [
+   {
+    "participantId": "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+    "name": "Zawadi Mwangi",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "not-started",
+     "3": "na",
+     "4": "na",
+     "5": "na"
+    }
+   },
+   {
+    "participantId": "7a215377-91ea-49c5-afa7-98b361cb81b5",
+    "name": "Juma Otieno",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "not-started",
+     "3": "na",
+     "4": "na",
+     "5": "na"
+    }
+   },
+   {
+    "participantId": "508aeef3-ce4c-4b24-9a50-83231799c970",
+    "name": "Wairimu Njoroge",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "in-progress",
+     "4": "na",
+     "5": "na"
+    }
+   },
+   {
+    "participantId": "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+    "name": "Amani Wekesa",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "in-progress",
+     "4": "na",
+     "5": "na"
+    }
+   },
+   {
+    "participantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+    "name": "Chidi Okeke",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "done",
+     "4": "done",
+     "5": "not-started"
+    }
+   },
+   {
+    "participantId": "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d",
+    "name": "Neema Kamau",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "not-started",
+     "4": "na",
+     "5": "na"
+    }
+   }
+  ]
+ },
+ "whoOwnsWhat": [
+  {
+   "participantId": "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+   "name": "Zawadi Mwangi",
+   "role": null,
+   "items": [
+    {
+     "id": "2e4a41c9-9e61-4395-8d05-a629c497468f",
+     "type": "PROGRESS",
+     "text": "Zawadi Mwangi has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "7197a39e-bee4-4536-b659-7a0e8e2ab2ee",
+     "type": "COMMITMENT",
+     "text": "Zawadi Mwangi has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "f7351f87-7804-4649-ad3e-dc18d52de29b",
+     "type": "PROGRESS",
+     "text": "Zawadi Mwangi has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    }
+   ]
+  },
+  {
+   "participantId": "7a215377-91ea-49c5-afa7-98b361cb81b5",
+   "name": "Juma Otieno",
+   "role": null,
+   "items": [
+    {
+     "id": "01c3e28a-f653-47c2-873a-598a382bf252",
+     "type": "PROGRESS",
+     "text": "Juma Otieno has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "cd4480d7-c6d0-450b-a685-fd5f0e73dddb",
+     "type": "COMMITMENT",
+     "text": "Juma Otieno has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    }
+   ]
+  },
+  {
+   "participantId": "508aeef3-ce4c-4b24-9a50-83231799c970",
+   "name": "Wairimu Njoroge",
+   "role": null,
+   "items": [
+    {
+     "id": "433bc10c-bb36-4fb1-b9f1-dd4a6589eaa2",
+     "type": "PROGRESS",
+     "text": "Wairimu Njoroge has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "d2da40ed-700a-4904-b16a-4e878ff248b5",
+     "type": "COMMITMENT",
+     "text": "Wairimu Njoroge has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "50dba236-af68-4426-a2f8-63374141aee2",
+     "type": "PROGRESS",
+     "text": "Wairimu Njoroge has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "4dfbee36-721e-46b0-8d89-e58c92dfa5c6",
+     "type": "COMMITMENT",
+     "text": "Wairimu Njoroge has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    }
+   ]
+  },
+  {
+   "participantId": "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+   "name": "Amani Wekesa",
+   "role": null,
+   "items": [
+    {
+     "id": "6c107820-e760-4322-857f-ec11396fbe13",
+     "type": "PROGRESS",
+     "text": "Amani Wekesa has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "41c5610c-4088-4e5c-b68e-11c28546c599",
+     "type": "COMMITMENT",
+     "text": "Amani Wekesa has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "4f2dcf85-a811-4dfa-a4cd-5b9a45be63e2",
+     "type": "PROGRESS",
+     "text": "Amani Wekesa has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "67ec663a-dd0a-43e0-9a3a-8ba0c6c10d8c",
+     "type": "COMMITMENT",
+     "text": "Amani Wekesa has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    }
+   ]
+  },
+  {
+   "participantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+   "name": "Chidi Okeke",
+   "role": null,
+   "items": [
+    {
+     "id": "15406a4d-dfd5-4702-891f-d20b00d74070",
+     "type": "PROGRESS",
+     "text": "Chidi Okeke has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "ed9e4ff6-7b70-4c7c-8b06-31e789ec3aa5",
+     "type": "COMMITMENT",
+     "text": "Chidi Okeke has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "66522aba-5d3d-4004-8d05-8e79ba3c137c",
+     "type": "PROGRESS",
+     "text": "Chidi Okeke has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "d53be87d-451d-40d1-a474-c355c78da293",
+     "type": "COMMITMENT",
+     "text": "Chidi Okeke has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "31b59248-26fc-4f3a-b2f1-b3751d7ec4e5",
+     "type": "PROGRESS",
+     "text": "Chidi Okeke said, \"closed kilele 450k on tues.\"",
+     "mark": "memory",
+     "markSays": "From memory only",
+     "sessionNumber": 3,
+     "settled": false
+    },
+    {
+     "id": "67f8adb0-fbf0-43fd-bbdc-5f40c2f62489",
+     "type": "SUCCESS_DEFINITION",
+     "text": "Chidi Okeke said success would be \"half my Q4 number\".",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 3,
+     "settled": false
+    },
+    {
+     "id": "f35e8e57-e02c-4295-bad4-7564842e0efb",
+     "type": "PROGRESS",
+     "text": "Chidi Okeke said, \"mercy in procurement.\"",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 3,
+     "settled": false
+    },
+    {
+     "id": "0bf61147-b239-4f32-9dcf-30dadb267ace",
+     "type": "PROGRESS",
+     "text": "Chidi Okeke said, \"still chasing quickmart.\"",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 4,
+     "settled": false
+    },
+    {
+     "id": "7b5af79c-652a-4ab6-a148-56a56bed2e0b",
+     "type": "PROGRESS",
+     "text": "Chidi Okeke said, \"i told you, we closed it.\"",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 4,
+     "settled": false
+    },
+    {
+     "id": "ebddc996-463d-4c85-a571-74c7c30d64bb",
+     "type": "PROGRESS",
+     "text": "Chidi Okeke said, \"this week i closed naivas thika, 40 cartons a week from monday.\"",
+     "mark": "memory",
+     "markSays": "From memory only",
+     "sessionNumber": 4,
+     "settled": false
+    },
+    {
+     "id": "830e9a9c-dc3d-4c91-84f4-fcc777b977af",
+     "type": "COMMITMENT",
+     "text": "Chidi Okeke said, \"call her monday morning, if nothing ill go to their westlands office wednesday.\"",
+     "mark": "proven",
+     "markSays": "Proven",
+     "sessionNumber": 4
+    }
+   ]
+  },
+  {
+   "participantId": "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d",
+   "name": "Neema Kamau",
+   "role": null,
+   "items": [
+    {
+     "id": "5ae0ef5d-a594-4608-a79b-8d3179527f4c",
+     "type": "PROGRESS",
+     "text": "Neema Kamau has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "85215852-8d34-4481-9f51-1caf376b53ac",
+     "type": "COMMITMENT",
+     "text": "Neema Kamau has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "6708fb21-b9d4-44a7-b9de-7b4e79abec9b",
+     "type": "PROGRESS",
+     "text": "Neema Kamau said, \"met 3 shops in westlands.\"",
+     "mark": "memory",
+     "markSays": "From memory only",
+     "sessionNumber": 2,
+     "settled": false
+    },
+    {
+     "id": "c69e45b8-4506-4a59-91eb-7a08faa3c8cf",
+     "type": "PROGRESS",
+     "text": "Neema Kamau said, \"2 want samples.\"",
+     "mark": "memory",
+     "markSays": "From memory only",
+     "sessionNumber": 2,
+     "settled": false
+    },
+    {
+     "id": "bae8a092-09b3-4872-9d3f-6e457835d568",
+     "type": "SUCCESS_DEFINITION",
+     "text": "Neema Kamau said success would be \"idk 40 shops\".",
+     "mark": "said",
+     "markSays": "Only someone’s word",
+     "sessionNumber": 2,
+     "settled": false
+    }
+   ]
+  }
+ ],
+ "dependencies": [
+  {
+   "id": "b7e6443c-8059-48e0-8998-967031f52486",
+   "from": "Chidi Okeke",
+   "fromParticipantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+   "what": "the Naivas purchase order",
+   "on": "procurement at Naivas",
+   "onParticipantId": null,
+   "status": "WAITING",
+   "then": null,
+   "raised": {
+    "times": 1,
+    "firstRaisedAt": "2026-11-20",
+    "lastRaisedAt": "2026-11-20",
+    "says": "This was raised once, on 20 November."
+   },
+   "waitingSays": "Chidi Okeke is waiting on procurement at Naivas."
+  },
+  {
+   "id": "a0b75ee6-24d6-4d8c-9df4-04ab7514047c",
+   "from": "Chidi Okeke",
+   "fromParticipantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+   "what": "A reply from the buyer at Quickmart",
+   "on": "the Quickmart buyer",
+   "onParticipantId": null,
+   "status": "WAITING",
+   "then": null,
+   "raised": {
+    "times": 1,
+    "firstRaisedAt": "2026-11-20",
+    "lastRaisedAt": "2026-11-20",
+    "says": "This was raised once, on 20 November."
+   },
+   "waitingSays": "Chidi Okeke is waiting on the Quickmart buyer."
+  }
+ ],
+ "decisions": [
+  {
+   "question": "People in this check-in said different things about how progress against the team's target of 40 new shops a week is described.",
+   "why": "What people said about this does not match.",
+   "owner": "Wairimu Njoroge",
+   "source": "divergence"
+  }
+ ],
+ "whatTheRoomIsAbout": null,
+ "whatTheRoomIsAboutNote": "This is read when a round closes. Nothing has closed yet, so there is nothing to add up.",
+ "quickRead": [
+  {
+   "label": "Differences",
+   "value": "1",
+   "sub": "People said different things about how progress against the team's target of 40 new shops a week is described.",
+   "tone": "warn"
+  },
+  {
+   "label": "Movement",
+   "value": "No target set",
+   "sub": "Nobody has set anything to measure this against.",
+   "tone": "flat"
+  },
+  {
+   "label": "Blockers",
+   "value": "3 worries",
+   "sub": "3 worries are on record. None was kept in the words it was said, so none is quoted here. Nobody named a new wait this check-in, and 2 waits from earlier check-ins are still open.",
+   "tone": "warn"
+  },
+  {
+   "label": "How much was said",
+   "value": "All from memory",
+   "sub": "Nothing said this check-in has a document behind it.",
+   "tone": "warn"
+  }
+ ],
+ "contribution": [
+  {
+   "participantId": "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+   "name": "Zawadi Mwangi",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  },
+  {
+   "participantId": "7a215377-91ea-49c5-afa7-98b361cb81b5",
+   "name": "Juma Otieno",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  },
+  {
+   "participantId": "508aeef3-ce4c-4b24-9a50-83231799c970",
+   "name": "Wairimu Njoroge",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  },
+  {
+   "participantId": "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+   "name": "Amani Wekesa",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  },
+  {
+   "participantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+   "name": "Chidi Okeke",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  },
+  {
+   "participantId": "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d",
+   "name": "Neema Kamau",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  }
+ ],
+ "coverage": {
+  "scope": "role",
+  "reads": [
+   {
+    "participantId": "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+    "name": "Zawadi Mwangi",
+    "scope": "role",
+    "kind": "STABLE",
+    "trend": "stable",
+    "what": null,
+    "reason": "CANNOT_DETERMINE",
+    "reasonText": null,
+    "ownVoice": null,
+    "coupledToBlocker": false,
+    "remitDefined": false,
+    "shown": true,
+    "saidOnceAbove": true
+   },
+   {
+    "participantId": "7a215377-91ea-49c5-afa7-98b361cb81b5",
+    "name": "Juma Otieno",
+    "scope": "role",
+    "kind": "STABLE",
+    "trend": "stable",
+    "what": null,
+    "reason": "CANNOT_DETERMINE",
+    "reasonText": null,
+    "ownVoice": null,
+    "coupledToBlocker": false,
+    "remitDefined": false,
+    "shown": true,
+    "saidOnceAbove": true
+   },
+   {
+    "participantId": "508aeef3-ce4c-4b24-9a50-83231799c970",
+    "name": "Wairimu Njoroge",
+    "scope": "role",
+    "kind": "STABLE",
+    "trend": "stable",
+    "what": null,
+    "reason": "CANNOT_DETERMINE",
+    "reasonText": null,
+    "ownVoice": null,
+    "coupledToBlocker": false,
+    "remitDefined": false,
+    "shown": true,
+    "saidOnceAbove": true
+   },
+   {
+    "participantId": "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+    "name": "Amani Wekesa",
+    "scope": "role",
+    "kind": "STABLE",
+    "trend": "stable",
+    "what": null,
+    "reason": "CANNOT_DETERMINE",
+    "reasonText": null,
+    "ownVoice": null,
+    "coupledToBlocker": false,
+    "remitDefined": false,
+    "shown": true,
+    "saidOnceAbove": true
+   },
+   {
+    "participantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+    "name": "Chidi Okeke",
+    "scope": "role",
+    "kind": "STABLE",
+    "trend": "stable",
+    "what": null,
+    "reason": "CANNOT_DETERMINE",
+    "reasonText": null,
+    "ownVoice": null,
+    "coupledToBlocker": true,
+    "remitDefined": false,
+    "shown": true,
+    "saidOnceAbove": true
+   },
+   {
+    "participantId": "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d",
+    "name": "Neema Kamau",
+    "scope": "role",
+    "kind": "STABLE",
+    "trend": "stable",
+    "what": null,
+    "reason": "CANNOT_DETERMINE",
+    "reasonText": null,
+    "ownVoice": null,
+    "coupledToBlocker": false,
+    "remitDefined": false,
+    "shown": true,
+    "saidOnceAbove": true
+   }
+  ],
+  "saysOnce": [
+   "The role was never defined, so there is no boundary to measure against. This is true of Zawadi Mwangi, Juma Otieno, Wairimu Njoroge, Amani Wekesa, Chidi Okeke and Neema Kamau.",
+   "The role was never clearly defined, so there is no boundary to measure work against."
+  ]
+ },
+ "cascade": {
+  "isCascade": false,
+  "basis": [
+   "DECLARED"
+  ],
+  "parentNamed": null,
+  "teamsNamed": [],
+  "why": "Nothing above this has been named yet. These objectives stand on their own, and there is nothing to check them against. Say what they serve, if it is something wider, and they can be checked."
+ },
+ "coaching": {
+  "yours": null,
+  "eachPerson": [
+   {
+    "who": "Zawadi Mwangi",
+    "participantId": "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+    "probe": [
+     "Zawadi Mwangi has not answered this check-in, so nothing below is from this round."
+    ],
+    "encourage": [],
+    "triedToUnblock": "Nothing in the record says Zawadi Mwangi's work is waiting on a named person."
+   },
+   {
+    "who": "Juma Otieno",
+    "participantId": "7a215377-91ea-49c5-afa7-98b361cb81b5",
+    "probe": [
+     "Juma Otieno has not answered this check-in, so nothing below is from this round."
+    ],
+    "encourage": [],
+    "triedToUnblock": "Nothing in the record says Juma Otieno's work is waiting on a named person."
+   },
+   {
+    "who": "Wairimu Njoroge",
+    "participantId": "508aeef3-ce4c-4b24-9a50-83231799c970",
+    "probe": [],
+    "encourage": [],
+    "triedToUnblock": "Nothing in the record says Wairimu Njoroge's work is waiting on a named person."
+   },
+   {
+    "who": "Amani Wekesa",
+    "participantId": "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+    "probe": [],
+    "encourage": [],
+    "triedToUnblock": "Nothing in the record says Amani Wekesa's work is waiting on a named person."
+   },
+   {
+    "who": "Chidi Okeke",
+    "participantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+    "probe": [
+     "Chidi Okeke has been waiting for the Naivas purchase order and A reply from the buyer at Quickmart since 20 November."
+    ],
+    "encourage": [
+     "Chidi Okeke said, \"half my Q4 number\" That is worth getting on record, so anyone can check it later."
+    ],
+    "triedToUnblock": "It was asked for."
+   },
+   {
+    "who": "Neema Kamau",
+    "participantId": "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d",
+    "probe": [],
+    "encourage": [
+     "Neema Kamau said, \"idk 40 shops\" That is worth getting on record, so anyone can check it later."
+    ],
+    "triedToUnblock": "Nothing in the record says Neema Kamau's work is waiting on a named person."
+   }
+  ]
+ },
+ "patterns": [],
+ "poll": null,
+ "eachPersonToday": [
+  {
+   "participantId": "7a215377-91ea-49c5-afa7-98b361cb81b5",
+   "who": "Juma Otieno",
+   "line": "Juma Otieno has not checked in yet."
+  },
+  {
+   "participantId": "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+   "who": "Zawadi Mwangi",
+   "line": "Zawadi Mwangi has not checked in yet."
+  },
+  {
+   "participantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+   "who": "Chidi Okeke",
+   "line": "Chidi Okeke has checked in, and has been waiting on procurement at Naivas for the Naivas purchase order since 20 November."
+  },
+  {
+   "participantId": "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+   "who": "Amani Wekesa",
+   "line": "Amani Wekesa has checked in, and nothing here needs you this week."
+  },
+  {
+   "participantId": "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d",
+   "who": "Neema Kamau",
+   "line": "Neema Kamau has checked in, and nothing here needs you this week."
+  }
+ ],
+ "workRecords": [
+  {
+   "section": "Deal grid",
+   "state": "not-known",
+   "why": ""
+  },
+  {
+   "section": "Forecast",
+   "state": "not-known",
+   "why": ""
+  },
+  {
+   "section": "Themes",
+   "state": "not-known",
+   "why": ""
+  },
+  {
+   "section": "Work plan",
+   "state": "not-known",
+   "why": ""
+  },
+  {
+   "section": "Timeline",
+   "state": "not-known",
+   "why": ""
+  },
+  {
+   "section": "Obligations",
+   "state": "not-known",
+   "why": ""
+  }
+ ],
+ "risks": [
+  {
+   "id": "handoff-b7e6443c-8059-48e0-8998-967031f52486",
+   "says": "Chidi Okeke is waiting on procurement at Naivas for the Naivas purchase order.",
+   "because": "It was first said on 20 November. About what has been tried, Chidi Okeke said, \"im on it with mercy in procurement\". The time given for it was \"friday\"."
+  },
+  {
+   "id": "handoff-a0b75ee6-24d6-4d8c-9df4-04ab7514047c",
+   "says": "Chidi Okeke is waiting on the Quickmart buyer for a reply from the buyer at Quickmart.",
+   "because": "It was first said on 20 November. Nobody has said what has been tried. No time has been given for it."
+  }
+ ],
+ "workPlan": [
+  {
+   "id": "830e9a9c-dc3d-4c91-84f4-fcc777b977af",
+   "participantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+   "who": "Chidi Okeke",
+   "says": "In check-in 4, Chidi Okeke said they would call her monday morning, if nothing ill go to their westlands office wednesday Monday morning... Wednesday. Nobody has said yet whether it happened.",
+   "when": "Monday morning... Wednesday",
+   "state": "open",
+   "statedInSession": 4
+  }
+ ],
+ "timeline": [
+  {
+   "on": "2026-11-06",
+   "says": "On 6 November, the first answers for check-in 1 came in."
+  },
+  {
+   "on": "2026-11-13",
+   "says": "On 13 November, the first answers for check-in 2 came in."
+  },
+  {
+   "on": "2026-11-20",
+   "says": "On 20 November, the first answers for check-in 3 came in."
+  },
+  {
+   "on": "2026-11-20",
+   "says": "On 20 November, the first answers for check-in 4 came in."
+  },
+  {
+   "on": "2026-11-20",
+   "says": "On 20 November, Chidi Okeke committed to call her monday morning, if nothing ill go to their westlands office wednesday."
+  },
+  {
+   "on": "2026-11-20",
+   "says": "On 20 November, Chidi Okeke said the work was waiting on procurement at Naivas for the Naivas purchase order."
+  },
+  {
+   "on": "2026-11-20",
+   "says": "On 20 November, Chidi Okeke said the work was waiting on the Quickmart buyer for a reply from the buyer at Quickmart."
+  }
+ ],
+ "personHistory": [
+  {
+   "participantId": "8adf58a5-cecc-4992-8dfc-0b8a202d7c35",
+   "who": "Zawadi Mwangi",
+   "says": "Zawadi Mwangi has answered 1 check-in, and has made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-11-06",
+     "says": "In check-in 1, Zawadi Mwangi answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  },
+  {
+   "participantId": "7a215377-91ea-49c5-afa7-98b361cb81b5",
+   "who": "Juma Otieno",
+   "says": "Juma Otieno has answered 1 check-in, and has made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-11-06",
+     "says": "In check-in 1, Juma Otieno answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  },
+  {
+   "participantId": "508aeef3-ce4c-4b24-9a50-83231799c970",
+   "who": "Wairimu Njoroge",
+   "says": "Wairimu Njoroge has answered 2 check-ins, and has made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-11-06",
+     "says": "In check-in 1, Wairimu Njoroge answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 2,
+     "on": "2026-11-13",
+     "says": "In check-in 2, Wairimu Njoroge answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  },
+  {
+   "participantId": "31a27c8d-f92c-41ff-bbb5-5e7a1fd11b61",
+   "who": "Amani Wekesa",
+   "says": "Amani Wekesa has answered 2 check-ins, and has made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-11-06",
+     "says": "In check-in 1, Amani Wekesa answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 2,
+     "on": "2026-11-13",
+     "says": "In check-in 2, Amani Wekesa answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  },
+  {
+   "participantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+   "who": "Chidi Okeke",
+   "says": "Chidi Okeke has answered 4 check-ins and made 1 commitment.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-11-06",
+     "says": "In check-in 1, Chidi Okeke answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 2,
+     "on": "2026-11-13",
+     "says": "In check-in 2, Chidi Okeke answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 3,
+     "on": "2026-11-20",
+     "says": "In check-in 3, Chidi Okeke named 1 thing the work was waiting on."
+    },
+    {
+     "n": 4,
+     "on": "2026-11-20",
+     "says": "In check-in 4, Chidi Okeke made 1 commitment and named 1 thing the work was waiting on."
+    }
+   ]
+  },
+  {
+   "participantId": "43f817b3-9df5-44b0-bc8e-7cedb2c44f6d",
+   "who": "Neema Kamau",
+   "says": "Neema Kamau has answered 2 check-ins, and has made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-11-06",
+     "says": "In check-in 1, Neema Kamau answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 2,
+     "on": "2026-11-20",
+     "says": "In check-in 2, Neema Kamau answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  }
+ ],
+ "blockerCheck": [
+  {
+   "id": "b7e6443c-8059-48e0-8998-967031f52486",
+   "who": "Chidi Okeke",
+   "says": "Chidi Okeke is waiting on procurement at Naivas for the Naivas purchase order.",
+   "namesWhoHoldsIt": true,
+   "saidWhatWasTried": true,
+   "timeGiven": true,
+   "checks": [
+    "Procurement at Naivas holds it.",
+    "About what has been tried, Chidi Okeke said, \"im on it with mercy in procurement\".",
+    "The time given for it was \"friday\"."
+   ]
+  },
+  {
+   "id": "a0b75ee6-24d6-4d8c-9df4-04ab7514047c",
+   "who": "Chidi Okeke",
+   "says": "Chidi Okeke is waiting on the Quickmart buyer for a reply from the buyer at Quickmart.",
+   "namesWhoHoldsIt": true,
+   "saidWhatWasTried": false,
+   "timeGiven": false,
+   "checks": [
+    "The Quickmart buyer holds it.",
+    "Nobody has said what has been tried.",
+    "No time has been given for it."
+   ]
+  }
+ ],
+ "busyOrMoving": {
+  "eachPerson": [
+   {
+    "participantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+    "who": "Chidi Okeke",
+    "says": "Chidi Okeke has made 1 commitment across 4 answered check-ins. Chidi Okeke also named 2 things the work was waiting on."
+   }
+  ],
+  "cannotTellYou": "These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that."
+ },
+ "obligations": [
+  {
+   "participantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+   "who": "Chidi Okeke",
+   "promised": [
+    "In check-in 4, Chidi Okeke said they would call her monday morning, if nothing ill go to their westlands office wednesday Monday morning... Wednesday. Nobody has said yet whether it happened."
+   ],
+   "othersWaitFor": []
+  },
+  {
+   "participantId": null,
+   "who": "procurement at Naivas",
+   "promised": [],
+   "othersWaitFor": [
+    "Chidi Okeke is waiting on procurement at Naivas for the Naivas purchase order."
+   ]
+  },
+  {
+   "participantId": null,
+   "who": "the Quickmart buyer",
+   "promised": [],
+   "othersWaitFor": [
+    "Chidi Okeke is waiting on the Quickmart buyer for a reply from the buyer at Quickmart."
+   ]
+  }
+ ],
+ "whoWaitedOnWhom": [
+  {
+   "id": "b7e6443c-8059-48e0-8998-967031f52486",
+   "says": "Chidi Okeke has been waiting on procurement at Naivas for the Naivas purchase order since 20 November, and it has not been cleared.",
+   "startedAt": "2026-11-20",
+   "clearedAt": null,
+   "days": null
+  },
+  {
+   "id": "a0b75ee6-24d6-4d8c-9df4-04ab7514047c",
+   "says": "Chidi Okeke has been waiting on the Quickmart buyer for a reply from the buyer at Quickmart since 20 November, and it has not been cleared.",
+   "startedAt": "2026-11-20",
+   "clearedAt": null,
+   "days": null
+  }
+ ],
+ "blockers": [
+  {
+   "id": "b7e6443c-8059-48e0-8998-967031f52486",
+   "who": "Chidi Okeke",
+   "fromParticipantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+   "onParticipantId": null,
+   "name": "the Naivas purchase order",
+   "state": "waiting",
+   "says": "Chidi Okeke is waiting on procurement at Naivas for the Naivas purchase order.",
+   "raised": {
+    "times": 1,
+    "firstRaisedAt": "2026-11-20",
+    "lastRaisedAt": "2026-11-20",
+    "says": "This was raised once, on 20 November.",
+    "sessions": [
+     3
+    ],
+    "inSessions": "It was raised in check-in 3."
+   },
+   "proof": {
+    "state": "none",
+    "says": "Nothing on record proves it yet. It rests on what Chidi Okeke said."
+   },
+   "timeGiven": "The time given for it was \"friday\".",
+   "wouldClearIt": null,
+   "wouldClearItSays": "Nobody has said what would clear it yet.",
+   "holdingUp": null
+  },
+  {
+   "id": "a0b75ee6-24d6-4d8c-9df4-04ab7514047c",
+   "who": "Chidi Okeke",
+   "fromParticipantId": "b1e92f3a-a715-410b-9ae1-e7ef02614652",
+   "onParticipantId": null,
+   "name": "A reply from the buyer at Quickmart",
+   "state": "waiting",
+   "says": "Chidi Okeke is waiting on the Quickmart buyer for a reply from the buyer at Quickmart.",
+   "raised": {
+    "times": 1,
+    "firstRaisedAt": "2026-11-20",
+    "lastRaisedAt": "2026-11-20",
+    "says": "This was raised once, on 20 November.",
+    "sessions": [
+     4
+    ],
+    "inSessions": "It was raised in check-in 4."
+   },
+   "proof": {
+    "state": "none",
+    "says": "Nothing on record proves it yet. It rests on what Chidi Okeke said."
+   },
+   "timeGiven": "No time has been given for it.",
+   "wouldClearIt": null,
+   "wouldClearItSays": "Nobody has said what would clear it yet.",
+   "holdingUp": null
+  }
+ ],
+ "questionsForTheLead": [
+  {
+   "id": "chased-a0b75ee6-24d6-4d8c-9df4-04ab7514047c",
+   "question": "What has been tried to get a reply from the buyer at Quickmart from the Quickmart buyer, which Chidi Okeke is waiting for?",
+   "because": "Nothing on record says anybody has chased it, so only Wairimu Njoroge can find out what was done outside the check-in."
+  }
+ ],
+ "whereThisIsHeading": {
+  "heading": "Where this is heading",
+  "about": "Set goals and keep the team on track",
+  "outcomes": [
+   {
+    "value": "ALIGNED",
+    "says": "The team is on course.",
+    "more": null
+   },
+   {
+    "value": "REACH_WITH_A_CHANGE",
+    "says": "The team can reach it, with a change in how the work is done.",
+    "more": null
+   },
+   {
+    "value": "GAPS_IDENTIFIED",
+    "says": "The target needs to change.",
+    "more": null
+   },
+   {
+    "value": "NOT_YET",
+    "says": "It is not settled yet, and more check-ins are needed.",
+    "more": null
+   }
+  ],
+  "outcomesSays": null,
+  "signals": [
+   {
+    "says": "Chidi Okeke is waiting on procurement at Naivas for the Naivas purchase order.",
+    "from": "This was raised once, on 20 November."
+   },
+   {
+    "says": "Chidi Okeke is waiting on the Quickmart buyer for a reply from the buyer at Quickmart.",
+    "from": "This was raised once, on 20 November."
+   },
+   {
+    "says": "How progress against the team's target of 40 new shops a week is described.",
+    "from": "This comes from what people said in their check-ins."
+   }
+  ],
+  "signalsSays": null,
+  "whatWouldSettleIt": [],
+  "whatWouldSettleItSays": "Nothing on record says yet what would settle it.",
+  "whoDecides": "Wairimu Njoroge decides.",
+  "recordTheDecision": null,
+  "decided": null
+ },
+ "contributionSaysOnce": "No position is shown for Zawadi Mwangi, Juma Otieno, Wairimu Njoroge, Amani Wekesa, Chidi Okeke or Neema Kamau, because nobody's role was clearly defined. Define what each role is responsible for before assessing anyone against it. An undefined role is often the real problem, not the person."
+}

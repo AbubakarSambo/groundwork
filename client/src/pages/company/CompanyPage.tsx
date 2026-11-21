@@ -13,6 +13,9 @@ import { ChooseAFile } from '@/components/gw/ChooseAFile'
 import {
   Page as PageFrame, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row, SubHeading, Skeleton, FieldLabel, TextField, TextArea,
 } from '@/components/gw/ui'
+import { ShowAll } from '@/components/gw/ui/ShowAll'
+import { TheDeskAsPictured } from './TheDeskAsPictured'
+import { Paged } from '@/components/gw/ui/Paged'
 import { TheGoalsYouCanChange } from './TheGoalsYouCanChange'
 
 /**
@@ -51,6 +54,35 @@ export function CompanyPage() {
   const directionOn = useQuery({ queryKey: ['direction'], queryFn: directionApi.read, retry: false, staleTime: 60_000, enabled: !!page }).data?.on === true
   const policyOn = useQuery({ queryKey: ['policy'], queryFn: policyApi.board, retry: false, staleTime: 60_000, enabled: !!page }).data?.on === true
 
+  /* With the design switch on, the Desk is the prototype's own board, ported from its markup (TheDeskAsPictured), with the Desk's
+     documents and who works here after it, so nothing is removed. */
+  if (designPass && page) {
+    return (
+      <PageFrame>
+        <TheDeskAsPictured
+          page={page}
+          name={name}
+          showAsk={showAsk}
+          askWith={(q) => useAskStore.getState().showWith(q)}
+          links={(directionOn || policyOn) ? (
+            <>
+              {directionOn && <Link className="btn sec" to="/direction">The company’s direction</Link>}
+              {policyOn && <Link className="btn sec" to="/policies">The policy board</Link>}
+            </>
+          ) : null}
+          theDesksOwnParts={(
+            <>
+              {/* The goals editor (wip/you-and-desk): the Desk's own, after the prototype's sections, since the prototype has no place for it. */}
+              <div id="goals"><TheGoalsYouCanChange /></div>
+              <div id="documents"><TheDocuments name={name} documents={page.desk?.documents ?? []} mayAdd={page.desk?.mayAdd === true} /></div>
+              <div id="who-works-here"><TheDirectory people={page.desk?.directory ?? []} /></div>
+            </>
+          )}
+        />
+      </PageFrame>
+    )
+  }
+
   return (
     <PageFrame>
       <PageTitle eyebrow="Desk" title={data?.name || user?.organizationName || 'Desk'} />
@@ -69,7 +101,7 @@ export function CompanyPage() {
         <>
           <p className="gwui-panel-text">This is where {name} keeps its policies, handbook, procedures and documents, and a list of everyone who works here.</p>
           <div className="gwui-sentence-row">
-            <Button kind={designPass ? 'secondary' : 'primary'} onClick={showAsk}>Ask about the whole organisation</Button>
+            <Button kind="primary" onClick={showAsk}>Ask about the whole organisation</Button>
             {/* Release 6 and release 9: each only where it is switched on (the server says). */}
             {directionOn && <Link className="gwui-plain-link" to="/direction">The company’s direction, and what it means for each team</Link>}
             {policyOn && <Link className="gwui-plain-link" to="/policies">The policy board, with every rule the organisation runs on</Link>}
@@ -89,6 +121,22 @@ export function CompanyPage() {
 /* ---------- 1. Policies, handbook, procedures and documents ---------- */
 
 function TheDocuments({ name, documents, mayAdd }: { name: string; documents: DeskDocument[]; mayAdd: boolean }) {
+  const designPass = useTheDesignPass()
+  if (designPass) {
+    /* Each document is one quiet row: its title, its summary and when it was added, and "Read it in full". */
+    return (
+      <Section heading="Policies, handbook and documents">
+        {mayAdd && <AddADocument />}
+        {documents.length === 0 ? (
+          <Empty>Nothing has been added to the Desk yet.</Empty>
+        ) : (
+          <ul className="dp-rows" aria-label={`${name} documents`}>
+            <ShowAll items={documents} render={(d) => <ADocumentRow key={d.key} d={d} />} />
+          </ul>
+        )}
+      </Section>
+    )
+  }
   return (
     <Section heading="Policies, handbook and documents">
       {mayAdd && <AddADocument />}
@@ -123,11 +171,34 @@ function ADocument({ d }: { d: DeskDocument }) {
   )
 }
 
+/** The design pass: one quiet row a document, everything visible. The title first, its summary and when it was added under it, and
+    "Read it in full" as a quiet link. */
+function ADocumentRow({ d }: { d: DeskDocument }) {
+  const [open, setOpen] = useState(false)
+  const full = useQuery({ queryKey: ['desk-document', d.key], queryFn: () => companyApi.document(d.key), enabled: open, retry: false, staleTime: 60_000 })
+  return (
+    <li className="dp-row">
+      <span className="dp-row-main">
+        <span className="dp-row-title">{d.title}</span>
+        <span className="dp-row-line">{[d.summary ?? 'There is no summary of this document yet.', d.added].filter(Boolean).join(' ')}</span>
+      </span>
+      <span className="dp-row-acts">
+        <button type="button" className="gwui-plain-link" onClick={() => setOpen(o => !o)} aria-expanded={open}>{open ? 'Close it' : 'Read it in full'}</button>
+      </span>
+      {open && (
+        <span className="dp-row-body">
+          {full.isLoading && <Skeleton what={`Getting ${d.title}`} shape="lines" />}
+          {full.isError && <Note tone="error">{d.title} did not open. Try again in a moment.</Note>}
+          {full.data && <div className="gwui-panel-text gwui-pre-line" aria-label={`${d.title} in full`}>{full.data.text}</div>}
+        </span>
+      )}
+    </li>
+  )
+}
+
 function AddADocument() {
   const qc = useQueryClient()
   const designPass = useTheDesignPass()
-  /* The design pass: the form is folded behind one button until somebody wants it, so the documents themselves come first. */
-  const [adding, setAdding] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
   const [text, setText] = useState('')
@@ -142,7 +213,7 @@ function AddADocument() {
   const said = (add.error as { response?: { data?: { message?: string | string[] } } } | null)?.response?.data?.message
   const ready = !!file || (!!title.trim() && !!text.trim())
   if (designPass) {
-    if (!adding && !add.isSuccess) return <div className="dp-add"><Button kind="secondary" onClick={() => setAdding(true)}>Add a document</Button></div>
+    /* Open, as it is with the switch off: the form is on the page, quieter, with nothing to press first. */
     return (
       <Panel as="section" aria-label="Add a document">
         <div className="dp-form">
@@ -166,7 +237,6 @@ function AddADocument() {
             <Button kind="primary" onClick={() => add.mutate()} disabled={!ready || add.isPending}>
               {add.isPending ? 'Reading it' : 'Add it to the Desk'}
             </Button>
-            <Button kind="quiet" onClick={() => { setAdding(false); add.reset() }}>Cancel</Button>
           </div>
           {add.isError && <Note tone="error">{Array.isArray(said) ? said.join(' ') : said || 'That document was not added. Try again in a moment.'}</Note>}
           {add.isSuccess && <Note tone="green" role="status">{add.data.title} is on the Desk now.</Note>}
@@ -202,14 +272,38 @@ function AddADocument() {
 /* ---------- 2. Who works here ---------- */
 
 /** One person's line in plain sentences: "Sales lead in Sales. Reports to Grace Wanjiru. Their phone number is +254 700 000 001." */
-export function aDirectoryLine(p: DirectoryEntry): string {
+export function aDirectoryLine(p: DirectoryEntry, isYou = false): string {
   const where = p.jobTitle && p.team ? `${p.jobTitle} in ${p.team}.` : p.jobTitle ? `${p.jobTitle}.` : p.team ? `Works in ${p.team}.` : ''
   const to = p.reportsTo ? `Reports to ${p.reportsTo}.` : ''
-  const phone = p.phone ? `Their phone number is ${p.phone}.` : ''
+  const phone = p.phone ? `${isYou ? 'Your' : 'Their'} phone number is ${p.phone}.` : ''
   return [where, to, phone].filter(Boolean).join(' ')
 }
 
 function TheDirectory({ people }: { people: DirectoryEntry[] }) {
+  const designPass = useTheDesignPass()
+  const me = useAuthStore(s => s.user?.id)
+  if (designPass) {
+    /* One quiet row a person: the name first, then one line. Ten a page, with every page reachable: it is the directory people come to look somebody up
+       in, so it is not cut at three; it comes last, under the strategy and the documents. Your own row says "Your phone number". */
+    return (
+      <Section heading="Who works here">
+        {people.length === 0 ? (
+          <Empty>Nobody is listed here yet.</Empty>
+        ) : (
+          <ul className="dp-rows" aria-label="Who works here">
+            <Paged items={people} label="who works here" render={(p) => (
+              <li key={p.id} className="dp-row">
+                <span className="dp-row-main">
+                  <span className="dp-row-title">{p.name}</span>
+                  <span className="dp-row-line">{aDirectoryLine(p, p.id === me)}</span>
+                </span>
+              </li>
+            )} />
+          </ul>
+        )}
+      </Section>
+    )
+  }
   return (
     <Section heading="Who works here">
       {people.length === 0 ? (
