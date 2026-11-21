@@ -113,7 +113,7 @@ export const companyApi = {
     if (input.file) form.append('file', input.file)
     if (input.title?.trim()) form.append('title', input.title.trim())
     if (input.text?.trim()) form.append('text', input.text)
-    return (await apiClient.post('/company/documents', form, { headers: { 'Content-Type': 'multipart/form-data' } })).data
+    return (await apiClient.post('/company/documents', form)).data
   },
   /** The goals this reader may change, and the check-ins they may tie to one (GET /company/goals). The server decides who may. */
   goals: async (): Promise<TheGoalsYouMayChange> => (await apiClient.get('/company/goals', { skipForbiddenToast: true } as any)).data,

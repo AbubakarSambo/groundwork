@@ -84,13 +84,13 @@ export const askApi = {
   addADocumentForTheOrganisation: (file: File): Promise<AskReply> => {
     const form = new FormData()
     form.append('file', file)
-    return apiClient.post<AskReply>('/ask/document', form, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
+    return apiClient.post<AskReply>('/ask/document', form).then(r => r.data)
   },
   /** A file for the report they asked for in Ask (S8). Read once and used only for that report; refused when no report is waiting for documents. */
   addToTheReport: (file: File): Promise<AskReply> => {
     const form = new FormData()
     form.append('file', file)
-    return apiClient.post<AskReply>('/ask/report/material', form, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
+    return apiClient.post<AskReply>('/ask/report/material', form).then(r => r.data)
   },
   /** Yes or no to the one request Ask Groundwork said back. Nothing is done without a yes. */
   answer: (proposalId: string, answer: 'yes' | 'no'): Promise<AskReply> =>

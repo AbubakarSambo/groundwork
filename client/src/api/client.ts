@@ -29,11 +29,10 @@ const API_BASE_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api/v1`
   : '/api/v1'
 
+/* No Content-Type is set here: axios sends an object as JSON and a FormData as a file upload by itself. A JSON default
+   here turned every FormData into JSON and dropped its file, so a CV was refused as not a PDF (release test, 21 November). */
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 })
 
 // Request interceptor - attach token
