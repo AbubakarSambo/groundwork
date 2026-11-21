@@ -50,8 +50,50 @@ export const THE_INSTRUCTION_IS_UNCLEAR = (first: string, matter: string | null,
 export const THE_INSTRUCTION_IS_ON = 'Done. I will do it as I said, and I will tell you if anything stops me.';
 export const THE_INSTRUCTION_IS_OFF = 'All right. I have not asked anybody anything.';
 export const NO_ONE_TO_ASK = (first: string) => `${first}, I would do that, but nobody in your team has told me they are happy to hear from me yet. Please send me their names and contacts first.`;
-export const ONLY_SHE_CAN_GIVE_ONE = 'Only Fatima can give me an instruction like that.';
-export const THE_ASK_FOR_AN_UPDATE = (first: string, forName: string, matter: string | null) => `Hello ${first}, ${forName} asked me to collect the team's updates${matter ? ` on ${matter}` : ''}. Please send me where things stand on your work, and any document that shows it. You can write it here, forward it, or send a voice note.`;
+/** Her own name, never a fixed one (it read "Only Fatima" in every organisation). */
+export const ONLY_SHE_CAN_GIVE_ONE = (principalFirst: string) => `Only ${principalFirst} can give me an instruction like that.`;
+
+const aThing = (t: string) => `“${String(t ?? '').replace(/\s+/g, ' ').trim().replace(/[.!?]+$/, '').slice(0, 120)}”`;
+
+/**
+ * THE ASK TO ONE PERSON, FROM THEIR OWN PART OF THE RECORD (Batch D, R5). It names what is still open with them, and what the record already holds from them,
+ * so they are never asked for a document already on record (D13). With nothing open and nothing held it is the plain ask it always was.
+ */
+export const THE_ASK_FOR_AN_UPDATE = (first: string, forName: string, matter: string | null, theirs?: { open: { text: string; dueSaid: string | null }[]; held: string[]; today?: boolean }) => {
+  const open = theirs?.open ?? [];
+  const held = theirs?.held ?? [];
+  const lead = `Hello ${first}, ${forName} asked me to collect the team's updates${matter ? ` on ${matter}` : ''}${theirs?.today ? ' today' : ''}.`;
+  if (!open.length && !held.length) return `${lead} Please send me where things stand on your work, and any document that shows it. You can write it here, forward it, or send a voice note.`;
+  const openSaid = open.length
+    ? ` The record shows ${aThing(open[0].text)}${open[0].dueSaid ? `, which you said for ${open[0].dueSaid},` : ''} is still open with you${open.length > 1 ? `, and ${open.length - 1} more ${open.length === 2 ? 'matter' : 'matters'} too` : ''}. Please tell me where ${open.length > 1 ? 'each one' : 'it'} stands.`
+    : ' Please send me where things stand on your work.';
+  const heldSaid = held.length ? ` I already have ${held.slice(0, 2).join(' and ')}${held.length > 2 ? `, and ${held.length - 2} more things you sent` : ''}, so there is no need to send ${held.length === 1 ? 'it' : 'them'} again. Send a document only for something I do not have yet.` : ' Send any document that shows it.';
+  return `${lead}${openSaid}${heldSaid} You can write it here, forward it, or send a voice note.`;
+};
+
+/**
+ * WHO WILL BE WRITTEN TO, HOW, AND ABOUT WHAT (Batch D, R5, D2). Said back before anything goes, from the people on her record: she is never asked who her
+ * team is. Each person with something open is named with it; the rest are named together by how they are reached.
+ */
+export const THE_TEAM_WRITTEN_TO = (a: { first: string; matter: string | null; today: boolean; people: { name: string; how: 'WhatsApp' | 'email'; about: string | null; more: number }[] }) => {
+  const list = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+  const when = a.today ? 'today' : 'now';
+  const n = a.people.length;
+  const askFor = a.matter ? `about ${a.matter.replace(/[.!?]+$/, '')}` : 'where their work stands';
+  if (n === 1) {
+    const p = a.people[0];
+    return `${a.first}, I will write to ${p.name} on ${p.how} ${when}, and ask them ${askFor}${p.about ? `, and about ${aThing(p.about)}, which is still open${p.more ? `, and ${p.more} more ${p.more === 1 ? 'matter' : 'matters'}` : ''}` : ''}. Nobody is asked for a document I already have. I will tell you as soon as they have answered. Shall I go ahead?`;
+  }
+  const out: string[] = [`${a.first}, I will write to ${n} people on your record ${when}, and ask each of them ${askFor}.`];
+  for (const p of a.people.filter((x) => x.about)) out.push(`I will write to ${p.name} on ${p.how} and ask about ${aThing(p.about!)}, which is still open${p.more ? `, and ${p.more} more ${p.more === 1 ? 'matter' : 'matters'}` : ''}.`);
+  const rest = a.people.filter((x) => !x.about);
+  const byWhatsApp = rest.filter((x) => x.how === 'WhatsApp').map((x) => x.name);
+  const byEmail = rest.filter((x) => x.how === 'email').map((x) => x.name);
+  const parts = [byWhatsApp.length ? `${list(byWhatsApp)} on WhatsApp` : '', byEmail.length ? `${list(byEmail)} by email` : ''].filter(Boolean);
+  if (parts.length) out.push(`I will write to ${parts.join(', and to ')}, and ask what they have done and what is still open.`);
+  out.push(`Nobody is asked for a document I already have. I will tell you as soon as they have answered${a.today ? ', and this evening with whatever I have and who has not answered' : ', or after three days with whatever I have and who has not answered'}. Shall I go ahead?`);
+  return out.join(' ');
+};
 
 /* ---- Corrections. ---- */
 export const NOT_CHANGED_YET = (first: string) => `${first}, I have not changed it yet, because nothing I hold shows that it was done. Please send me the message or document that shows it, and I will put it right as soon as I have it.`;

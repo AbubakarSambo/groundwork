@@ -33,7 +33,7 @@ export interface TheWorkPorts {
     /** An answer to something she sent or asked for: never counted as the day's routine message. */
     reply(a: { organizationId: string; to: string; subject: string; text: string; replyTo: string }): Promise<'sent' | 'held' | 'suppressed'>;
     /** A message of Groundwork's own accord, counted as routine. */
-    ask(a: { organizationId: string; to: string; name: string; subject: string; text: string }): Promise<'sent' | 'held' | 'suppressed'>;
+    ask(a: { organizationId: string; to: string; name: string; subject: string; text: string; /** The questions it carries: asked only when the mail goes. */ askKey?: string }): Promise<'sent' | 'held' | 'suppressed'>;
   };
   whatsapp: { send(a: { organizationId: string; phone: string; text: string; kind: string }): Promise<{ sent: boolean; error?: string }> };
 }
@@ -200,7 +200,7 @@ export class PrincipalWork {
         const around = await this.peopleAround(batch);
         const toTheSender = (x: { organizationId: string; batch: ABatchForWork; subject: string; text: string; short?: string }) => this.toTheSender(x);
         let answered = 0;
-        if (trackers.length) answered += (await readTheTrackersInABatch(this.db, { toTheSender, askByEmail: (x) => this.d.ports.email.ask(x) }, { batch, trackers, who: around.who, senderName: around.senderName, theSender: around.theSender, now })).length;
+        if (trackers.length) answered += (await readTheTrackersInABatch(this.db, { toTheSender, askByEmail: (x) => this.d.ports.email.ask(x) }, { batch, trackers, who: around.who, senderName: around.senderName, theSender: around.theSender, now, readHeadings: this.d.reader.readTheHeadings ?? null })).length;
         if (reports.length) {
           const mayRead = batch.sender.kind !== 'contact';
           const rows: TheEngagementRow[] | null = mayRead ? (await buildTheRegister(this.db, { organizationId: batch.organizationId, principalUserId: batch.principalUserId, now, forADelegate: true })).rows.map((r) => ({ key: r.key, item: r.item, workstream: r.workstream, owner: r.owner, status: r.status })) : null;

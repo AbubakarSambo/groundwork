@@ -10,6 +10,7 @@ import type { AnthropicService } from '../conversation/anthropic.service';
 import { MONTHS } from '../year-end/the-year-end-content';
 import { readTheChange, type TheChange } from '../year-end/the-year-end-versions';
 import { askTheModelForAnAnswer, type AnAnswer } from '../executive-onboarding/her-answer';
+import { THE_ROLES, type AHeadingReader, type TheColumns } from './the-payments-tracker';
 
 export type AWorkRequest =
   | { kind: 'add_recipient'; who: string; email: string | null }
@@ -27,6 +28,8 @@ export interface TheWorkReader {
   readARevision(text: string, year: number): Promise<TheChange | null>;
   readARequest(text: string): Promise<AWorkRequest | null>;
   readAReport(a: { text: string; fileName: string; receivedOn: string; engagements: AnEngagement[] }): Promise<AReportRead | null>;
+  /** What each column of a payment tracker is, from its headings (the-payments-tracker.ts). Absent when there is no model. */
+  readTheHeadings?: AHeadingReader;
 }
 
 export const WORK_READER = 'WORK_READER';
@@ -135,6 +138,20 @@ const REPORT_TOOL = {
 };
 const REPORT_PROMPT = `You read one weekly report from a legislative institution that a senior person forwarded to her work assistant. List the developments that are relevant to a government-relations office: bills, committee work, motions, statements and decisions. For each, give one plain sentence saying only what the report says, and copy the exact words it is based on. Do not say what anybody did about it. Suggest follow-ups only as suggestions. Say isWeeklyReport is true only when the document itself is the institution's weekly report. A monthly activity note, a letter, a log or a message that only mentions that a weekly report exists or was received is not one: say false and list no developments. ${UNTRUSTED}`;
 
+const HEADINGS_TOOL = {
+  name: 'the_columns',
+  description: 'Which row of a payment sheet holds the headings, and what each column is.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      headingRow: { type: 'number', description: 'The row that holds the headings, counting the first row as 0.' },
+      columns: { type: 'array', items: { type: 'object', properties: { index: { type: 'number', description: 'The column, counting the first as 0.' }, role: { type: 'string', enum: THE_ROLES } }, required: ['index', 'role'] } },
+    },
+    required: ['headingRow', 'columns'],
+  },
+};
+export const HEADINGS_PROMPT = `You read the first rows of a payments sheet that an office keeps. Say which row holds the column headings, and for each column you can name, what it is: payee (who is paid), amount, currency, owner (the person on the team responsible), due (the date it is due or was paid), approval (whether it was approved), status (whether it was paid), evidence (a document named as the proof, such as a receipt), confirmation (the bank's own confirmation of the transfer, such as a bank confirmation number or transfer reference), reference (the invoice, voucher or payment reference), description. Read the meaning of each heading, in any words or language. Leave out a column you cannot name. ${UNTRUSTED}`;
+
 const validMonth = (n: unknown) => typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= 12;
 
 export class ReaderWithAModel implements TheWorkReader {
@@ -166,6 +183,14 @@ export class ReaderWithAModel implements TheWorkReader {
     if (got.kind === 'standing' && (got.what === 'day' || got.what === 'week')) return { kind: 'standing', what: got.what, on: got.on !== false, hour: Number.isInteger(got.hour) && got.hour >= 0 && got.hour <= 23 ? got.hour : null, weekday: Number.isInteger(got.weekday) && got.weekday >= 0 && got.weekday <= 6 ? got.weekday : null };
     return null;
   }
+
+  readTheHeadings: AHeadingReader = async (rows) => {
+    const got = await this.ask<any>(HEADINGS_PROMPT, `<<<\n${rows.map((r, i) => `${i}: ${r.map((c) => c.trim()).join(' | ')}`).join('\n').slice(0, 4000)}\n>>>`, HEADINGS_TOOL);
+    if (!got || !Number.isInteger(got.headingRow) || !Array.isArray(got.columns)) return null;
+    const columns: TheColumns = {};
+    for (const c of got.columns) if (c && Number.isInteger(c.index) && THE_ROLES.includes(c.role) && !(c.role in columns)) columns[c.role] = c.index;
+    return { row: got.headingRow, columns };
+  };
 
   async readAReport(a: { text: string; fileName: string; receivedOn: string; engagements: AnEngagement[] }): Promise<AReportRead | null> {
     const keys = a.engagements.map((e) => `${e.key}: ${e.item}${e.workstream ? ` (${e.workstream})` : ''}`).join('\n');

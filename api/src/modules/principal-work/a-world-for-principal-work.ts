@@ -4,12 +4,13 @@
  * roster, mail and WhatsApp that write down exactly what a person would have read, and a clock the test moves. Nothing here reaches a provider or a model.
  */
 const XLSX = require('xlsx') as typeof import('xlsx');
-import { aYearEndWorld, aRichTable } from '../year-end/a-year-end-world-for-specs';
+import { aYearEndWorld, aRichTable } from '../year-end/a-world-for-the-year-end';
 import { handleTheDraftWords } from '../year-end/year-end.service';
 import { grantADelegate } from '../outstanding/a-delegate-acts-for-a-principal';
 import { keepWhatWasForwarded, type AnArrival, type TheIntakePorts } from '../executive-onboarding/the-intake';
 import { PrincipalWork, type TheWorkPorts } from './principal-work';
 import { readerWithoutAModel, type TheWorkReader } from './the-work-reader';
+import { theAskWent } from '../executive-onboarding/information-gaps';
 
 export const NOW = new Date('2026-11-10T09:00:00Z');
 export const DAY = 86_400_000;
@@ -44,7 +45,8 @@ export function aWorldForPrincipalWork(now: Date = NOW, over: { reader?: TheWork
   const ports: TheWorkPorts = {
     email: {
       reply: async (a) => { if (mode.mail === 'suppressed') return 'suppressed'; sent.push({ via: 'reply', to: a.to, subject: a.subject, text: a.text }); return mode.mail; },
-      ask: async (a) => { if (mode.mail === 'suppressed') return 'suppressed'; sent.push({ via: 'ask', to: a.to, subject: a.subject, text: a.text }); return mode.mail; },
+      /* As the one door does: what the mail asks is marked asked only when it goes. */
+      ask: async (a) => { if (mode.mail === 'suppressed') return 'suppressed'; sent.push({ via: 'ask', to: a.to, subject: a.subject, text: a.text }); if (mode.mail === 'sent') await theAskWent(w.prisma, a.askKey, w.clock.now); return mode.mail; },
     },
     whatsapp: { send: async (a) => { if (!mode.whatsapp) return { sent: false, error: 'not sent' }; sent.push({ via: 'whatsapp', to: a.phone, text: a.text }); return { sent: true }; } },
   };

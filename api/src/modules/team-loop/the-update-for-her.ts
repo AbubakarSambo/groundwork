@@ -22,7 +22,26 @@ const firstOf = (n: string) => String(n ?? '').split(/\s+/)[0] || 'there';
 
 export interface TheUpdateArgs {
   organizationId: string; principalUserId: string; first: string; contacts: any[]; since: Date; now: Date;
-  lead: 'week' | 'ready' | 'partial'; forDay?: string; matter?: string | null; nobodyAnswered: (string | null)[];
+  lead: 'week' | 'ready' | 'partial'; forDay?: string; matter?: string | null;
+  /** The asks of this cycle (information_gaps rows): who was asked, whether the message went, and when. Who answered is read from what they sent since. */
+  asks: { askedOfEmail: string | null; askedOfName: string | null; state: string; askedAt: Date | string | null }[];
+}
+
+/**
+ * WHO HAS NOT ANSWERED, FROM THE SAME RECORD AS WHO HAS (Dangote stress test, D12: Ruth and Oluwaseun wrote corrections that afternoon and were told as silent; Bilkisu was
+ * in both lists). One reading: a person whose ask went and who has sent nothing since is quiet; a person whose message has not gone yet was not asked at all.
+ */
+export async function theAsksStillWaiting(prisma: any, a: { principalUserId: string; contacts: any[]; asks: TheUpdateArgs['asks'] }): Promise<{ quiet: string[]; notGone: string[] }> {
+  const quiet: string[] = [];
+  const notGone: string[] = [];
+  for (const g of a.asks) {
+    if (g.state === 'queued') { if (g.askedOfName) notGone.push(g.askedOfName); continue; }
+    if (g.state !== 'asked' || !g.askedAt) continue;
+    const c = a.contacts.find((x) => String(x.contactKey ?? '').toLowerCase() === String(g.askedOfEmail ?? '').toLowerCase());
+    const sent: any[] = c ? (await prisma.principalMaterial.findMany({ where: { principalUserId: a.principalUserId, fromUserId: `contact:${c.id}` } }).catch(() => [])) ?? [] : [];
+    if (!sent.some((m) => new Date(m.receivedAt).getTime() >= new Date(g.askedAt as any).getTime()) && g.askedOfName) quiet.push(g.askedOfName);
+  }
+  return { quiet, notGone };
 }
 
 /** The facts, by person, from the record. */
@@ -34,7 +53,8 @@ export async function theFactsAboutTheTeam(prisma: any, a: TheUpdateArgs): Promi
     const first = firstOf(c.name);
     const person = await thePersonBehind(prisma, c);
     if (!person) continue;
-    const rows: any[] = ((await prisma.commitment.findMany({ where: { organizationId: a.organizationId, personExternalId: person.externalId, source: SOURCE } })) ?? []).filter((m: any) => m.state !== 'DROPPED');
+    /* What they told me since I asked, not everything they ever said (D12: the eight lines given were the year's old promises). */
+    const rows: any[] = ((await prisma.commitment.findMany({ where: { organizationId: a.organizationId, personExternalId: person.externalId, source: SOURCE } })) ?? []).filter((m: any) => m.state !== 'DROPPED' && [m.statedAt ?? m.createdAt, m.resolvedAt].some((d) => d && new Date(d).getTime() >= a.since.getTime()));
     for (const m of rows) {
       const thing = theThingOf(m.text);
       if (String(m.provenBy ?? '').startsWith('disputed:')) add(first, `A claim in what ${first} sent, “${thing}”, has been marked as not backed up, so I have not counted it as done.`, true);
@@ -56,7 +76,9 @@ export async function theFactsAboutTheTeam(prisma: any, a: TheUpdateArgs): Promi
 
 export async function theUpdateForHer(prisma: any, mind: TheTeamMind | null | undefined, a: TheUpdateArgs): Promise<string> {
   const facts = await theFactsAboutTheTeam(prisma, a);
-  const quiet = a.nobodyAnswered.filter((x): x is string => !!x).map(firstOf);
+  const still = await theAsksStillWaiting(prisma, { principalUserId: a.principalUserId, contacts: a.contacts, asks: a.asks });
+  const quiet = still.quiet.map(firstOf);
+  const notGone = still.notGone.map(firstOf);
   const opening = a.lead === 'ready'
     ? `${a.first}, the team has answered${a.matter ? ` about ${a.matter}` : ''}. Here is where things stand.`
     : a.lead === 'partial'
@@ -69,6 +91,7 @@ export async function theUpdateForHer(prisma: any, mind: TheTeamMind | null | un
   if (facts.length) paragraphs.push(...theUpdateParagraphs(shown, left, narrated));
   else paragraphs.push('Nobody has told me anything I can add yet.');
   if (quiet.length) paragraphs.push(`I have had no new message from ${nameList(quiet)} since I asked.`);
+  if (notGone.length) paragraphs.push(`My message to ${nameList(notGone)} has not gone out yet, so I have not asked them yet.`);
   if (facts.length) paragraphs.push(facts.some((f) => f.fact.unverified) ? 'Everything above comes from what they sent me. Where it is only what somebody said, I have said so.' : 'Everything above comes from what they sent me.');
   return paragraphs.join('\n\n');
 }

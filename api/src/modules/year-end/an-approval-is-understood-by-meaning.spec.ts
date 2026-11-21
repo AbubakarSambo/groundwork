@@ -1,4 +1,4 @@
-import { aYearEndWorld } from './a-year-end-world-for-specs';
+import { aYearEndWorld } from './a-world-for-the-year-end';
 import { aReadingOfHerWords } from './a-reading-of-her-words-for-specs';
 import { latestDraft, makeTheFirstDraft, reviseTheDraft } from './the-year-end-versions';
 import { sendTheDraft } from './the-year-end-delivery';
@@ -34,7 +34,7 @@ describe('what she is asked to read, and what the model is asked for', () => {
     expect(THE_DRAFT_REQUEST_PROMPT).toContain('I approve version 5');
     expect(THE_DRAFT_REQUEST_PROMPT).toContain('not yet');
     expect(THE_DRAFT_REQUEST_PROMPT).toMatch(/A bare "yes"/);
-    expect(THE_DRAFT_REQUEST_SCHEMA.input_schema.properties.asks.enum).toEqual(['send_draft', 'send_list', 'approve', 'decline', 'none']);
+    expect(THE_DRAFT_REQUEST_SCHEMA.input_schema.properties.asks.enum).toEqual(['send_draft', 'send_list', 'structure', 'approve', 'decline', 'none']);
     expect(Object.keys(THE_DRAFT_REQUEST_SCHEMA.input_schema.properties)).toContain('version');
   });
 

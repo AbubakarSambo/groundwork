@@ -25,6 +25,7 @@ import { isASalesKind } from '../board/the-kind-of-work';
 import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, theSalesAnswer, theUnitsOf, theMoneyOf, whatWasSold, type ADealOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
 import { aDepositSaid } from '../board/a-deals-proof-is-about-that-deal';
 import { aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
+import { herYearEndRecordForAsk } from '../year-end/her-year-end-record';
 
 /** Whether a message asks something, rather than tells something. Read by its shape, never by a model. */
 const STARTS_A_QUESTION = /^\s*(?:(?:and|so|but|also|please|ok|okay)[\s,]+)?(?:what|what's|whats|when|where|which|who|whom|whose|why|how|is|are|was|were|does|do|did|can|could|will|would|should|has|have|according to|tell me|do you know)\b/i;
@@ -52,6 +53,10 @@ Rules:
 - For what is sold, how much of it has proof of payment, and how far a sales target is from being met, use "THE SALES ON RECORD" in the record. It is counted the way the board counts it, and it is the only count to give.
 - Write plain, full sentences that a person with basic English understands. Speak to the person as "you". No lists, no headings, no colons joining pieces.
 - At most three sentences for each part the question asks.
+- A senior person's year-end record says how sure each line is in square brackets. Only a line marked PROVEN is achieved. A line marked SAID, DISPUTED, what a forwarded note SAYS, or a RECOLLECTION is not proven: say whose word it is and what would prove it, and never state it as done. When two records are about the same matter, say how they fit together, with the day of each ("Brian said in March it was signed, and the contract dated 2 April shows it").
+- When asked which claims are weak, or what leadership will challenge, name the lines that are only said, disputed or open, with the record each rests on. When asked what was achieved, give only the PROVEN lines, with their records.
+- When asked what a person has failed to deliver, or who has not delivered, say what is still outstanding that each person owns, with the record it rests on and the day it was due. Say only what is outstanding. Never judge the person, and never say they failed.
+- When asked about the presentation or the report, answer from its own page: its version, whether it is approved, and how many slides it has.
 - A short question names things loosely. "The Kamau defence" is the defence in "Kamau v. Apex Ltd"; "Kilele" is "Kilele Hotel". Match a short name to the fuller one in the documents, and answer when one thing clearly fits.`;
 
 const ANSWER_SCHEMA = {
@@ -63,7 +68,7 @@ const ANSWER_SCHEMA = {
       found: { type: 'boolean', description: 'True when the documents answer the question, or at least one of the parts it asks.' },
       answer: { type: 'string', description: 'The answer in plain full sentences, with every figure exactly as written in the document.' },
       whyNot: { type: 'string', description: 'Only when found is false: one or two plain full sentences to the person, saying what they asked, what was looked at and why there is no answer. Empty when found is true.' },
-      judgesAPerson: { type: 'boolean', description: 'True when the question asks how well or badly a named person is doing, or who does best or worst.' },
+      judgesAPerson: { type: 'boolean', description: 'True when the question asks how well or badly a named person is doing, or who does best or worst. False when it asks what somebody still has to deliver: that is what is outstanding, answered without a judgement.' },
     },
     required: ['found', 'answer'],
   },
@@ -228,6 +233,8 @@ export async function theRecordTheyMayRead(
     const content = [...sales, ...lines].join('\n');
     out.push({ fileName: `the record of ${g.label}`, content: content.slice(0, MOST_WE_READ_FROM_ONE), mayBeQuoted: facts.filter((f) => f.saidWordForWord).map((f) => f.words) });
   }
+  /* A SENIOR PERSON'S OWN YEAR (Batch D, R2): the record her year-end draft is built from, for her and for whoever acts for her, and for nobody else. */
+  out.push(...(await herYearEndRecordForAsk(prisma, { organizationId: input.organizationId, userId: input.userId, now }).catch(() => [])));
   return out;
 }
 

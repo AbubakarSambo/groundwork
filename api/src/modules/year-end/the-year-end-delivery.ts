@@ -100,6 +100,9 @@ export async function sendTheDraftOnRequest(prisma: any, ports: ThePorts, a: { o
   const subject = draftReadyEmail(a.row.content, a.row.version).subject;
   if (o === 'sent') return `I have emailed version ${a.row.version} of the report and presentation to ${a.toName}, with the files attached.`;
   if (o === 'held') return `Version ${a.row.version} is ready and waiting to go to ${a.toName}. It has not been sent yet, and it goes in the morning.`;
+  /* "Already" only when the record says it went: a claim that is only waiting to go is said as waiting (D15). */
+  const went = o === 'already' && !!(await prisma.yearEndLog.findFirst({ where: { principalUserId: a.principalUserId, kind: 'sent', subject: sendKeyOf({ principalUserId: a.principalUserId, year: a.row.year, version: a.row.version, kind: 'draft', recipient: sent[0].to, day }) } }).catch(() => null));
+  if (o === 'already' && !went) return `Version ${a.row.version} is ready and waiting to go to ${a.toName}. It has not been sent yet.`;
   if (o === 'already') return `I already emailed version ${a.row.version} to ${a.toName} today, with the subject “${subject}”. I have not sent it a second time.`;
   if (!sent.length) return `I have no email address for ${a.toName}, so there is nowhere to send version ${a.row.version}. Please tell me where it should go.`;
   return `I could not send version ${a.row.version} to ${a.toName} just now. Nothing was sent, and I will not say it was.`;
@@ -144,7 +147,7 @@ export async function deliverTheFinal(prisma: any, ports: ThePorts, a: { organiz
 }
 
 /** "Send the outstanding list": the editable register and its readable summary, from the newest version, to her only. Once a day for one version. */
-export async function sendTheRegister(prisma: any, ports: ThePorts, a: { organizationId: string; principalUserId: string; row: TheDraftRow; now: Date }): Promise<{ said: string }> {
+export async function sendTheRegister(prisma: any, ports: ThePorts, a: { organizationId: string; principalUserId: string; row: TheDraftRow; now: Date; /** Who it goes to, as the reader is told: "you" for her, her first name for somebody who acts for her (D15: Maryam read "I already emailed you" of a mail that went to Fatima). */ toName?: string }): Promise<{ said: string }> {
   const to = await recipientsFor(prisma, { ...a, kind: 'draft' });
   const c = a.row.content;
   const files = [await oneFile('register_xlsx', c, { version: a.row.version, status: a.row.status }), await oneFile('register_pdf', c, { version: a.row.version, status: a.row.status })];
@@ -152,5 +155,8 @@ export async function sendTheRegister(prisma: any, ports: ThePorts, a: { organiz
   const out: Sent[] = [];
   for (const t of to) out.push(await sendOne(prisma, ports, { ...a, kind: 'register', day: a.now.toISOString().slice(0, 10), to: t, subject: 'Your outstanding list', text, files }));
   const o = out[0]?.outcome;
-  return { said: o === 'sent' ? `I have emailed you the outstanding list from version ${a.row.version}.` : o === 'held' ? `The outstanding list from version ${a.row.version} is ready and waiting to go. It has not been sent yet.` : o === 'already' ? `I already emailed you the outstanding list for version ${a.row.version} today, and nothing has changed since.` : 'I could not send the outstanding list just now.' };
+  const toName = a.toName ?? 'you';
+  /* "Already" is said only when the record says the mail went; a claim that is only queued is waiting, and is said so. */
+  const went = o === 'already' && !!out[0] && !!(await prisma.yearEndLog.findFirst({ where: { principalUserId: a.principalUserId, kind: 'sent', subject: sendKeyOf({ principalUserId: a.principalUserId, year: a.row.year, version: a.row.version, kind: 'register', recipient: out[0].to, day: a.now.toISOString().slice(0, 10) }) } }).catch(() => null));
+  return { said: o === 'sent' ? `I have emailed the outstanding list from version ${a.row.version} to ${toName}.` : o === 'held' || o === 'already' && !went ? `The outstanding list from version ${a.row.version} is ready and waiting to go to ${toName}. It has not been sent yet.` : o === 'already' ? `I already emailed the outstanding list for version ${a.row.version} to ${toName} today, and nothing has changed since.` : !out.length ? `I have no email address for ${toName}, so there is nowhere to send the outstanding list.` : 'I could not send the outstanding list just now.' };
 }

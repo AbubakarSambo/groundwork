@@ -18,14 +18,16 @@ import { heldUntilTheMorning } from '../whatsapp/quiet-hours-are-the-organisatio
 import { MONTHS } from '../year-end/the-year-end-content';
 import { NUDGE_FOR_AN_APPROVER, NUDGE_FOR_EVIDENCE, NUDGE_FOR_SOMETHING_SENT } from './the-team-words';
 import { SOURCE, thePersonBehind } from './what-their-reply-says';
+import { anAskKey } from '../executive-onboarding/information-gaps';
 
 const DAY = 86_400_000;
 export const QUIET_FOR_A_PROMISE = 3 * DAY;
 export const MOST_IN_A_WEEK = 2;
 
 export interface TheNudgePorts {
-  whatsapp: { send(a: { organizationId: string; phone: string; text: string; kind: string }): Promise<{ sent: boolean; error?: string }> };
-  email: { send(a: { organizationId: string; to: string; subject: string; text: string; replyTo: string }): Promise<unknown> };
+  /** `sendKey` is the questions the message carries (information-gaps.ts anAskKey): the gate marks them asked only when it really goes. */
+  whatsapp: { send(a: { organizationId: string; phone: string; text: string; kind: string; sendKey?: string }): Promise<{ sent: boolean; error?: string }> };
+  email: { send(a: { organizationId: string; to: string; subject: string; text: string; replyTo: string; askKey?: string }): Promise<unknown> };
   replyTo?: (organizationId: string) => Promise<string | undefined>;
 }
 
@@ -71,7 +73,9 @@ export async function nudgeWhereItHelps(prisma: any, ports: TheNudgePorts, now: 
     const ledger = async (c: any) => ((await prisma.informationGap.findMany({ where: { principalUserId: setup.principalUserId, askedOfEmail: c.contactKey } })) ?? []).filter((g: any) => /^(?:nudge|approver):/.test(g.gapKey)) as any[];
     const mayWrite = async (c: any): Promise<string | null> => {
       const rows = await ledger(c);
-      if (toldToday.has(c.id) || rows.some((g) => g.askedAt && new Date(g.askedAt).toISOString().slice(0, 10) === today || g.askedAt && now.getTime() - new Date(g.askedAt).getTime() < 2 * DAY)) return 'they have had a message in the last two days';
+      /* A message still waiting to go counts as one sent now, so a second is not sent beside it. */
+      const when = (g: any) => g.askedAt ?? (g.state === 'queued' ? now : null);
+      if (toldToday.has(c.id) || rows.some((g) => when(g) && new Date(when(g)).toISOString().slice(0, 10) === today || when(g) && now.getTime() - new Date(when(g)).getTime() < 2 * DAY)) return 'they have had a message in the last two days';
       if (rows.filter((g) => g.askedAt && now.getTime() - new Date(g.askedAt).getTime() < 7 * DAY).length >= MOST_IN_A_WEEK) return 'they have had enough messages this week';
       const recent: any[] = (await prisma.principalMaterial.findMany({ where: { principalUserId: setup.principalUserId, fromUserId: `contact:${c.id}` } })) ?? [];
       if (recent.some((m) => now.getTime() - new Date(m.receivedAt).getTime() < 2 * DAY)) return 'they have just written';
@@ -79,12 +83,14 @@ export async function nudgeWhereItHelps(prisma: any, ports: TheNudgePorts, now: 
     };
     const deliver = async (c: any, text: string, key: string, about: string, kind: ANudge['kind']): Promise<boolean> => {
       /* Written down before it goes, given up if it could not go, so two copies of the API send one message. */
-      const claimed: any = await prisma.informationGap.create({ data: { organizationId: setup.organizationId, principalUserId: setup.principalUserId, gapKey: key, what: `A nudge about ${about}.`, askedOfEmail: c.contactKey, askedOfName: c.name, state: 'asked', askedAt: now } }).catch(() => null);
+      /* Claimed as waiting before it goes, so two copies of the API send one message; asked only when the gate or the door says it went. */
+      const claimed: any = await prisma.informationGap.create({ data: { organizationId: setup.organizationId, principalUserId: setup.principalUserId, gapKey: key, what: `A nudge about ${about}.`, askedOfEmail: c.contactKey, askedOfName: c.name, state: 'queued', askedAt: null } }).catch(() => null);
       if (!claimed) return false;
+      const askKey = anAskKey(setup.principalUserId, 'team', c.contactKey);
       let went = false;
       let to = c.email ?? c.phone;
-      if (c.phone) { went = !!(await ports.whatsapp.send({ organizationId: setup.organizationId, phone: c.phone, text, kind: 'team-nudge' }).catch(() => ({ sent: false }))).sent; if (went) to = c.phone; }
-      if (!went && c.email) { to = c.email; await ports.email.send({ organizationId: setup.organizationId, to: c.email, subject: 'A quick question about your work', text, replyTo: (await ports.replyTo?.(setup.organizationId)) ?? '' }).then(() => { went = true; }).catch(() => undefined); }
+      if (c.phone) { went = !!(await ports.whatsapp.send({ organizationId: setup.organizationId, phone: c.phone, text, kind: 'team-nudge', sendKey: askKey }).catch(() => ({ sent: false }))).sent; if (went) to = c.phone; }
+      if (!went && c.email) { to = c.email; went = (await ports.email.send({ organizationId: setup.organizationId, to: c.email, subject: 'A quick question about your work', text, replyTo: (await ports.replyTo?.(setup.organizationId)) ?? '', askKey }).catch(() => 'suppressed')) !== 'suppressed'; }
       if (!went) { await prisma.informationGap.deleteMany({ where: { id: claimed.id } }); return false; }
       toldToday.add(c.id);
       run.sent.push({ to, text, about, kind });
@@ -115,7 +121,8 @@ export async function nudgeWhereItHelps(prisma: any, ports: TheNudgePorts, now: 
         const told = await Promise.all(lines.map((m) => prisma.informationGap.findFirst({ where: { principalUserId: setup.principalUserId, gapKey: `approver:${m.id}`, askedOfEmail: approver.contactKey } })));
         if (told.some(Boolean)) {
           /* Already told once about this wait: the other lines are covered by that, and nobody is told again. */
-          for (const m of lines) if (!(await prisma.informationGap.findFirst({ where: { principalUserId: setup.principalUserId, gapKey: `approver:${m.id}`, askedOfEmail: approver.contactKey } }))) await prisma.informationGap.create({ data: { organizationId: setup.organizationId, principalUserId: setup.principalUserId, gapKey: `approver:${m.id}`, what: `A nudge about ${theThingOf(m.text)}.`, askedOfEmail: approver.contactKey, askedOfName: approver.name, state: 'asked', askedAt: now } }).catch(() => undefined);
+          const earlier: any = told.find(Boolean);
+          for (const m of lines) if (!(await prisma.informationGap.findFirst({ where: { principalUserId: setup.principalUserId, gapKey: `approver:${m.id}`, askedOfEmail: approver.contactKey } }))) await prisma.informationGap.create({ data: { organizationId: setup.organizationId, principalUserId: setup.principalUserId, gapKey: `approver:${m.id}`, what: `A nudge about ${theThingOf(m.text)}.`, askedOfEmail: approver.contactKey, askedOfName: approver.name, state: earlier.state, askedAt: earlier.askedAt ?? null } }).catch(() => undefined);
           continue;
         }
         const m = lines[0];
@@ -123,7 +130,8 @@ export async function nudgeWhereItHelps(prisma: any, ports: TheNudgePorts, now: 
         if (why) { run.left.push({ who: approver.name, why }); continue; }
         if (await deliver(approver, NUDGE_FOR_AN_APPROVER(firstOf(approver.name), firstOf(c.name), theThingOf(m.text), dayOf(new Date(m.statedAt ?? m.createdAt))), `approver:${m.id}`, theThingOf(m.text), 'approver')) {
           for (const x of lines) {
-            if (x.id !== m.id) await prisma.informationGap.create({ data: { organizationId: setup.organizationId, principalUserId: setup.principalUserId, gapKey: `approver:${x.id}`, what: `A nudge about ${theThingOf(x.text)}.`, askedOfEmail: approver.contactKey, askedOfName: approver.name, state: 'asked', askedAt: now } }).catch(() => undefined);
+            /* Written as waiting, like the one that carried them: the gate marks them all asked when the message goes. */
+            if (x.id !== m.id) await prisma.informationGap.create({ data: { organizationId: setup.organizationId, principalUserId: setup.principalUserId, gapKey: `approver:${x.id}`, what: `A nudge about ${theThingOf(x.text)}.`, askedOfEmail: approver.contactKey, askedOfName: approver.name, state: 'queued', askedAt: null } }).catch(() => undefined);
             await prisma.commitment.update({ where: { id: x.id }, data: { lastFollowedUpAt: now } });
           }
         }

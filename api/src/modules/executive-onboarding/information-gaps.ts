@@ -1,8 +1,8 @@
 /**
  * WHAT IS MISSING, WHO WAS ASKED, AND WHETHER THEY ANSWERED (Fatima, increment 5; plan 6.3 and 7, acceptance test 7).
  *
- * The code that decides to ask somebody (year-end/the-year-end-owner.ts) is the only code that asks, and it writes the gap here as it asks, so there
- * is one record and nothing can ask twice: one row per thing and per person. The person asked is somebody who can fill it (the person who acts for
+ * The code that decides to ask somebody claims the gap here before the message goes (queueTheAsk), and the door marks it asked when the message really
+ * goes (theAskWent), so there is one record and nothing can ask twice: one row per thing and per person. The person asked is somebody who can fill it (the person who acts for
  * her, the person who said it was done, an introduced team member), never her, and never again for the same thing. There is no form: a gap is
  * asked in a message, in context, and the answer is whatever the person sends next.
  *
@@ -21,16 +21,60 @@ export const whatAGapKeyMeans = (key: string, detail?: string | null): string =>
 /** The keys the team loop writes: a question asked of a team member, a nudge, a chase of an approver, and a standing instruction's ask. */
 export const A_TEAM_LOOP_KEY = /^(?:q|nudge|approver|instr):/;
 
-/** Written once for each thing and person. Never throws into the asking. */
-export async function recordTheGap(prisma: any, a: { organizationId: string; principalUserId: string; gapKey: string; what: string; askedOfEmail: string; askedOfName: string | null; now: Date }): Promise<void> {
-  if (!prisma?.informationGap?.create) return;
+/**
+ * ASKED MEANS THE MESSAGE WENT (Dangote stress test, D4: 1,713 questions were written down as asked of Maryam when they were queued, and one mail reached her).
+ * A question is claimed as "queued" before its message is handed to the door, which keeps it to one row for each thing and person. It becomes "asked" only
+ * when the message carrying it really goes: the one mail door and the one WhatsApp gate call `theAskWent` with the message's key at that moment, whether it
+ * went at once or after it was held. A message that does not go gives its questions back (`giveTheAskBack`), so they can be asked another day. Everything
+ * that says somebody was asked reads `state: 'asked'`, so nothing can say a question was put that nobody received.
+ */
+/** The questions of one kind a message carries: the year-end work's, the team loop's, or a payment's. A message carries only one kind. */
+const FAMILIES = { 'year-end': /^(?:owner|match|gap):/, team: /^(?:nudge|approver|instr):/, payments: /^payments:/ } as const;
+export type AnAskFamily = keyof typeof FAMILIES;
+export const anAskKey = (principalUserId: string, family: AnAskFamily, askedOf: string): string => `ask:${principalUserId}:${family}:${String(askedOf).trim().toLowerCase()}`;
+const readAnAskKey = (sendKey: string | null | undefined): { principalUserId: string; family: RegExp; askedOf: string } | null => {
+  const m = /^ask:([^:]+):([a-z-]+):(.+)$/.exec(String(sendKey ?? ''));
+  const family = m ? FAMILIES[m[2] as AnAskFamily] : null;
+  return m && family ? { principalUserId: m[1], family, askedOf: m[3] } : null;
+};
+const queuedOf = async (prisma: any, k: { principalUserId: string; family: RegExp; askedOf: string }): Promise<string[]> =>
+  ((await prisma.informationGap.findMany({ where: { principalUserId: k.principalUserId, askedOfEmail: k.askedOf, state: 'queued' } }).catch(() => [])) ?? []).filter((g: any) => k.family.test(String(g.gapKey ?? ''))).map((g: any) => g.id);
+
+/** Claims one question for one person, as waiting to go. False when it is already on record (asked, answered or waiting). Never throws into the asking. */
+export async function queueTheAsk(prisma: any, a: { organizationId: string; principalUserId: string; gapKey: string; what: string; askedOfEmail: string; askedOfName: string | null }): Promise<boolean> {
+  if (!prisma?.informationGap?.create) return false;
   try {
     const there = await prisma.informationGap.findFirst({ where: { principalUserId: a.principalUserId, gapKey: a.gapKey, askedOfEmail: a.askedOfEmail } });
-    if (there) return;
-    await prisma.informationGap.create({ data: { organizationId: a.organizationId, principalUserId: a.principalUserId, gapKey: a.gapKey, what: a.what, askedOfEmail: a.askedOfEmail, askedOfName: a.askedOfName, state: 'asked', askedAt: a.now } });
+    if (there) return false;
+    await prisma.informationGap.create({ data: { organizationId: a.organizationId, principalUserId: a.principalUserId, gapKey: a.gapKey, what: a.what, askedOfEmail: a.askedOfEmail, askedOfName: a.askedOfName, state: 'queued', askedAt: null } });
+    return true;
   } catch {
-    /* The question was asked; a record that could not be written is found again on the next look. */
+    return false;
   }
+}
+
+/** Called by the door at the moment a message carrying questions really goes. Never throws into a send. */
+export async function theAskWent(prisma: any, sendKey: string | null | undefined, at: Date): Promise<void> {
+  const k = readAnAskKey(sendKey);
+  if (!k || !prisma?.informationGap?.updateMany) return;
+  try {
+    for (const id of await queuedOf(prisma, k)) await prisma.informationGap.updateMany({ where: { id, state: 'queued' }, data: { state: 'asked', askedAt: at } });
+  } catch {
+    /* The row says "queued", which is the honest word. */
+  }
+}
+
+/** The message did not go: its questions are let go of, so they are asked another day and never said to have been asked. */
+export async function giveTheAskBack(prisma: any, sendKey: string | null | undefined): Promise<void> {
+  const k = readAnAskKey(sendKey);
+  if (!k || !prisma?.informationGap?.deleteMany) return;
+  for (const id of await queuedOf(prisma, k)) await prisma.informationGap.deleteMany({ where: { id, state: 'queued' } }).catch(() => undefined);
+}
+
+/** The keys of every question on record for this person, asked, answered or waiting to go: so the same thing is never asked twice. */
+export async function theQuestionsOnRecordFor(prisma: any, a: { principalUserId: string; askedOfEmail: string }): Promise<Set<string>> {
+  const rows: any[] = (await prisma.informationGap?.findMany?.({ where: { principalUserId: a.principalUserId, askedOfEmail: a.askedOfEmail } }).catch(() => [])) ?? [];
+  return new Set(rows.map((g) => String(g.gapKey)));
 }
 
 /* A held item for an assistant who acts for several people (an-assistant-for-several-principals.ts, key "which:") is closed only by naming the one it is for, never by sending something else. */
@@ -53,4 +97,11 @@ export async function closeWhatTheyAnswered(prisma: any, a: { organizationId: st
 export async function theGapsStillOpen(prisma: any, principalUserId: string): Promise<{ what: string; askedOfName: string | null; state: string }[]> {
   const rows: any[] = (await prisma.informationGap?.findMany?.({ where: { principalUserId, state: { in: ['open', 'asked'] } } })) ?? [];
   return rows.map((r) => ({ what: r.what, askedOfName: r.askedOfName ?? null, state: r.state }));
+}
+
+/** The questions not answered yet, in the states asked for ("asked" means its message went, "queued" that it is still waiting to go). The one read of this
+ * table for the year-end report's "who is being asked" and the outstanding register's payments line (Dangote D4, D5). */
+export async function theQuestionsAsked(prisma: any, principalUserId: string, states: ('asked' | 'queued')[] = ['asked']): Promise<{ gapKey: string; askedOfEmail: string | null; askedOfName: string | null; state: string }[]> {
+  const rows: any[] = (await prisma.informationGap?.findMany?.({ where: { principalUserId, state: { in: states } } }).catch(() => [])) ?? [];
+  return rows.map((g) => ({ gapKey: String(g.gapKey), askedOfEmail: g.askedOfEmail ?? null, askedOfName: g.askedOfName ?? null, state: String(g.state) }));
 }

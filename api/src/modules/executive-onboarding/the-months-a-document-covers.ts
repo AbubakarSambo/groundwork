@@ -35,19 +35,28 @@ export function theMonthsADocumentCovers(a: { fileName?: string | null; subject?
 }
 
 /**
- * What the principal's kept material covers: one source for each month a document says it is about. Kept files only: a duplicate, an unreadable file
- * and a plain message add nothing. Read from the record each time, so a restart loses nothing.
+ * What the principal's kept material covers: one source for each month a document says it is about. A plain email or WhatsApp message counts too (Dangote stress
+ * test, D9: 9,400 of the 10,452 items on her record were messages, and none shaped the report): it covers the month it says it is about, or else the month it
+ * was written in. A duplicate and an unreadable file add nothing. Read from the record each time, so a restart loses nothing.
  */
 export async function whatHerMaterialCovers(prisma: any, a: { principalUserId: string; year: number }): Promise<{ at: Date; kind: string; workstream: string | null; owner: string; id: string; fileName: string; covers: string[] }[]> {
   const rows: any[] = (await prisma.principalMaterial?.findMany?.({ where: { principalUserId: a.principalUserId } }).catch(() => [])) ?? [];
   const out: { at: Date; kind: string; workstream: string | null; owner: string; id: string; fileName: string; covers: string[] }[] = [];
   for (const r of rows) {
-    if (r.state !== 'kept' || r.kind === 'message' || r.kind === 'archive') continue;
-    for (const m of theMonthsADocumentCovers({ fileName: r.fileName, subject: r.subject, text: r.text }, a.year)) {
-      out.push({ at: new Date(Date.UTC(a.year, Number(m.slice(5)) - 1, 15)), kind: 'document', workstream: null, owner: 'unconfirmed', id: r.id, fileName: r.fileName, covers: [m] });
-    }
+    if (r.state !== 'kept' || r.kind === 'archive') continue;
+    if (r.kind === 'message' && !String(r.text ?? '').trim()) continue;
+    const stated = theMonthsADocumentCovers({ fileName: r.kind === 'message' ? null : r.fileName, subject: r.subject, text: r.text }, a.year);
+    const at = r.receivedAt ? new Date(r.receivedAt) : null;
+    const covers = stated.length || r.kind !== 'message' ? stated : at && at.getUTCFullYear() === a.year ? [key(a.year, at.getUTCMonth() + 1)] : [];
+    for (const m of covers) out.push({ at: new Date(Date.UTC(a.year, Number(m.slice(5)) - 1, 15)), kind: r.kind === 'message' ? 'message' : 'document', workstream: null, owner: 'unconfirmed', id: r.id, fileName: r.fileName, covers: [m] });
   }
   return out;
+}
+
+/** The plain emails and WhatsApp messages she, somebody for her, or her team sent, that are kept and have words. Evidence like a file, never a monthly note. */
+export async function theMessagesSheKept(prisma: any, a: { principalUserId: string }): Promise<{ id: string; receivedAt: Date; text: string; subject: string | null; channel: string | null }[]> {
+  const rows: any[] = (await prisma.principalMaterial?.findMany?.({ where: { principalUserId: a.principalUserId } }).catch(() => [])) ?? [];
+  return rows.filter((r) => r.state === 'kept' && r.kind === 'message' && String(r.text ?? '').trim()).map((r) => ({ id: r.id, receivedAt: new Date(r.receivedAt), text: String(r.text), subject: r.subject ?? null, channel: r.channel ?? null }));
 }
 
 /** The files she (or somebody for her, or her team) sent that are kept, whether or not they say which month they are about. */
@@ -59,5 +68,5 @@ export async function theFilesSheKept(prisma: any, a: { principalUserId: string 
 /** The kept files, each with the months it says it is about and its words: the shape the monthly notes are read from (year-end/the-year-end-content.ts theMonthsWithANote). */
 export async function theFilesWithTheirMonths(prisma: any, a: { principalUserId: string; year: number }): Promise<{ origin: string; covers: string[]; text: string | null }[]> {
   const forwarded = await whatHerMaterialCovers(prisma, a);
-  return (await theFilesSheKept(prisma, a)).filter((f) => f.receivedAt.getUTCFullYear() === a.year).map((f) => ({ origin: 'forwarded', text: f.text, covers: [...new Set(forwarded.filter((x) => x.id === f.id).flatMap((x) => x.covers))] }));
+  return (await theFilesSheKept(prisma, a)).filter((f) => f.receivedAt.getUTCFullYear() === a.year).map((f) => ({ origin: 'forwarded', text: f.text, covers: [...new Set(forwarded.filter((x) => x.id === f.id && x.kind === 'document').flatMap((x) => x.covers))] }));
 }

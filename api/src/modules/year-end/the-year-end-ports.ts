@@ -23,6 +23,6 @@ export function theRealPorts(email: EmailService, whatsapp: WhatsAppService, pri
     },
     progressEmail: (to, subject, text) => email.sendTheYearEndProgress(to, subject, text),
     /* A question mailed to somebody can be answered by replying: it carries the assistant's address (Fatima round 1, H5). */
-    askByEmail: async (a) => email.sendTheRoutineMessageByEmail(a.to, a.subject, a.text, null, null, undefined, prisma ? await theAddressForHer(prisma, a.organizationId).catch(() => undefined) : undefined),
+    askByEmail: async (a) => email.sendTheRoutineMessageByEmail(a.to, a.subject, a.text, null, null, undefined, prisma ? await theAddressForHer(prisma, a.organizationId).catch(() => undefined) : undefined, a.askKey),
   };
 }

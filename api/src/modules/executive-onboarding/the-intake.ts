@@ -16,7 +16,7 @@
  */
 import * as crypto from 'crypto';
 const JSZip = require('jszip') as typeof import('jszip');
-import { isAudio, type Transcriber } from '../voice/the-transcriber';
+import { isAudio, theNamesThisOrganisationUses, type Transcriber } from '../voice/the-transcriber';
 
 export interface AnArrival {
   organizationId: string;
@@ -139,7 +139,7 @@ async function keepAFile(prisma: any, ports: TheIntakePorts, a: AnArrival, batch
   if (!f.bytes) return keepOne(prisma, a, batchId, { kind: 'file', fileName, mimeType, bytes: null, state: 'unreadable', because: 'it did not come through to me', insideArchive });
 
   if (isAudio(mimeType, fileName)) {
-    const heard = await ports.transcriber.transcribe({ buffer: f.bytes, mimeType, fileName }).catch(() => ({ ok: false as const }));
+    const heard = await ports.transcriber.transcribe({ buffer: f.bytes, mimeType, fileName, names: await theNamesThisOrganisationUses(prisma, a.organizationId) }).catch(() => ({ ok: false as const }));
     if (!heard.ok) return keepOne(prisma, a, batchId, { kind: 'voice', fileName, mimeType, bytes: f.bytes, state: 'unreadable', because: 'I could not make out what was said', insideArchive });
     return keepOne(prisma, a, batchId, { kind: 'voice', fileName, mimeType, bytes: f.bytes, text: heard.text, state: 'kept', insideArchive, unsure: heard.unclear.map((u) => u.heard) });
   }

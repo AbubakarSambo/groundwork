@@ -40,7 +40,7 @@ describe('the email she reads', () => {
     const x = await aTeamLoopWorld({ mind: null });
     const people: [string, string][] = [['Amina Yusuf', 'p-amina'], ['Ibrahim Sule', 'p-ibrahim']];
     for (const [, id] of people) for (let i = 1; i <= 7; i++) await x.t.commitment.create({ data: { organizationId: 'org-1', personExternalId: id, text: `I will send item ${i} on Monday`, dueSaid: 'on Monday', dueAt: null, state: 'OPEN', source: 'team_reply', statedAt: new Date(x.now.getTime() - 86_400_000) } });
-    const args = { organizationId: 'org-1', principalUserId: 'u-fatima', first: 'Fatima', contacts: await theTeamSheMayAsk(x.prisma, 'u-fatima'), since: new Date(x.now.getTime() - 3 * 86_400_000), now: x.now, lead: 'week' as const, nobodyAnswered: [] };
+    const args = { organizationId: 'org-1', principalUserId: 'u-fatima', first: 'Fatima', contacts: await theTeamSheMayAsk(x.prisma, 'u-fatima'), since: new Date(x.now.getTime() - 3 * 86_400_000), now: x.now, lead: 'week' as const, asks: [] };
     const email = await theUpdateForHer(x.prisma, null, args);
     console.log(`WHAT FATIMA READS\n${email}`);
     const said = (email.match(/said they will/g) ?? []).length;

@@ -10,12 +10,13 @@
  * A progress note (a gap, new coverage, newer records) goes at most once in three days; a decision goes when it arises.
  * And, separately and without telling her, it asks the people who can fill a gap: the person who said "done" is asked the one question about it,
  * and a month with nothing is asked of the person who acts for her, or else of the person with most on the record. She is never the one asked,
- * and nobody is asked the same thing twice.
+ * nobody is asked the same thing twice, and each person gets at most one message a night with all of their questions in it.
  *
  * WHAT IS MEANINGFUL IS DECIDED HERE; WHEN IT MAY GO IS DECIDED BY THE SEAMS. A routine note respects her quiet hours and the one routine
  * message a day here as well as at the one door (email) and the WhatsApp gate, so a message the door would hold is not even tried. The draft-ready
  * mail is not routine: it is the work she is waiting for, so the door only holds it for quiet hours. Nothing is remembered in the process; every
- * "told" and "asked" is a row in year_end_log, so a restart loses nothing and two copies of the API cannot say it twice.
+ * "told" is a row in year_end_log and every question a row in information_gaps (asked only once its message went), so a restart loses nothing and
+ * two copies of the API cannot say it twice.
  */
 import { buildTheRegister } from '../outstanding/the-outstanding-register';
 import { THE_TWO_KINDS } from '../outstanding/the-persistent-jobs';
@@ -25,15 +26,16 @@ import { latestDraft, loadTheRecord, makeTheFirstDraft, type TheDraftRow } from 
 import { contactOf, sendTheDraft, tellHerOnWhatsApp, deliverTheFinal, type ThePorts } from './the-year-end-delivery';
 import { writeItOnce } from './the-year-end-log';
 import { refFor } from './the-year-end-content';
-import { ASK_ABOUT_MONTHS, ASK_THE_OWNER, progressFull, progressShort, type ASignal } from './the-year-end-words';
+import { THE_QUESTIONS_FOR_ONE_PERSON, progressFull, progressShort, type ASignal } from './the-year-end-words';
 import { markItFinal } from './the-year-end-versions';
 import { sendKeyOf } from './the-year-end-log';
-import { recordTheGap, whatAGapKeyMeans } from '../executive-onboarding/information-gaps';
+import { anAskKey, giveTheAskBack, queueTheAsk, whatAGapKeyMeans } from '../executive-onboarding/information-gaps';
 import { hasSheAskedForQuiet } from '../executive-onboarding/her-preferences';
 
 export interface OwnerPorts extends ThePorts {
   progressEmail(to: string, subject: string, text: string): Promise<'sent' | 'held' | 'suppressed'>;
-  askByEmail(a: { organizationId: string; to: string; name: string; subject: string; text: string }): Promise<'sent' | 'held' | 'suppressed'>;
+  /** A question by email. `askKey` is the questions it carries: the door marks them asked only when the mail really goes. */
+  askByEmail(a: { organizationId: string; to: string; name: string; subject: string; text: string; askKey?: string }): Promise<'sent' | 'held' | 'suppressed'>;
 }
 
 export interface AnAction { principalUserId: string; action: string; detail?: string }
@@ -73,43 +75,69 @@ async function isQuietFor(prisma: any, organizationId: string, principalUserId: 
   }
 }
 
-/** The people who can fill a gap are asked, and she is not. Once for each thing and person, and months are asked about together in one mail. Returns who was asked. */
-async function askTheOwners(prisma: any, ports: OwnerPorts, a: { organizationId: string; principalUserId: string; principalFirst: string; gaps: string[]; owners: { name: string; email: string }[]; rows: { owner: string; questionForTheOwner: string | null }[]; matches: { a: { key: string }; b: { key: string }; question: string }[]; peopleCounts: Record<string, number>; now: Date }): Promise<string[]> {
-  const asked: string[] = [];
+/** The most questions one message carries. The rest wait, are counted in it, and go once these are answered. */
+const MOST_IN_ONE_MESSAGE = 5;
+/** The year-end work's own questions. */
+const A_YEAR_END_ASK = /^(?:owner|match|gap):/;
+
+type AQuestion = { key: string; what: string; question: string | null; month: string | null };
+
+/**
+ * The people who can fill a gap are asked, and she is not. ONE MESSAGE FOR ONE PERSON IN ONE PASS (Dangote stress test, D4: 1,713 mails to Maryam in one night,
+ * one for each pair of lines). Every question for a person is gathered first, and goes in one message with at most a few questions, the rest counted. Somebody
+ * who still has an earlier question waiting (not yet gone, or gone and not answered) is sent nothing new: the earlier message stands. Each question is claimed
+ * as waiting before the message goes, and becomes asked only when the door says the message really went. Returns whose message was handed to the door.
+ */
+export async function askTheOwners(prisma: any, ports: OwnerPorts, a: { organizationId: string; principalUserId: string; principalFirst: string; gaps: string[]; owners: { name: string; email: string }[]; rows: { owner: string; questionForTheOwner: string | null }[]; matches: { a: { key: string }; b: { key: string }; question: string }[]; peopleCounts: Record<string, number>; now: Date }): Promise<string[]> {
+  const handed: string[] = [];
   const team = await peopleOfTheGrounds(prisma, a.organizationId, a.principalUserId);
   const hers = (await contactOf(prisma, a.organizationId, a.principalUserId)).email?.toLowerCase();
-  /* Claims each (thing, person) once. Returns the keys that were new. */
-  const claim = async (target: { email: string }, keys: string[]) => {
-    const fresh: string[] = [];
-    for (const k of keys) if (await writeItOnce(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, kind: 'asked', subject: `${k}:${target.email}`, recipient: target.email, at: a.now })) fresh.push(k);
-    return fresh;
-  };
-  const giveBack = (target: { email: string }, keys: string[]) => Promise.all(keys.map((k) => prisma.yearEndLog.deleteMany({ where: { principalUserId: a.principalUserId, kind: 'asked', subject: `${k}:${target.email}` } }).catch(() => undefined)));
-  const ask = async (target: { name: string; email: string }, keys: string[], subject: string, text: (fresh: string[]) => string) => {
-    if (target.email === hers || !keys.length) return;
-    const fresh = await claim(target, keys);
-    if (!fresh.length) return;
-    const outcome = await ports.askByEmail({ organizationId: a.organizationId, to: target.email, name: target.name, subject, text: text(fresh) }).catch(() => 'suppressed' as const);
-    if (outcome === 'suppressed') { await giveBack(target, fresh); return; }
-    asked.push(target.name);
-    /* The gap is written as it is asked: what is missing, who was asked, when. One record, one writer. */
-    for (const k of fresh) await recordTheGap(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, gapKey: k, what: whatAGapKeyMeans(k, a.rows.find((r) => `owner:${r.questionForTheOwner?.slice(0, 80)}` === k)?.questionForTheOwner), askedOfEmail: target.email, askedOfName: target.name, now: a.now });
+  const forPerson = new Map<string, { who: { name: string; email: string }; items: AQuestion[] }>();
+  const put = (who: { name: string; email: string }, q: AQuestion) => {
+    if (!who.email || who.email === hers) return;
+    const there = forPerson.get(who.email) ?? forPerson.set(who.email, { who, items: [] }).get(who.email)!;
+    if (!there.items.some((x) => x.key === q.key)) there.items.push(q);
   };
   /* The one question about a "done" with nothing shown goes to whoever said it. */
   for (const r of a.rows) {
     if (!r.questionForTheOwner || r.owner === 'unconfirmed' || r.owner === 'you') continue;
     const who = team.find((t) => t.name.toLowerCase() === r.owner.toLowerCase());
-    if (who) await ask(who, [`owner:${r.questionForTheOwner.slice(0, 80)}`], 'A question about the year-end report', () => ASK_THE_OWNER(who.name, r.questionForTheOwner!));
+    const key = `owner:${r.questionForTheOwner.slice(0, 80)}`;
+    if (who) put(who, { key, what: whatAGapKeyMeans(key, r.questionForTheOwner), question: r.questionForTheOwner, month: null });
   }
   /* Two lines that may be one matter go to the person who acts for her. With nobody to act for her, they are put to her once, as a decision. */
   const delegate = a.owners[0];
-  if (delegate) for (const m of a.matches) await ask(delegate, [`match:${m.a.key}|${m.b.key}`], 'A question about the year-end report', () => ASK_THE_OWNER(delegate.name, m.question));
-  /* Months with nothing go to the person who acts for her, else to whoever has most on the record, in one mail. */
+  if (delegate) for (const m of a.matches) { const key = `match:${m.a.key}|${m.b.key}`; put(delegate, { key, what: whatAGapKeyMeans(key), question: m.question, month: null }); }
+  /* Months with nothing go to the person who acts for her, else to whoever has most on the record. */
   if (a.gaps.length) {
     const target = delegate ?? team.map((t) => ({ t, n: a.peopleCounts[t.name] ?? 0 })).sort((x, y) => y.n - x.n)[0]?.t ?? null;
-    if (target) await ask(target, a.gaps.map((g) => `gap:${g}`), 'Records for the year-end report', (fresh) => ASK_ABOUT_MONTHS(target.name, a.principalFirst, fresh.map((k) => k.slice(4))));
+    if (target) for (const g of a.gaps) put(target, { key: `gap:${g}`, what: whatAGapKeyMeans(`gap:${g}`), question: null, month: g });
   }
-  return asked;
+
+  for (const { who, items } of forPerson.values()) {
+    const onRecord: any[] = (await prisma.informationGap?.findMany?.({ where: { principalUserId: a.principalUserId, askedOfEmail: who.email } }).catch(() => [])) ?? [];
+    const mine = onRecord.filter((g) => A_YEAR_END_ASK.test(String(g.gapKey ?? '')));
+    /* An earlier message still waits to go, or to be answered: it stands, and nothing new is added beside it. */
+    if (mine.some((g) => g.state === 'queued' || g.state === 'asked')) continue;
+    const known = new Set(mine.map((g) => String(g.gapKey)));
+    const fresh = items.filter((q) => !known.has(q.key));
+    if (!fresh.length) continue;
+    /* The months are one question, however many there are. */
+    const months = fresh.filter((q) => q.month);
+    const questions = fresh.filter((q) => !q.month);
+    const room = MOST_IN_ONE_MESSAGE - (months.length ? 1 : 0);
+    const give = [...months, ...questions.slice(0, room)];
+    const more = questions.length - Math.min(questions.length, room);
+    const claimed: AQuestion[] = [];
+    for (const q of give) if (await queueTheAsk(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, gapKey: q.key, what: q.what, askedOfEmail: who.email, askedOfName: who.name })) claimed.push(q);
+    if (!claimed.length) continue;
+    const message = THE_QUESTIONS_FOR_ONE_PERSON(who.name, a.principalFirst, { questions: claimed.filter((q) => q.question).map((q) => q.question!), months: claimed.filter((q) => q.month).map((q) => q.month!), more });
+    const askKey = anAskKey(a.principalUserId, 'year-end', who.email);
+    const outcome = await ports.askByEmail({ organizationId: a.organizationId, to: who.email, name: who.name, subject: message.subject, text: message.text, askKey }).catch(() => 'suppressed' as const);
+    if (outcome === 'suppressed') { await giveTheAskBack(prisma, askKey); continue; }
+    handed.push(who.name);
+  }
+  return handed;
 }
 
 /** One principal. Returns what was done, in order. */
@@ -176,9 +204,9 @@ async function actForOne(prisma: any, ports: OwnerPorts, a: { organizationId: st
   /* Once a draft has gone, its gaps are in it ("What the record does not cover"), so a note about them says nothing new. */
   else if (!draft && record.gaps.length >= MAJOR_GAP_MONTHS && !(await alreadyTold(`gap:${year}:${Math.floor((now.getTime() - Date.UTC(year, 0, 1)) / (14 * 86_400_000))}`))) {
     /* Who the months were asked of, from what was really asked: the person who acts for her, or whoever has most on the record. */
-    const gapAsks: any[] = (await prisma.yearEndLog.findMany({ where: { principalUserId, kind: 'asked', subject: { startsWith: 'gap:' } } }).catch(() => [])) ?? [];
+    const gapAsks: any[] = (await prisma.informationGap?.findMany?.({ where: { principalUserId, state: { in: ['asked', 'answered'] }, gapKey: { startsWith: 'gap:' } } }).catch(() => [])) ?? [];
     const team = await peopleOfTheGrounds(prisma, organizationId, principalUserId);
-    const names = [...new Set(gapAsks.map((r) => r.recipient).filter(Boolean))].slice(0, 1).map((e: string) => owners.find((o) => o.email === e)?.name ?? team.find((t) => t.email === e)?.name ?? null);
+    const names = [...new Set(gapAsks.map((r) => r.askedOfEmail).filter(Boolean))].slice(0, 1).map((e: string) => owners.find((o) => o.email === e)?.name ?? team.find((t) => t.email === e)?.name ?? null);
     signal = { kind: 'gap', gaps: record.gaps, askedOf: names[0] ?? null };
     markers = [`gap:${year}:${Math.floor((now.getTime() - Date.UTC(year, 0, 1)) / (14 * 86_400_000))}`];
   } else {

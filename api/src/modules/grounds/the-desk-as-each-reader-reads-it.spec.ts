@@ -251,3 +251,29 @@ describe('the summary is written once, by the model, and kept with the document'
     expect(upserts[0].create.summary).toBeNull();
   });
 });
+
+describe('the people on the roster who never sign in are on the Desk too (Batch D, R7, D19)', () => {
+  /* The 85 people a senior person works with were on the roster, written to and answered, and the Desk said "3 people work here". */
+  const roster = [
+    { id: 'p-ahmed', organizationId: ORG, externalId: 'team-1', active: true, linkedUserId: null, email: 'ahmed.bako@example.com', displayName: 'Ahmed Bako', title: 'Government Relations manager', phone: '+2348032000013' },
+    { id: 'p-guest', organizationId: ORG, externalId: 'guest:kofi', active: true, linkedUserId: null, email: null, displayName: 'Kofi', title: null, phone: null },
+    { id: 'p-gone', organizationId: ORG, externalId: 'team-2', active: false, linkedUserId: null, email: null, displayName: 'Somebody Who Left', title: null, phone: null },
+  ];
+  const withTheRoster = () => {
+    const w = world();
+    w.prisma.person.findMany = jest.fn(async ({ where }: any) => (where?.linkedUserId === null
+      ? roster.filter((p) => p.organizationId === where.organizationId && p.active === where.active && !String(p.externalId).startsWith(where.NOT.externalId.startsWith))
+      : []));
+    return w;
+  };
+  it('lists them by name and job title for everyone, with their number for an admin only, and counts them', async () => {
+    const { svc, as } = withTheRoster();
+    const admin: any = await svc.forReader(as('u-grace', 'ADMIN'));
+    const member: any = await svc.forReader(as('u-miriam', 'MEMBER'));
+    expect(admin.desk.directory.find((p: any) => p.name === 'Ahmed Bako')).toEqual({ id: 'person:p-ahmed', name: 'Ahmed Bako', jobTitle: 'Government Relations manager', team: null, reportsTo: null, phone: '+2348032000013' });
+    expect(member.desk.directory.find((p: any) => p.name === 'Ahmed Bako')).toEqual({ id: 'person:p-ahmed', name: 'Ahmed Bako', jobTitle: 'Government Relations manager', team: null, reportsTo: null, phone: null });
+    for (const said of [JSON.stringify(admin.desk), JSON.stringify(member.desk)]) for (const s of ['Kofi', 'Somebody Who Left', 'ahmed.bako@example.com']) expect(said).not.toContain(s);
+    console.log(`WHAT GRACE READS AT THE TOP OF THE DESK\n${admin.line}`);
+    expect(admin.line).toMatch(new RegExp(`${admin.desk.directory.length} people work here`));
+  });
+});

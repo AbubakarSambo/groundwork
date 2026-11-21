@@ -19,7 +19,7 @@ export interface DeliveryContext {
   groundId?: string;
   /** Set by the one door when it has decided what became of the mail, for a caller that must know (decision 109). */
   outcome?: 'sent' | 'held' | 'suppressed';
-  /** The year-end files' own key (one per job, version and person). Kept with a held mail, so the moment it really goes is recorded against it. */
+  /** The year-end files' own key (one per job, version and person), an introduction's, or the key of the questions a mail carries ("ask:"). Kept with a held mail, so the moment it really goes is recorded against it. */
   sendKey?: string;
   /** Written by the one door on a mail it holds for quiet hours, so the sweep can ask the person's hours again. */
   heldFor?: 'quiet-hours';

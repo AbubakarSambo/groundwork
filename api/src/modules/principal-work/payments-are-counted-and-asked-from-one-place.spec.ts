@@ -53,25 +53,22 @@ describe('one count of her payments in every message, and one list of what needs
     /* Round 6 took the count of disagreements out of the message (the questions below it are the disagreements), so only the count of payments is held to the record here. */
   });
 
-  it('"What needs my decision?" lists the payment question put to her, and says nothing is waiting only when the payments flow has nothing for her', async () => {
+  /*
+   * Changed for the Dangote stress test (D5): a payment line is no longer a decision for her. Round 2's rule put every line the sheet marked Approved to her as
+   * "Did you approve ...?", which became 150 decisions in Ask. The one list is still one list: what needs her decision and her Today read the register, and the
+   * payments with no proof are one matter on it, saying who is being asked.
+   */
+  it('"What needs my decision?" holds no payment line, and "What is outstanding?" holds the payments with no proof as one matter', async () => {
     const { w, later } = await twoSheets();
     const register = await buildTheRegister(w.prisma, { organizationId: w.ORG, principalUserId: 'u-fatima', now: later, forADelegate: false });
     const decision = whatNeedsTheDecisionSaid(register, { forName: null, now: later });
-    console.log(`"WHAT NEEDS MY DECISION?"\n${decision}`);
-    expect(decision).not.toMatch(/^Nothing needs your decision/);
-    expect(decision).toMatch(/Did you approve the payment of NGN 4,580,000 to Northgate Vehicles, reference NV-2\?/);
-    /* Every approval the flow asked her about is on the list, and nothing else is: the two are one list. */
-    const asked = (await thePaymentsNow(w.prisma, { organizationId: w.ORG, principalUserId: 'u-fatima' })).discrepancies.filter((d) => d.kind === 'approval missing').length;
-    expect(register.rows.filter((r) => r.status === 'awaiting decision' && /payments tracker/.test(r.sources[0]?.from)).length).toBe(asked);
-    expect(asked).toBeGreaterThan(0);
-  });
-
-  it('"What is outstanding?" does not say there is nothing while payment questions are open, and says what each is', async () => {
-    const { w, later } = await twoSheets();
-    const register = await buildTheRegister(w.prisma, { organizationId: w.ORG, principalUserId: 'u-fatima', now: later, forADelegate: false });
     const said = whatIsOutstandingSaid(register, { forName: null, now: later });
-    console.log(`"WHAT IS OUTSTANDING?"\n${said}`);
+    console.log(`"WHAT NEEDS MY DECISION?"\n${decision}\n\n"WHAT IS OUTSTANDING?"\n${said}`);
+    expect(register.rows.filter((r) => r.status === 'awaiting decision' && /payments tracker/.test(r.sources[0]?.from))).toEqual([]);
+    expect(decision).not.toMatch(/Did you approve the payment/);
+    const noProof = thePaymentCounts(await thePaymentsNow(w.prisma, { organizationId: w.ORG, principalUserId: 'u-fatima' })).saidPaidNoProof;
+    expect(noProof).toBe(2);
     expect(said).not.toMatch(/nothing outstanding/i);
-    expect(said).toMatch(/Proof that the payment of NGN 4,580,000 to Northgate Vehicles, reference NV-2 was paid/);
+    expect(said).toContain('2 payments are said to be paid with no proof yet.');
   });
 });

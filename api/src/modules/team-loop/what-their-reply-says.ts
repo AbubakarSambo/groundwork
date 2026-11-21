@@ -37,12 +37,28 @@ export async function theQuestionsStillOpen(prisma: any, contact: any): Promise<
   return THE_QUESTIONS.filter((q) => !answered.has(q.slug));
 }
 
+const onTheDay = (d: Date | string | null | undefined) => { if (!d) return ''; const x = new Date(d); return Number.isNaN(x.getTime()) ? '' : ` on ${x.getUTCDate()} ${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][x.getUTCMonth()]}`; };
+
+/**
+ * WHAT THE RECORD ALREADY HOLDS FROM THEM (Batch D, R5, D13). Folasade was asked for "the signed copy of the agreement" she had sent on 11 September, and
+ * Toyin for a bank advice already on record. What they sent themselves, and the promises a document they sent already proves, are given to whatever
+ * writes to them, so it never asks for one again. Only their own material is read (the team loop's limit), never what the senior person sent.
+ */
+export async function whatTheRecordAlreadyHoldsFrom(prisma: any, contact: any, person: { externalId: string } | null): Promise<string[]> {
+  const sent: any[] = (await (async () => prisma.principalMaterial.findMany({ where: { fromUserId: `contact:${contact.id}`, principalUserId: contact.principalUserId }, select: { fileName: true, receivedAt: true }, orderBy: { receivedAt: 'desc' }, take: 12 }))().catch(() => [])) ?? [];
+  const proven: any[] = person ? (await (async () => prisma.commitment.findMany({ where: { organizationId: contact.organizationId, personExternalId: person.externalId, source: SOURCE, state: 'KEPT', provenBy: { startsWith: 'material:' } }, select: { text: true, resolvedAt: true }, take: 12 }))().catch(() => [])) ?? [] : [];
+  return [
+    ...sent.filter((m) => m.fileName).map((m) => `the file “${m.fileName}”, sent${onTheDay(m.receivedAt)}`),
+    ...proven.map((c) => `the proof that “${String(c.text).replace(/\s+/g, ' ').trim().slice(0, 140)}” is done${c.resolvedAt ? `, from${onTheDay(c.resolvedAt).replace(/^ on/, '')}` : ''}`),
+  ];
+}
+
 export async function theirWorkNow(prisma: any, contact: any): Promise<{ work: TheirWork; externalId: string | null }> {
   const person = await thePersonBehind(prisma, contact);
   const open: any[] = person ? (await prisma.commitment.findMany({ where: { organizationId: contact.organizationId, personExternalId: person.externalId, source: SOURCE, state: 'OPEN' } })) ?? [] : [];
   return {
     externalId: person?.externalId ?? null,
-    work: { first: String(contact.name ?? '').split(' ')[0] || 'there', commitments: open.map((c) => ({ id: c.id, text: c.text, dueSaid: c.dueSaid ?? null, waitingOn: c.waitingOn ?? null })), openQuestions: await theQuestionsStillOpen(prisma, contact) },
+    work: { first: String(contact.name ?? '').split(' ')[0] || 'there', commitments: open.map((c) => ({ id: c.id, text: c.text, dueSaid: c.dueSaid ?? null, waitingOn: c.waitingOn ?? null })), openQuestions: await theQuestionsStillOpen(prisma, contact), alreadyHeld: await whatTheRecordAlreadyHoldsFrom(prisma, contact, person) },
   };
 }
 

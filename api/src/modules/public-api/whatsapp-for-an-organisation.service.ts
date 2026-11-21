@@ -17,7 +17,7 @@ import { createHash } from 'crypto';
 import { askNameOf } from '../assistant/ask-name';
 import { endingWithoutTheFinishLine } from '../conversation/the-close-says-what-comes-next';
 import { Inject, Injectable, Optional, Logger } from '@nestjs/common';
-import { TRANSCRIBER, GeminiTranscriber, COULD_NOT_FETCH_THE_VOICE_NOTE, COULD_NOT_HEAR_THE_VOICE_NOTE, isThisWhatYouSaid, type Transcriber } from '../voice/the-transcriber';
+import { TRANSCRIBER, GeminiTranscriber, theNamesThisOrganisationUses, COULD_NOT_FETCH_THE_VOICE_NOTE, COULD_NOT_HEAR_THE_VOICE_NOTE, isThisWhatYouSaid, type Transcriber } from '../voice/the-transcriber';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { OnEvent } from '@nestjs/event-emitter';
 import { CheckInStatus } from '@prisma/client';
@@ -300,7 +300,8 @@ export class WhatsAppForAnOrganisationService {
     }
     if (this.executive && (arrived.kind === 'text' || arrived.kind === 'media')) {
       const handled = await this.executive.onWhatsApp({ organizationId, from, userId, personId: who.personId, hasOpenCheckIn: async () => !!userId && (await this.openCheckInsFor(organizationId, userId).catch(() => [])).length > 0, arrived, fetchMedia: out.fetchMedia }).catch(() => null);
-      if (handled) { if (handled.reply) await say(handled.reply); return; }
+      /* A long reply (the people she will be written to, one by one) goes in parts a phone can take, as a report does. */
+      if (handled) { if (handled.reply) for (const part of inParts(handled.reply)) await say(part); return; }
     }
     if (!userId && who.personId) {
       /* On the roster, not connected to a sign-in: a different fact from "nothing open", and one the
@@ -341,7 +342,7 @@ export class WhatsAppForAnOrganisationService {
     if (arrived.kind === 'media' && arrived.what === 'recording') {
       const fetched = await out.fetchMedia(arrived.mediaId);
       if (!fetched) { await say(COULD_NOT_FETCH_THE_VOICE_NOTE); return; }
-      const heard = await this.transcriber.transcribe({ buffer: fetched.buffer, mimeType: fetched.mimeType || arrived.mimeType, fileName: arrived.fileName });
+      const heard = await this.transcriber.transcribe({ buffer: fetched.buffer, mimeType: fetched.mimeType || arrived.mimeType, fileName: arrived.fileName, names: await theNamesThisOrganisationUses(this.prisma, organizationId) });
       await this.keepTheVoiceNote(organizationId, who.personId, userId, arrived, heard.ok ? heard.text : null, heard.ok && heard.unclear.length > 0);
       if (!heard.ok) { await say(COULD_NOT_HEAR_THE_VOICE_NOTE); return; }
       if (this.isTooLong(heard.text)) { await say(A_MESSAGE_IS_TOO_LONG); return; }

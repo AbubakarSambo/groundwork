@@ -7,7 +7,7 @@ import { KnowledgeService } from '../knowledge/knowledge.service';
 import { DocumentsService } from '../documents/documents.service';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { aTitleFor, NO_WORDS_IN_IT, NOT_YOURS_TO_ADD } from '../assistant/a-document-for-the-whole-organisation';
-import { theDirectory } from '../../common/the-directory';
+import { theDirectory, theRosterOnlyPeople } from '../../common/the-directory';
 import { theCheckInsThatFeedAPriority } from './what-a-check-in-feeds';
 import type { StoredPicture } from './the-company-picture';
 import { theStrategyAsRead } from '../subjects/the-strategy-over-time';
@@ -149,7 +149,7 @@ export async function readTheCompanyPage(prisma: PrismaService, grounds: Grounds
     /* Only people still here: somebody removed keeps a membership row, and "2 teams and 7 people work here" counted one (pilots, problem 10). */
     prisma.organizationMembership.findMany({
       where: { organizationId: org, role: { not: 'GUEST' }, user: { deletedAt: null, isActive: true } },
-      select: { team: true },
+      select: { team: true, user: { select: { email: true } } },
     }),
     /* Only READ. The picture is written when the record changes (the-company-picture.service.ts), never here. */
     prisma.companyPicture.findUnique({ where: { organizationId: org } }),
@@ -199,7 +199,8 @@ export async function readTheCompanyPage(prisma: PrismaService, grounds: Grounds
     owners,
     linkedGrounds: (linked as any[]).map((g) => ({ id: g.id, subjectExternalId: g.subjectExternalId })),
     mayOpen,
-    counts: { teams, people: memberships.length, checkInsThisWeek },
+    /* How many people work here is how many the Desk's own directory lists: one source, so the count and "Who works here" never disagree (D19: "3 people work here" beside 85 on the roster). */
+    counts: { teams, people: memberships.length + (await theRosterOnlyPeople(prisma as any, org, (memberships as any[]).map((m) => m.user?.email)).catch(() => [])).length, checkInsThisWeek },
     now,
     picture,
     ownerDetails,

@@ -12,10 +12,9 @@
  * correspondence she forwarded; the obligations on her check-ins (`obligations`) are linked by the payee; a question is recorded as a gap so a reply closes it.
  */
 import { sayMoney, sayTotals, totalsByCurrency, toDecimalText, fromDecimal } from './the-money';
-import { lineKeyOf, payeeKey, readTheTracker, referenceKey, type ATrackerLine } from './the-payments-tracker';
+import { lineKeyOf, payeeKey, readTheTrackerReadingItsHeadings, referenceKey, type AHeadingReader, type ATrackerLine } from './the-payments-tracker';
 import { hasProof, isPaidWithProof, SOUNDS_LIKE_AN_APPROVAL, SOUNDS_LIKE_PROOF, theDiscrepancies, type ADiscrepancy, type ALineOnRecord, type ALinks, type ARef } from './the-payments-reconcile';
-import { writeItOnce } from '../year-end/the-year-end-log';
-import { recordTheGap } from '../executive-onboarding/information-gaps';
+import { anAskKey, giveTheAskBack, queueTheAsk, theAskWent, theQuestionsOnRecordFor } from '../executive-onboarding/information-gaps';
 import { materialThatMentions, theTeamSheNamed, type ABatchForWork, type AMaterialItem } from '../executive-onboarding/the-material-for-work';
 import { dayWords } from '../year-end/the-year-end-content';
 
@@ -89,19 +88,19 @@ export function theTrackerSummary(s: TheSummary): string {
 export interface ThePaymentsPorts {
   /** Writes to the person who sent the batch, by the channel they used. */
   toTheSender(a: { organizationId: string; batch: ABatchForWork; subject: string; text: string }): Promise<string>;
-  /** Writes to somebody else about one thing, by email. */
-  askByEmail(a: { organizationId: string; to: string; name: string; subject: string; text: string }): Promise<'sent' | 'held' | 'suppressed'>;
+  /** Writes to somebody else about one thing, by email. `askKey` is the questions it carries: the door marks them asked only when the mail really goes. */
+  askByEmail(a: { organizationId: string; to: string; name: string; subject: string; text: string; askKey?: string }): Promise<'sent' | 'held' | 'suppressed'>;
 }
 
 const lineOnRecord = (r: any): ALineOnRecord => ({
   id: r.id, paymentKey: r.paymentKey, payee: r.payee, reference: r.reference ?? null, amount: fromDecimal(r.amount, r.currency ?? null), owner: r.owner ?? null,
-  dueOn: r.dueOn ? new Date(r.dueOn) : null, statedStatus: r.statedStatus ?? null, statedApproval: r.statedApproval ?? null, evidence: r.evidence ?? null,
+  dueOn: r.dueOn ? new Date(r.dueOn) : null, statedStatus: r.statedStatus ?? null, statedApproval: r.statedApproval ?? null, evidence: r.evidence ?? null, confirmation: r.confirmation ?? null,
   fileName: r.fileName, rowNumber: r.rowNumber, receivedAt: new Date(r.receivedAt), sentByUserId: r.sentByUserId ?? null,
 });
 
 /** Keeps the lines of one sheet. A line already kept (the same sheet read again) is not kept twice. Returns the keys of the payments it touched. */
-export async function keepTheLines(prisma: any, a: { organizationId: string; principalUserId: string; item: AMaterialItem; sentByUserId: string | null; now: Date }): Promise<{ read: ATrackerLine[]; unreadable: { rowNumber: number; because: string }[]; fresh: number }> {
-  const { lines, unreadable } = readTheTracker(a.item.text);
+export async function keepTheLines(prisma: any, a: { organizationId: string; principalUserId: string; item: AMaterialItem; sentByUserId: string | null; now: Date; readHeadings?: AHeadingReader | null }): Promise<{ read: ATrackerLine[]; unreadable: { rowNumber: number; because: string }[]; fresh: number }> {
+  const { lines, unreadable } = await readTheTrackerReadingItsHeadings(a.item.text, a.readHeadings);
   let fresh = 0;
   for (const l of lines) {
     try {
@@ -109,7 +108,7 @@ export async function keepTheLines(prisma: any, a: { organizationId: string; pri
         data: {
           organizationId: a.organizationId, principalUserId: a.principalUserId, lineKey: lineKeyOf(a.item.hash, a.item.fileName, l.rowNumber), fileName: a.item.fileName, rowNumber: l.rowNumber,
           paymentKey: l.paymentKey, payee: l.payee, reference: l.reference, description: l.description, amount: l.amount ? toDecimalText(l.amount.minor) : null, currency: l.amount?.currency ?? null,
-          owner: l.owner, dueOn: l.dueOn, statedStatus: l.statedStatus, statedApproval: l.statedApproval, evidence: l.evidence, rawRow: l.raw as any, sentByUserId: a.sentByUserId, receivedAt: a.item.receivedAt,
+          owner: l.owner, dueOn: l.dueOn, statedStatus: l.statedStatus, statedApproval: l.statedApproval, evidence: l.evidence, confirmation: l.confirmation, rawRow: l.raw as any, sentByUserId: a.sentByUserId, receivedAt: a.item.receivedAt,
         },
       });
       fresh++;
@@ -135,7 +134,7 @@ async function theLinksOf(prisma: any, a: { organizationId: string; principalUse
   const approvalMail = refs(mentions.filter((m) => SOUNDS_LIKE_AN_APPROVAL.test(`${m.fileName}\n${m.text ?? ''}`)));
   const proofDocs = refs(mentions.filter((m) => SOUNDS_LIKE_PROOF.test(`${m.fileName}\n${m.text ?? ''}`) && m.kind !== 'message'));
   const obligation = a.obligations.find((o) => names.some((n) => squash(String(o.says)).includes(squash(n)))) ?? null;
-  return { spend: spendOnRecord, approvalMail, proofDocs, obligation: obligation ? { id: obligation.id, says: obligation.says } : null };
+  return { spend: spendOnRecord, approvalMail, proofDocs, obligation: obligation ? { id: obligation.id, says: obligation.says } : null, confirmation: line.confirmation ?? null };
 }
 
 /** The whole picture of her payments now, from every line kept, held against the record as it is now. */
@@ -151,7 +150,7 @@ export async function thePaymentsNow(prisma: any, a: { organizationId: string; p
     const latest = [...lines].filter((x) => x.paymentKey === l.paymentKey).sort((x, y) => x.receivedAt.getTime() - y.receivedAt.getTime() || x.rowNumber - y.rowNumber).pop()!;
     linkMap.set(l.paymentKey, await theLinksOf(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, line: latest, trackerFiles, spends, obligations }));
   }
-  const linksOf = (k: string) => linkMap.get(k) ?? { spend: null, approvalMail: [], proofDocs: [], obligation: null };
+  const linksOf = (k: string) => linkMap.get(k) ?? { spend: null, approvalMail: [], proofDocs: [], obligation: null, confirmation: null };
   return { lines, linksOf, discrepancies: theDiscrepancies(lines, linksOf) };
 }
 
@@ -180,8 +179,9 @@ export interface ThePerson { name: string; email: string; isPrincipal: boolean }
 const sameName = (a: string, b: string) => { const x = a.trim().toLowerCase(); const y = b.trim().toLowerCase(); return !!x && !!y && (x === y || x.split(/\s+/)[0] === y.split(/\s+/)[0] && Math.min(x.split(/\s+/).length, y.split(/\s+/).length) === 1 || x.includes(y) || y.includes(x)); };
 
 /**
- * THE PERSON WHO CAN ANSWER. An approval is the approver's, and she is the approver. A missing proof or a disagreement between two figures is for whoever
- * owns the line (named in the sheet) if she has named and introduced them, else the person who acts for her, else her. Never somebody who only forwarded the sheet. A payee or any outsider is never asked.
+ * THE PERSON WHO CAN ANSWER. An approval is the approver's, and she is the approver; it is asked only of a line paid with no approval anywhere, since a line the
+ * office's own sheet marks Approved has its approval written down (the-payments-reconcile.ts; Dangote stress test, D5). A missing proof or a disagreement
+ * between two figures is for whoever owns the line (named in the sheet) if she has named and introduced them, else the person who acts for her, else her. Never somebody who only forwarded the sheet. A payee or any outsider is never asked.
  */
 export function whoCanAnswer(d: ADiscrepancy, c: { principal: ThePerson; sender: ThePerson | null; team: ThePerson[]; delegates: ThePerson[] }): ThePerson {
   if (d.kind === 'approval missing') return c.principal;
@@ -206,27 +206,29 @@ export async function askAboutThePayments(prisma: any, ports: ThePaymentsPorts, 
   let countForTheSender = 0;
   let alreadyAsked = 0;
   for (const { person, items } of byPerson.values()) {
-    const fresh: ADiscrepancy[] = [];
-    for (const d of items) if (await writeItOnce(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, kind: 'asked', subject: `payments:${d.id}:${person.email}`, recipient: person.email, at: a.now })) fresh.push(d); else alreadyAsked++;
+    /* What this person was already asked, or is waiting to be asked, is not asked again. */
+    const onRecord = await theQuestionsOnRecordFor(prisma, { principalUserId: a.principalUserId, askedOfEmail: person.email });
+    const fresh = items.filter((d) => !onRecord.has(`payments:${d.id}`));
+    alreadyAsked += items.length - fresh.length;
     if (!fresh.length) continue;
-    const give = fresh.slice(0, MOST_IN_ONE_MESSAGE);
+    const give: ADiscrepancy[] = [];
+    for (const d of fresh.slice(0, MOST_IN_ONE_MESSAGE)) if (await queueTheAsk(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, gapKey: `payments:${d.id}`, what: gapWhat(d), askedOfEmail: person.email, askedOfName: person.name })) give.push(d);
+    if (!give.length) continue;
     const held = fresh.slice(MOST_IN_ONE_MESSAGE);
-    for (const d of held) await prisma.yearEndLog.deleteMany({ where: { principalUserId: a.principalUserId, kind: 'asked', subject: `payments:${d.id}:${person.email}` } });
     const first = person.name.split(' ')[0];
     /* One question for one payment, however many ways the sheets disagree about it (Fatima round 3: the same two rows were asked about as two amounts and again as two statuses). */
     const told = theQuestionsForThePayments(give, person.isPrincipal);
-    /* Whoever sent the sheet is answered in the same message, so what they are asked is in front of them with what was read. */
+    /* Whoever sent the sheet is answered in the same message, so what they are asked is in front of them with what was read. They are asked when that reply goes (readTheTrackersInABatch). */
     if (a.theSender?.email === person.email) {
       countForTheSender += told.length;
       forTheSender.push(...told, ...(held.length ? [AND_MORE(held.length)] : []));
-      for (const d of give) await recordTheGap(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, gapKey: `payments:${d.id}`, what: gapWhat(d), askedOfEmail: person.email, askedOfName: person.name, now: a.now });
       continue;
     }
     const text = [theAskIntro(first, a.file, dayWords(a.sentOn), a.senderName && !person.isPrincipal && a.theSender?.email === person.email ? null : a.senderName, told.length), ...told, ...(held.length ? [AND_MORE(held.length)] : []), theAskClose].join('\n\n');
-    const outcome = await ports.askByEmail({ organizationId: a.organizationId, to: person.email, name: person.name, subject: THE_ASK_HEADING, text }).catch(() => 'suppressed' as const);
-    if (outcome === 'suppressed') { for (const d of give) await prisma.yearEndLog.deleteMany({ where: { principalUserId: a.principalUserId, kind: 'asked', subject: `payments:${d.id}:${person.email}` } }); continue; }
+    const askKey = anAskKey(a.principalUserId, 'payments', person.email);
+    const outcome = await ports.askByEmail({ organizationId: a.organizationId, to: person.email, name: person.name, subject: THE_ASK_HEADING, text, askKey }).catch(() => 'suppressed' as const);
+    if (outcome === 'suppressed') { await giveTheAskBack(prisma, askKey); continue; }
     askedOf.push(person.name);
-    for (const d of give) await recordTheGap(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, gapKey: `payments:${d.id}`, what: gapWhat(d), askedOfEmail: person.email, askedOfName: person.name, now: a.now });
   }
   return { askedOf, forTheSender, countForTheSender, discrepancies: a.discrepancies.length, alreadyAsked };
 }
@@ -235,10 +237,10 @@ export async function askAboutThePayments(prisma: any, ports: ThePaymentsPorts, 
  * One batch with a tracker in it. Idempotent end to end: the lines are kept once, each question is asked once, and the sender is told once for the batch
  * (the batch is claimed by the caller before this is called).
  */
-export async function readTheTrackersInABatch(prisma: any, ports: ThePaymentsPorts, a: { batch: ABatchForWork; trackers: AMaterialItem[]; who: Parameters<typeof whoCanAnswer>[1]; senderName: string | null; theSender: ThePerson | null; now: Date }): Promise<string[]> {
+export async function readTheTrackersInABatch(prisma: any, ports: ThePaymentsPorts, a: { batch: ABatchForWork; trackers: AMaterialItem[]; who: Parameters<typeof whoCanAnswer>[1]; senderName: string | null; theSender: ThePerson | null; now: Date; readHeadings?: AHeadingReader | null }): Promise<string[]> {
   const told: string[] = [];
   for (const item of a.trackers) {
-    const kept = await keepTheLines(prisma, { organizationId: a.batch.organizationId, principalUserId: a.batch.principalUserId, item, sentByUserId: a.batch.sender.kind === 'contact' ? null : a.batch.fromUserId, now: a.now });
+    const kept = await keepTheLines(prisma, { organizationId: a.batch.organizationId, principalUserId: a.batch.principalUserId, item, sentByUserId: a.batch.sender.kind === 'contact' ? null : a.batch.fromUserId, now: a.now, readHeadings: a.readHeadings });
     if (!kept.read.length && !kept.unreadable.length) continue;
     const now = await thePaymentsNow(prisma, { organizationId: a.batch.organizationId, principalUserId: a.batch.principalUserId });
     const keys = new Set(kept.read.map((l) => l.paymentKey));
@@ -252,7 +254,14 @@ export async function readTheTrackersInABatch(prisma: any, ports: ThePaymentsPor
     });
     told.push(asked.forTheSender.length ? `${summary}\n\n${asked.forTheSender.join('\n\n')}\n\nPlease reply to this message. I have not approved or paid anything.` : `${summary} I have not approved or paid anything.`);
   }
-  if (told.length) await ports.toTheSender({ organizationId: a.batch.organizationId, batch: a.batch, subject: 'The payments tracker', text: told.join('\n\n') });
+  if (told.length) {
+    const outcome = await ports.toTheSender({ organizationId: a.batch.organizationId, batch: a.batch, subject: 'The payments tracker', text: told.join('\n\n') }).catch(() => 'not_sent');
+    /* The questions in the reply are asked when the reply goes, and given back when it does not. */
+    if (a.theSender) {
+      const askKey = anAskKey(a.batch.principalUserId, 'payments', a.theSender.email);
+      if (outcome === 'sent') await theAskWent(prisma, askKey, a.now); else if (outcome !== 'held') await giveTheAskBack(prisma, askKey);
+    }
+  }
   return told;
 }
 

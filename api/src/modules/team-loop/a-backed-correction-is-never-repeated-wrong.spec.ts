@@ -44,7 +44,7 @@ describe('a team member corrects what the record holds', () => {
     await x.service.hearATeamMember({ organizationId: 'org-1', contact: x.contact('Amina Yusuf'), text: "That's not right, I sent the Kilele letter on Monday." });
     const reg = await buildTheRegister(x.prisma, { organizationId: 'org-1', principalUserId: 'u-fatima', now: x.now, forADelegate: false });
     expect(reg.rows.find((r) => r.item.includes('Kilele letter'))).toMatchObject({ owner: 'Amina Yusuf', status: 'completed' });
-    const update = await theUpdateForHer(x.prisma, null, { organizationId: 'org-1', principalUserId: 'u-fatima', first: 'Fatima', contacts: await theTeamSheMayAsk(x.prisma, 'u-fatima'), since: new Date(x.now.getTime() - 86_400_000), now: x.now, lead: 'week', nobodyAnswered: [] });
+    const update = await theUpdateForHer(x.prisma, null, { organizationId: 'org-1', principalUserId: 'u-fatima', first: 'Fatima', contacts: await theTeamSheMayAsk(x.prisma, 'u-fatima'), since: new Date(x.now.getTime() - 86_400_000), now: x.now, lead: 'week', asks: [] });
     console.log(`WHAT FATIMA READS NOW\n${update}`);
     expect(update).toMatch(/Amina sent “Kilele letter\.txt” as the proof for “send the Kilele letter on Monday”, and it is counted as done\./);
     expect(update).not.toMatch(/said they will send the Kilele letter/);

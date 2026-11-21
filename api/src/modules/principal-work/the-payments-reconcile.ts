@@ -2,23 +2,24 @@
  * WHERE THE TRACKER'S CLAIMS ARE HELD UP AGAINST THE RECORD (Fatima, increment 6b; plan section 12), in code, with no model.
  *
  * The tracker says things. The record holds the spend request (the approval workflow's own row), the correspondence she forwarded, and the proof. A
- * payment is "paid" here only when the record holds proof: a spend request finance marked paid with evidence, or a document she was sent that is a receipt
- * or a bank confirmation for it. The tracker saying "paid" is a statement, and it is never proof. Four things are discrepancies, and each is asked about once:
+ * payment is "paid" here only when the record holds proof: a spend request finance marked paid with evidence, a document she was sent that is a receipt
+ * or a bank confirmation for it, or the bank's own confirmation of the transfer written in the sheet. The tracker saying "paid" is a statement, and it is never proof. Four things are discrepancies, and each is asked about once:
  *
  *   two amounts       the same payment with two amounts (two rows, two versions of the sheet, or the sheet against the spend request)
  *   two statuses      the same payment said to be in two states, or the sheet against the spend request's decision
  *   no proof          the sheet says paid, and nothing in the record shows it
- *   approval missing  the sheet says approved (or paid or scheduled), and no approval is in the record
+ *   approval missing  the sheet says paid or scheduled, and no approval is in the sheet or the record
  */
 import { sameAmount, sayMoney, type AMoney } from './the-money';
 
 export interface ARef { id: string; fileName: string }
 export interface ALineOnRecord {
   id: string; paymentKey: string; payee: string; reference: string | null; amount: AMoney | null; owner: string | null; dueOn: Date | null;
-  statedStatus: string | null; statedApproval: string | null; evidence: string | null; fileName: string; rowNumber: number; receivedAt: Date; sentByUserId: string | null;
+  statedStatus: string | null; statedApproval: string | null; evidence: string | null; confirmation?: string | null; fileName: string; rowNumber: number; receivedAt: Date; sentByUserId: string | null;
 }
 export interface ASpendOnRecord { id: string; amount: AMoney; status: string; paidOn: Date | null; evidenceGiven: string[] }
-export interface ALinks { spend: ASpendOnRecord | null; approvalMail: ARef[]; proofDocs: ARef[]; obligation: { id: string; says: string } | null }
+/** What the record holds against one payment. `confirmation` is the bank's own confirmation the sheet gives for its latest line. */
+export interface ALinks { spend: ASpendOnRecord | null; approvalMail: ARef[]; proofDocs: ARef[]; obligation: { id: string; says: string } | null; confirmation?: string | null }
 
 export type TheKind = 'two amounts' | 'two statuses' | 'no proof' | 'approval missing';
 export interface ADiscrepancy {
@@ -33,7 +34,8 @@ export interface ADiscrepancy {
   versions: string[];
 }
 
-export const hasProof = (l: ALinks): boolean => (!!l.spend?.paidOn && l.spend.evidenceGiven.length > 0) || l.proofDocs.length > 0;
+/* Proof is a spend request finance marked paid with evidence, a receipt or bank advice she was sent, or the bank's confirmation of the transfer in the sheet (D11). */
+export const hasProof = (l: ALinks): boolean => (!!l.spend?.paidOn && l.spend.evidenceGiven.length > 0) || l.proofDocs.length > 0 || !!l.confirmation;
 export const hasApproval = (l: ALinks): boolean => l.spend?.status === 'approved' || l.approvalMail.length > 0;
 
 /** Paid, and the record shows it. The only way a payment is called paid. */
@@ -80,8 +82,9 @@ export function theDiscrepancies(lines: ALineOnRecord[], linksOf: (paymentKey: s
     /* Said paid, nothing shows it. */
     if (latest.statedStatus === 'paid' && !hasProof(links)) out.push({ ...base, id: `proof:${paymentKey}`, kind: 'no proof', versions: [] });
 
-    /* Said approved (or already paid or scheduled), and no approval on record. */
-    if ((latest.statedApproval === 'approved' || ['paid', 'scheduled'].includes(latest.statedStatus ?? '')) && !hasApproval(links)) out.push({ ...base, id: `approval:${paymentKey}`, kind: 'approval missing', versions: [] });
+    /* Paid or scheduled with no approval anywhere: not in the office's own sheet, and not on the record. A line the sheet marks Approved has its approval written
+       down where the office keeps them, and is not a question for anybody (Dangote stress test, D5). */
+    if (['paid', 'scheduled'].includes(latest.statedStatus ?? '') && latest.statedApproval !== 'approved' && !hasApproval(links)) out.push({ ...base, id: `approval:${paymentKey}`, kind: 'approval missing', versions: [] });
   }
   return out;
 }

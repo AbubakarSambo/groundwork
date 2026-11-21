@@ -9577,6 +9577,8 @@ model PaymentTrackerLine {
   statedStatus      String?  @map("stated_status")
   statedApproval    String?  @map("stated_approval")
   evidence          String?  @db.Text
+  /// The bank's own confirmation of the transfer, as the sheet gives it (a confirmation number or reference). It is proof the money went.
+  confirmation      String?  @db.Text
   rawRow            Json     @map("raw_row")
   sentByUserId      String?  @map("sent_by_user_id")
   receivedAt        DateTime @map("received_at")
