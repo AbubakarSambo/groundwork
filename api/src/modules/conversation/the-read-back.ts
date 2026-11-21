@@ -31,30 +31,19 @@ export interface ALineReadBack { id: string; says: string }
 const NOT_READ_BACK = /^(?:setup\.|compared\.)/;
 
 /**
- * A piece of an answer, not a statement: it starts with a small joining word ("by 31 January 2027", "in Nakuru") or is one or two words.
- * Said back on its own in quotation marks it read as a fragment (run 8: You said "by 31 January 2027".), so it is said as an answer, with what
- * it was recorded as where the item holds that.
- */
-const A_PIECE_OF_AN_ANSWER = /^(?:by|on|in|at|for|to|until|till|from|with|about|around|before|after|since|next|this|every|each)\b/i;
-export function isAPieceOfAnAnswer(words: string): boolean {
-  const w = theWordsAlone(words);
-  return A_PIECE_OF_AN_ANSWER.test(w) || w.split(/\s+/).filter(Boolean).length <= 2;
-}
-
-/**
- * One line as the person reads it: their own words in quotation marks only where they typed them word for word, and always a whole sentence.
+ * One line as the person reads it: the assessment's own sentence for the item, written to them, where it wrote one.
  *
- * AN ANSWER JOINED INTO A LINE IS SAID BACK WITH IT (WhatsApp test, 20 November 2026, C26). Chidi's "buyer said friday, im on it with mercy in
- * procurement" was read into the item for "still chasing naivas PO" (who it waits on, and when), and the read-back quoted only "still chasing
- * naivas PO", so Friday and Mercy were nowhere in what he was asked to check. Where an item was read from more than one of their messages, what
- * it was recorded as is said with it.
+ * THE SENTENCE IS THE MODEL'S, NOT STITCHED (release test, 21 November 2026, bugs 9 and 10). The line was built here from pieces: their
+ * quoted words, then "which I recorded as" and the item's fields joined with commas, with a word list deciding which words were "a piece of
+ * an answer". It read "which I recorded as new shop sign-ups, at One signed with order, one verbal commitment., 20 cartons.", "You said
+ * “wait 5 days”." and "You answered “on tues”, which I recorded as on tues, saw Naivas." The assessment now writes each item's line as one
+ * whole sentence (`saidBack`), and that is what is said. A corrected item, or one with no sentence, is said in their own words.
  */
-export function aLineAsTheyReadIt(f: Pick<AFact, 'words' | 'saidWordForWord'> & { detail?: string | null; fromMessages?: number }): string {
+export function aLineAsTheyReadIt(f: Pick<AFact, 'words' | 'saidWordForWord'> & { saidBack?: string | null }): string {
+  const own = (f.saidBack ?? '').trim();
+  if (own) return /[.!?]$/.test(own) ? own : `${own}.`;
   const w = theWordsAlone(f.words);
-  const what = (f.detail ?? '').trim().replace(/[.!?]+$/, '');
-  const recordedAs = what ? `, which I recorded as ${what.charAt(0).toLowerCase()}${what.slice(1)}` : '';
-  if (f.saidWordForWord && isAPieceOfAnAnswer(w)) return `You answered ${theirWordsAsSaid(w, true)}${recordedAs}.`;
-  if (f.saidWordForWord) return `You said ${theirWordsAsSaid(w, true)}${(f.fromMessages ?? 0) > 1 ? recordedAs : ''}.`;
+  if (f.saidWordForWord) return `You said ${theirWordsAsSaid(w, true)}.`;
   /* Said plainly, not quoted: the words are theirs, so "I want 9 a week" is "You want 9 a week", never Groundwork saying "I want". */
   const you = asTheReader(w);
   return `${you.charAt(0).toUpperCase()}${you.slice(1)}.`;

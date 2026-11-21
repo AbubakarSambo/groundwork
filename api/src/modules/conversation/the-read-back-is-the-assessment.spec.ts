@@ -85,9 +85,12 @@ describe('"That\'s not right, it\'s two days" is answered on the line it names',
 
 describe('every line of the read-back is a whole sentence the person can read as theirs (run 8: "You said “by 31 January 2027”.", "I want 9 a week.")', () => {
   const { aLineAsTheyReadIt } = require('./the-read-back');
-  it('says a piece of an answer as an answer, with what it was recorded as', () => {
-    expect(aLineAsTheyReadIt({ words: 'by 31 January 2027', saidWordForWord: true, detail: 'The date is 31 January 2027' })).toBe('You answered “by 31 January 2027”, which I recorded as the date is 31 January 2027.');
-    expect(aLineAsTheyReadIt({ words: 'by 31 January 2027', saidWordForWord: true })).toBe('You answered “by 31 January 2027”.');
+  /* Changed 22 November 2026 (release test, bugs 9 and 10): the line was stitched from fragments ("You answered “on tues”, which I recorded
+     as on tues, saw Naivas."). It is now the assessment's own whole sentence for the item. */
+  it('says the item in the sentence the assessment wrote for it, never stitched from fragments', () => {
+    expect(aLineAsTheyReadIt({ words: 'on tues', saidWordForWord: true, saidBack: 'You saw Naivas on Tuesday' })).toBe('You saw Naivas on Tuesday.');
+    expect(aLineAsTheyReadIt({ words: 'One signed with order, one verbal commitment.', saidWordForWord: true, saidBack: 'You signed one shop with an order, and one more gave you a verbal agreement.' }))
+      .toBe('You signed one shop with an order, and one more gave you a verbal agreement.');
   });
   it('keeps a whole statement as what they said', () => {
     expect(aLineAsTheyReadIt({ words: 'Nothing is blocking me', saidWordForWord: true })).toBe('You said “Nothing is blocking me”.');
@@ -95,5 +98,37 @@ describe('every line of the read-back is a whole sentence the person can read as
   it('never has Groundwork say "I want" for the person: words not typed word for word are read to them as "you"', () => {
     expect(aLineAsTheyReadIt({ words: 'I want 9 a week.', saidWordForWord: false })).toBe('You want 9 a week.');
     expect(aLineAsTheyReadIt({ words: "I'm aiming for 30", saidWordForWord: false })).toBe('You are aiming for 30.');
+  });
+});
+
+describe('Amani\'s read-back is whole sentences from the assessment (release test, 21 November 2026, bugs 9 and 10)', () => {
+  const hers = new Map<number, string>([
+    [1, 'One signed with order, one verbal commitment. 20 cartons.'],
+    [2, 'wait 5 days'],
+  ]);
+  const parts = thePartsFrom({
+    summary: 'Amani signed one shop and has one verbal agreement.',
+    nothingToRecord: [],
+    workUpdates: [{ words: 'One signed with order, one verbal commitment.', from: [1], work: 'new shop sign-ups', stage: 'One signed with order, one verbal commitment.', value: '20 cartons' }],
+    blockers: [{ words: 'wait 5 days', from: [2], what: 'the delivery schedule for Kilimani Fresh', onName: 'Baraka' }],
+    saidBack: [
+      { words: 'One signed with order, one verbal commitment.', says: 'You signed Mama Njeri Duka with an order for 20 cartons, and Kilimani Fresh gave you a verbal agreement.' },
+      { words: 'wait 5 days', says: 'You have been waiting 5 days for Baraka to send the delivery schedule for Kilimani Fresh.' },
+    ],
+  }, hers, { hasSetup: false, previous: null, givenRole: null, read: 1, isTheLead: false });
+  const amanis: any = {
+    kind: 'assessment', version: 1,
+    about: { checkInId: 'c-amani', groundId: 'g', participantId: 'p-amani', who: 'Amani Wekesa', isTheLead: false, sessionNumber: 3, endedAt: '2026-11-21T10:00:00Z' },
+    messages: [{ n: 1, turnId: 't1', where: 'check-in', at: null }, { n: 2, turnId: 't2', where: 'check-in', at: null }],
+    ...parts,
+  };
+  it('she reads what was recorded in plain sentences, with no fragment quoted and nothing joined with commas', () => {
+    expect(theReadBackFrom(amanis)!.text).toBe([
+      'Here’s what I recorded.',
+      'You signed Mama Njeri Duka with an order for 20 cartons, and Kilimani Fresh gave you a verbal agreement.',
+      'You have been waiting 5 days for Baraka to send the delivery schedule for Kilimani Fresh.',
+      'Is anything wrong? Tell me and I will put it right.',
+    ].join('\n'));
+    expect(theReadBackFrom(amanis)!.text).not.toMatch(/which I recorded as|You said “wait 5 days”/);
   });
 });
