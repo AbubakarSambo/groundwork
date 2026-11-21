@@ -2,9 +2,9 @@ import { aLineOrNothing } from './where-they-sit';
 
 /**
  * THE TEAMS HERE ARE A LIST, NOT TYPED TEXT (Hafsah, 21 November 2026). "Sales", "sales" and "Sales team" counted as three teams,
- * because a team was whatever was typed on each person's membership. The list is the team names already in use on this
- * organisation's memberships, one spelling per team ignoring case: the spelling most people hold, and the first in the alphabet
- * between equals. Picking a team writes that spelling; a new team is added by typing it once, and the next person picks it.
+ * because a team was whatever was typed on each person's membership. The list is the team each person here is shown
+ * with on People, one spelling per team ignoring case: the spelling most people hold, and the first in the alphabet
+ * between equals. Each person's team is read as People shows it (users.service.ts, theTeams). Picking a team writes that spelling; a new team is added by typing it once, and the next person picks it.
  */
 export function oneKeyFor(team: string): string {
   return team.replace(/\s+/g, ' ').trim().toLocaleLowerCase('en');
@@ -33,9 +33,4 @@ export function theSpellingToKeep(typed: string | null | undefined, teams: { nam
   const name = aLineOrNothing(typed ?? null);
   if (!name) return null;
   return teams.find((t) => oneKeyFor(t.name) === oneKeyFor(name))?.name ?? name;
-}
-
-export async function theTeamsHere(prisma: { organizationMembership: { findMany(args: any): Promise<{ team: string | null }[]> } }, organizationId: string) {
-  const rows = await prisma.organizationMembership.findMany({ where: { organizationId, team: { not: null } }, select: { team: true } });
-  return theTeamsFrom(rows.map((r) => r.team));
 }

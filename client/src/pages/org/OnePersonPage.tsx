@@ -118,7 +118,8 @@ export function OnePersonPage() {
   const ownerId: string | null = owner.data?.ownerUserId ?? null
   const [team, setTeam] = useState<string | null>(null)
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ['org-members'] })
+  /* A team saved may be a new one, so the Team picker's list is read again with the people. */
+  const refresh = () => { qc.invalidateQueries({ queryKey: ['org-members'] }); qc.invalidateQueries({ queryKey: ['org-teams'] }) }
   const sit = useMutation({
     mutationFn: (change: { level?: string; team?: string; reportsToUserId?: string }) => apiClient.patch(`/users/${id}/where-they-sit`, change),
     onSuccess: () => { refresh(); toast.success('Saved.') },
