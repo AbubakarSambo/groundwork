@@ -64,6 +64,7 @@ describe('a fact with a bank number, typed on a check-in after a say-back was le
     const words = (r.blocks ?? []).map((b: any) => b.body ?? b.summary ?? '').join(' / ');
     expect(words).not.toMatch(/cannot answer that one yet/i);
     expect(words).not.toMatch(/0123456789012/);
-    expect(words).toMatch(/^Shall I add ".*\[account number hidden\].*" to this check-in's context as a note\?/);
+    /* Changed 22 November 2026 (release test of 21 November, Ask #36): the say-back names the check-in and what the line is, so the lead knows where it goes. */
+    expect(words).toMatch(/^Shall I add ".*\[account number hidden\].*" to (?:“[^”]+”|this check-in) as a note\?/);
   });
 });

@@ -155,7 +155,8 @@ describe('point 8: a no, and a yes to a change to a line, are answered in full s
       groundsService: { addContextLine },
       parked: { id: 'pr1', kind: 'context_line', state: 'PARKED', payload: { groundId: 'g1', kind: 'NOTE', text: 'Visit every shop.' }, summary: 's' },
     });
-    expect(textOf(await service.respond('org-a', 'p1', 'yes', 'g1'))).toBe('I have added the line to this check-in. Everybody in it can read it now.');
+    /* Changed 22 November 2026 (release test of 21 November, Ask #36): the say-back names the check-in and what the line is, so the lead knows where it goes. */
+    expect(textOf(await service.respond('org-a', 'p1', 'yes', 'g1'))).toBe('I have added "Visit every shop." to this check-in as a note. Everybody in it can read it now.');
   });
 
   it('a doubled mark is never written: a quote that ends in its own punctuation takes no second one', async () => {

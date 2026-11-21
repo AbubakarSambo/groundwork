@@ -92,7 +92,8 @@ describe('point 1: the say-back sentences are full sentences, never clipped or c
     const { service, proposals } = svc();
     const r = await service.respond('org-a', 'p1', 'decision: we will drop the pilot', 'g1');
     const said = (r.blocks[0] as any).body as string;
-    expect(said).toBe('Shall I add "we will drop the pilot" to this check-in\'s context as a decision? Everybody in this check-in will read it.');
+    /* Changed 22 November 2026 (release test of 21 November, Ask #36): the say-back names the check-in, so the lead knows where it goes. */
+    expect(said).toMatch(/^Shall I add "we will drop the pilot" to (?:“[^”]+”|this check-in) as a decision\? Everybody in that check-in will read it\.$/);
     expect(said).not.toContain(':');
     expect(proposals[0].summary).toBe(said);
   });

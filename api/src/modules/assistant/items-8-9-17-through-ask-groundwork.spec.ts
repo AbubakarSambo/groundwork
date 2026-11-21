@@ -97,7 +97,8 @@ describe('item 17: typing a context line directly, with no chat', () => {
     const r = await service.respond('org-a', 'p1', 'decision: we will drop the pilot', 'g1');
     expect(r.lane).toBe('add_context');
     expect(r.blocks.some((b) => b.type === 'proposal')).toBe(true);
-    expect(proposals[0]).toMatchObject({ kind: 'context_line', payload: { groundId: 'g1', kind: 'DECISION', text: 'we will drop the pilot' } });
+    /* Changed 22 November 2026 (release test of 21 November, board #21, Today #45): "decision:" is a decision made, so it is kept with how the team works; something still open is said as "to decide:". */
+    expect(proposals[0]).toMatchObject({ kind: 'context_line', payload: { groundId: 'g1', kind: 'WAY_OF_WORKING', text: 'we will drop the pilot' } });
     expect(addContextLine).not.toHaveBeenCalled();
   });
 
