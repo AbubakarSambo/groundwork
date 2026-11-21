@@ -154,8 +154,11 @@ describe('with Release 1\'s sales board on', () => {
     expect((femi.objectives ?? []).filter((o: any) => o.ownerParticipantId === 'p-femi').map((o: any) => o.target)).toEqual([40]);
   });
 
+  /* "Today" is a daily check-in's word (21 November 2026): a weekly check-in never says "Hasn't checked in today", so point 10, which is
+     about today's check-in, is read on a daily one. The harness's default is weekly. */
+  const daily = (): Setup => ({ ...run(true), clock: { ...run(true).clock, cadence: 'DAILY' } });
   it('point 10: Bisi reads each person\'s line from today\'s check-in, and the kit\'s words for one who has not checked in today', async () => {
-    const b = await boardAs(run(true), ...BISI);
+    const b = await boardAs(daily(), ...BISI);
     const today = new Map((b.eachPersonToday ?? []).map((r: any) => [r.participantId, r]));
     /* Worded as said, by name (Hafsah, 4 November 2026): his word, never a fact the board states. */
     expect((today.get('p-kwame') as any).line).toBe('Kwame said, “I met Mr. Kariuki from Juja Hardware.”');
@@ -166,7 +169,7 @@ describe('with Release 1\'s sales board on', () => {
   });
 
   it('point 10: Juma, an admin who only reads, reads that they checked in, never their words', async () => {
-    const b = await boardAs(run(true), ...JUMA);
+    const b = await boardAs(daily(), ...JUMA);
     for (const r of (b.eachPersonToday ?? []) as any[]) expect(['Checked in today.', 'Hasn’t checked in today.']).toContain(r.line);
   });
 
