@@ -136,6 +136,17 @@ describe('T3. a question Ask answers is answered by its own answer', () => {
     expect(await a.say('whats stuck')).toBe('2 things are waiting for you.\n- Amani asked for leave from 30 November to 2 December.\n- Juma and Neema have not answered yet.');
   });
 
+  /* Batch F, F3: Fatima's "Which claims are weak?" was placed on what is stuck and answered "Nothing is waiting on you". Her record answers her questions. */
+  it('for somebody whose Ask reads a year-end record, a question the model places on a lane is answered from that record', async () => {
+    const said = 'Which claims are weak?';
+    const a = asSomebody(aModel({ [said]: { kind: 'question', guide: 'what_is_stuck' } }));
+    a.prisma.yearEndDraft = { findFirst: jest.fn(async ({ where }: any) => (where.principalUserId === 'u-1' ? { id: 'yd-1' } : null)) };
+    const stuck = jest.spyOn(a.s, 'whatNeedsYouNow');
+    jest.spyOn(a.s, 'aQuestionAnsweredFromTheDocuments').mockResolvedValue({ lane: 'answer_from_documents', composedBy: 'rules', blocks: [{ type: 'text', body: 'Three claims rest only on what somebody said.' }] });
+    expect(await a.say(said)).toBe('Three claims rest only on what somebody said.');
+    expect(stuck).not.toHaveBeenCalled();
+  });
+
   it('"Add our staff handbook for everyone." is told what to do with the file, never "You do not need a page for it"', async () => {
     const said = 'Add our staff handbook for everyone.';
     const a = asSomebody(aModel({ [said]: { kind: 'wants', guide: 'a_document_for_everyone' } }), 'ADMIN');

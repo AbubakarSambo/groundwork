@@ -428,8 +428,11 @@ export function assemble(raws: Raw[], noteOf: Map<string, any>, a: Pick<BuildArg
       settledAt: r.settledAt,
     }));
     const status = statusOfAnItem(parts);
-    /* The fullest wording leads, and a confirmed owner beats "unconfirmed". */
-    const lead = [...ordered].sort((p, q) => q.action.length - p.action.length)[0];
+    /* THE LINE READS THE LATEST RECORD (Batch F, F2). A settled item is said in the words of what settled it, and any other in the words of its newest source. "The
+       fullest wording" led before, and a document's first lines, copied as a claim, are always the longest (E-7: "Community development agreement: Ibese host
+       communities Signed at Ibese on ..." under "What was achieved"). A confirmed owner beats "unconfirmed". */
+    const settling = status === 'completed' ? ordered.filter((_, i) => parts[i].status === 'completed') : [];
+    const lead = settling[0] ?? ordered[ordered.length - 1];
     const owner = ordered.find((r) => r.owner !== 'unconfirmed')?.owner ?? 'unconfirmed';
     const withWhen = ordered.find((r) => r.whenSaid) ?? null;
     const noted = ordered.map((r) => noteOf.get(keyOf(r))).filter(Boolean);

@@ -65,6 +65,7 @@ import { whatIsOutstandingSaid, whatIsOutstandingTold, whatNeedsTheDecisionSaid,
 import { GeminiTeamMind } from '../team-loop/the-team-mind';
 import { ensureThePrincipalsJobs } from '../outstanding/the-persistent-jobs';
 import { YearEndService } from '../year-end/year-end.service';
+import { theirReportIsTheYearEndDraft } from '../year-end/her-year-end-record';
 import { ExecutiveOnboardingService } from '../executive-onboarding/executive-onboarding.service';
 import { mightBeHerWords } from '../executive-onboarding/her-words';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
@@ -789,7 +790,10 @@ export class AssistantService {
      * own action starts, which asks or says back before anything is written or sent.
      */
     /* A question the model places on something Ask answers ("whos off next week", "how many days left") is answered by that thing, never the documents (round 2, T3). */
-    if (who && (understood?.kind === 'wants' || understood?.kind === 'question') && understood.guide) {
+    /* Except for somebody whose Ask reads a year-end record (her, and whoever acts for her): her record holds what those lanes read and more, so a question the model
+       places is answered from it, unless it is a request, whose own lane owns the answer (Batch F, F3: "Which claims are weak?" was answered "Nothing is waiting on you"). */
+    const herRecordAnswers = understood?.kind === 'question' && !!understood.guide && GUIDE_BY_KEY.get(understood.guide)?.section !== 5 && (await theirReportIsTheYearEndDraft(this.prisma, organizationId, userId).catch(() => false));
+    if (who && (understood?.kind === 'wants' || understood?.kind === 'question') && understood.guide && !herRecordAnswers) {
       const g = GUIDE_BY_KEY.get(understood.guide);
       const done = g && mayUse(g, await this.theReader(organizationId, personId, userId ?? null)) ? await this.doItForYou(organizationId, personId, who, userId ?? null, g.key, message) : null;
       if (done) return done;

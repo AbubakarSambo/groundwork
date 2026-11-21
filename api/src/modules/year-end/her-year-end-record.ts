@@ -85,7 +85,7 @@ const aLine = (c: YearEndContent, cl: Claim): string =>
   `- ${clip(cl.text, 300)} [${STANDING_OF_A_LINE[cl.status] ?? cl.status}; ${whereItComesFrom(c, cl.refs)}]${cl.note ? ` ${c.principalFirstName} said beside it “${clip(cl.note, 160)}”.` : ''}`;
 
 /** The pages, each kept short enough to read, most decisive first. Nothing is added that the draft does not hold. */
-export function thePagesOfHerRecord(row: TheDraftRow, reader: 'own' | 'delegate'): APageOfHerRecord[] {
+export function thePagesOfHerRecord(row: TheDraftRow, reader: 'own' | 'delegate', question = ''): APageOfHerRecord[] {
   const c = row.content;
   const whose = reader === 'own' ? 'your' : `${c.principalFirstName}'s`;
   const status = row.status === 'final' || row.status === 'approved' ? row.status : 'a draft waiting for approval';
@@ -111,11 +111,16 @@ export function thePagesOfHerRecord(row: TheDraftRow, reader: 'own' | 'delegate'
     lines.push(`${(s.title || month).toUpperCase()}:`);
     for (const cl of s.claims) lines.push(aLine(c, cl));
   }
-  pages.push(page(`${whose} year, line by line`, lines.length ? lines : ['Nothing is on the record for the year yet.']));
+  /* Each page is named for what she has, the way she knows it, so an answer that names where it comes from names something real (Batch F, F3; N3: "in your year, line by line"). */
+  pages.push(page(`${whose} year-end report for ${c.year}, in full`, lines.length ? lines : ['Nothing is on the record for the year yet.']));
 
   /* The outstanding register: what is still to be delivered, who owns it, by when, and what it waits on. Owners are named; nothing judges them. */
-  const open = c.register.filter((r) => r.status !== 'completed' && r.status !== 'cancelled');
-  pages.push(page(`what is still outstanding for ${reader === 'own' ? 'you' : c.principalFirstName}`, [
+  /* What the question names comes first, so a long list is never cut before it (Batch F, F-7: "What has Ahmed failed to deliver?" read that nothing was found, and
+     Ahmed's lines were past the end of the page). The order changes; what is on the page does not. */
+  const asked = new Set(String(question).toLowerCase().match(/[a-z][a-z-]{2,}/g) ?? []);
+  const bears = (r: { owner: string; item: string }) => `${r.owner} ${r.item}`.toLowerCase().split(/[^a-z-]+/).filter((w) => w.length > 2 && asked.has(w)).length;
+  const open = c.register.filter((r) => r.status !== 'completed' && r.status !== 'cancelled').map((r, i) => ({ r, i, n: bears(r) })).sort((x, y) => y.n - x.n || x.i - y.i).map((x) => x.r);
+  pages.push(page(`${whose} outstanding list`, [
     `${open.length} ${open.length === 1 ? 'matter is' : 'matters are'} still outstanding. Each line says who owns it, when it was due, and what it rests on. It says what is outstanding, never how well anybody works.`,
     ...open.map((r) => `- ${clip(r.item, 220)}. Owner ${r.owner === 'unconfirmed' ? 'not confirmed' : r.owner === 'you' ? c.principalFirstName : r.owner}. ${STATUS_PLAIN[r.status] ?? r.status}.${r.dueOn ? ` It was due on ${dayWords(r.dueOn)}${r.dueInferred ? ', a date worked out from what was said' : ''}.` : ' No date was given.'}${r.decision ? ` The decision needed is ${clip(r.decision, 160)}.` : ''}${r.dependency ? ` It waits on ${clip(r.dependency, 120)}.` : ''}${r.disputed ? ' Somebody said it is not backed up.' : ''} [${whereItComesFrom(c, r.refs)}]`),
   ]));
@@ -129,7 +134,7 @@ export function thePagesOfHerRecord(row: TheDraftRow, reader: 'own' | 'delegate'
 
   /* The records the lines rest on, newest first, with the day each arrived. */
   const evidence = [...c.evidence].sort((a, b) => String(b.at).localeCompare(String(a.at)));
-  pages.push(page(`the records ${whose} year-end report rests on`, evidence.map((e) => `- ${e.title ? `“${clip(e.title, 80)}”, ` : ''}${e.label}, ${dayWords(e.at)}.`)));
+  pages.push(page(`the evidence index of ${whose} year-end report`, evidence.map((e) => `- ${e.title ? `“${clip(e.title, 80)}”, ` : ''}${e.label}, ${dayWords(e.at)}.`)));
   return pages;
 }
 
@@ -137,7 +142,7 @@ export function thePagesOfHerRecord(row: TheDraftRow, reader: 'own' | 'delegate'
  * THE RECORD ASK READS FOR HER (R2). The latest version of each year-end draft this person may read: her own, or the one of each senior person she acts
  * for. Empty for everybody else, so their Ask reads exactly what it read before.
  */
-export async function herYearEndRecordForAsk(prisma: any, a: { organizationId: string; userId: string; now?: Date }): Promise<APageOfHerRecord[]> {
+export async function herYearEndRecordForAsk(prisma: any, a: { organizationId: string; userId: string; now?: Date; /** The question, so what it names is read first. */ question?: string }): Promise<APageOfHerRecord[]> {
   const year = (a.now ?? new Date()).getUTCFullYear();
   const out: APageOfHerRecord[] = [];
   for (const principalUserId of await theYearEndsTheyRead(prisma, a.organizationId, a.userId)) {
@@ -145,7 +150,7 @@ export async function herYearEndRecordForAsk(prisma: any, a: { organizationId: s
     const own = principalUserId === a.userId;
     const row = (await latestDraft(prisma, { organizationId: a.organizationId, principalUserId, year }).catch(() => null))
       ?? (await latestDraft(prisma, { organizationId: a.organizationId, principalUserId, year: year - 1 }).catch(() => null));
-    const pages = row?.content ? thePagesOfHerRecord(row, own ? 'own' : 'delegate') : [];
+    const pages = row?.content ? thePagesOfHerRecord(row, own ? 'own' : 'delegate', a.question ?? '') : [];
     const pay = await thePaymentsPage(prisma, { organizationId: a.organizationId, principalUserId, whose: own ? 'your' : `${row?.content?.principalFirstName ?? 'her'}'s` }).catch(() => null);
     /* Right after the briefing, so it is read whenever a question is about money: Ask reads the pages in order until its room is used (Batch E run: last, it was cut). */
     out.push(...pages.slice(0, 1), ...(pay ? [pay] : []), ...pages.slice(1));

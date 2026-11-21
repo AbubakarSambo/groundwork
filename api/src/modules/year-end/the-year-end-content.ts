@@ -243,7 +243,10 @@ function claimsFromTheRegister(rows: TheRegisterRow[], name: string): Pick<Recor
     } else if (r.status === 'unverified') {
       out.unverified.push({ id: `u:${r.key}`, status: 'unverified', ...base, text: underWorkstream(r.workstream, r.disputed ? `${sentence(r.item)} Somebody has marked that claim as not backed up, and nothing on the record shows it yet, so it is not counted as achieved.` : `${sentence(r.item)} ${r.owner === 'unconfirmed' ? 'Nobody has confirmed who owns it' : `${r.owner} said it was done`}, and nothing on the record shows it yet, so it is not counted as achieved.`) });
     } else if (r.status === 'awaiting decision') {
-      out.decision.push({ id: `d:${r.key}`, status: 'decision', ...base, text: underWorkstream(r.workstream, `${sentence(r.item)} ${r.decision ? plain(r.decision.question) : 'It is waiting for a decision.'}`) });
+      /* The decision with what a chief of staff would give beside it: the matter, who has it, when it is needed and what it waits on (Batch F, F1). */
+      const by = r.dueOn ? ` It is needed by ${dayWords(r.dueOn)}.` : '';
+      const waits = r.dependency ? ` It is ${plain(r.dependency).replace(/^Waiting on/, 'waiting on')}.` : '';
+      out.decision.push({ id: `d:${r.key}`, status: 'decision', ...base, text: underWorkstream(r.workstream, `${r.decision ? plain(r.decision.question) : 'It is waiting for a decision.'} ${sentence(r.item)} ${owner}.${by}${waits}`) });
     } else if (r.status !== 'cancelled') {
       const due = r.dueOn ? ` It is due ${dayWords(r.dueOn)}${r.dueInferred ? ', a day worked out from the words rather than given' : ''}.` : '';
       const state = r.dependency && (r.status === 'awaiting external party' || r.status === 'blocked') ? `${r.status === 'blocked' ? 'It is blocked, and it is' : 'It is'} ${plain(r.dependency).toLowerCase()}` : STATUS_WORDS[r.status] ?? 'It is open';
@@ -470,3 +473,8 @@ export function whatIsShown(c: YearEndContent, s: Section): { claims: Claim[]; l
 export const sectionsWithWords = (c: YearEndContent): Section[] => c.sections.filter((s) => s.claims.length || s.id === 'achieved' || s.id === 'open');
 export const EMPTY_SECTION = (id: SectionId): string =>
   id === 'achieved' ? 'Nothing in the record is settled with proof yet, so nothing is claimed as achieved.' : id === 'open' ? 'Nothing is open on the record.' : 'Nothing to report here.';
+
+/** A record that is a plain message (an email or a WhatsApp message), by its evidence label; and a sentence already said as such a message's words.
+ * One owner for these words, so the narrative can tell a message from a note without naming any channel itself. */
+export const isAMessageLabel = (label: string | null | undefined): boolean => /^(?:an email|a WhatsApp message)$/.test(String(label ?? ''));
+export const saidAsAMessage = (text: string): boolean => /^(?:An email|A WhatsApp message) /.test(text);

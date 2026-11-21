@@ -80,11 +80,12 @@ describe('R2: Ask reads her record, with how far each line is proven', () => {
     console.log(`WHAT ASK READS FOR FATIMA\n${mine.map((p) => `== ${p.fileName}\n${p.content.slice(0, 600)}`).join('\n')}`);
     expect(mine.map((p) => p.fileName)).toEqual([
       'your year-end report for 2026, version 1',
-      /* Changed 21 November 2026 (Batch E, N3): plain names. Ask repeated "the lines of your year, with how far each is proven" to Fatima as if it were a file. */
-      'your year, line by line',
-      'what is still outstanding for you',
+      /* Changed 21 November 2026 (Batch E, N3): plain names. Ask repeated "the lines of your year, with how far each is proven" to Fatima as if it were a file.
+         Changed again (Batch F, F3): each page is named for what she has, the way she knows it. Ask still said "in your year, line by line". */
+      'your year-end report for 2026, in full',
+      'your outstanding list',
       'your leadership presentation, version 1',
-      'the records your year-end report rests on',
+      'the evidence index of your year-end report',
     ]);
     expect(mine[0].content).toMatch(/Only a line marked PROVEN is achieved/);
     expect(mine[3].content).toMatch(/^The leadership presentation of version 1 has \d+ slides\. It is a draft waiting for approval\./);
@@ -171,5 +172,52 @@ describe('R2: Ask reads her record, with how far each line is proven', () => {
       expect(rules).toMatch(/Only a line marked PROVEN is achieved/);
       expect(rules).toMatch(/say what is still outstanding that each person owns, with the record it rests on and the day it was due\. Say only what is outstanding\. Never judge the person/);
     }
+  });
+});
+
+/*
+ * BATCH F, F3. The ultimate test came back at 4,095 characters, opening with the version and the slide count, and prompt rules alone never kept it short. Ask now
+ * answers in a fixed shape that code checks: one lead sentence, at most five short points, one offer to go deeper. The model picks and writes; code keeps the shape.
+ */
+describe('a concise, defensible answer straight away', () => {
+  const ULTIMATE = "I haven't had time to read any of this. Tell me the five most important things Dangote needs to know, what we actually achieved this year, what I should be worried about, who hasn't delivered, and what questions leadership is likely to ask me.";
+  const ask = async (w: any, read: any) => {
+    const engine = { extract: async () => read };
+    const prisma = new Proxy(w.prisma as any, { get: (t, k: string) => (k === 'ground' ? { findMany: async () => [] } : t[k]) });
+    return answerFromTheDocuments({ prisma, engine }, { organizationId: w.ORG, userId: 'u-fatima', question: ULTIMATE });
+  };
+
+  it('a lead, at most five points and one offer, however much the model writes', async () => {
+    const w = await aDraftExists();
+    const long = 'The Ministry of Industry has agreed the export incentive in principle, and the signed letter is still outstanding. It was promised by 10 December. Legal cannot confirm it.';
+    const said = await ask(w, {
+      found: true,
+      lead: 'Four results are proven this year, and five matters need your decision before December. Version 1 has 15 slides.',
+      points: ['The Kogi permit was granted in May, and the permit letter shows it.', long, 'The NMDPRA inspection has no date.', 'Four payments marked paid have no bank confirmation.', 'Leadership will ask about the export incentive letter.', 'A sixth point that is never read.', 'A seventh.'],
+      offer: 'I can go through the five decisions one by one. Or anything else you like.',
+    });
+    console.log(`FATIMA READS (${said.length} characters)\n${said}`);
+    const [lead, points, offer] = said.split('\n\n');
+    expect(lead).toBe('Four results are proven this year, and five matters need your decision before December.');
+    expect(points.split('\n')).toHaveLength(5);
+    expect(points).toContain('The Ministry of Industry has agreed the export incentive in principle, and the signed letter is still outstanding. It was promised by 10 December.');
+    expect(points).not.toMatch(/Legal cannot confirm it|sixth|seventh/);
+    expect(offer).toBe('I can go through the five decisions one by one.');
+    expect(said.length).toBeLessThanOrEqual(1800);
+  });
+
+  it('a lead that answers it all stands alone, with no offer', async () => {
+    const w = await aDraftExists();
+    expect(await ask(w, { found: true, lead: 'Version 1 is a draft waiting for your approval.', points: [], offer: 'I can tell you more.' })).toBe('Version 1 is a draft waiting for your approval.');
+  });
+});
+
+/* BATCH F, F-7. "What has Ahmed failed to deliver?" read that nothing was found: Ahmed's lines were past the end of her outstanding list's page. */
+describe('what the question names is read first', () => {
+  it('puts the lines of the person asked about at the top of the outstanding list', () => {
+    const line = (key: string, owner: string, item: string) => ({ key, item, workstream: null, owner, actionNeeded: '', status: 'open', priority: 'high', dueOn: '2026-10-07', dueInferred: false, dependency: null, decision: null, refs: [], lastVerifiedAt: '2026-11-13', nextFollowUp: '', carryForward: true, resolution: null });
+    const row: any = { version: 6, status: 'revised', content: { year: 2026, principalName: 'Fatima Wali', principalFirstName: 'Fatima', builtAt: '2026-11-21T10:00:00Z', gaps: [], questions: [], edits: [], shortened: [], evidence: [], sections: [], register: [...Array.from({ length: 300 }, (_, i) => line(`h${i}`, 'Hauwa Bello', `Follow up nothing major in the state, week ${i}`)), line('a1', 'Ahmed Bako', 'Send the signed Ministry of Industry approval letter')] } };
+    const list = thePagesOfHerRecord(row, 'own', 'What has Ahmed failed to deliver?').find((p) => p.fileName === 'your outstanding list')!;
+    expect(list.content.split('\n')[1]).toMatch(/^- Send the signed Ministry of Industry approval letter\. Owner Ahmed Bako\./);
   });
 });
