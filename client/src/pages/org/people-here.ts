@@ -14,6 +14,10 @@ export interface OrgMember {
   /** Where they are on WhatsApp, from the record (pilots on WhatsApp, 14 October), and that said as a sentence. */
   whatsapp?: 'no-number' | 'not-connected' | 'waiting' | 'connected'
   whatsappSays?: string
+  /** Whether they can check in on WhatsApp, worked out on the server from the record (can-they-check-in-on-whatsapp.ts). Shown whether WhatsApp is on or off. */
+  whatsappCheckInSays?: string
+  /** Their number, whether it is connected, and whether they can check in on WhatsApp, as one line for their row on People. */
+  phoneLine?: string
   firstName: string | null
   lastName: string | null
   /**

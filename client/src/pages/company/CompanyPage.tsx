@@ -11,6 +11,7 @@ import { useAskStore } from '@/stores/ask'
 import {
   Page as PageFrame, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row, SubHeading, Skeleton, FieldLabel, TextField, TextArea,
 } from '@/components/gw/ui'
+import { TheGoalsYouCanChange } from './TheGoalsYouCanChange'
 
 /**
  * THE DESK (S7, 20 November 2026), at #/company: the Company page renamed, with #/company/context folded into it (that
@@ -74,6 +75,7 @@ export function CompanyPage() {
           <TheDocuments name={name} documents={page.desk?.documents ?? []} mayAdd={page.desk?.mayAdd === true} />
           <TheDirectory people={page.desk?.directory ?? []} />
           <TheStrategy p={page} />
+          <TheGoalsYouCanChange />
         </>
       )}
     </PageFrame>

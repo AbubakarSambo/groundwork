@@ -34,3 +34,23 @@ describe('the price of the next seat, before an invitation', () => {
     expect(document.body.textContent).toBe('')
   })
 })
+
+/* THE COST LINE (Hafsah, 21 November 2026): the server's one line, whatever it says, at every place somebody is added. */
+describe('the cost line, as the server says it', () => {
+  it('within the seats', async () => {
+    m.next = { addsASeat: false, says: null, line: 'This is your 16th of 20 seats, so your bill doesn’t change.', needsAYes: false, whatsappLine: null }
+    show()
+    await waitFor(() => expect(document.body.textContent).toBe('This is your 16th of 20 seats, so your bill doesn’t change.'))
+  })
+  it('a new seat, and what WhatsApp would add', async () => {
+    m.next = { addsASeat: true, says: 'This adds a seat: +$5 a month', line: 'This needs a new seat. It adds $5 a month from today.', needsAYes: true, whatsappLine: 'If they check in on WhatsApp this month, it adds $4 to this month’s bill.' }
+    show()
+    await waitFor(() => expect(document.body.textContent).toBe('This needs a new seat. It adds $5 a month from today. If they check in on WhatsApp this month, it adds $4 to this month’s bill.'))
+  })
+  it('during the free trial, no price at all', async () => {
+    m.next = { addsASeat: false, says: null, line: 'Nothing is charged during your free trial.', needsAYes: false, whatsappLine: null }
+    show()
+    await waitFor(() => expect(document.body.textContent).toBe('Nothing is charged during your free trial.'))
+    expect(document.body.textContent).not.toMatch(/\$/)
+  })
+})

@@ -1,4 +1,5 @@
 import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
+import { APersonsDetails } from '@/pages/org/APersonsDetails'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
@@ -7,12 +8,12 @@ import { myDataApi } from '@/api/my-data'
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import {
-  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row, Skeleton
+  Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, Skeleton
 } from '@/components/gw/ui'
-import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
 import { WhereYouStandFromSuggestions } from '@/components/gw/Suggestions'
-import { PatternPanel, EdgeList, EdgeRow } from '@/components/gw/ui'
+import { EdgeList, EdgeRow } from '@/components/gw/ui'
+import { EverythingThatIsYours } from './EverythingThatIsYours'
 
 /**
  * THE YOU BOARD (C2, #/you, group 2 piece 2). The wording is copied from
@@ -97,6 +98,8 @@ export function YouPage() {
         </div>
       )}
       {data && <TheBoard b={data} grounds={grounds.data} />}
+      {/* Your CV and who to call in an emergency (Hafsah, 21 November 2026): yours to add and change. */}
+      {user?.id && <APersonsDetails userId={user.id} own />}
     </Page>
     </TheDirectMorning>
   )
@@ -110,13 +113,10 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
   const checkIns = b.checkIns ?? []
   const goals = b.goals ?? []
   const todos = b.todos ?? []
-  const saidYoudDo = b.saidYoudDo ?? []
-  const ownReports = b.ownReports ?? []
   const turns = b.turns ?? []
   const askedOfYouItems = b.askedOfYou?.items ?? []
   const checkInsWithDates = checkIns.map(c => ({ id: c.id, label: c.label, ...startOf.get(c.id) }))
   const nothingYet = checkIns.length === 0 && todos.length === 0
-  const myPatterns = (b.patterns ?? []).filter((p) => p.yours !== false)
   /* B-043: an admin who runs check-ins but has never been one's own subject has no goals, no
      to-dos, no reports of their own and nothing Groundwork has noticed about them - so every
      panel this section can hold stays empty, and only "nothingYet" (no check-ins at all) earns
@@ -130,9 +130,7 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
     || !!b.noticed?.says
     || !!b.coachingOverTime
     || goals.length > 0
-    || todos.length > 0
     || !!b.contributed?.length
-    || !!b.coaching
     || turns.length > 0
   return (
     <>
@@ -170,7 +168,7 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
           </div>
         ) : null}
 
-        {(goals.length > 0 || todos.length > 0 || !!b.contributed?.length) && (
+        {(goals.length > 0 || !!b.contributed?.length) && (
           <div className="gwui-cards-3">
             {goals.length > 0 && (
               <Panel as="section" heading="Your goals">
@@ -184,25 +182,12 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
                 </ul>
               </Panel>
             )}
-            {todos.length > 0 && (
-              <Panel as="section" heading="Your to-dos">
-                <ul className="gwui-panel-list">
-                  {todos.map(t => <li key={t.id}>{t.text}{t.when ? <span className="gwui-ink-sub"> {t.when}</span> : null}</li>)}
-                </ul>
-              </Panel>
-            )}
             {!!b.contributed?.length && (
               <Panel as="section" heading="What you contributed">
                 <ul className="gwui-panel-list">{b.contributed.map(c => <li key={c}>{c}</li>)}</ul>
               </Panel>
             )}
           </div>
-        )}
-
-        {b.coaching && (
-          <Panel as="section" heading="Coaching">
-            <p className="gwui-panel-text">{b.coaching.says}</p>
-          </Panel>
         )}
 
         {turns.length > 0 && (
@@ -257,54 +242,10 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
       {/* RELEASE 7: your running record, from every check-in you are in (served with Release 7 on, to you alone). */}
       {(b as any).runningRecord && <YourRunningRecord r={(b as any).runningRecord} />}
 
-      {saidYoudDo.length > 0 && (
-        <Section heading="What you said you’d do" note="From every check-in">
-          {/*
-            WIDTH CHECK, ITEM 11: AT 1024 THE DUE-DATE WRAPPED ("Tuesday 29\nSeptember"). The
-            date's own column shared an even `minmax(0, 1fr)` with "which check-in", so once four
-            columns and a gap had to fit the page's narrower 1024px width, a plain date (the
-            longest ordinary value this column ever holds) was the one column forced to wrap.
-            A 150px floor is room enough for that longest date on one line, taken from the row's
-            own shrinking - not from the check-in column beside it, which already holds shorter
-            names.
-          */}
-          <RowList label="What you said you’d do">
-            {saidYoudDo.map(s => (
-              <Row key={s.id} columns="minmax(0, 2fr) minmax(0, 1fr) minmax(150px, 1fr) auto">
-                <b>{s.text}</b>
-                <span>{s.checkIn}</span>
-                <span>{s.when ?? ''}</span>
-                <span><Tag tone={s.state === 'kept' ? 'proven' : 'plain'}>{s.stateSays}</Tag></span>
-              </Row>
-            ))}
-          </RowList>
-        </Section>
-      )}
+      <EverythingThatIsYours b={b} />
 
-      {!!myPatterns.length && (
-        <Section heading="Something that keeps coming up" note="About your part in the work">
-          {myPatterns.map(p => <PatternPanel key={p.id} pattern={p} invalidateKey={['you']} />)}
-        </Section>
-      )}
-
-      {(ownReports.length > 0 || checkIns.length > 0) && (
+      {checkIns.length > 0 && (
         <div className="gwui-cards-2">
-          {ownReports.length > 0 && (
-            <Section heading="Your own reports">
-              <RowList label="Your own reports">
-                {ownReports.map(r => (
-                  <Row key={r.to} columns="minmax(0, 1fr) auto auto">
-                    <b>{r.checkIn}</b>
-                    <span>{whenItWas(r.at, 'dayAndMonthLong')}</span>
-                    {/* SCREEN FAULT 10: 30px tall on a phone, below the 40px tap floor -
-                        `.gwui-tap-44` (gw-ui.css), the same class YourWork.tsx's own "Read"
-                        links already use. */}
-                    <Link to={r.to} className="gwui-tap-44">Read</Link>
-                  </Row>
-                ))}
-              </RowList>
-            </Section>
-          )}
           {checkIns.length > 0 && (
             <Section heading="Your work in each">
               <RowList label="Your work in each">

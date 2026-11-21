@@ -84,8 +84,8 @@ export function mayOpen(who: WhoIsAsking, how: HowThisOrgWorks): Answer {
  * anything about the person: not being named is a setting, not a judgement.
  */
 export const GUESTS_DO_NOT_OPEN =
-  'You are taking part here as a guest from another organisation. You can check in on anything '
-  + 'you are added to; opening a new check-in is done by someone in this organisation.';
+  'You are taking part here as a guest. You can check in on anything you are added to. '
+  + 'Opening a new check-in is done by somebody here who is not a guest.';
 
 export const CANNOT_OPEN =
   'Opening a check-in here is limited to people your admin has named. You can still take part in '

@@ -1,4 +1,5 @@
 import { aDaySaidInFull } from '../board/a-day-said-in-full';
+import { theRolesTheyMayGive, howPeopleJoinHere } from '../users/the-role-an-invitation-gives';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { understandTheMessage, theTitlesTheyMean, type TheMessageUnderstood } from './ask-understands-with-the-model';
 import { GUIDE_BY_KEY, isSwitchedOn, mayUse, theDescriptionFor, whoDoesIt, type TheReader } from './what-the-assistant-can-do';
@@ -5126,8 +5127,10 @@ export class AssistantService {
       read(() => contextIsInAskGroundwork(this.prisma), false),
     ]);
     const isAGuest = role === 'GUEST';
+    const howPeopleJoin = howPeopleJoinHere(await read(() => this.prisma.organization.findUnique({ where: { id: organizationId }, select: { guestsMayJoin: true, whoMayAddPeople: true } }), null as any));
     return {
       isAGuest,
+      mayAddPeople: theRolesTheyMayGive(role ?? null, howPeopleJoin).length > 0,
       isAnAdmin: role === 'ADMIN',
       looksAfterHr: !isAGuest && !!userId && duties.hr === userId,
       runsOne: links.some((l) => l.partyType === 'INITIATOR'),

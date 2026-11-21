@@ -115,7 +115,7 @@ export class CompanyService {
 }
 
 /** A guest from another company, or somebody still waiting to be let in, is not in the organisation: refused here, on the server. */
-async function refuseAnOutsider(prisma: PrismaService, reader: { userId: string; role: string }): Promise<void> {
+export async function refuseAnOutsider(prisma: PrismaService, reader: { userId: string; role: string }): Promise<void> {
   if (reader.role === 'GUEST') throw new ForbiddenException(NOT_YOUR_COMPANY);
   /* Nor somebody still waiting for an admin to let them into the organisation: they are not in it yet (row 5, release check of 7 October). */
   await refuseSomeoneAwaitingTheOrganisation(prisma as any, reader.userId, NOT_YOUR_COMPANY);

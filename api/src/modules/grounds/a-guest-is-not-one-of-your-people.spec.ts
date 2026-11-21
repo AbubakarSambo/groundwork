@@ -23,7 +23,8 @@ describe('GW-GUEST: who may open a check-in in an organisation you are only visi
   it('and is told why, in terms of being a guest rather than of being refused', () => {
     const answer = mayOpen({ role: 'GUEST' }, EVERYONE) as { may: false; because: string };
     expect(answer.because).toBe(GUESTS_DO_NOT_OPEN);
-    expect(answer.because).toMatch(/guest from another organisation/i);
+    /* A guest can now be let into their own organisation as one (Hafsah, 21 November 2026), so it no longer says "from another organisation". */
+    expect(answer.because).toMatch(/as a guest\b/i);
     // It must still say what they CAN do, or it reads as the product being broken for them.
     expect(answer.because).toMatch(/you are added to/i);
   });

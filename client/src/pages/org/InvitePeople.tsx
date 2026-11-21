@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ThisAddsASeat } from '@/components/gw/this-adds-a-seat'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ThisAddsASeat, useTheNextSeat } from '@/components/gw/this-adds-a-seat'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
 import { Section, Panel, Stack, TextArea, Select, Button, Note, Tag } from '@/components/gw/ui'
+import { ATeamPicker } from './ATeamPicker'
 
 /**
  * "INVITE PEOPLE" (A4 people.txt): one per line, a name and an email, or a list from a spreadsheet,
@@ -16,8 +17,12 @@ import { Section, Panel, Stack, TextArea, Select, Button, Note, Tag } from '@/co
  * whether WhatsApp is on or off"; this replaces decision 106 item 6). It is typed on each person's line,
  * as A4 people.txt:224 draws it, and the server saves it to them once their invitation has gone, the same
  * save People uses (putting-a-whole-company-on.ts numbersIn). Round 1 of the first experience: three of
- * four leads were made to add each number one by one. A "Guest" role is still not offered: inviting somebody straight into it throws on the server
- * (aRoleToInviteAs) - a guest is somebody a lead adds to one check-in.
+ * four leads were made to add each number one by one.
+ *
+ * THE ROLES OFFERED ARE THE SERVER'S (Hafsah, 21 November 2026): `rolesYouMayGive` on GET /users/organization/adding-people, from
+ * the one rule every invite route asks (the-role-an-invitation-gives.ts). An admin reads "Takes part", "Can open check-ins" and
+ * "Admin", and "Guest" too once guests can join the organisation. A member the organisation lets add people reads only "Takes
+ * part", said as a sentence rather than a choice of one. Before the server answers, only "Takes part", the stricter.
  *
  * REBUILT FROM THE SHARED PARTS (item 11: the role choice, "Send their invitations" and "Upload a
  * list" sit on one line under the text box, which is the standard 16px `TextArea`). The sentence,
@@ -48,25 +53,36 @@ const HOW_IT_READS: Record<string, { says: string; sent?: string; tone: 'good' |
   'no seat': { says: 'No seat on your plan', tone: 'bad' },
 }
 
-const ROLES = [
-  ['MEMBER', 'Takes part'],
-  ['LEAD', 'Can open check-ins'],
-  ['ADMIN', 'Admin'],
-] as const
+const ROLE_NAMES: Record<string, string> = {
+  MEMBER: 'Takes part',
+  LEAD: 'Can open check-ins',
+  ADMIN: 'Admin',
+  GUEST: 'Guest',
+}
+const THE_STRICTER: string[] = ['MEMBER']
 
-function pasteMany(pasted: string, preview: boolean, role: string): Promise<PasteAnswer> {
-  return apiClient.post('/users/invitations', { pasted, preview, role }).then((r) => r.data.data ?? r.data)
+function pasteMany(pasted: string, preview: boolean, role: string, team: string): Promise<PasteAnswer> {
+  return apiClient.post('/users/invitations', { pasted, preview, role, ...(team.trim() ? { team } : {}) }).then((r) => r.data.data ?? r.data)
 }
 
 export function InvitePeople() {
   const qc = useQueryClient()
   const [pasted, setPasted] = useState('')
   const [role, setRole] = useState<string>('MEMBER')
+  const [team, setTeam] = useState('')
   const [answer, setAnswer] = useState<PasteAnswer | null>(null)
   const file = useRef<HTMLInputElement>(null)
+  const adding = useQuery({
+    queryKey: ['org-adding-people'],
+    queryFn: () => apiClient.get('/users/organization/adding-people').then((r) => (r.data.data ?? r.data) as { rolesYouMayGive: string[] }),
+    retry: false,
+  })
+  const roles = adding.data?.rolesYouMayGive?.length ? adding.data.rolesYouMayGive : THE_STRICTER
+  /* A new paid seat needs a yes (Hafsah, 21 November 2026): the list is shown first, and "Send" there is the yes. */
+  const nextSeat = useTheNextSeat()
 
   const send = useMutation({
-    mutationFn: () => pasteMany(pasted, false, role),
+    mutationFn: () => pasteMany(pasted, false, role, team),
     onSuccess: async (a) => {
       setAnswer(a)
       setPasted('')
@@ -78,10 +94,10 @@ export function InvitePeople() {
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'None of those invitations went out, and nobody has been emailed. Try again.'),
   })
   const check = useMutation({
-    mutationFn: () => pasteMany(pasted, true, role),
+    mutationFn: () => pasteMany(pasted, true, role, team),
     onSuccess: (a) => {
       /* Every line can go: send, as the prototype's one button does. Anything else: show it first. */
-      if (a.rows.length > 0 && a.rows.every((r) => r.result === 'invited')) send.mutate()
+      if (a.rows.length > 0 && a.rows.every((r) => r.result === 'invited') && !nextSeat.data?.needsAYes) send.mutate()
       else setAnswer(a)
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'I could not read that list. Try again.'),
@@ -106,11 +122,19 @@ export function InvitePeople() {
             placeholder={'Faith Kerubo, faith@yourcompany.com, +254 712 345 678\nJoseph Kiprono, joseph@yourcompany.com, +254 722 118 440'}
           />
           <div className="gwui-invite-actions">
+            {roles.length > 1 ? (
+              <label className="gwui-inline-label">
+                Role{' '}
+                <Select value={role} onChange={(e) => { setRole(e.target.value); setAnswer(null) }} aria-label="Role" style={{ width: 'auto' }}>
+                  {roles.map((v) => <option key={v} value={v}>{ROLE_NAMES[v] ?? v}</option>)}
+                </Select>
+              </label>
+            ) : (
+              <span className="gwui-panel-text-muted">They will join as “Takes part”.</span>
+            )}
             <label className="gwui-inline-label">
-              Role{' '}
-              <Select value={role} onChange={(e) => { setRole(e.target.value); setAnswer(null) }} aria-label="Role" style={{ width: 'auto' }}>
-                {ROLES.map(([v, w]) => <option key={v} value={v}>{w}</option>)}
-              </Select>
+              Team{' '}
+              <ATeamPicker value={team} onChange={setTeam} noneSays="No team yet" />
             </label>
             <Button disabled={!pasted.trim() || check.isPending || send.isPending} onClick={() => check.mutate()}>
               {check.isPending || send.isPending ? 'Sending…' : 'Send their invitations'}
@@ -133,6 +157,7 @@ export function InvitePeople() {
             />
           </div>
           <Note>They’ll get an email with a link to set themselves up.</Note>
+          {role === 'GUEST' && <Note>Guests only see the check-ins they are added to.</Note>}
           <ThisAddsASeat />
         </Stack>
       </Panel>

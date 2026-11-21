@@ -116,9 +116,10 @@ export class BillingController {
   @ApiBearerAuth()
   @Roles(Role.ADMIN, Role.LEAD, Role.MEMBER)
   @ApiOperation({ summary: 'Whether the next invitation adds a paid seat, and the sentence that says so' })
-  async nextSeat(@CurrentUser('organizationId') organizationId: string) {
-    const n = await this.billing.theNextSeat(organizationId);
-    return { addsASeat: n.addsASeat, says: n.says };
+  async nextSeat(@CurrentUser('organizationId') organizationId: string, @Query('name') name?: string) {
+    const n = await this.billing.theNextSeat(organizationId, (name ?? '').trim().slice(0, 60) || null);
+    /* What adding somebody costs (Hafsah, 21 November 2026): one plain line for the confirm step, and whether it needs a yes. */
+    return { addsASeat: n.addsASeat, says: n.says, line: n.line, needsAYes: n.needsAYes, whatsappLine: n.whatsappLine };
   }
 
   /**
