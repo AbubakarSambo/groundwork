@@ -1,4 +1,5 @@
 import { Button } from '@/components/gw/kit'
+import { useTheDesignPass } from '@/lib/the-design-pass'
 import { AuthCard, AuthError } from '@/pages/auth/auth-kit'
 import { initialsOf } from '@/components/gw/your-organisations'
 
@@ -35,6 +36,8 @@ export function WhereDoYouWork({ byDomain, asAGuest = [], problem, busy, onJoin,
      a first sentence that still promised "Join an organisation you belong to, or create a new
      one." The sentence now says only what the page actually offers. */
   const hasSomethingToJoin = !settled || byDomain.length > 0 || asAGuest.length > 0
+  /* The design pass: with nothing to join, creating one is the page's only action, so it is the navy button. */
+  const createKind = useTheDesignPass() && !hasSomethingToJoin ? 'primary' : 'secondary'
   return (
     <AuthCard
       title="Where do you work?"
@@ -76,8 +79,8 @@ export function WhereDoYouWork({ byDomain, asAGuest = [], problem, busy, onJoin,
               <span>For a team that isn’t on Groundwork yet.</span>
             </span>
             {'to' in create
-              ? <Button kind="secondary" size="small" to={create.to}>Create</Button>
-              : <Button kind="secondary" size="small" onClick={create.onCreate} disabled={busy}>Create</Button>}
+              ? <Button kind={createKind} size="small" to={create.to}>Create</Button>
+              : <Button kind={createKind} size="small" onClick={create.onCreate} disabled={busy}>Create</Button>}
           </div>
         </li>
       </ul>

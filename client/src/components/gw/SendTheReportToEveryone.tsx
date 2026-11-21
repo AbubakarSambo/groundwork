@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
 import { toast } from 'sonner'
 import { useState } from 'react'
+import { useTheDesignPass } from '@/lib/the-design-pass'
 import type { GroundParticipant } from '@/types'
 import { Button } from '@/components/gw/ui/Button'
 
@@ -32,6 +33,11 @@ import { Button } from '@/components/gw/ui/Button'
  * kind="secondary"` - white, the prototype's own outlined button - not navy. Every action it
  * offered keeps working: sending, choosing named or anonymised, and reading who gets it.
  */
+const CHOICES = [
+  { v: 'NAMED' as const, title: 'Named', says: 'People see who said what, by name and organisation, the same way you do.' },
+  { v: 'ANONYMOUS' as const, title: 'Anonymised', says: 'Names and organisations are taken out of their copy, including inside quotes. It cannot take out somebody describing themselves. Yours stays named.' },
+]
+
 export function SendTheReportToEveryone({ groundId, participants, answered }: {
   groundId: string
   participants: GroundParticipant[]
@@ -43,6 +49,8 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
   const reachable = participants.filter((p) => answered.has(p.id) && p.partyType !== 'INITIATOR' && p.wantsTheReport !== false && !!p.email && !p.email.endsWith('@unclaimed.invalid'))
   const declined = participants.filter((p) => answered.has(p.id) && p.wantsTheReport === false)
   const [how, setHow] = useState<'NAMED' | 'ANONYMOUS'>('NAMED')
+  /* The design pass: the choice and its list at the page's own sizes, 14 and 16px, not 12 and 13, drawn from classes. */
+  const dp = useTheDesignPass()
   /**
    * ONCE EVERYBODY WHO ASKED FOR IT ALREADY HAS IT, THE BUTTON HAS NOTHING LEFT TO DO.
    *
@@ -107,7 +115,29 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
           </Button>
         )}
       </div>
-      {reachable.length > 0 && (
+      {dp && reachable.length > 0 && (
+        <>
+          <fieldset className="dp-fieldset">
+            <legend className="dp-legend">What they receive</legend>
+            {CHOICES.map((o) => (
+              <label key={o.v} htmlFor={`share-${o.v}`} className="dp-choice">
+                <input id={`share-${o.v}`} type="radio" name="how-it-is-shared" value={o.v} checked={how === o.v} onChange={() => setHow(o.v)} />
+                <span>
+                  <span className="dp-choice-title">{o.title}</span>
+                  <span className="dp-choice-says">{o.says}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <details className="dp-details">
+            <summary className="dp-summary">Who gets it</summary>
+            <ul className="dp-list">
+              {reachable.map((p) => <li key={p.id}>{nameOf(p) ? `${nameOf(p)} (${p.email})` : p.email}</li>)}
+            </ul>
+          </details>
+        </>
+      )}
+      {!dp && reachable.length > 0 && (
         <fieldset style={{ border: 0, padding: 0, margin: '12px 0 0' }}>
           <legend style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', padding: 0 }}>What they receive</legend>
           {([
@@ -125,7 +155,7 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
           ))}
         </fieldset>
       )}
-      {reachable.length > 0 && (
+      {!dp && reachable.length > 0 && (
         <details style={{ marginTop: 8 }}>
           <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>Who gets it</summary>
           <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--gw-sub)' }}>

@@ -3,7 +3,7 @@ import { onboardingBoardApi, type NewPerson } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row, Skeleton } from '@/components/gw/ui'
-import { SuiteOffMessage } from '@/lib/suite-is-off'
+import { SuiteOffMessage, theToneForARefusal } from '@/lib/suite-is-off'
 
 /**
  * THE ONBOARDING BOARD (E1, #/suite/onboard, group 2 piece 4). The wording is copied from
@@ -62,7 +62,7 @@ export function OnboardingBoardPage() {
       {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>
+          <Note tone={theToneForARefusal(refused.data?.message ?? 'Only an admin or a lead can open this board.')}><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The board did not load.</Note>

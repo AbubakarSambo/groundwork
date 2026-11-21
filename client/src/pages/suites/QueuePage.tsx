@@ -4,7 +4,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { queueApi, leaveBoardApi, spendApi, decisionsApi, type AQueueItem, type ADecisionResult } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tabs, FieldLabel, TextArea, Skeleton } from '@/components/gw/ui'
-import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
+import { maySeeSuites, SuiteOffMessage, theToneForARefusal } from '@/lib/suite-is-off'
 import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { TheAttachedFile } from './TheAttachedFile'
@@ -230,7 +230,7 @@ export function QueuePage() {
       {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only people in this organisation can read what waits for them.'} role={user?.role} /></Note>
+          <Note tone={theToneForARefusal(refused.data?.message ?? 'Only people in this organisation can read what waits for them.')}><SuiteOffMessage message={refused.data?.message ?? 'Only people in this organisation can read what waits for them.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The queue did not load.</Note>

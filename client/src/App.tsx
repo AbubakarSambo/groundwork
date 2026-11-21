@@ -12,6 +12,7 @@ import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { MARKETING_URL, OUR_OWN_ROOT } from '@/lib/marketing'
 import { useSessionTimeout } from '@/lib/useSessionTimeout'
+import { readTheSwitchFromTheAddress, applyTheDesignPass } from '@/lib/the-design-pass'
 import { useWhoTheServerSaysYouAre } from '@/lib/who-the-server-says-you-are'
 import { AuthPage } from '@/pages/auth/AuthPage'
 import { SignOutPage } from '@/pages/auth/SignOutPage'
@@ -473,6 +474,16 @@ export function HomeOrChooseAnOrganisation({ home = 'list' }: { home?: 'today' |
   return <Navigate to={`/today${search}`} replace />
 }
 
+/** The design pass follows every page change: `?design=on|off` on any address, and never on a board (lib/the-design-pass.ts). */
+function TheDesignPassFollowsThePage() {
+  const { pathname, search } = useLocation()
+  useEffect(() => {
+    readTheSwitchFromTheAddress(search)
+    applyTheDesignPass(pathname)
+  }, [pathname, search])
+  return null
+}
+
 function SessionGuard({ children }: { children: React.ReactNode }) {
   useSessionTimeout()
   /* The stored user is a copy from sign-in day; ask the server what is true now. */
@@ -484,6 +495,7 @@ export default function App() {
   return (
     <QueryClientProvider client={qc}>
       <BrowserRouter>
+        <TheDesignPassFollowsThePage />
         <SessionGuard>
           {/* First in the document, so it is the first thing a keyboard reaches. It was inside the
               shell, behind the help button, which made it the second stop and therefore useless. */}

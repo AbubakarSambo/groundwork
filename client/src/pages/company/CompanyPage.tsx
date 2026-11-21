@@ -8,6 +8,8 @@ import {
 } from '@/api/company'
 import { useAuthStore } from '@/stores/auth'
 import { useAskStore } from '@/stores/ask'
+import { useTheDesignPass } from '@/lib/the-design-pass'
+import { ChooseAFile } from '@/components/gw/ChooseAFile'
 import {
   Page as PageFrame, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row, SubHeading, Skeleton, FieldLabel, TextField, TextArea,
 } from '@/components/gw/ui'
@@ -34,6 +36,8 @@ import { TheGoalsYouCanChange } from './TheGoalsYouCanChange'
 export function CompanyPage() {
   const user = useAuthStore(s => s.user)
   const showAsk = useAskStore(s => s.show)
+  /* The design pass: Ask is the prototype's secondary button, so the page has no navy button above its own content. */
+  const designPass = useTheDesignPass()
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['company'],
     queryFn: companyApi.get,
@@ -65,7 +69,7 @@ export function CompanyPage() {
         <>
           <p className="gwui-panel-text">This is where {name} keeps its policies, handbook, procedures and documents, and a list of everyone who works here.</p>
           <div className="gwui-sentence-row">
-            <Button kind="primary" onClick={showAsk}>Ask about the whole organisation</Button>
+            <Button kind={designPass ? 'secondary' : 'primary'} onClick={showAsk}>Ask about the whole organisation</Button>
             {/* Release 6 and release 9: each only where it is switched on (the server says). */}
             {directionOn && <Link className="gwui-plain-link" to="/direction">The company’s direction, and what it means for each team</Link>}
             {policyOn && <Link className="gwui-plain-link" to="/policies">The policy board, with every rule the organisation runs on</Link>}
@@ -121,6 +125,9 @@ function ADocument({ d }: { d: DeskDocument }) {
 
 function AddADocument() {
   const qc = useQueryClient()
+  const designPass = useTheDesignPass()
+  /* The design pass: the form is folded behind one button until somebody wants it, so the documents themselves come first. */
+  const [adding, setAdding] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
   const [text, setText] = useState('')
@@ -134,6 +141,39 @@ function AddADocument() {
   })
   const said = (add.error as { response?: { data?: { message?: string | string[] } } } | null)?.response?.data?.message
   const ready = !!file || (!!title.trim() && !!text.trim())
+  if (designPass) {
+    if (!adding && !add.isSuccess) return <div className="dp-add"><Button kind="secondary" onClick={() => setAdding(true)}>Add a document</Button></div>
+    return (
+      <Panel as="section" aria-label="Add a document">
+        <div className="dp-form">
+          <SubHeading as="h3">Add a document</SubHeading>
+          <p className="gwui-panel-text">Choose a file, or give it a title and paste the text. It is read, a short summary is written, and both are kept on the Desk.</p>
+          <div className="dp-field">
+            <FieldLabel htmlFor="desk-file">A file (PDF, Word or text)</FieldLabel>
+            <ChooseAFile id="desk-file" inputKey={inputKey} accept=".pdf,.doc,.docx,.txt,.md,.rtf,application/pdf,text/plain" file={file} onChoose={setFile} />
+          </div>
+          <div className="dp-field">
+            <FieldLabel htmlFor="desk-title">Its title</FieldLabel>
+            <TextField id="desk-title" value={title} onChange={e => setTitle(e.target.value)} placeholder={file ? 'The file’s own name is used if you leave this empty' : 'For example, Leave policy'} />
+          </div>
+          {!file && (
+            <div className="dp-field">
+              <FieldLabel htmlFor="desk-text">Or paste the text</FieldLabel>
+              <TextArea id="desk-text" value={text} onChange={e => setText(e.target.value)} rows={6} />
+            </div>
+          )}
+          <div className="gwui-sentence-row">
+            <Button kind="primary" onClick={() => add.mutate()} disabled={!ready || add.isPending}>
+              {add.isPending ? 'Reading it' : 'Add it to the Desk'}
+            </Button>
+            <Button kind="quiet" onClick={() => { setAdding(false); add.reset() }}>Cancel</Button>
+          </div>
+          {add.isError && <Note tone="error">{Array.isArray(said) ? said.join(' ') : said || 'That document was not added. Try again in a moment.'}</Note>}
+          {add.isSuccess && <Note tone="green" role="status">{add.data.title} is on the Desk now.</Note>}
+        </div>
+      </Panel>
+    )
+  }
   return (
     <Panel as="section" aria-label="Add a document">
       <SubHeading as="h3">Add a document</SubHeading>

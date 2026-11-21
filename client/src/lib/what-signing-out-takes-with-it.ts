@@ -18,6 +18,8 @@ export const WHAT_STAYS: ReadonlySet<string> = new Set([
   'gw-feedback-button-position',
   /* The home page's first-run walkthrough state. Seen once per browser, not per person. */
   'gw-ob-v2',
+  /* Whether this browser shows the design pass (lib/the-design-pass.ts). A setting of the browser, not of a person. */
+  'gw-design-pass',
 ])
 
 /** The one key that is not prefixed: the bearer token itself. */

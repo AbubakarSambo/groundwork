@@ -17,6 +17,9 @@
    that are whole tap rows (a folded group, a fold) carry their own height, and a one-line "Updated ..." disclosure inside a line of
    text must not be drawn as a 44px row (docs/spacing-audit-15-nov.md, C2). */
 :where(button, select, [role="button"], [role="switch"], [role="tab"]):not(.gwui-in-a-sentence) { min-height: 44px; }
+/* The design pass (21 November 2026, styles/the-design-pass.css): with it on, a folding summary takes the same floor again ("What you wrote" and
+   "Who gets it" were 17px). Written here, where the kit's floor is; html.design-pass is never on a board page (lib/the-design-pass.ts). */
+:where(html.design-pass) :where(button, summary, select, [role="button"], [role="switch"], [role="tab"]):not(.gwui-in-a-sentence) { min-height: 44px; }
 
 .gwui-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 

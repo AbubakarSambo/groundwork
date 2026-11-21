@@ -1,3 +1,4 @@
+import { useTheDesignPass } from '@/lib/the-design-pass'
 import { useMemo, useState, type ReactElement } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -39,6 +40,8 @@ const ROLE_FILTERS: RoleFilter[] = ['Everyone', 'Owner', 'Admins', 'Can open che
 
 /** Team, Role, Status, Check-ins, Open - the name column is PersonRow's own (PEOPLE_NAME_COLUMN). */
 const EXTRA_COLUMNS = '100px 110px 220px minmax(110px, 1fr) 40px'
+/* The design pass: "Remove" was cut off in a 40px column and "Can open check-ins" ran into Status. Room for both. */
+const EXTRA_COLUMNS_IN_THE_DESIGN_PASS = '92px 144px minmax(208px, 1.5fr) minmax(88px, 1fr) 76px'
 
 function matches(filter: RoleFilter, m: OrgMember, ownerId: string | null): boolean {
   const role = roleWord(m, ownerId)
@@ -214,6 +217,7 @@ function TheTree({ people }: { people: OrgMember[] }) {
 export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: string | null }) {
   const whatsappOn = useWhatsAppIsOn()
   const me = useAuthStore((st) => st.user)
+  const columns = useTheDesignPass() ? EXTRA_COLUMNS_IN_THE_DESIGN_PASS : EXTRA_COLUMNS
   const [removing, setRemoving] = useState<OrgMember | null>(null)
   const { data, isLoading, isError } = useQuery({ queryKey: ['org-members'], queryFn: fetchMembers })
   /* Same query the sidebar already makes (AppShell.tsx), read here only for when each check-in
@@ -325,7 +329,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
             <Empty>{find.trim() ? `Nobody here matches "${find.trim()}".` : 'Nobody here matches that.'}</Empty>
           ) : (
             <PeopleTable>
-              <PeopleTableHead extraColumns={EXTRA_COLUMNS} labels={['Person', 'Team', 'Role', 'Status', 'Check-ins', '']} />
+              <PeopleTableHead extraColumns={columns} labels={['Person', 'Team', 'Role', 'Status', 'Check-ins', '']} />
               <ShowAFew rows={shown} few={25} what="people">
                 {(m: OrgMember) => {
                   const name = nameOf(m)
@@ -335,7 +339,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
                   return (
                     <PersonRow
                       key={m.id}
-                      extraColumns={EXTRA_COLUMNS}
+                      extraColumns={columns}
                       person={{ initials: initialsOf(name), name, level: line || undefined, email: m.email }}
                     >
                       {/* "None" alone, at phone width where the column name has collapsed away, read

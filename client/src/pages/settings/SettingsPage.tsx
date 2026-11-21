@@ -1,3 +1,4 @@
+import { useTheDesignPass } from '@/lib/the-design-pass'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { TheWordForABill } from '@/components/gw/TheWordForABill'
 import { useEffect, useRef, useState } from 'react'
@@ -94,13 +95,15 @@ function ChangePassword({ email }: { email?: string | null }) {
   })
 
   const rules = todaysPasswordRules(password, confirm, email)
+  /* The design pass: changing a password is not the page's main thing, so it is a secondary button. */
+  const designPass = useTheDesignPass()
   const met = rules.every(r => r.met)
 
   return (
     <Section heading="Password" note={methods?.google ? 'You can also sign in with Google or an email link' : 'You can also sign in with an email link'}>
       <Panel>
         {!open ? (
-          <Button kind="primary" onClick={() => setOpen(true)}>Change password</Button>
+          <Button kind={designPass ? 'secondary' : 'primary'} onClick={() => setOpen(true)}>Change password</Button>
         ) : (
           <Stack gap={12}>
             <div>

@@ -15,6 +15,7 @@ import { Composer } from './ui/Composer'
 import { GroundworkIsWriting } from './ui/GroundworkIsWriting'
 import { STILL_READING_WHAT_YOU_WROTE } from '@/lib/opening-is-slow'
 import { whatTheServerSaid } from '@/lib/what-the-server-said'
+import { useTheDesignPass } from '@/lib/the-design-pass'
 
 /** What the Context page already says while a document's read has not landed yet (AddADocument.tsx). */
 const STILL_READING = 'Reading it now.'
@@ -117,6 +118,17 @@ const uploadGroundId = (b: NextStepBlock & { id: string }): string =>
 const bubble = (mine: boolean): string => (mine ? 'bub me' : 'bub them')
 const chip = 'chip'
 
+/**
+ * THE DESIGN PASS (21 November 2026): a long answer in paragraphs is drawn as one bubble a paragraph,
+ * the way a person sends several short messages, instead of one tall block. With the pass off, one
+ * bubble, as before.
+ */
+function GroundworksWords({ text, apart }: { text: string; apart: boolean }) {
+  const parts = apart ? text.split(/\n\s*\n/).map((t) => t.trim()).filter(Boolean) : [text]
+  if (parts.length <= 1) return <p className={bubble(false)}>{text}</p>
+  return <>{parts.map((t, i) => <p key={i} className={bubble(false)}>{t}</p>)}</>
+}
+
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 /**
@@ -180,6 +192,8 @@ export function AskGroundwork({
   pollIntervalMs?: number
   pollTimeoutMs?: number
 }) {
+  /* The design pass: a long answer drawn a paragraph a bubble (GroundworksWords above). */
+  const designPass = useTheDesignPass()
   const location = useLocation()
   const user = useAuthStore(s => s.user)
   const isAnAdmin = user?.role === 'ADMIN'
@@ -483,7 +497,7 @@ export function AskGroundwork({
     const texts = new Set(reply.blocks.filter(isText).map((b) => b.body))
     return reply.blocks.map((b: AskBlock, i) => {
       const k = `${key}-${i}`
-      if (isText(b)) return <p key={k} className={bubble(false)}>{b.body}</p>
+      if (isText(b)) return <GroundworksWords key={k} text={b.body} apart={designPass} />
       if (isClaim(b)) {
         /* A claim with how it is known (request 16). The mark comes from the record, never from here. */
         return <p key={k} className={bubble(false)}><Mark mark={b.mark} /> {b.says}</p>
@@ -591,7 +605,9 @@ export function AskGroundwork({
          */}
         {page.data?.canAsk && page.data.welcome && said.length === 0 && <p className={bubble(false)}>{page.data.welcome}</p>}
         {(page.data?.turns ?? []).map((t, i) => (
-          <p key={`t-${i}`} className={bubble(t.from === 'you')}>{t.from === 'you' ? t.says : anOldAskAnswerReadsProperly(t.says)}</p>
+          t.from === 'you'
+            ? <p key={`t-${i}`} className={bubble(true)}>{t.says}</p>
+            : <GroundworksWords key={`t-${i}`} text={anOldAskAnswerReadsProperly(t.says)} apart={designPass} />
         ))}
         {/* The questions you could ask, as the prototype's chips, after what has been said, until you ask something this visit. */}
         {page.data?.canAsk && (page.data?.starters ?? []).length > 0 && said.length === 0 && (
