@@ -497,7 +497,7 @@ export class AssistantService {
       const said = await this.executive.hearHer({ organizationId, userId, message }).catch(() => null);
       if (said) return rules('her_setup', text(said));
     }
-    const placedAt = route(message).lane;
+    const placedAt = (await this.placed(organizationId, message)).lane;
     const placedByRules = placedAt !== 'unplaced';
     /* A question long enough to ask two things is read by the model even where the rules place it, because a lane answers one thing
        only (staging check S12: "What did I say I would do tomorrow, and who still owes us money?" was answered half). */
@@ -680,7 +680,7 @@ export class AssistantService {
      * answered again here, without the reading respondInner made, so it fell to the word lists: "i want to apply for leaqve", after the
      * leave set-up stepped aside, was answered "I cannot answer that one yet". Where the rules place nothing, the model reads it here too.
      */
-    if (afterDrop && !understood && userId && who && route(message).lane === 'unplaced') {
+    if (afterDrop && !understood && userId && who && (await this.placed(organizationId, message)).lane === 'unplaced') {
       understood = await understandTheMessage(this.engine as any, this.prompts as any, message, null,
         typeof (this.engine as any)?.extract === 'function' ? theDescriptionFor(await this.theReader(organizationId, personId, userId)) : undefined).catch(() => null);
     }
@@ -809,7 +809,7 @@ export class AssistantService {
 
     /* Where the rules place nothing, a question is answered from the record and the documents below, never sent to a lane's own
        lookup by the model (ask-understands-with-the-model.ts, 1 November 2026). */
-    let routedByRules = route(message);
+    let routedByRules = await this.placed(organizationId, message);
     /* The company by its own name: the router cannot know it, so it is asked here (B-134). */
     if (routedByRules.lane === 'unplaced' && /\bworking\s+on\b/i.test(message)) {
       const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }).catch(() => null);
@@ -901,8 +901,6 @@ export class AssistantService {
       case 'what_am_i_on':
         return this.compose(await this.whatAmIOn(organizationId, personId));
       case 'who_is':
-        /* "Who's my best performer this month?" asks about the record, not for somebody called "my best performer" (polish round 1). */
-        if (userId && /^(?:my|our|the)\b/i.test(routed.subject ?? '')) return this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, groundId ?? null, message);
         return this.compose(await this.whoIs(organizationId, routed.subject ?? ''));
       case 'what_did_i_commit_to':
         return this.myCommitments(organizationId, personId);
@@ -7108,35 +7106,20 @@ export class AssistantService {
   }
 
   /**
-   * A ROSTER LOOKUP AND NOTHING MORE.
-   *
-   * Name, role, department, who they report to - the things an org chart holds. Deliberately not
-   * how they are doing, what they have said, or anything derived from a check-in: this is a
-   * question one colleague asks about another, and the answer stays on the side of the wall that
-   * shared intelligence lives on.
+   * WHERE THE RULES PLACE A MESSAGE, WITH "WHO IS ..." KEPT ONLY FOR SOMEBODY WHO IS HERE (release test 21 November, 93). The rules read any "who is X" as a
+   * question about a colleague called X, so "hello, who is this?" was answered 'I do not know anyone called "this"', and "Who's my best performer?" had a
+   * patch of its own. When nobody here is called X, it was never a question about a colleague: the model reads it like anything the rules do not place.
    */
-  private async whoIs(organizationId: string, query: string): Promise<Reply> {
+  private async placed(organizationId: string, message: string): Promise<ReturnType<typeof route>> {
+    const r = route(message);
+    if (r.lane === 'who_is' && !(await this.theOneCalled(organizationId, r.subject ?? '').catch(() => null))) return { lane: 'unplaced' };
+    return r;
+  }
+
+  /** The person here with this name, and everybody, or null. A sentence is nobody's name, so it costs no read. */
+  private async theOneCalled(organizationId: string, query: string) {
     const q = query.replace(/[?.]+$/, '').trim();
-    if (!q) return rules('who_is', text('Who did you mean?'));
-
-    /*
-     * AND IT HAS TO LOOK LIKE A NAME BEFORE IT IS CALLED ONE (screens request 154, item 2).
-     *
-     * This echoed whatever it was handed. Juma asked about looking after people while the road was
-     * closed and read back: 'I do not have anybody called "looking after them while the road is
-     * closed. ...". I only know the people your organisation has sent me.' A request to add some
-     * notes, read back to him as a missing colleague.
-     *
-     * The router put him here and that is worth fixing too, but the damage is done at this line,
-     * which is the place to hold it: a name is a few words with no sentence inside it. Anything
-     * else is not somebody we have failed to find, it is something we did not understand, and
-     * saying so with what Ask can do is both true and more use.
-     */
-    if (!looksLikeAName(q)) {
-      const { line, options } = whatICanDoWith(query);
-      return rules('unplaced', text(line), picker(options));
-    }
-
+    if (!looksLikeAName(q)) return null;
     const people = await this.prisma.person.findMany({
       where: { organizationId, active: true },
       select: { externalId: true, userName: true, displayName: true, title: true, department: true, managerExternalId: true },
@@ -7148,7 +7131,21 @@ export class AssistantService {
         || (p.displayName ?? '').toLowerCase().split(' ')[0] === lower
         || p.externalId.toLowerCase() === lower,
     );
-    if (!hit) return rules('who_is', text(`I do not have anybody called "${q}". I only know the people your organisation has sent me.`));
+    return hit ? { hit, people } : null;
+  }
+
+  /**
+   * A ROSTER LOOKUP AND NOTHING MORE.
+   *
+   * Name, role, department, who they report to - the things an org chart holds. Deliberately not
+   * how they are doing, what they have said, or anything derived from a check-in: this is a
+   * question one colleague asks about another, and the answer stays on the side of the wall that
+   * shared intelligence lives on.
+   */
+  private async whoIs(organizationId: string, query: string): Promise<Reply> {
+    const found = await this.theOneCalled(organizationId, query);
+    if (!found) return rules('who_is', text('Who did you mean?'));
+    const { hit, people } = found;
 
     const manager = hit.managerExternalId
       ? people.find((p) => p.externalId === hit.managerExternalId)
