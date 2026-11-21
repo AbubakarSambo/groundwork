@@ -1,4 +1,4 @@
-import { aYearEndWorld } from './a-year-end-world-for-specs';
+import { aYearEndWorld } from './a-world-for-the-year-end';
 import { loadTheRecord } from './the-year-end-versions';
 import { buildTheContent, everyLineHasASourceOrIsUnverified, type YearEndContent } from './the-year-end-content';
 import { oneFile, theFiles, THE_FINAL_SET, slidesOf, reportBlocks } from './the-year-end-files';

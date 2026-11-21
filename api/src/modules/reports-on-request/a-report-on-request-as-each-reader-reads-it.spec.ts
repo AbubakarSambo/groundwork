@@ -161,21 +161,21 @@ describe('a report on request, as each reader reads it', () => {
   it('a department head is told what she can draw on: her own check-in and her department’s, never an evaluation or another department’s', async () => {
     const { svc } = aService();
     const r = await svc.start({ organizationId: ORG, userId: 'u-fatima', message: 'Can you prepare a report on my departments?', channel: 'chat' });
-    expect(r.said).toContain('I can draw on the check-ins you can read, which are "Dispatch weekly" and "Warehouse daily".');
-    expect(r.said).toContain('I can also use the Desk, References and resources for the check-ins you run and anything you add.');
-    expect(r.said).toContain('Forward me the emails or upload the documents you want included.');
-    expect(r.said).toContain('forward emails to assistant+acme@myground.work');
-    expect(r.said).toContain("When you have added what you want, tell me, and I'll send you a first outline to check.");
-    expect(r.said).not.toMatch(/Finance month-end|Performance plan|Budget review/);
+    expect(r!.said).toContain('I can draw on the check-ins you can read, which are "Dispatch weekly" and "Warehouse daily".');
+    expect(r!.said).toContain('I can also use the Desk, References and resources for the check-ins you run and anything you add.');
+    expect(r!.said).toContain('Forward me the emails or upload the documents you want included.');
+    expect(r!.said).toContain('forward emails to assistant+acme@myground.work');
+    expect(r!.said).toContain("When you have added what you want, tell me, and I'll send you a first outline to check.");
+    expect(r!.said).not.toMatch(/Finance month-end|Performance plan|Budget review/);
   });
 
   it('a member of the same department does not get the department’s check-ins this way, only the ones she takes part in', async () => {
     const { svc } = aService();
     const r = await svc.start({ organizationId: ORG, userId: 'u-amina', message: 'I need a report on my department', channel: 'chat' });
-    expect(r.said).toContain('which is "Warehouse daily"');
-    expect(r.said).not.toMatch(/Dispatch weekly|Finance month-end|Performance plan/);
+    expect(r!.said).toContain('which is "Warehouse daily"');
+    expect(r!.said).not.toMatch(/Dispatch weekly|Finance month-end|Performance plan/);
     /* She takes part, so she reads the rules and decisions of it, never the lead's coaching lines. */
-    expect(r.said).not.toContain('References and resources');
+    expect(r!.said).not.toContain('References and resources');
   });
 
   it('a member who takes part in nothing is told plainly what it would be written from', async () => {
@@ -183,7 +183,7 @@ describe('a report on request, as each reader reads it', () => {
     w.prisma.ground.findMany = async () => [];
     const { svc } = aService(w);
     const r = await svc.start({ organizationId: ORG, userId: 'u-tunde', message: 'report please', channel: 'chat' });
-    expect(r.said).toContain('I cannot see any check-ins you can read yet, so I would write it from the Desk and anything you add.');
+    expect(r!.said).toContain('I cannot see any check-ins you can read yet, so I would write it from the Desk and anything you add.');
   });
 
   it('the whole exchange on the web: ask, a forwarded email, the outline, a change, the yes, the report', async () => {
@@ -226,7 +226,7 @@ describe('a report on request, as each reader reads it', () => {
 
     /* Kept, so asked again it is sent again. */
     const later = await svc.start({ ...ask, message: 'Can you send me that report again?', channel: 'chat' });
-    expect(later.said).toBe(w.requests[0].report);
+    expect(later!.said).toBe(w.requests[0].report);
   });
 
   it('a department head reads a colleague’s check-in without the names in it; the lead who runs it reads them', async () => {
@@ -282,9 +282,9 @@ describe('a report on request, as each reader reads it', () => {
   it('asked for the outline straight away, it sends one, with the section she asked for and how to add more (round 2, T8)', async () => {
     const { svc } = aService();
     const r = await svc.start({ organizationId: ORG, userId: 'u-fatima', message: 'can you show me the outline first and add a section on what is blocking us', channel: 'chat' });
-    expect(r.said).toContain('Here is a first outline to check.');
-    expect(r.said).toContain('What is blocking us. This would use the report on "Dispatch weekly".');
-    expect(r.said).toContain('Forward me the emails or upload the documents you want included.');
+    expect(r!.said).toContain('Here is a first outline to check.');
+    expect(r!.said).toContain('What is blocking us. This would use the report on "Dispatch weekly".');
+    expect(r!.said).toContain('Forward me the emails or upload the documents you want included.');
   });
 
   it('by email through POST dev/inbound-mail: ask, forward, outline, yes, and the report comes back as the reply (round 2, T8)', async () => {

@@ -11,8 +11,8 @@
  * with the `xlsx` library the finance export already uses, and the PDF with pdfkit. No new dependency is needed.
  */
 import {
-  dayWords, EMPTY_SECTION, MONTHS, plain, sectionsWithWords, sourceWords, STATUS_PLAIN, STATUS_WORDS, theSourceLine, theSourceName, whatIsShown,
-  type Claim, type RegisterLine, type Section, type YearEndContent,
+  dayWords, EMPTY_SECTION, MONTHS, plain, sourceWords, STATUS_PLAIN, STATUS_WORDS, theSourceLine, theSourceName,
+  type Claim, type RegisterLine, type YearEndContent,
 } from './the-year-end-content';
 import { THE_FLAG, theMonthAsAParagraph, theOpeningAsAParagraph } from './the-year-end-narrative';
 import type { AnAttachment } from '../email/attachments';
@@ -92,6 +92,27 @@ export function theYearOnASlide(c: YearEndContent): string[] {
   return [words[0], ...o.slice(0, 3).map((x) => `${clip(x.text, 200)}${from(x.ref)}${x.flagged ? ` ${THE_FLAG}` : ''}`), ...words.slice(1, 2)].slice(0, 5);
 }
 
+/** The proven lines with the outcomes first, in the order the model gave them, then the rest as they were. With no outcomes picked, the lines as they were. */
+export function theAchievedLines(c: YearEndContent): { outcomes: Claim[]; routine: Claim[] } {
+  const all = claimsIn(c, 'achieved');
+  const ids = c.outcomes?.ids ?? [];
+  if (!ids.length) return { outcomes: all, routine: [] };
+  const outcomes = ids.map((id) => all.find((cl) => cl.id === id)).filter((cl): cl is Claim => !!cl);
+  return { outcomes, routine: all.filter((cl) => !ids.includes(cl.id)) };
+}
+
+/** A line the register marks as not backed up. */
+const isDisputed = (c: YearEndContent, cl: Claim) => cl.status === 'disputed' || (!!cl.rowKey && !!c.register.find((r) => r.key === cl.rowKey)?.disputed);
+
+/** How many lines of each part the briefing reads out. The rest are counted, and every line is in the register and the evidence index. */
+const IN_THE_BRIEFING: Record<string, number> = { achieved: 12, disputed: 8, unverified: 8, decision: 8, open: 12, corrections: 20, record: 3, gaps: 6 };
+const A_MONTH_IN_THE_BRIEFING = 3;
+
+/**
+ * THE REPORT IS A BRIEFING (Dangote stress test, D9: 68,559 words, every forwarded note month by month). Outcomes first, then each claim by its standing: proven, said
+ * and not shown, disputed, waiting for a decision, still open. Then the year month by month, a few lines each. Each part reads out its first lines and counts the
+ * rest; the full evidence, every statement with its source, is the evidence index that goes with it.
+ */
 export function reportBlocks(c: YearEndContent, v: TheVersion): Block[] {
   const out: Block[] = [
     { t: 'h1', text: `${c.year} year-end report` },
@@ -99,24 +120,46 @@ export function reportBlocks(c: YearEndContent, v: TheVersion): Block[] {
     { t: 'h2', text: 'What matters most' },
     { t: 'p', text: whatMattersMost(c) },
     ...(v.status === 'draft' || v.status === 'revised' ? [{ t: 'p' as const, text: `This is a draft. It is not final until ${c.principalFirstName} approves it.` }] : []),
-    { t: 'p', text: 'Each statement says where it comes from, for example the note that was forwarded on a given day. Where nothing backs a statement, it says so. Nothing is counted as achieved without proof.' },
+    { t: 'p', text: 'Each statement says where it comes from, and whether it is proven, only said, or disputed. Nothing is counted as achieved without proof. Every statement and its source is in the evidence index that comes with this report.' },
     ...(theOpeningAsAParagraph(c) ? [{ t: 'p' as const, text: theOpeningAsAParagraph(c)! }] : []),
     ...theYearInWords(c).slice(1).map((text) => ({ t: 'p' as const, text })),
   ];
+  const part = (title: string, claims: Claim[], most: number, empty: string | null) => {
+    if (!claims.length && !empty) return;
+    out.push({ t: 'h2', text: title });
+    if (!claims.length) { out.push({ t: 'p', text: empty! }); return; }
+    const n = c.shortened.includes('all') ? Math.min(3, most) : most;
+    for (const cl of claims.slice(0, n)) out.push({ t: 'li', text: oneLine(`${cl.text} ${theSourceLine(c, cl)}${cl.note ? ` ${cl.note}` : ''}`) });
+    if (claims.length > n) out.push({ t: 'p', text: `${claims.length - n} more ${claims.length - n === 1 ? 'line is' : 'lines are'} in the register and the evidence index.` });
+  };
+  const { outcomes, routine } = theAchievedLines(c);
+  part('What was achieved, with proof', outcomes, IN_THE_BRIEFING.achieved, EMPTY_SECTION('achieved'));
+  if (routine.length) out.push({ t: 'p', text: `${many(routine.length, 'routine task was', 'routine tasks were')} also done and shown, such as ${listOf(routine.slice(0, 2).map((cl) => `"${clip(firstSentence(cl.text).replace(/[.!?]+$/, ''), 80)}"`))}. ${routine.length === 1 ? 'It is' : 'They are'} in the register.` });
+  const unverified = claimsIn(c, 'unverified');
+  part('Disputed, and not counted', unverified.filter((cl) => isDisputed(c, cl)), IN_THE_BRIEFING.disputed, null);
+  part('Said to be done, but not yet shown', unverified.filter((cl) => !isDisputed(c, cl)), IN_THE_BRIEFING.unverified, null);
+  part('Waiting for a decision', claimsIn(c, 'decision'), IN_THE_BRIEFING.decision, null);
+  part('Still open, and what carries into the next year', claimsIn(c, 'open'), IN_THE_BRIEFING.open, EMPTY_SECTION('open'));
+  part('What you corrected', claimsIn(c, 'corrections'), IN_THE_BRIEFING.corrections, null);
   const months = monthSections(c);
-  let said = false;
-  for (const s of sectionsWithWords(c)) {
-    if (s.id.startsWith('month:') && !said) { out.push({ t: 'h2', text: `The year, month by month` }); out.push({ t: 'p', text: 'Each month below is what that month\'s note says. No separate proof has been shown for it, except where a line says otherwise. Where each line comes from is in the evidence index.' }); said = true; }
-    out.push({ t: s.id.startsWith('month:') ? 'h3' : 'h2', text: s.title });
-    if (!s.claims.length) { out.push({ t: 'p', text: EMPTY_SECTION(s.id) }); continue; }
-    const shown = whatIsShown(c, s);
-    /* A month the narrative wrote reads as one paragraph, each run of sentences followed by where it comes from. A note it did not rest on stays as its plain line. */
-    const prose = s.id.startsWith('month:') ? theMonthAsAParagraph(c, s.id.slice(6), sourceWords, shown.leftOut ? 3 : 99, true) : null;
-    if (prose) out.push({ t: 'p', text: oneLine(prose) });
-    for (const cl of shown.claims.filter((x) => !(prose && x.id.startsWith('nn:')))) out.push({ t: 'li', text: oneLine(`${cl.text} ${theSourceLine(c, cl)}${cl.note ? ` ${cl.note}` : ''}`) });
-    if (shown.leftOut) out.push({ t: 'p', text: `${shown.leftOut} more lines in this part are left out to keep it short. They are all in the register and the evidence index.` });
+  if (months.length) {
+    out.push({ t: 'h2', text: 'The year, month by month' });
+    out.push({ t: 'p', text: 'Each month below is what that month\'s notes and messages say. No separate proof has been shown for it, except where a line says otherwise.' });
+    for (const s of months) {
+      out.push({ t: 'h3', text: s.title });
+      const prose = theMonthAsAParagraph(c, s.id.slice(6), sourceWords, A_MONTH_IN_THE_BRIEFING, true);
+      if (prose) out.push({ t: 'p', text: oneLine(prose) });
+      const lines = s.claims.filter((x) => !(prose && x.id.startsWith('nn:')));
+      const n = prose ? Math.min(1, lines.length) : A_MONTH_IN_THE_BRIEFING;
+      /* The count of the month's messages is always said; the notes it has are read out first. */
+      const shown = [...lines.filter((x) => !x.id.startsWith('msg:')).slice(0, n), ...lines.filter((x) => x.id.startsWith('msg:'))];
+      for (const cl of shown) out.push({ t: 'li', text: oneLine(`${cl.text}${cl.id.startsWith('msg:') ? '' : ` ${theSourceLine(c, cl)}`}`) });
+      const left = lines.length - shown.length;
+      if (left > 0) out.push({ t: 'p', text: `${left} more ${left === 1 ? 'line' : 'lines'} for ${s.title} ${left === 1 ? 'is' : 'are'} in the evidence index.` });
+    }
   }
-  void months;
+  part('Reports and other documents kept', claimsIn(c, 'record'), IN_THE_BRIEFING.record, null);
+  part('What the record does not cover', claimsIn(c, 'gaps'), IN_THE_BRIEFING.gaps, null);
   return out;
 }
 
@@ -253,42 +296,70 @@ const slideLine = (c: YearEndContent, cl: Claim): string => {
 };
 
 /**
- * THE LEADERSHIP PRESENTATION: a short narrative, not a list of the record. The year in one slide, what was achieved with its evidence, what the monthly
- * notes report that nothing has proved yet, what is open and carried into the next year, and what needs a decision. Each slide carries at most five lines,
- * and the full lists stay in the report and the register.
+ * THE LEADERSHIP PRESENTATION, SIZED TO THE MATERIAL (Dangote stress test, D8: seven slides for a whole year, "What was achieved" led by routine tasks, and five small
+ * payments as "What needs a decision"). It follows the brief's executive briefing: the year in one slide, the outcomes, the year quarter by quarter, the payments, what
+ * is only said or disputed, what the record does not cover, what is open and carried into the next year, and what needs a decision. A part with more than a slide
+ * holds goes on over more slides, up to a few, so a full year reads in about 15 to 20 slides and a small record in a few. Only proven outcomes are on "What was
+ * achieved"; nothing unproven and no routine task is. Each slide carries at most five lines, and the full lists stay in the report and the register.
  */
+const MOST_SLIDES = 20;
+const LINES_ON_A_SLIDE = 5;
 export function slidesOf(c: YearEndContent, v: TheVersion): ASlide[] {
-  const take = (id: string, n = 5) => { const s = c.sections.find((x) => x.id === id); return s ? whatIsShown(c, s).claims.slice(0, n).map((cl) => slideLine(c, cl)) : []; };
+  const shortened = c.shortened.includes('all');
   const countIn = (id: string) => claimsIn(c, id).length;
-  const noted = c.sections.filter((x) => x.id.startsWith('month:')).flatMap((x) => x.claims.filter((cl) => cl.status === 'noted').map((cl) => ({ month: MONTHS[Number(x.id.slice(-2)) - 1], cl })));
   const open = c.register.filter((r) => r.status !== 'completed' && r.status !== 'cancelled');
   const carried = open.filter((r) => r.carryForward);
   const noOwner = open.filter((r) => r.owner === 'unconfirmed').length;
   const more = (shown: number, total: number) => (total > shown ? [`${total - shown} more ${total - shown === 1 ? 'is' : 'are'} in the report.`] : []);
-  const slides: ASlide[] = [
+  /** A part over as many slides as it needs, up to `most`, five lines each, and how many more are in the report. */
+  const over = (title: string, lines: string[], most: number): ASlide[] => {
+    const pages = Math.max(1, Math.min(shortened ? 1 : most, Math.ceil(lines.length / LINES_ON_A_SLIDE)));
+    const out: ASlide[] = [];
+    for (let i = 0; i < pages; i += 1) out.push({ title: i === 0 ? title : `${title}, continued`, lines: lines.slice(i * LINES_ON_A_SLIDE, (i + 1) * LINES_ON_A_SLIDE) });
+    const shown = pages * LINES_ON_A_SLIDE;
+    if (lines.length > shown) out[out.length - 1].lines.push(...more(shown, lines.length));
+    return out;
+  };
+  const head: ASlide[] = [
     { title: `${c.year} year-end review`, lines: [`Prepared for ${c.principalName}`, `Version ${v.version}, ${theStatus(v)}, built on ${dayWords(c.builtAt)}`] },
     { title: 'The year in one slide', lines: theYearOnASlide(c) },
   ];
-  const achieved = take('achieved');
-  slides.push({ title: 'What was achieved, with evidence', lines: achieved.length ? [...achieved, ...more(achieved.length, countIn('achieved'))] : [EMPTY_SECTION('achieved')] });
+  const body: ASlide[] = [];
+  const { outcomes } = theAchievedLines(c);
+  body.push(...(outcomes.length ? over('What was achieved, with evidence', outcomes.map((cl) => slideLine(c, cl)), 3) : [{ title: 'What was achieved, with evidence', lines: [EMPTY_SECTION('achieved')] }]));
+  /* The year, by quarter: each month in one line, its first sentences, from what its notes and messages say. */
+  const noted = c.sections.filter((x) => x.id.startsWith('month:')).flatMap((x) => x.claims.filter((cl) => cl.status === 'noted').map((cl) => ({ key: x.id.slice(6), month: MONTHS[Number(x.id.slice(-2)) - 1], cl })));
   if (noted.length) {
-    /* A month written as prose is one line of the slide, its first two sentences, whatever number of sentences it has. */
-    const byMonth = [...new Map(noted.map(({ month, cl }) => [month, cl.id.startsWith('nn:') ? noted.filter((x) => x.month === month && x.cl.id.startsWith('nn:')).slice(0, 2).map((x) => x.cl.text).join(' ') : cl.text])).entries()];
-    const shown = byMonth.slice(0, 5).map(([month, text]) => `${month}: ${clip(text.replace(/^The (?:note|email) for \w+ says: /, '').replace(/ This is what the (?:note|email) says.*$/, ''), 190)}`);
-    slides.push({ title: 'What the monthly notes report, not yet proven', lines: [...shown, ...more(shown.length, byMonth.length)] });
+    const byMonth = [...new Map(noted.map(({ key, month, cl }) => [key, { month, text: cl.id.startsWith('nn:') ? noted.filter((x) => x.key === key && x.cl.id.startsWith('nn:')).slice(0, 2).map((x) => x.cl.text).join(' ') : cl.text }])).entries()].sort(([a], [b]) => a.localeCompare(b));
+    const lineOf = ({ month, text }: { month: string; text: string }) => `${month}: ${clip(text.replace(/^The (?:note|email) for \w+ says: /, '').replace(/ This is what the (?:note|email) says.*$/, ''), 190)}`;
+    if (byMonth.length <= LINES_ON_A_SLIDE || shortened) body.push({ title: 'What the monthly notes report, not yet proven', lines: [...byMonth.slice(0, LINES_ON_A_SLIDE).map(([, m]) => lineOf(m)), ...more(Math.min(LINES_ON_A_SLIDE, byMonth.length), byMonth.length)] });
+    else for (let q = 0; q < 4; q += 1) {
+      const these = byMonth.filter(([k]) => Math.floor((Number(k.slice(5)) - 1) / 3) === q);
+      if (these.length) body.push({ title: `What the notes report for ${['January to March', 'April to June', 'July to September', 'October to December'][q]}, not yet proven`, lines: these.map(([, m]) => lineOf(m)) });
+    }
   }
   /* A month she asked to be added is in the presentation too, whatever the record holds for it. */
-  for (const m of c.sections.filter((x) => x.id.startsWith('month:') && x.claims.some((cl) => cl.status !== 'noted'))) {
-    slides.push({ title: `${m.title}, added at ${c.principalFirstName}'s request`, lines: m.claims.slice(0, 5).map((cl) => (cl.status === 'noted' ? slideLine(c, cl) : oneLine(`${firstSentence(cl.text)}${cl.status === 'recollection' ? ' (unverified)' : ''}`))) });
+  for (const m of c.sections.filter((x) => x.id.startsWith('month:') && x.claims.some((cl) => cl.status !== 'noted' && !cl.id.startsWith('msg:')))) {
+    body.push({ title: `${m.title}, added at ${c.principalFirstName}'s request`, lines: m.claims.filter((cl) => !cl.id.startsWith('msg:')).slice(0, 5).map((cl) => (cl.status === 'noted' ? slideLine(c, cl) : oneLine(`${firstSentence(cl.text)}${cl.status === 'recollection' ? ' (unverified)' : ''}`))) });
   }
-  const said = take('unverified', 3);
-  if (said.length) slides.push({ title: 'Said to be done, but not yet shown', lines: [...said, ...more(said.length, countIn('unverified'))] });
-  const stillOpen = take('open');
-  slides.push({ title: `What is open and carried into ${c.year + 1}`, lines: open.length === 0 ? ['Nothing is open on the record.'] : [`${carried.length ? `${carried.length} of the ${open.length} open ${open.length === 1 ? 'matter is' : 'matters are'} marked to carry into ${c.year + 1}.` : `None of the ${open.length} open ${open.length === 1 ? 'matter is' : 'matters are'} marked yet to carry into ${c.year + 1}.`} ${noOwner ? `${noOwner} ${noOwner === 1 ? 'has' : 'have'} no confirmed owner.` : 'Each has an owner.'}`, ...stillOpen.slice(0, 4)] });
-  const decisions = take('decision');
+  const payments = open.filter((r) => r.workstream === 'Payments');
+  if (payments.length) body.push(...over('Payments', payments.map((r) => clip(firstSentence(r.item), 190)), 1));
+  const unverified = claimsIn(c, 'unverified');
+  const disputed = unverified.filter((cl) => isDisputed(c, cl));
+  const said = unverified.filter((cl) => !isDisputed(c, cl));
+  if (said.length) body.push(...over('Said to be done, but not yet shown', said.map((cl) => slideLine(c, cl)), 2));
+  if (disputed.length) body.push(...over('Disputed, and not counted', disputed.map((cl) => slideLine(c, cl)), 1));
+  const gaps = claimsIn(c, 'gaps');
+  if (gaps.length && !shortened) body.push(...over('What the record does not cover', gaps.map((cl) => clip(firstSentence(cl.text), 190)), 1));
+  const stillOpen = claimsIn(c, 'open').map((cl) => slideLine(c, cl));
+  const openLead = open.length === 0 ? 'Nothing is open on the record.' : `${carried.length ? `${carried.length} of the ${open.length} open ${open.length === 1 ? 'matter is' : 'matters are'} marked to carry into ${c.year + 1}.` : `None of the ${open.length} open ${open.length === 1 ? 'matter is' : 'matters are'} marked yet to carry into ${c.year + 1}.`} ${noOwner ? `${noOwner} ${noOwner === 1 ? 'has' : 'have'} no confirmed owner.` : 'Each has an owner.'}`;
+  const openSlides = over(`What is open and carried into ${c.year + 1}`, [openLead, ...stillOpen], 2);
+  const decisions = claimsIn(c, 'decision').map((cl) => slideLine(c, cl));
   const questions = c.questions.slice(0, 4);
-  slides.push({ title: 'What needs a decision', lines: decisions.length || questions.length ? [...decisions, ...questions.slice(0, Math.max(0, 5 - decisions.length))] : [`Nothing is waiting for a decision from ${c.principalFirstName}.`] });
-  return slides;
+  const decide: ASlide = { title: 'What needs a decision', lines: decisions.length || questions.length ? [...decisions.slice(0, LINES_ON_A_SLIDE), ...questions.slice(0, Math.max(0, LINES_ON_A_SLIDE - decisions.length)), ...more(Math.min(LINES_ON_A_SLIDE, decisions.length), countIn('decision'))] : [`Nothing is waiting for a decision from ${c.principalFirstName}.`] };
+  /* The head, then the body as far as it fits, and always what is open and what needs a decision last. */
+  const room = MOST_SLIDES - head.length - openSlides.length - 1;
+  return [...head, ...body.slice(0, Math.max(0, room)), ...openSlides, decide];
 }
 
 export async function presentationPptx(c: YearEndContent, v: TheVersion): Promise<Buffer> {

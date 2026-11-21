@@ -77,5 +77,6 @@ export function emailToATeamMember(principalFirst: string, office: string, first
 export const theOffice = (name: string | null | undefined): string => {
   const n = (name ?? '').trim();
   if (!n) return 'the office';
-  return /^the\s/i.test(n) ? n : `the ${n}`;
+  /* A name that already says whose it is takes no "the": "Fatima's office", never "the Fatima's office" (D20). */
+  return /^the\s/i.test(n) || /^\S+['’]s?(?:\s|$)/i.test(n) ? n : `the ${n}`;
 };

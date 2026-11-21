@@ -1,4 +1,4 @@
-import { aYearEndWorld } from './a-year-end-world-for-specs';
+import { aYearEndWorld } from './a-world-for-the-year-end';
 import { actOnTheJobs } from './the-year-end-owner';
 import { advanceThePersistentJobs, ensureThePrincipalsJobs } from '../outstanding/the-persistent-jobs';
 import { theMonthsADocumentCovers } from '../executive-onboarding/the-months-a-document-covers';

@@ -1,4 +1,4 @@
-import { aYearEndWorld } from './a-year-end-world-for-specs';
+import { aYearEndWorld } from './a-world-for-the-year-end';
 import { aReadingOfHerWords } from './a-reading-of-her-words-for-specs';
 import { approveTheDraft, latestDraft, makeTheFirstDraft, readTheChange, refreshTheDraft, reviseTheDraft, theVersions, whatHappenedToIt } from './the-year-end-versions';
 import { authoriseARecipient, deliverTheFinal, recipientsFor, sendTheDraft, sendTheRegister, tellHerOnWhatsApp } from './the-year-end-delivery';
@@ -44,13 +44,13 @@ describe('"Add March", "Shorten this" and "This is wrong" revise the same draft'
     const { w, a } = await aSentDraft();
     const r = (await reviseTheDraft(w.prisma, { ...a, by: fatima, channel: 'chat', message: 'Add March' }))!;
     expect(r.version).toBe(2);
-    expect(r.said).toBe('I have added March 2026 to the draft as version 2, in the report, the presentation and the register. The record has nothing for March yet, so it is marked unverified, and the team is being asked for it. Version 1 is kept.');
+    expect(r.said).toBe('I have added March 2026 to the draft as version 2, in the report, the presentation and the register. The record has nothing for March yet, so it is marked unverified until a record arrives. Version 1 is kept.');
     const versions = await theVersions(w.prisma, { organizationId: w.ORG, principalUserId: 'u-fatima', year: 2026 });
     expect(versions.map((v) => [v.version, v.status, v.parentId ? 'has parent' : 'first'])).toEqual([[1, 'draft', 'first'], [2, 'revised', 'has parent']]);
     expect(versions[0].content.sections.some((s) => s.id === 'month:2026-03')).toBe(false);
     const c = versions[1].content;
-    expect(await docText(c, 'report_docx')).toContain('Nothing in the record covers March 2026 yet. The team is being asked for it.');
-    expect(await pptText(c)).toContain('Nothing in the record covers March 2026 yet.');
+    expect(await docText(c, 'report_docx')).toContain('Nothing in the record covers March 2026 yet, so it is marked unverified until a record arrives.');
+    expect(await pptText(c)).toContain('Nothing in the record covers March 2026 yet, so it is marked unverified until a record arrives.');
     expect(c.questions).toContain('Is there anything from March 2026 that belongs in the year-end report?');
   });
 
@@ -73,7 +73,8 @@ describe('"Add March", "Shorten this" and "This is wrong" revise the same draft'
     const r = (await reviseTheDraft(w.prisma, { ...a, by: fatima, channel: 'email', message: 'Shorten this' }))!;
     expect(r.said).toBe('I have made the report and the presentation shorter in version 2. Nothing was taken out of the register or the evidence index, which stay in full. Version 1 is kept.');
     const c = (await latestDraft(w.prisma, { organizationId: w.ORG, principalUserId: 'u-fatima', year: 2026 }))!.content;
-    expect(await docText(c, 'report_docx')).toContain('more lines in this part are left out to keep it short. They are all in the register and the evidence index.');
+    /* Changed for the briefing (Dangote D9): a part reads its first lines and says where the rest are. */
+    expect(await docText(c, 'report_docx')).toMatch(/more lines? (?:for March 2026 )?(?:is|are) in the (?:register and the )?evidence index\./);
     expect(c.register).toEqual(full!.content.register);
     expect(c.evidence).toEqual(full!.content.evidence);
     expect(await docText(c, 'evidence_index')).toBe(await docText(full!.content, 'evidence_index'));
@@ -283,8 +284,8 @@ describe('the same files never go twice, and only to the people who may have the
 
   it('"Send the outstanding list" emails the register once a day for one version, and says so when nothing has changed', async () => {
     const { w, a, row } = await aSentDraft();
-    expect((await sendTheRegister(w.prisma, w.ports, { ...a, row })).said).toBe('I have emailed you the outstanding list from version 1.');
-    expect((await sendTheRegister(w.prisma, w.ports, { ...a, row })).said).toBe('I already emailed you the outstanding list for version 1 today, and nothing has changed since.');
+    expect((await sendTheRegister(w.prisma, w.ports, { ...a, row })).said).toBe('I have emailed the outstanding list from version 1 to you.');
+    expect((await sendTheRegister(w.prisma, w.ports, { ...a, row })).said).toBe('I already emailed the outstanding list for version 1 to you today, and nothing has changed since.');
     expect(w.mails.find((m) => m.subject === 'Your outstanding list')!.files.map((f) => f.filename)).toEqual(['2026-outstanding-register-v1-draft.xlsx', '2026-outstanding-summary-v1-draft.pdf']);
   });
 });

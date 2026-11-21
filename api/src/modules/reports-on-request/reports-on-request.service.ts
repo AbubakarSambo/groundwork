@@ -29,6 +29,7 @@ import {
   type AMaterialVia, type ASection, type ASource, type AnExtractor, type TheChannel, type TheStage,
 } from './the-report-on-request';
 import { theSourcesThisReaderMayUse, type TheReader } from './the-sources-this-reader-may-use';
+import { theirReportIsTheYearEndDraft } from '../year-end/her-year-end-record';
 
 export const REPORT_ON_REQUEST_KIND = 'report_on_request';
 const OPEN: TheStage[] = ['gathering', 'outline'];
@@ -57,7 +58,9 @@ export class ReportsOnRequestService {
     return v?.content ? { content: v.content, id: v.id ?? null } : { content: fallback, id: null };
   }
 
+  /** The open request, if any. A senior person's report is her year-end draft (Batch D, R1), so for her, and whoever acts for her, none is ever open. */
   async openRequestOf(organizationId: string, userId: string): Promise<any | null> {
+    if (await theirReportIsTheYearEndDraft(this.db, organizationId, userId).catch(() => false)) return null;
     return this.db.reportOnRequest.findFirst({ where: { organizationId, userId, status: { in: OPEN } }, orderBy: { createdAt: 'desc' } }).catch(() => null);
   }
 
@@ -91,8 +94,9 @@ export class ReportsOnRequestService {
 
   /* ------------------------------------------------------------------ the start */
 
-  /** They asked for a report. An open one is picked up where it stands; a report already written is sent again when that is what they mean. */
-  async start(a: { organizationId: string; userId: string; message: string; channel: TheChannel; about?: string | null }): Promise<WhatWasSaid> {
+  /** They asked for a report. An open one is picked up where it stands; a report already written is sent again when that is what they mean. Null for a senior person: her report is the year-end draft (Batch D, R1). */
+  async start(a: { organizationId: string; userId: string; message: string; channel: TheChannel; about?: string | null }): Promise<WhatWasSaid | null> {
+    if (await theirReportIsTheYearEndDraft(this.db, a.organizationId, a.userId).catch(() => false)) return null;
     const open = await this.openRequestOf(a.organizationId, a.userId);
     if (open) {
       const said = await this.whereItStands(open, a.channel);
@@ -240,7 +244,7 @@ export class ReportsOnRequestService {
       if (a.hasFiles || forwarded || !a.newWords.trim()) return null;
       const understood = await understandTheMessage(this.engine as any, this.prompts as any, a.newWords).catch(() => null);
       if (understood?.kind !== 'report') return null;
-      return (await this.start({ organizationId: a.organizationId, userId: a.userId, message: a.newWords, channel: 'email', about: understood.about })).said;
+      return (await this.start({ organizationId: a.organizationId, userId: a.userId, message: a.newWords, channel: 'email', about: understood.about }))?.said ?? null;
     }
     if (!a.hasFiles && !forwarded && a.newWords.trim()) {
       const heard = await this.hear({ organizationId: a.organizationId, userId: a.userId, message: a.newWords, channel: 'email' });

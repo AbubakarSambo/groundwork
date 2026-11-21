@@ -1,4 +1,4 @@
-import { aYearEndWorld } from './a-year-end-world-for-specs';
+import { aYearEndWorld } from './a-world-for-the-year-end';
 import { loadTheRecord } from './the-year-end-versions';
 import { buildTheContent, plain, whatANoteSays } from './the-year-end-content';
 import { oneFile, theFiles, THE_FINAL_SET, reportBlocks, slidesOf } from './the-year-end-files';
@@ -107,13 +107,17 @@ describe('a gap is said once, with who is being asked', () => {
     const gaps = c.sections.find((s) => s.id === 'gaps')!.claims;
     expect(gaps.filter((g) => g.id === 'g:months')).toHaveLength(1);
     expect(gaps.find((g) => g.id === 'g:months')!.text).toContain('Nobody has been asked for it yet.');
-    const asked = buildTheContent({ ...record, askedOf: { months: 'Zainab Musa', matches: 'Zainab Musa' } }, []);
+    const asked = buildTheContent({ ...record, askedOf: { months: 'Zainab Musa', matches: {} } }, []);
     expect(asked.sections.find((s) => s.id === 'gaps')!.claims.find((g) => g.id === 'g:months')!.text).toContain('Zainab Musa is being asked for it.');
     const pairs = [{ a: { key: 'x', item: 'the Kano visit was in October' }, b: { key: 'y', item: 'add the Kano visit' }, question: 'q1' }, { a: { key: 'y', item: 'add the Kano visit' }, b: { key: 'z', item: 'Kano visit: planned for October' }, question: 'q2' }];
     const chained = buildTheContent({ ...record, register: { ...record.register, toAsk: pairs as any } }, []);
     const matches = chained.sections.find((s) => s.id === 'gaps')!.claims.filter((g) => g.id.startsWith('m:'));
     expect(matches).toHaveLength(1);
-    expect(matches[0].text).toBe('The record may hold one matter in different words: "the Kano visit was in October", "add the Kano visit" and "Kano visit: planned for October". Fatima is being asked which is right, and the lines are kept apart until then.');
+    /* Nobody was asked (no message went), so nobody is said to be asked (Dangote stress test, D4). */
+    expect(matches[0].text).toBe('The record may hold one matter in different words: "the Kano visit was in October", "add the Kano visit" and "Kano visit: planned for October". Nobody has been asked yet which is right, and the lines are kept apart until then.');
+    /* Once the question about one of its pairs went to somebody, that person is named for the whole group. */
+    const once = buildTheContent({ ...record, register: { ...record.register, toAsk: pairs as any }, askedOf: { months: null, matches: { 'y|z': 'Zainab Musa' } } }, []);
+    expect(once.sections.find((s) => s.id === 'gaps')!.claims.find((g) => g.id.startsWith('m:'))!.text).toContain('Zainab Musa is being asked which is right');
   });
 });
 

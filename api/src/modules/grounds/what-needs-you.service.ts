@@ -1,5 +1,5 @@
 import { whenTheseOrganisationsPaused } from '../billing/the-trial-grace';
-import { theMattersSheActsOn } from '../outstanding/what-an-assistant-acts-on';
+import { herOwnDecisions, theMattersSheActsOn } from '../outstanding/what-an-assistant-acts-on';
 import { theQuietHoursNow } from '../../common/the-clock';
 import { eachQuestionOnce, aDirectionPastItsDay } from './today-says-each-thing-once';
 import { theInvoicesLateToRaiseFor } from '../board/raising-invoices-on-time';
@@ -344,7 +344,10 @@ export class WhatNeedsYouService {
       told.count = told.needs.length;
     }
     /* What they act on for each person they act for, first, with a plain line saying whose it is (Fatima round 2, D3). Nobody else has these rows. */
-    const actsFor = await theMattersSheActsOn(this.prisma as any, { organizationId, userId, now: theQuietHoursNow() }).catch(() => [] as Need[]);
+    const actsFor = [
+      ...(await herOwnDecisions(this.prisma as any, { organizationId, userId, now: theQuietHoursNow() }).catch(() => [] as Need[])),
+      ...(await theMattersSheActsOn(this.prisma as any, { organizationId, userId, now: theQuietHoursNow() }).catch(() => [] as Need[])),
+    ];
     if (actsFor.length) { told.needs = [...(actsFor as Need[]), ...told.needs]; told.count = told.needs.length; }
     const onWhatsApp = await this.checkInOnWhatsAppFor(userId, email, organizationId, told.needs);
     if (onWhatsApp) (told as any).checkInOnWhatsApp = onWhatsApp;

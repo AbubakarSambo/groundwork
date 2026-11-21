@@ -37,7 +37,7 @@ export function theDeterministicInstruction(text: string): TheInstruction {
   const t = String(text ?? '');
   const day = Object.keys(WEEKDAYS).find((d) => new RegExp(`\\b${d}\\b`, 'i').test(t));
   if (/\b(?:get|collect|gather)\b[^.]{0,40}\b(?:updates?|reports?)\b/i.test(t) && /\b(?:email|send|write to|mail)\s+(?:them\s+to\s+)?me\b/i.test(t)) {
-    return { kind: 'collect_and_report', reportWeekday: day ? WEEKDAYS[day] : null, matter: null, who: [] };
+    return { kind: 'collect_and_report', reportWeekday: day ? WEEKDAYS[day] : null, matter: null, who: [], ...(/\b(?:today|now)\b/i.test(t) ? { today: true } : {}) };
   }
   if (/\bhandle (?:this|it|that)\b[^.]{0,40}\b(?:team|everyone|them|people)\b/i.test(t) && /\b(?:come back|get back|report back|tell me)\b/i.test(t)) {
     return { kind: 'handle_with_team', reportWeekday: null, matter: null, who: [] };

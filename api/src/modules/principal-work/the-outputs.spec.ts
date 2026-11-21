@@ -21,8 +21,8 @@ describe('"Give me my day"', () => {
     const { w, hear } = await aWorld();
     const first = (await hear('Give me my day'))!;
     console.log(`HER DAY, ASKED FOR IN CHAT\n\n${first}`);
-    /* Changed (round 2, C2): the payment question put to her is on the decision list too, read from the same place the payments flow reads it, so "what needs my decision" can never say nothing while it waits. */
-    expect(first.startsWith('Here is your day, Fatima.\n\nWhat needs your decision\n- Did you approve the payment of NGN 90,000 to Zenith Cleaners, reference INV-77?\n- Do you approve Tunde’s request to spend NGN 120,000 on fuel for the site visits?\n\nWhat is due')).toBe(true);
+    /* Changed for the Dangote stress test (D5): a payment the office's sheet marks Approved is not a decision for her, so the day's decisions are her real ones. */
+    expect(first.startsWith('Here is your day, Fatima.\n\nWhat needs your decision\n- Do you approve Tunde’s request to spend NGN 120,000 on fuel for the site visits?\n\nWhat is due')).toBe(true);
     expect(first).toContain('- Circulate the committee minutes (Ibrahim Sule). It is due on 13 November 2026.');
     expect(first).toContain('- The payment of NGN 90,000 to Zenith Cleaners is due on 12 November 2026. It is not shown as paid.');
     expect(first).toContain('What matters most\n- Get the ministry’s reply on the budget (Amina Yusuf). It is waiting for somebody outside the office.\n- Chase the audit letter. It is open.');
@@ -41,8 +41,8 @@ describe('"Give me my day"', () => {
     const said = (await hear('Give me my day', { channel: 'whatsapp' }))!;
     console.log(`HER DAY, ASKED FOR ON WHATSAPP\n\n${said}\n\nAND BY EMAIL\n\n${read(w.sent)}`);
     expect(said.endsWith('I have emailed you the fuller version.')).toBe(true);
-    expect(said).toContain('- And 3 more.');
-    expect(w.sent[0].text).not.toContain('And 2 more');
+    expect(said).toContain('- And 2 more.');
+    expect(w.sent[0].text).not.toContain('And 1 more');
     expect(w.sent[0].text.length).toBeGreaterThan(said.length);
     expect(w.sent.map((m) => [m.via, m.to, m.subject])).toEqual([['reply', 'fatima@example.com', 'Your day, 10 November 2026']]);
     /* where the mail does not go, it is not said to have gone */
@@ -79,9 +79,10 @@ describe('the weekly update', () => {
     expect(week.startsWith('Here is the update on the work for the week to 10 November 2026, Fatima.')).toBe(true);
     expect(week).toContain('What moved this week\n- Send the ministry the revised brief (Amina Yusuf). It is done, and the record shows it.');
     expect(week).toContain('What is stuck, and what would help\n- Get the ministry’s reply on the budget (Amina Yusuf). It is waiting on the ministry.');
-    expect(week).toContain('What waits for your decision\n- Did you approve the payment of NGN 90,000 to Zenith Cleaners, reference INV-77?\n- Do you approve Tunde’s request to spend NGN 120,000 on fuel for the site visits?');
+    expect(week).toContain('What waits for your decision\n- Do you approve Tunde’s request to spend NGN 120,000 on fuel for the site visits?');
     expect(week).toMatch(/Said to be done, with nothing shown yet\n- File the quarterly assembly summary\./);
-    expect(week).toContain('Payments\n- One payment is on the tracker. None is shown as paid yet. One thing does not agree with the record.');
+    /* Changed for the Dangote stress test (D5): the one line is marked Approved in the office's own sheet, so nothing on it disagrees with the record. */
+    expect(week).toContain('Payments\n- One payment is on the tracker. None is shown as paid yet. Nothing on it disagrees with the record.');
   });
 });
 

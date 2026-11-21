@@ -2,7 +2,7 @@ import { EmailService } from './email.service';
 import { ATTACHMENT_LIMITS, whyTheseCannotGo } from './attachments';
 import { ROUTINE_EMAILS } from '../engagement/one-routine-message-a-day';
 import { whatThisMailIs } from './nothing-goes-out-that-was-turned-off';
-import { aRichTable } from '../year-end/a-year-end-world-for-specs';
+import { aRichTable } from '../year-end/a-world-for-the-year-end';
 
 const sendMail = jest.fn(async (_m: any) => ({}));
 jest.mock('nodemailer', () => ({ createTransport: () => ({ sendMail: (m: any) => (sendMail as any)(m) }) }));

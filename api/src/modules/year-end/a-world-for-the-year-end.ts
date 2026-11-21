@@ -6,6 +6,7 @@
  */
 import { anOrganisationForAnExecutive, aTable, ORG } from '../outstanding/an-organisation-for-an-executive';
 import { markTheYearEndFilesSent } from './the-year-end-log';
+import { giveTheAskBack, theAskWent } from '../executive-onboarding/information-gaps';
 import { whyTheseCannotGo, type AnAttachment } from '../email/attachments';
 import type { OwnerPorts } from './the-year-end-owner';
 
@@ -70,6 +71,7 @@ export function aYearEndWorld(now: Date = new Date('2026-11-10T09:00:00Z')) {
   t.yearEndDraft = aRichTable([['organizationId', 'principalUserId', 'year', 'version']], 'yd');
   t.yearEndLog = aRichTable([['principalUserId', 'kind', 'subject']], 'yl');
   t.yearEndRecipient = aRichTable([['principalUserId', 'email']], 'yr');
+  t.informationGap = t.informationGap ?? aRichTable([['principalUserId', 'gapKey', 'askedOfEmail']], 'ig');
   /* Fatima has a phone; nobody else on the roster is needed for it. */
   t.person.rows.find((p: any) => p.linkedUserId === 'u-fatima').phone = '+2348012345678';
   t.person.rows.find((p: any) => p.linkedUserId === 'u-fatima').timezone = 'Africa/Lagos';
@@ -79,7 +81,8 @@ export function aYearEndWorld(now: Date = new Date('2026-11-10T09:00:00Z')) {
   const mails: ASentMail[] = [];
   const whatsapps: ASentWhatsApp[] = [];
   const held: ASentMail[] = [];
-  const mode = { mail: 'sent' as 'sent' | 'held' | 'suppressed' | 'throws', whatsapp: true, routineMailsToday: new Set<string>() };
+  const mode = { mail: 'sent' as 'sent' | 'held' | 'suppressed' | 'throws', asks: 'sent' as 'sent' | 'held', whatsapp: true, routineMailsToday: new Set<string>() };
+  const heldAsks: ASentMail[] = [];
   const everyOneAlreadyHad = new Set<string>();
 
   const ports: OwnerPorts = {
@@ -103,9 +106,13 @@ export function aYearEndWorld(now: Date = new Date('2026-11-10T09:00:00Z')) {
     askByEmail: async (a) => {
       /* The day's one routine message a person: the door's rule, here as the fake. */
       const k = `${a.to}|${clock.now.toISOString().slice(0, 10)}`;
-      if (mode.routineMailsToday.has(k)) return 'suppressed';
+      if (mode.routineMailsToday.has(k)) { await giveTheAskBack(o.prisma, a.askKey); return 'suppressed'; }
       mode.routineMailsToday.add(k);
-      mails.push({ to: a.to, subject: a.subject, text: a.text, files: [], sendKey: '', kind: 'ask' });
+      const m: ASentMail = { to: a.to, subject: a.subject, text: a.text, files: [], sendKey: a.askKey ?? '', kind: 'ask' };
+      /* Held, it waits in the outbox; the questions it carries are not asked until it goes, as at the one door. */
+      if (mode.asks === 'held') { heldAsks.push(m); return 'held'; }
+      mails.push(m);
+      await theAskWent(o.prisma, a.askKey, clock.now);
       return 'sent';
     },
   };
@@ -113,5 +120,15 @@ export function aYearEndWorld(now: Date = new Date('2026-11-10T09:00:00Z')) {
   const releaseTheHeldMails = async () => {
     for (const m of held.splice(0)) { mails.push(m); await markTheYearEndFilesSent(o.prisma, m.sendKey, `provider-${mails.length}`); }
   };
-  return { ...o, t, ORG, clock, mails, whatsapps, held, mode, ports, releaseTheHeldMails, aTable };
+  /** The held questions, when their morning comes: the first to a person goes, and the one-a-day rule refuses the rest, as the one door does. */
+  const releaseTheHeldAsks = async () => {
+    for (const m of heldAsks.splice(0)) {
+      const k = `${m.to}|${clock.now.toISOString().slice(0, 10)}|released`;
+      if (mode.routineMailsToday.has(k)) { await giveTheAskBack(o.prisma, m.sendKey); continue; }
+      mode.routineMailsToday.add(k);
+      mails.push(m);
+      await theAskWent(o.prisma, m.sendKey, clock.now);
+    }
+  };
+  return { ...o, t, ORG, clock, mails, whatsapps, held, heldAsks, mode, ports, releaseTheHeldMails, releaseTheHeldAsks, aTable };
 }

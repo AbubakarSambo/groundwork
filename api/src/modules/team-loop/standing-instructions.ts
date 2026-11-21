@@ -23,10 +23,12 @@ import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { understandHerAnswer } from '../executive-onboarding/her-answer';
 import { whoIsSpeakingForWhom } from '../executive-onboarding/her-words';
 import { hasSheAskedForQuiet } from '../executive-onboarding/her-preferences';
-import { THE_ASK_FOR_AN_UPDATE, THE_INSTRUCTION_BACK, THE_INSTRUCTION_IS_OFF, THE_INSTRUCTION_IS_ON, THE_INSTRUCTION_IS_UNCLEAR, NO_ONE_TO_ASK, ONLY_SHE_CAN_GIVE_ONE } from './the-team-words';
+import { THE_ASK_FOR_AN_UPDATE, THE_INSTRUCTION_BACK, THE_INSTRUCTION_IS_OFF, THE_INSTRUCTION_IS_ON, THE_INSTRUCTION_IS_UNCLEAR, THE_TEAM_WRITTEN_TO, NO_ONE_TO_ASK, ONLY_SHE_CAN_GIVE_ONE } from './the-team-words';
+import { theirWorkNow } from './what-their-reply-says';
 import { whatTheInstructionIs } from './the-plain-reading';
-import { theUpdateForHer } from './the-update-for-her';
+import { theAsksStillWaiting, theUpdateForHer } from './the-update-for-her';
 import { whenWereTheyLastAsked } from './has-this-person-been-asked';
+import { anAskKey } from '../executive-onboarding/information-gaps';
 import type { TheTeamMind } from './the-team-mind';
 
 export const STANDING = 'standing:';
@@ -34,9 +36,10 @@ const DAY = 86_400_000;
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export interface TheStandingPorts {
-  whatsapp: { send(a: { organizationId: string; phone: string; text: string; kind: string }): Promise<{ sent: boolean; error?: string }> };
+  /** `sendKey` is the questions the message carries (information-gaps.ts anAskKey): the gate marks them asked only when it really goes. */
+  whatsapp: { send(a: { organizationId: string; phone: string; text: string; kind: string; sendKey?: string }): Promise<{ sent: boolean; error?: string }> };
   email: {
-    send(a: { organizationId: string; to: string; subject: string; text: string; replyTo: string }): Promise<unknown>;
+    send(a: { organizationId: string; to: string; subject: string; text: string; replyTo: string; askKey?: string }): Promise<unknown>;
     /** One mail for one key, ever: the mail door refuses a second with the same key. */
     sendOnce(a: { organizationId: string; to: string; subject: string; text: string; replyTo: string; sendKey: string }): Promise<'sent' | 'held' | 'suppressed'>;
   };
@@ -71,8 +74,18 @@ export async function hearAStandingInstruction(prisma: any, mind: TheTeamMind | 
   const waiting = await theInstructionWaiting(prisma, a.organizationId, who.principalUserId);
   /* Her yes or no, in any words that mean it, only where an instruction is waiting for it. */
   const answer = waiting ? await understandHerAnswer(mind, { question: String(waiting.details?.question ?? 'Shall I go ahead with what you asked me to do for the team?'), text: a.message }) : null;
+  /*
+   * WHAT SHE SAYS NEXT ABOUT THE ONE WAITING IS READ WITH IT (D18). "No, not Thursday. I need it today." changes the instruction, it does not end it: her
+   * first words and these are read together, and when they make a different instruction it is said back again, in place of the one waiting.
+   */
+  if (waiting && answer !== 'yes' && a.message.trim().split(/\s+/).length >= 4) {
+    const together = await whatTheInstructionIs(mind, `${String(waiting.details?.words ?? waiting.title ?? '')}\nThen she said: ${a.message}`);
+    const before = waiting.details ?? {};
+    const changed = together.kind !== 'none' && together.kind !== 'unclear' && (!!together.today !== !!before.today || (together.reportWeekday ?? null) !== (before.reportWeekday ?? null) || together.kind !== before.kind);
+    if (changed) return proposeIt(prisma, a, who, together, `${String(before.words ?? '')} ${a.message}`.trim(), waiting);
+  }
   if (answer && waiting) {
-    if (!who.speaker.isPrincipal) return ONLY_SHE_CAN_GIVE_ONE;
+    if (!who.speaker.isPrincipal) return ONLY_SHE_CAN_GIVE_ONE(who.principalFirst);
     if (answer === 'no') { await prisma.persistentJob.update({ where: { id: waiting.id }, data: { state: 'stopped', nextAction: 'The answer was no.' } }); return THE_INSTRUCTION_IS_OFF; }
     const details = { ...(waiting.details ?? {}), confirmedAt: a.now.toISOString() };
     await prisma.persistentJob.update({ where: { id: waiting.id }, data: { state: 'active', details, nextAction: details.kind === 'handle_with_team' ? 'Ask the team now, and report when they have answered.' : 'Ask the team the day before, and email the summary on the day asked.' } });
@@ -84,25 +97,49 @@ export async function hearAStandingInstruction(prisma: any, mind: TheTeamMind | 
   if (said.kind === 'none') return null;
   /* A matter handed to the team with no owner or no day is asked about once, in one question, and nothing is made until it is clear. */
   if (said.kind === 'unclear') return THE_INSTRUCTION_IS_UNCLEAR(who.byName.split(' ')[0] || who.principalFirst, said.matter, said.missing ?? ['owner', 'date']);
-  if (!who.speaker.isPrincipal) return ONLY_SHE_CAN_GIVE_ONE;
+  return proposeIt(prisma, a, who, said, a.message, waiting);
+}
+
+/**
+ * The instruction said back, and kept waiting for her yes. The people are the ones on her record (D2): she is never asked who her team is. Something for
+ * today is asked now and reported the same day; with no day said, it is not put off to a Friday she never named (D18).
+ */
+async function proposeIt(prisma: any, a: { organizationId: string; now: Date }, who: NonNullable<Awaited<ReturnType<typeof whoIsSpeakingForWhom>>>, said0: Awaited<ReturnType<typeof whatTheInstructionIs>>, words: string, waiting: any | null): Promise<string> {
+  if (!who.speaker.isPrincipal) return ONLY_SHE_CAN_GIVE_ONE(who.principalFirst);
   const team = await theTeamSheMayAsk(prisma, who.principalUserId);
-  const named = said.who.length ? team.filter((c) => said.who.some((n) => String(c.name).toLowerCase().includes(n.toLowerCase()) || n.toLowerCase().includes(firstOf(c.name).toLowerCase()))) : team;
+  const named = said0.who.length ? team.filter((c) => said0.who.some((n) => String(c.name).toLowerCase().includes(n.toLowerCase()) || n.toLowerCase().includes(firstOf(c.name).toLowerCase()))) : team;
   if (!named.length) return NO_ONE_TO_ASK(who.principalFirst);
+  /* Today, or no day at all, is asked now: "collect and report" on a weekday only when she named one. */
+  const now = !!said0.today || (said0.kind === 'collect_and_report' && !said0.reportWeekday);
+  const said = now ? { ...said0, kind: 'handle_with_team' as const, reportWeekday: null } : said0;
   /* The newest instruction is the one her yes answers, so an older question that was never answered is let go. */
   if (waiting) await prisma.persistentJob.update({ where: { id: waiting.id }, data: { state: 'stopped', nextAction: 'Replaced by a newer instruction.' } });
   const day = said.kind === 'collect_and_report' ? said.reportWeekday ?? 5 : null;
+  const zone = await theOrganisationsZone(prisma, a.organizationId).catch(() => null);
   const id = crypto.randomUUID();
   const created: any = await prisma.persistentJob.create({
     data: {
-      organizationId: a.organizationId, principalUserId: who.principalUserId, kind: `${STANDING}${id}`, title: a.message.replace(/\s+/g, ' ').trim().slice(0, 140), state: 'proposed',
+      organizationId: a.organizationId, principalUserId: who.principalUserId, kind: `${STANDING}${id}`, title: words.replace(/\s+/g, ' ').trim().slice(0, 140), state: 'proposed',
       nextAction: 'Waiting for the yes.', authorisedActorUserId: who.principalUserId,
-      details: { kind: said.kind, reportWeekday: day, matter: said.matter, contactIds: said.who.length ? named.map((c) => c.id) : [], words: a.message.slice(0, 500), proposedAt: a.now.toISOString() },
+      details: { kind: said.kind, reportWeekday: day, matter: said.matter, contactIds: said.who.length ? named.map((c) => c.id) : [], words: words.slice(0, 500), proposedAt: a.now.toISOString(), ...(said0.today ? { today: true, dueOn: localParts(a.now, zone).ymd } : {}) },
     },
   });
-  const back = THE_INSTRUCTION_BACK({
-    first: who.principalFirst, who: named.map((c) => firstOf(c.name)), matter: said.matter,
-    askWhen: day ? `on ${WEEKDAY_NAMES[(day + 5) % 7]} morning` : '', emailWhen: day ? `on ${WEEKDAY_NAMES[day - 1]} morning` : null,
-  });
+  let back: string;
+  if (said.kind === 'handle_with_team') {
+    /* Each person with what is still open with them, from their own part of the record, and how they are reached. */
+    const people: { name: string; how: 'WhatsApp' | 'email'; about: string | null; more: number }[] = [];
+    for (const c of named) {
+      const work = (await theirWorkNow(prisma, c).catch(() => null))?.work;
+      const open = work?.commitments ?? [];
+      people.push({ name: String(c.name ?? '').trim() || 'one person', how: c.phone ? 'WhatsApp' : 'email', about: open[0]?.text ?? null, more: Math.max(0, open.length - 1) });
+    }
+    back = THE_TEAM_WRITTEN_TO({ first: who.principalFirst, matter: said.matter, today: !!said0.today, people });
+  } else {
+    back = THE_INSTRUCTION_BACK({
+      first: who.principalFirst, who: named.map((c) => firstOf(c.name)), matter: said.matter,
+      askWhen: day ? `on ${WEEKDAY_NAMES[(day + 5) % 7]} morning` : '', emailWhen: day ? `on ${WEEKDAY_NAMES[day - 1]} morning` : null,
+    });
+  }
   /* The question as she read it is kept with the instruction, so her answer is read against the words she was actually asked. */
   await prisma.persistentJob.update({ where: { id: created.id }, data: { details: { ...(created.details ?? {}), question: back } } }).catch(() => undefined);
   return back;
@@ -112,14 +149,18 @@ export async function hearAStandingInstruction(prisma: any, mind: TheTeamMind | 
 async function askTheTeam(prisma: any, ports: TheStandingPorts, job: any, contacts: any[], key: string, principalFirst: string, now: Date): Promise<number> {
   let asked = 0;
   for (const c of contacts) {
-    const claimed = await prisma.informationGap.create({ data: { organizationId: job.organizationId, principalUserId: job.principalUserId, gapKey: key, what: `An update asked for by ${principalFirst}.`, askedOfEmail: c.contactKey, askedOfName: c.name, state: 'asked', askedAt: now } }).catch(() => null);
+    /* Claimed as waiting before it goes; it becomes asked only when the gate or the door says the message went (Dangote stress test, D4). */
+    const claimed = await prisma.informationGap.create({ data: { organizationId: job.organizationId, principalUserId: job.principalUserId, gapKey: key, what: `An update asked for by ${principalFirst}.`, askedOfEmail: c.contactKey, askedOfName: c.name, state: 'queued', askedAt: null } }).catch(() => null);
     if (!claimed) continue;
-    /* Somebody already asked for their work in the last three days, and who has not written since, is not asked a second time for the same thing in a second message: the earlier ask stands. A matter she named is a different thing from "what are you working on", so it is always asked. */
-    if (!job.details?.matter && await whenWereTheyLastAsked(prisma, { principalUserId: job.principalUserId, contact: c, now, exceptKey: key })) { asked += 1; continue; }
-    const text = THE_ASK_FOR_AN_UPDATE(firstOf(c.name), principalFirst, job.details?.matter ?? null);
+    /* Somebody already asked for their work in the last three days, and who has not written since, is not asked a second time for the same thing in a second message: the earlier ask stands, and this one was asked when it was. A matter she named is a different thing from "what are you working on", so it is always asked. */
+    const earlier = job.details?.matter ? null : await whenWereTheyLastAsked(prisma, { principalUserId: job.principalUserId, contact: c, now, exceptKey: key });
+    if (earlier) { await prisma.informationGap.update({ where: { id: claimed.id }, data: { state: 'asked', askedAt: earlier } }); asked += 1; continue; }
+    const work = (await theirWorkNow(prisma, c).catch(() => null))?.work;
+    const text = THE_ASK_FOR_AN_UPDATE(firstOf(c.name), principalFirst, job.details?.matter ?? null, { open: (work?.commitments ?? []).map((x) => ({ text: x.text, dueSaid: x.dueSaid })), held: work?.alreadyHeld ?? [], today: !!job.details?.today });
+    const askKey = anAskKey(job.principalUserId, 'team', c.contactKey);
     let went = false;
-    if (c.phone) went = !!(await ports.whatsapp.send({ organizationId: job.organizationId, phone: c.phone, text, kind: 'team-ask' }).catch(() => ({ sent: false }))).sent;
-    if (!went && c.email) await ports.email.send({ organizationId: job.organizationId, to: c.email, subject: `Your update for ${principalFirst}`, text, replyTo: (await ports.replyTo?.(job.organizationId)) ?? '' }).then(() => { went = true; }).catch(() => undefined);
+    if (c.phone) went = !!(await ports.whatsapp.send({ organizationId: job.organizationId, phone: c.phone, text, kind: 'team-ask', sendKey: askKey }).catch(() => ({ sent: false }))).sent;
+    if (!went && c.email) went = (await ports.email.send({ organizationId: job.organizationId, to: c.email, subject: `Your update for ${principalFirst}`, text, replyTo: (await ports.replyTo?.(job.organizationId)) ?? '', askKey }).catch(() => 'suppressed')) !== 'suppressed';
     if (!went) { await prisma.informationGap.deleteMany({ where: { id: claimed.id } }); continue; }
     asked += 1;
   }
@@ -149,11 +190,13 @@ export async function runTheStandingInstructions(prisma: any, ports: TheStanding
           continue;
         }
         const gaps: any[] = (await prisma.informationGap.findMany({ where: { principalUserId: job.principalUserId, gapKey: `instr:${job.id}:ask` } })) ?? [];
-        const waitingStill = gaps.filter((g) => g.state !== 'answered');
-        const overdue = now.getTime() - new Date(d.askedAt).getTime() >= 3 * DAY;
+        const still = await theAsksStillWaiting(prisma, { principalUserId: job.principalUserId, contacts, asks: gaps });
+        const waitingStill = [...still.quiet, ...still.notGone];
+        /* Asked for today: she hears the same evening, at five in the office's own time, with whatever there is and who has not answered (D18). */
+        const overdue = d.dueOn ? local.ymd > d.dueOn || (local.ymd === d.dueOn && local.hour >= 17) : now.getTime() - new Date(d.askedAt).getTime() >= 3 * DAY;
         if (waitingStill.length && !overdue) continue;
         if (await hasSheAskedForQuiet(prisma, job.organizationId, job.principalUserId, now)) continue;
-        const text = await theUpdateForHer(prisma, ports.mind, { organizationId: job.organizationId, principalUserId: job.principalUserId, first: principal.firstName, contacts, since: new Date(d.askedAt), now, lead: waitingStill.length ? 'partial' : 'ready', matter: d.matter ?? null, nobodyAnswered: waitingStill.map((g) => g.askedOfName) });
+        const text = await theUpdateForHer(prisma, ports.mind, { organizationId: job.organizationId, principalUserId: job.principalUserId, first: principal.firstName, contacts, since: new Date(d.askedAt), now, lead: waitingStill.length ? 'partial' : 'ready', matter: d.matter ?? null, asks: gaps });
         await ports.email.sendOnce({ organizationId: job.organizationId, to: setup.email, subject: d.matter ? `Where things stand on ${d.matter}` : 'Where things stand with the team', text, replyTo: (await ports.replyTo?.(job.organizationId)) ?? '', sendKey: `standing:${job.id}:ready` });
         await prisma.persistentJob.update({ where: { id: job.id }, data: { state: 'done', details: { ...d, doneAt: now.toISOString() }, nextAction: 'Reported. Nothing more to do.', lastMeaningfulContactAt: now, lastCheckedAt: now } });
         did.push(`told her ${job.id}`);
@@ -176,7 +219,7 @@ export async function runTheStandingInstructions(prisma: any, ports: TheStanding
       /* She asked for quiet: the email waits, and goes when she says carry on, with the day it was for. */
       if (await hasSheAskedForQuiet(prisma, job.organizationId, job.principalUserId, now)) continue;
       const gaps: any[] = (await prisma.informationGap.findMany({ where: { principalUserId: job.principalUserId, gapKey: `instr:${job.id}:${d.pending.reportDate}` } })) ?? [];
-      const text = await theUpdateForHer(prisma, ports.mind, { organizationId: job.organizationId, principalUserId: job.principalUserId, first: principal.firstName, contacts, since: new Date(d.pending.askedAt), now, lead: 'week', forDay: d.pending.reportDate, nobodyAnswered: gaps.filter((g) => g.state !== 'answered').map((g) => g.askedOfName) });
+      const text = await theUpdateForHer(prisma, ports.mind, { organizationId: job.organizationId, principalUserId: job.principalUserId, first: principal.firstName, contacts, since: new Date(d.pending.askedAt), now, lead: 'week', forDay: d.pending.reportDate, asks: gaps });
       await ports.email.sendOnce({ organizationId: job.organizationId, to: setup.email, subject: 'What your team has told me', text, replyTo: (await ports.replyTo?.(job.organizationId)) ?? '', sendKey: `standing:${job.id}:${d.pending.reportDate}` });
       await prisma.persistentJob.update({ where: { id: job.id }, data: { details: { ...d, pending: null, lastReport: d.pending.reportDate }, nextAction: `The next update goes on ${WEEKDAY_NAMES[day - 1]}.`, lastMeaningfulContactAt: now, lastCheckedAt: now } });
       did.push(`emailed her for ${d.pending.reportDate}`);

@@ -15,13 +15,14 @@
  * register and the evidence index together. "Shorten this" cuts only the report and the presentation; the register and the index are the
  * full lists and are never shortened.
  */
+import { theQuestionsAsked } from '../executive-onboarding/information-gaps';
 import { randomUUID } from 'crypto';
 import { dayWords, MONTHS, monthWords, theMonthsWithANote, type AnEdit, type TheRecordForTheYear, type YearEndContent } from './the-year-end-content';
 import { coverageOf } from '../outstanding/the-persistent-jobs';
 import { buildTheRegister } from '../outstanding/the-outstanding-register';
 import { writeItOnce } from './the-year-end-log';
 import { buildTheContentWithTheNarrative, type TheNarrator } from './the-year-end-narrative';
-import { theFilesSheKept, whatHerMaterialCovers } from '../executive-onboarding/the-months-a-document-covers';
+import { theFilesSheKept, theMessagesSheKept, whatHerMaterialCovers } from '../executive-onboarding/the-months-a-document-covers';
 
 export type TheStatus = 'draft' | 'revised' | 'approved' | 'final';
 export interface TheDraftRow { id: string; organizationId: string; principalUserId: string; year: number; version: number; status: TheStatus; content: YearEndContent; parentId: string | null; approvedAt: Date | null; createdAt: Date }
@@ -45,14 +46,17 @@ export async function loadTheRecord(prisma: any, a: { organizationId: string; pr
   /* What she forwarded counts, each file for the month it says it is about (executive-onboarding/the-months-a-document-covers.ts): the same reading the two jobs use, so the draft and the job agree on what the record covers. */
   const forwarded = await whatHerMaterialCovers(prisma, { principalUserId: a.principalUserId, year });
   const files = await theFilesSheKept(prisma, { principalUserId: a.principalUserId });
+  const messages = await theMessagesSheKept(prisma, { principalUserId: a.principalUserId });
   const docItems = [
     ...documents.map((d) => ({ id: d.id, fileName: d.fileName as string, origin: d.origin ?? null, at: d.createdAt as Date, label: labelOf.get(d.groundId) ?? null, covers: [] as string[] })),
     ...files.filter((f) => f.receivedAt.getUTCFullYear() === year).map((f) => ({ id: f.id, fileName: f.fileName, origin: 'forwarded', at: f.receivedAt, label: null, text: f.text, subject: f.subject, covers: [...new Set(forwarded.filter((x) => x.id === f.id).flatMap((x) => x.covers))] })),
+    /* The plain emails and WhatsApp messages are evidence too, each under the month it is about (D9). They are never a month's note. */
+    ...messages.map((m) => ({ id: m.id, fileName: m.channel === 'whatsapp' ? 'a WhatsApp message' : 'an email', origin: 'message', at: m.receivedAt, label: null, text: m.text, subject: m.subject, covers: [...new Set(forwarded.filter((x) => x.id === m.id).flatMap((x) => x.covers))] })).filter((m) => m.covers.length),
   ];
   const sources = [
     ...register.rows.flatMap((r) => r.sources.map((s) => ({ at: s.at, kind: s.kind, workstream: r.workstream, owner: r.owner }))),
     ...repItems.map((r) => ({ at: r.at, kind: 'report', workstream: r.label, owner: 'unconfirmed' })),
-    ...docItems.filter((d) => d.origin !== 'forwarded').map((d) => ({ at: d.at, kind: 'document', workstream: d.label, owner: 'unconfirmed' })),
+    ...docItems.filter((d) => d.origin !== 'forwarded' && d.origin !== 'message').map((d) => ({ at: d.at, kind: 'document', workstream: d.label, owner: 'unconfirmed' })),
     ...forwarded.map((f) => ({ at: f.at, kind: f.kind, workstream: f.workstream, owner: f.owner })),
   ];
   /* The months that have a monthly note, and the months in the run with none, are read in one place (the-year-end-content.ts). */
@@ -61,15 +65,21 @@ export async function loadTheRecord(prisma: any, a: { organizationId: string; pr
 }
 
 /**
- * Who the gaps were put to, read from what was really asked (the log the owner writes as it asks). A person who acts for her is named; anybody else is "a member of the
- * team", because the team's names are not read here. Null when nobody has been asked, which the report says plainly.
+ * Who the gaps were put to, read from what was really asked: a question whose message went and is not answered yet (information_gaps, state "asked"). A
+ * question still waiting to go is not "being asked" (Dangote stress test, D4: the final report said 23 times "Maryam Sule is being asked which is right" of
+ * mails that never went). A person who acts for her is named; anybody else is "a member of the team", because the team's names are not read here. Two lines
+ * put to her herself as a decision are hers. Null when nobody has been asked, which the report says plainly.
  */
-async function whoIsBeingAsked(prisma: any, a: { organizationId: string; principalUserId: string }): Promise<{ months: string | null; matches: string | null }> {
-  const asks: any[] = (await prisma.yearEndLog?.findMany?.({ where: { principalUserId: a.principalUserId, kind: 'asked' } }).catch(() => [])) ?? [];
+async function whoIsBeingAsked(prisma: any, a: { organizationId: string; principalUserId: string }): Promise<{ months: string | null; matches: Record<string, string> }> {
+  const asks = await theQuestionsAsked(prisma, a.principalUserId);
   const delegates: any[] = (await prisma.delegate?.findMany?.({ where: { organizationId: a.organizationId, principalUserId: a.principalUserId, revokedAt: null } }).catch(() => [])) ?? [];
   const nameOf = (email: string | null | undefined) => (email ? delegates.find((d) => String(d.delegateEmail).toLowerCase() === String(email).toLowerCase())?.delegateName ?? 'A member of the team' : null);
-  const of = (prefix: string) => nameOf(asks.find((r) => String(r.subject).startsWith(prefix))?.recipient);
-  return { months: of('gap:'), matches: of('match:') };
+  const matches: Record<string, string> = {};
+  for (const g of asks) if (String(g.gapKey).startsWith('match:')) matches[String(g.gapKey).slice(6)] = nameOf(g.askedOfEmail) ?? 'A member of the team';
+  const toldHer: any[] = (await prisma.yearEndLog?.findMany?.({ where: { principalUserId: a.principalUserId, kind: 'told', subject: { startsWith: 'decision:' } } }).catch(() => [])) ?? [];
+  const her: any = await prisma.user?.findUnique?.({ where: { id: a.principalUserId }, select: { firstName: true } }).catch(() => null);
+  for (const t of toldHer) { const k = String(t.subject).slice(9); if (k.includes('|') && !matches[k]) matches[k] = her?.firstName ?? 'She'; }
+  return { months: nameOf(asks.find((r) => String(r.gapKey).startsWith('gap:'))?.askedOfEmail), matches };
 }
 
 /* ------------------------------------------------------------------ reading what she asked for */
@@ -151,7 +161,7 @@ export async function reviseTheDraft(
   if (!latest) return { said: NO_DRAFT_YET, version: 0 };
   const edit = { id: randomUUID(), by: a.by.userId, at: a.now.toISOString(), channel: a.channel, ...change } as AnEdit;
   const edits = [...(latest.content.edits ?? []), edit];
-  const content = await buildTheContentWithTheNarrative(await loadTheRecord(prisma, a), edits, { narrator: a.narrator, previous: latest.content.narrative, reusePrevious: change.kind === 'shorten' });
+  const content = await buildTheContentWithTheNarrative(await loadTheRecord(prisma, a), edits, { narrator: a.narrator, previous: latest.content.narrative, reusePrevious: change.kind === 'shorten', previousOutcomes: latest.content.outcomes });
   const first = content.principalFirstName;
   const row = await writeAVersion(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, content, status: 'revised', note: noteFor(change, first), by: a.by.userId, channel: a.channel, parent: latest, now: a.now });
   return { said: saidBack(change, row.version, latest, content), version: row.version };
@@ -162,7 +172,7 @@ export async function refreshTheDraft(prisma: any, a: { organizationId: string; 
   const year = a.now.getUTCFullYear();
   const latest = await latestDraft(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, year });
   if (!latest) return { said: NO_DRAFT_YET, version: 0 };
-  const content = await buildTheContentWithTheNarrative(await loadTheRecord(prisma, a), latest.content.edits ?? [], { narrator: a.narrator, previous: latest.content.narrative });
+  const content = await buildTheContentWithTheNarrative(await loadTheRecord(prisma, a), latest.content.edits ?? [], { narrator: a.narrator, previous: latest.content.narrative, previousOutcomes: latest.content.outcomes });
   if (JSON.stringify({ ...content, builtAt: 0 }) === JSON.stringify({ ...latest.content, builtAt: 0 })) return { said: `Version ${latest.version} already has everything in the record, so I have not made a new one.`, version: latest.version };
   const row = await writeAVersion(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, content, status: 'revised', note: 'Built again from the record, with later evidence.', by: a.by.userId, channel: a.channel, parent: latest, now: a.now });
   return { said: `I have made version ${row.version} from the record as it is now. ${keptLine(latest)}`, version: row.version };
@@ -189,7 +199,7 @@ function saidBack(c: TheChange, version: number, before: TheDraftRow, content: Y
   if (c.kind === 'add_month') {
     const sec = content.sections.find((s) => s.id === `month:${c.month}`);
     const none = sec?.claims.some((x) => x.status === 'gap');
-    return `I have added ${monthWords(c.month)} to the draft as version ${version}, in the report, the presentation and the register. ${none ? `The record has nothing for ${MONTHS[Number(c.month.slice(5)) - 1]} yet, so it is marked unverified, and the team is being asked for it.` : c.text ? `What you said is marked as your own recollection until a record shows it.` : `It lists what the record holds for that month.`} ${kept}`;
+    return `I have added ${monthWords(c.month)} to the draft as version ${version}, in the report, the presentation and the register. ${none ? `The record has nothing for ${MONTHS[Number(c.month.slice(5)) - 1]} yet, so it is marked unverified until a record arrives.` : c.text ? `What you said is marked as your own recollection until a record shows it.` : `It lists what the record holds for that month.`} ${kept}`;
   }
   if (c.kind === 'shorten') return `I have made the report and the presentation shorter in version ${version}. Nothing was taken out of the register or the evidence index, which stay in full. ${kept}`;
   const about = content.sections.find((s) => s.id === 'corrections')?.claims.slice(-1)[0];

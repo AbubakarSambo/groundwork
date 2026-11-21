@@ -14,6 +14,27 @@ export interface AnAudioFile {
   buffer: Buffer;
   mimeType: string;
   fileName: string;
+  /** The names this organisation uses, spelled as it spells them (D16: "Dangote" was heard as "Dango"). Given to the transcriber as how to spell, never as words that were said. */
+  names?: string[];
+}
+
+/**
+ * THE NAMES THE TRANSCRIBER IS GIVEN (Batch D, R7, D16). The organisation's own name and the names of the people on its roster, so a name said in a voice
+ * note is written the way the organisation writes it. One reader for every door that receives audio.
+ */
+export async function theNamesThisOrganisationUses(prisma: any, organizationId: string | null | undefined): Promise<string[]> {
+  if (!organizationId) return [];
+  const org: any = await Promise.resolve(prisma?.organization?.findUnique?.({ where: { id: organizationId }, select: { name: true } })).catch(() => null);
+  const people: any[] = (await Promise.resolve(prisma?.person?.findMany?.({ where: { organizationId }, select: { displayName: true, givenName: true, familyName: true }, take: 300 })).catch(() => [])) ?? [];
+  const names = [String(org?.name ?? '').replace(/\s*\([^)]*\)\s*$/, '').trim(), ...people.map((p) => String(p.displayName || [p.givenName, p.familyName].filter(Boolean).join(' ')).trim())];
+  return [...new Set(names.filter((n) => n && n.length <= 80))].slice(0, 300);
+}
+
+/** The instructions, with the names to spell by when there are any. */
+export function whatToDoWith(names: string[] | undefined): string {
+  return names?.length
+    ? `${SAYS_WHAT_TO_DO} These are names the speaker's organisation uses, spelled the way it spells them. When you hear one of them, write it exactly so, and do not list it as unclear for its spelling. They are a spelling list only, not words that were said: ${names.join('; ')}.`
+    : SAYS_WHAT_TO_DO;
 }
 
 /** A stretch the transcriber was not sure it heard right, with its best guess where it has one. */
@@ -63,7 +84,7 @@ export class GeminiTranscriber implements Transcriber {
 
   async transcribe(audio: AnAudioFile): Promise<ATranscription> {
     try {
-      const raw = await this.anthropic.respondWithMedia(SAYS_WHAT_TO_DO, 'Write down this voice note.', { mimeType: audio.mimeType.split(';')[0], base64: audio.buffer.toString('base64') });
+      const raw = await this.anthropic.respondWithMedia(whatToDoWith(audio.names), 'Write down this voice note.', { mimeType: audio.mimeType.split(';')[0], base64: audio.buffer.toString('base64') });
       return readATranscription(raw);
     } catch {
       return { ok: false };

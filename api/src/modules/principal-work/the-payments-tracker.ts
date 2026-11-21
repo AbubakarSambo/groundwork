@@ -20,6 +20,8 @@ export interface ATrackerLine {
   statedStatus: string | null;
   statedApproval: string | null;
   evidence: string | null;
+  /** The bank's own confirmation of the transfer, as the sheet gives it (a confirmation number or reference). Proof that the money went; a named document is not. */
+  confirmation: string | null;
   raw: Record<string, string>;
 }
 export interface TheTrackerRead { lines: ATrackerLine[]; unreadable: { rowNumber: number; because: string }[]; sheet: string | null }
@@ -33,9 +35,20 @@ const HEADINGS: Record<string, RegExp> = {
   approval: /^(approval|approval status|approved|approved\?|approved by|authori[sz]ed|authori[sz]ation|sign.?off)$/i,
   status: /^(status|payment status|paid|paid\?|state)$/i,
   evidence: /^(evidence|proof|proof of payment|pop|receipt|evidence ref|evidence reference|supporting document|payment proof|bank advice)$/i,
+  confirmation: /^(bank confirmation|bank confirmation no|bank ref|bank reference|transfer reference|transaction reference|transaction id)$/i,
   reference: /^(ref|reference|invoice|invoice no|invoice number|invoice #|po|po number|voucher|voucher no|ref no|payment ref)$/i,
   description: /^(description|purpose|for|narration|details|item|particulars)$/i,
 };
+
+/** What each column is, by its heading. The roles a model may give: the headings above, by name. */
+export const THE_ROLES = Object.keys(HEADINGS);
+export type TheColumns = Record<string, number>;
+/**
+ * WHAT THE HEADINGS MEAN, READ BY A MODEL WHEN THERE IS ONE (Dangote stress test, D11: the "Bank confirmation" column was never read, because no list held its
+ * name). Given the first rows of a sheet, it says which row is the heading row and what each column is. Without a model, or with an answer that does not hold
+ * a payee or a reference and an amount, the headings are read by their usual names, as before.
+ */
+export type AHeadingReader = (rows: string[][]) => Promise<{ row: number; columns: TheColumns } | null>;
 
 /** A payment tracker has a payee or a reference, an amount, and at least one more of the headings above. Said before anything is stored. */
 export function isAPaymentTracker(text: string | null | undefined): boolean {
@@ -67,7 +80,10 @@ const columnsOf = (cells: string[]): Record<string, number> => {
   return out;
 };
 
-function findTheHeader(rows: string[][]): { at: number; cols: Record<string, number> } | null {
+const holdsAPayment = (cols: TheColumns) => ('payee' in cols || 'reference' in cols) && 'amount' in cols && Object.keys(cols).length >= 3;
+
+function findTheHeader(rows: string[][], read?: { row: number; columns: TheColumns } | null): { at: number; cols: Record<string, number> } | null {
+  if (read && read.row >= 0 && read.row < rows.length && holdsAPayment(read.columns)) return { at: read.row, cols: read.columns };
   for (let i = 0; i < Math.min(rows.length, 15); i++) {
     const cols = columnsOf(rows[i]);
     if (('payee' in cols || 'reference' in cols) && 'amount' in cols && Object.keys(cols).length >= 3) return { at: i, cols };
@@ -125,15 +141,23 @@ export const referenceKey = (ref: string | null | undefined): string => String(r
 /** The one key a payment is known by: the payee and its reference, else the payee and the due date. Two rows with the same key are one payment. */
 export const paymentKeyOf = (payee: string, reference: string | null, dueOn: Date | null): string => `${payeeKey(payee)}|${referenceKey(reference) || (dueOn ? dueOn.toISOString().slice(0, 10) : '')}`;
 
-export function readTheTracker(text: string | null | undefined): TheTrackerRead {
+const sectionsOf = (body: string) => { const xs = body.split(/^--- Sheet: .+? ---$/m).map((x) => x.trim()).filter(Boolean); return xs.length ? xs : [body]; };
+
+/** The sheet, with its headings read by the model where there is one. The lines themselves are always read by the code below. */
+export async function readTheTrackerReadingItsHeadings(text: string | null | undefined, readHeadings?: AHeadingReader | null): Promise<TheTrackerRead> {
+  if (!readHeadings) return readTheTracker(text);
+  const read = await Promise.all(sectionsOf(String(text ?? '')).map((x) => readHeadings(parseCsv(x).slice(0, 8)).catch(() => null)));
+  return readTheTracker(text, read);
+}
+
+export function readTheTracker(text: string | null | undefined, headingsRead: ({ row: number; columns: TheColumns } | null)[] = []): TheTrackerRead {
   const body = String(text ?? '');
   const sheet = /^--- Sheet: (.+?) ---$/m.exec(body)?.[1] ?? null;
-  const sections = body.split(/^--- Sheet: .+? ---$/m).map((x) => x.trim()).filter(Boolean);
   const lines: ATrackerLine[] = [];
   const unreadable: { rowNumber: number; because: string }[] = [];
-  for (const section of sections.length ? sections : [body]) {
+  for (const [n, section] of sectionsOf(body).entries()) {
     const rows = parseCsv(section);
-    const header = findTheHeader(rows);
+    const header = findTheHeader(rows, headingsRead[n]);
     if (!header) continue;
     const cell = (r: string[], k: string) => (k in header.cols ? (r[header.cols[k]] ?? '').trim() : '');
     for (let i = header.at + 1; i < rows.length; i++) {
@@ -150,11 +174,12 @@ export function readTheTracker(text: string | null | undefined): TheTrackerRead 
       const dueOn = readDate(cell(r, 'due'));
       const approvalCell = cell(r, 'approval');
       const evidence = cell(r, 'evidence');
+      const confirmation = cell(r, 'confirmation');
       const raw: Record<string, string> = {};
       rows[header.at].forEach((h, j) => { if (h.trim() && (r[j] ?? '').trim()) raw[h.trim()] = (r[j] ?? '').trim(); });
       lines.push({
         rowNumber, paymentKey: paymentKeyOf(payee, reference, dueOn), payee, reference, description: cell(r, 'description') || null, amount: { ...amount, currency: amount.currency ?? currencyIn(currencyText) },
-        owner: cell(r, 'owner') || null, dueOn, statedStatus: normaliseStatus(cell(r, 'status')), statedApproval: normaliseApproval(approvalCell), evidence: nothing(evidence) ? null : evidence, raw,
+        owner: cell(r, 'owner') || null, dueOn, statedStatus: normaliseStatus(cell(r, 'status')), statedApproval: normaliseApproval(approvalCell), evidence: nothing(evidence) ? null : evidence, confirmation: nothing(confirmation) ? null : confirmation, raw,
       });
     }
   }

@@ -7,7 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { DocumentsService } from '../documents/documents.service';
 import { ConversationService } from '../conversation/conversation.service';
-import { TRANSCRIBER, GeminiTranscriber, isAudio, isThisWhatYouSaidInTheMail, type Transcriber } from '../voice/the-transcriber';
+import { TRANSCRIBER, GeminiTranscriber, theNamesThisOrganisationUses, isAudio, isThisWhatYouSaidInTheMail, type Transcriber } from '../voice/the-transcriber';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { WhatsAppForAnOrganisationService } from './whatsapp-for-an-organisation.service';
 import { GroundworkEvents } from '../../common/events';
@@ -195,7 +195,7 @@ export class AForwardFromATeamMemberService {
       if (!bytes) { couldNotOpen.push(fileName); return; }
       /* A voice note goes through the same transcriber as one on WhatsApp. Its words are kept as the person's own, in a text file named for it; the audio is kept as a reference only. */
       if (isAudio(mimeType, fileName)) {
-        const heard = await this.transcriber.transcribe({ buffer: bytes, mimeType, fileName });
+        const heard = await this.transcriber.transcribe({ buffer: bytes, mimeType, fileName, names: await theNamesThisOrganisationUses(this.prisma, org.id) });
         await Promise.resolve((this.prisma as any).voiceNote?.create?.({ data: { organizationId: org.id, personId: who.personId, userId, channel: 'email', reference: [f.providerId, id].filter(Boolean).join('/') || fileName, mimeType, fileName, transcript: heard.ok ? heard.text : null, wasUnsure: heard.ok && heard.unclear.length > 0 } })).catch(() => undefined);
         if (!heard.ok) { voice.couldNotHear.push(fileName); return; }
         if (heard.unclear.length) voice.unsure.push(isThisWhatYouSaidInTheMail(fileName, heard.unclear));
