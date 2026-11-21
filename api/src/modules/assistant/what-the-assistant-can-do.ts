@@ -559,6 +559,8 @@ export interface Guide {
   whoSaid?: string;
   /** Its section in docs/use-cases/what-ask-does.md. */
   section: number;
+  /** The lane that does it, where its key is not that lane's name. Ask runs it when the model reads a message as this thing. */
+  lane?: Lane;
 }
 
 const OPEN_SUITES = 'Open Suites in the menu.';
@@ -612,7 +614,7 @@ export const THE_GUIDE: Guide[] = [
   },
   {
     key: 'share_a_report', section: 1, who: ['lead'], notOffered: true, does: 'share a check-in’s report with your team', example: 'How do I share the report with my team?',
-    onScreen: 'Open the check-in and its Report tab. Under What they receive, choose Named or Anonymised, and press Send. On one session’s report you can also press Share with the team, or Share without names.',
+    onScreen: 'Open the check-in, go to My work and press Every check-in. Under What they receive, choose Named or Anonymised, and press the Send button. On one session’s report you can also press Share with the team, or Share without names.',
   },
   {
     key: 'add_people_to_a_check_in', section: 3, who: ['lead'], notOffered: true, does: 'add people to a check-in you run', example: 'How do I add someone to my check-in?',
@@ -661,7 +663,7 @@ export const THE_GUIDE: Guide[] = [
     onScreen: 'There is no page for it. Tell me who it is, for example "My executive assistant is Amina Yusuf", and I will say it back before anything is given. To stop it, say "Amina can no longer act for me".',
   },
   /* The rest of what Ask does, described once, and never put on the short lists (notOffered). In the order of docs/use-cases/what-ask-does.md. */
-  { key: 'what_can_you_help_with', section: 1, who: ['everyone'], notOffered: true, does: 'ask what I can help you with, fitted to your role', example: 'what can u do' },
+  { key: 'what_can_you_help_with', lane: 'what_can_you_do', section: 1, who: ['everyone'], notOffered: true, does: 'ask what I can help you with, fitted to your role', example: 'what can u do' },
   { key: 'the_first_open_list', section: 1, who: ['everyone'], notOffered: true, where: ['the web'], does: 'see a short list of what you can do when you first open Ask', example: '(open Ask)' },
   { key: 'how_do_i', section: 1, who: ['everyone'], notOffered: true, does: 'ask how to do anything in Groundwork, and have me do it for you when I can', example: 'how do i add someone' },
   { key: 'how_we_work', section: 1, who: ['member'], notOffered: true, does: 'ask how things are done here, from what your organisation has written down', example: 'how do we handle expenses' },
@@ -670,7 +672,7 @@ export const THE_GUIDE: Guide[] = [
   { key: 'what_next', section: 2, who: ['member'], notOffered: true, does: 'ask what to do next, and why it comes first', example: 'what next' },
   { key: 'where_am_i_needed', section: 2, who: ['member'], notOffered: true, does: 'ask where you are needed', example: 'where am i needed' },
   { key: 'add_a_commitment', doneByTellingMe: true, section: 2, who: ['member'], notOffered: true, does: 'write down something you will do, with a day, kept on your yes', example: 'commit me to the report by fri' },
-  { key: 'tick_off', doneByTellingMe: true, section: 2, who: ['member'], notOffered: true, does: 'tick off a to-do or a commitment', example: 'done: send the rota' },
+  { key: 'tick_off', lane: 'tick_off_a_to_do', doneByTellingMe: true, section: 2, who: ['member'], notOffered: true, does: 'tick off a to-do or a commitment', example: 'done: send the rota' },
   { key: 'move_a_deadline', doneByTellingMe: true, section: 2, who: ['member'], notOffered: true, does: 'move the day on your own commitment, or on one you set in a check-in you run', example: 'push the rota to tuesday' },
   { key: 'my_to_dos', section: 2, who: ['member'], notOffered: true, does: 'read your own to-do list', example: 'my list' },
   { key: 'send_me_that', doneByTellingMe: true, section: 2, who: ['member'], notOffered: true, does: 'have what I just told you emailed to you, and to nobody else', example: 'email me that' },
@@ -683,17 +685,17 @@ export const THE_GUIDE: Guide[] = [
   { key: 'what_should_we_talk_about', section: 2, who: ['member'], notOffered: true, does: 'ask what to talk about, and say yes or no to one', example: 'what should we talk about' },
   { key: 'a_correction', doneByTellingMe: true, section: 2, who: ['member'], notOffered: true, does: 'correct me, and have it checked against the record and fixed everywhere when it holds', example: 'thats wrong I sent the Kilele proof monday' },
   { key: 'an_update', section: 2, who: ['member'], notOffered: true, does: 'tell me an update, and be told where it belongs', example: 'sold 12 today' },
-  { key: 'start_my_check_in', section: 3, who: ['everyone'], notOffered: true, does: 'start a check-in that is waiting for you', example: 'start my check in' },
+  { key: 'start_my_check_in', lane: 'start_a_check_in', section: 3, who: ['everyone'], notOffered: true, does: 'start a check-in that is waiting for you', example: 'start my check in' },
   { key: 'finish_with_nothing_open', section: 3, who: ['everyone'], notOffered: true, does: 'say done or finish with nothing open, and be told when the next one opens', example: 'finish' },
   { key: 'what_came_of_it', section: 3, who: ['everyone'], whoSaid: 'Participants', notOffered: true, does: 'ask what came of the last round', example: 'what did we agree' },
-  { key: 'a_line_of_context', doneByTellingMe: true, section: 3, who: ['lead'], notOffered: true, does: 'put one line straight onto a check-in\u2019s context', example: 'decision: we drop the pilot' },
-  { key: 'change_a_check_ins_setup', doneByTellingMe: true, section: 3, who: ['lead'], notOffered: true, does: 'change how long a check-in runs or how often people check in', example: 'make the Q4 one fortnightly' },
-  { key: 'a_lead_note', doneByTellingMe: true, section: 3, who: ['lead'], notOffered: true, does: 'keep a private note about a check-in or one person, and share it on your yes', example: 'private note: Dayo misses fridays' },
+  { key: 'a_line_of_context', lane: 'context_line', doneByTellingMe: true, section: 3, who: ['lead'], notOffered: true, does: 'put one line straight onto a check-in\u2019s context', example: 'decision: we drop the pilot' },
+  { key: 'change_a_check_ins_setup', lane: 'add_context', doneByTellingMe: true, section: 3, who: ['lead'], notOffered: true, does: 'change how long a check-in runs or how often people check in', example: 'make the Q4 one fortnightly' },
+  { key: 'a_lead_note', lane: 'lead_note', doneByTellingMe: true, section: 3, who: ['lead'], notOffered: true, does: 'keep a private note about a check-in or one person, and share it on your yes', example: 'private note: Dayo misses fridays' },
   { key: 'questions_for_people', doneByTellingMe: true, section: 3, who: ['lead'], notOffered: true, does: 'read the questions waiting for somebody, and confirm or drop one', example: 'questions for Ben' },
   { key: 'what_is_stuck', section: 4, who: ['member'], notOffered: true, does: 'ask what is stuck, and who is waiting', example: 'whats stuck' },
   { key: 'what_did_they_say', section: 4, who: ['member'], notOffered: true, does: 'ask what a colleague said, only as much as you may already read', example: 'what did Femi say last week' },
   { key: 'who_is', section: 4, who: ['member'], notOffered: true, does: 'ask who somebody is on the roster', example: 'who is Sam' },
-  { key: 'a_persons_history', section: 4, who: ['lead'], whoSaid: 'L of that person', notOffered: true, does: 'read one person\u2019s history, as their lead', example: 'how has Joseph been doing' },
+  { key: 'a_persons_history', lane: 'performance_history', section: 4, who: ['lead'], whoSaid: 'L of that person', notOffered: true, does: 'read one person\u2019s history, as their lead', example: 'how has Joseph been doing' },
   { key: 'is_the_strategy_moving', section: 4, who: ['member'], notOffered: true, does: 'ask whether the strategy is moving', example: 'is the strategy working' },
   { key: 'how_many_days_left', section: 5, who: ['member'], needs: 'leave', notOffered: true, does: 'ask how many leave days you have left', example: 'how many days left' },
   { key: 'your_requests', section: 5, who: ['member'], notOffered: true, does: 'ask where your own requests are', example: 'has my leave been approved' },

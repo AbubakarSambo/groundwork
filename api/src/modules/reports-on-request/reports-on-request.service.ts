@@ -241,10 +241,14 @@ export class ReportsOnRequestService {
     const open = await this.openRequestOf(a.organizationId, a.userId);
     const forwarded = /^\s*(?:fwd?|fw)\s*:/i.test(a.subject ?? '') || /-{2,}\s*Forwarded message/i.test(a.wholeBody ?? '');
     if (!open) {
-      if (a.hasFiles || forwarded || !a.newWords.trim()) return null;
-      const understood = await understandTheMessage(this.engine as any, this.prompts as any, a.newWords).catch(() => null);
+      /* The subject is part of what they asked: "Quarterly report for the board" in the subject and "can you draft it" below was filed as a
+         forwarded document, because only the words below were read (release test of 21 November 2026, item 106). */
+      const subject = String(a.subject ?? '').replace(/^\s*(?:(?:re|fwd?|fw)\s*:\s*)+/i, '').trim();
+      const asked = [subject, a.newWords.trim()].filter(Boolean).join('\n\n');
+      if (a.hasFiles || forwarded || !asked) return null;
+      const understood = await understandTheMessage(this.engine as any, this.prompts as any, asked).catch(() => null);
       if (understood?.kind !== 'report') return null;
-      return (await this.start({ organizationId: a.organizationId, userId: a.userId, message: a.newWords, channel: 'email', about: understood.about }))?.said ?? null;
+      return (await this.start({ organizationId: a.organizationId, userId: a.userId, message: asked, channel: 'email', about: understood.about }))?.said ?? null;
     }
     if (!a.hasFiles && !forwarded && a.newWords.trim()) {
       const heard = await this.hear({ organizationId: a.organizationId, userId: a.userId, message: a.newWords, channel: 'email' });

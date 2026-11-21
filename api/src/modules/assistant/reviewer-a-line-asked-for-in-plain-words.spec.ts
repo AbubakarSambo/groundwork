@@ -13,11 +13,13 @@ describe('a line asked for in plain words', () => {
     ['Add a line to my check-in: the Thika order moved to Monday.', 'the Thika order moved to Monday'],
   ])('"%s" is the line "%s"', (said, line) => {
     expect(route(said).lane).toBe('context_line');
-    expect(parseContextLine(said)).toEqual({ kind: 'NOTE', text: line });
+    /* The parse also says what the line is said back as (22 November 2026). */
+    expect(parseContextLine(said)).toEqual({ kind: 'NOTE', text: line, label: 'a note' });
   });
 
   it('the old typed shapes and the other lanes are as they were', () => {
-    expect(parseContextLine('decision: we will drop the pilot')).toEqual({ kind: 'DECISION', text: 'we will drop the pilot' });
+    /* Changed 22 November 2026 (release test of 21 November, board #21, Today #45): "decision:" is a decision made, so it is kept with how the team works; something still open is said as "to decide:". */
+    expect(parseContextLine('decision: we will drop the pilot')).toEqual({ kind: 'WAY_OF_WORKING', text: 'we will drop the pilot', label: 'a decision' });
     expect(route('add this to the context').lane).toBe('add_context');
     expect(route('Please add that to my check-in.').lane).not.toBe('context_line');
   });
