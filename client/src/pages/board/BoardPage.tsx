@@ -736,7 +736,10 @@ function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, g
               session that just closed and shared. Sent there directly now, with the ground-level
               redirect kept only for the rare case nothing has completed for this reader yet.
             */
-            <Link to={myLatestCheckInId ? `/checkin/${myLatestCheckInId}/report` : `/grounds/${groundId}/report`} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
+            /* RELEASE TEST, 21 NOVEMBER 2026, BUG 36: "Open today's team picture." opened Amani's own report, which "Read your own report"
+               below already opens. It opens the team's report now: /grounds/:id/report opens the Report tab with the shared report
+               unfolded (B-203, GroundParticipantPage's openedDirectlyOnReport). */
+            <Link to={`/grounds/${groundId}/report`} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
               {teamPicture?.forDay ? 'Open it.' : direct ? 'Open today’s team report.' : 'Open today’s team picture.'}
             </Link>
           )}
