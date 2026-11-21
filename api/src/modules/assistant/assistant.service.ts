@@ -65,7 +65,7 @@ import { whatIsOutstandingSaid, whatIsOutstandingTold, whatNeedsTheDecisionSaid,
 import { GeminiTeamMind } from '../team-loop/the-team-mind';
 import { ensureThePrincipalsJobs } from '../outstanding/the-persistent-jobs';
 import { YearEndService } from '../year-end/year-end.service';
-import { theirReportIsTheYearEndDraft } from '../year-end/her-year-end-record';
+import { theYearEndWorkTheyRead } from '../year-end/her-year-end-record';
 import { ExecutiveOnboardingService } from '../executive-onboarding/executive-onboarding.service';
 import { mightBeHerWords } from '../executive-onboarding/her-words';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
@@ -789,11 +789,10 @@ export class AssistantService {
      * After the rules above, which read the days, amounts and hours; here the model has said which thing in the guide they want, and its
      * own action starts, which asks or says back before anything is written or sent.
      */
-    /* A question the model places on something Ask answers ("whos off next week", "how many days left") is answered by that thing, never the documents (round 2, T3). */
-    /* Except for somebody whose Ask reads a year-end record (her, and whoever acts for her): her record holds what those lanes read and more, so a question the model
-       places is answered from it, unless it is a request, whose own lane owns the answer (Batch F, F3: "Which claims are weak?" was answered "Nothing is waiting on you"). */
-    const herRecordAnswers = understood?.kind === 'question' && !!understood.guide && GUIDE_BY_KEY.get(understood.guide)?.section !== 5 && (await theirReportIsTheYearEndDraft(this.prisma, organizationId, userId).catch(() => false));
-    if (who && (understood?.kind === 'wants' || understood?.kind === 'question') && understood.guide && !herRecordAnswers) {
+    /* A question the model places on something Ask answers ("whos off next week", "how many days left") is answered by that thing, never the documents (round 2, T3).
+       For everybody, a senior person included: the model was told her year-end record is hers (theirRoleSaid), so "Which claims are weak?" is placed on no lane and
+       reaches her record below (Batch F, F3). Skipping the model's choice for her sent "whos off next week" to the documents (release test 21 November, 69 and 104). */
+    if (who && (understood?.kind === 'wants' || understood?.kind === 'question') && understood.guide) {
       const g = GUIDE_BY_KEY.get(understood.guide);
       const done = g && mayUse(g, await this.theReader(organizationId, personId, userId ?? null)) ? await this.doItForYou(organizationId, personId, who, userId ?? null, g.key, message) : null;
       if (done) return done;
@@ -5131,12 +5130,16 @@ export class AssistantService {
       read(() => contextIsInAskGroundwork(this.prisma), false),
     ]);
     const isAGuest = role === 'GUEST';
+    /* Whose year-end record they read is who they are, and the model is told it (theirRoleSaid): it is context for reading their words, never a way round them. */
+    const yearEnd = isAGuest ? { own: false, forSomebody: false } : await read(() => theYearEndWorkTheyRead(this.prisma, organizationId, userId), { own: false, forSomebody: false });
     const howPeopleJoin = howPeopleJoinHere(await read(() => this.prisma.organization.findUnique({ where: { id: organizationId }, select: { guestsMayJoin: true, whoMayAddPeople: true } }), null as any));
     return {
       isAGuest,
       mayAddPeople: theRolesTheyMayGive(role ?? null, howPeopleJoin).length > 0,
       isAnAdmin: role === 'ADMIN',
       looksAfterHr: !isAGuest && !!userId && duties.hr === userId,
+      isAPrincipal: yearEnd.own,
+      actsForSomebody: yearEnd.forSomebody,
       runsOne: links.some((l) => l.partyType === 'INITIATOR'),
       takesPartInOne: links.some((l) => l.partyType !== 'INITIATOR'),
       hasOneToUse: links.length > 0,
@@ -5203,6 +5206,8 @@ export class AssistantService {
       case 'how_many_days_left': return this.yourDaysOfLeaveLeft(organizationId, userId, message);
       case 'your_requests': return this.aboutYourRequests(organizationId, userId, message);
       case 'who_is_away': return this.whoIsAway(organizationId, userId, message);
+      /* "end Chidi's right" in words the rules do not place: the same say-back as "Chidi no longer acts for me", which ends nothing without a yes (release test 21 November, 80). */
+      case 'stop_a_delegate': return this.stopADelegate(organizationId, who, userId, message);
       case 'what_is_due': return this.whatIsDue(organizationId, who, userId);
       /* What next and what is stuck read the one source Today reads (grounds/what-needs-you.service.ts). */
       case 'what_next': return this.whatNeedsYouNow(organizationId, who, userId, 'next');

@@ -46,9 +46,17 @@ async function hasYearEndWork(prisma: any, organizationId: string, principalUser
  * draft, and its own steps answer their words about it. False for everybody else, who keeps "a report on request" exactly as before.
  */
 export async function theirReportIsTheYearEndDraft(prisma: any, organizationId: string, userId: string | null | undefined): Promise<boolean> {
-  if (!userId) return false;
-  for (const id of await theYearEndsTheyRead(prisma, organizationId, userId)) if (await hasYearEndWork(prisma, organizationId, id)) return true;
-  return false;
+  const theirs = await theYearEndWorkTheyRead(prisma, organizationId, userId);
+  return theirs.own || theirs.forSomebody;
+}
+
+/** Whose year-end work they read, from the same test: their own, and that of somebody they act for. Ask gives it to the model as who they are. */
+export async function theYearEndWorkTheyRead(prisma: any, organizationId: string, userId: string | null | undefined): Promise<{ own: boolean; forSomebody: boolean }> {
+  if (!userId) return { own: false, forSomebody: false };
+  const own = await hasYearEndWork(prisma, organizationId, userId);
+  let forSomebody = false;
+  for (const id of await theYearEndsTheyRead(prisma, organizationId, userId)) if (id !== userId && (await hasYearEndWork(prisma, organizationId, id))) { forSomebody = true; break; }
+  return { own, forSomebody };
 }
 
 /* ------------------------------------------------------------------ the pages Ask reads */
