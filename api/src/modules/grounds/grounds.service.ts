@@ -64,6 +64,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { aKindMayBeGiven, theBoardKindsOffered, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
 import { askNameOf } from '../assistant/ask-name';
+import { THE_SCENARIO_TABLE } from '../conversation/the-scenario-table';
 import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, isASalesKind, theSetupWords } from '../board/the-kind-of-work';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf, theDaysItRunsOn } from './which-days-this-team-works';
@@ -5722,14 +5723,14 @@ export class GroundsService {
         where: { id: groundId },
         select: {
           label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true, kindOfWork: true, organizationId: true,
-          /* The people's job titles, so a sales team is told by its reps and its sales manager as well as by its words (Release 1). */
-          participants: { select: { roleAsDescribed: true, user: { select: { jobTitle: true } } } },
+          /* The check-in's purpose (what it is for), never the people's job titles (Hafsah, 21 November 2026; theSetupWords). */
+          scenario: true,
         },
       });
       if (!g || theReadingMustLeaveIt(g.kindOfWorkSetBy)) return;
       /* A check-in that already has a kind keeps it, offered or not (docs/deploy.md, "Hidden at release"). */
       const hasOne = oneOfTheKinds(g.kindOfWork);
-      const words = theSetupWords(g, ((g.participants ?? []) as any[]).flatMap((p) => [p.user?.jobTitle, p.roleAsDescribed]));
+      const words = theSetupWords(g, THE_SCENARIO_TABLE[(g as any).scenario as keyof typeof THE_SCENARIO_TABLE]?.name ?? null);
       if (!words.trim()) return;
       const answer = await this.anthropic.extract<{ kind?: string }>(
         THE_KIND_OF_WORK_PROMPT,

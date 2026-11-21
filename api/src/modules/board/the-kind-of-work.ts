@@ -323,7 +323,7 @@ Choose one of these fifteen kinds, or none:
 - "sales org": a sales organisation of several sales teams, each with its own lead, such as teams for different regions or products, selling to customers with deals that move through stages.
 - "engineering release": engineers building and shipping software, with tasks and releases.
 - "support desk": a customer support team answering customers' questions and problems, as tickets, emails or chats, however its work is described.
-- "distribution operations": sites, deliveries, equipment and suppliers, with incidents.
+- "distribution operations": the day-to-day running of sites, deliveries, equipment and suppliers, with incidents as they happen. A project that changes how the sites work, such as moving them onto a new system, is not distribution operations: it is a project, which is none of these kinds.
 - "trader training programme": a training or development programme for groups of people across places, with check-ins.
 - "founder's own check-in": one person checking in with themselves about their own commitments and decisions.
 - "asset loans": a cohort of people who borrowed money to buy equipment or stock for their business and are repaying it. Money that customers or clients owe for work done, such as unpaid invoices, bills or fee notes, is not a loan, and is none of these kinds.
@@ -335,7 +335,7 @@ Choose one of these fifteen kinds, or none:
 - "a funded project": a project paid for by a donor, funder or grant, with a workplan, milestones, a budget, money in and out, and partners or stakeholders to report to.
 - "client delivery": work delivered to a client under an agreement, such as a website, a software build or a branding project, with deliverables, approvals, milestones and invoices. Money that clients owe for work already done, such as unpaid invoices, bills or fee notes, is not client delivery: the work is finished and the question is collecting what is owed, so it is none of these kinds.
 
-Give the kind's name exactly as written above. Choose a kind only when the lead's words clearly say it. The people's job titles, where they are given, help: sales reps and a sales manager are selling. When the work is selling and nothing says there are several sales teams, it is a "sales team". When the work is none of these, or you are not sure, give none. A lead who says only that something is wrong, or that they are worried, without saying who is involved or what the work is, has not named a kind: give none, so the conversation asks. A wrong kind is worse than none.`;
+Give the kind's name exactly as written above. Choose a kind only when the lead's words clearly say it. What the check-in is for is why the lead set it up, and it is not a kind of work: a new hire's first weeks, one person's plan, or getting a new project off to a good start, such as moving sites onto a new system, is none of these kinds, unless the lead's own words say the check-in is about that kind of work itself, such as a sales team's deals or a support desk's tickets. Never decide from what the people's jobs are, or from a place or a word that appears in passing. When the work is selling and nothing says there are several sales teams, it is a "sales team". When the work is none of these, or you are not sure, give none. A lead who says only that something is wrong, or that they are worried, without saying who is involved or what the work is, has not named a kind: give none, so the conversation asks. A wrong kind is worse than none.`;
 
 export const THE_KIND_OF_WORK_SCHEMA = {
   name: 'emit_kind_of_work',
@@ -355,17 +355,22 @@ export const THE_KIND_OF_WORK_SCHEMA = {
  * The lead's words the read is given: the name, the brief, and the end they are working toward; and, where they are known,
  * the job titles of the people in it (release plan, Release 1: a sales team is detected from its words and its job titles).
  */
+/*
+ * WHAT THE KIND IS READ FROM (Hafsah, 21 November 2026): the check-in's purpose and what the lead said it is for, never the people's job
+ * titles. "The new stock system, four depots" (a new project) and "Imani Hassan, first ninety days" (a new hire) were read as
+ * "distribution operations" from an operations analyst's title and the word depots; the purpose says what the check-in is.
+ */
 export function theSetupWords(
   g: { label?: string | null; brief?: string | null; endState?: string | null; resolutionState?: string | null },
-  jobTitles: (string | null | undefined)[] = [],
+  /** What the check-in is for, in the scenario table's words ("Get a new project off to a good start"). */
+  purpose?: string | null,
 ): string {
-  const titles = [...new Set(jobTitles.map((t) => String(t ?? '').trim()).filter(Boolean))].slice(0, 20);
   return [
+    purpose ? `What the check-in is for: ${purpose}` : '',
     g.label ? `What the lead called it: ${g.label}` : '',
     g.brief ? `What the lead said about it: ${g.brief}` : '',
     g.endState ? `What they are working toward: ${g.endState}` : '',
     g.resolutionState ? `How they hope it ends: ${g.resolutionState}` : '',
-    titles.length ? `The job titles of the people in it: ${titles.join(', ')}` : '',
   ].filter(Boolean).join('\n\n');
 }
 

@@ -8,6 +8,7 @@
  *
  *   DATABASE_URL=... npx ts-node -P tsconfig.json --transpile-only scripts/read-the-kinds-of-work-again.ts            (counts only)
  *   DATABASE_URL=... npx ts-node -P tsconfig.json --transpile-only scripts/read-the-kinds-of-work-again.ts --yes      (reads them)
+ *   ... --every-read --yes        (every kind a reading gave, too)
  *   ... --label "Sales team, Q4" --yes                                                                                (one check-in)
  */
 import { NestFactory } from '@nestjs/core';
@@ -24,7 +25,10 @@ async function main() {
     const grounds = app.get(GroundsService);
     const saved = await prisma.ground.findMany({ where: { kindOfWork: { not: null } }, select: { id: true, label: true, kindOfWork: true, kindOfWorkSetBy: true } });
     const only = process.argv.includes('--label') ? process.argv[process.argv.indexOf('--label') + 1] : null;
-    const notAKind = saved.filter((g) => !oneOfTheKinds(g.kindOfWork) && g.kindOfWorkSetBy !== 'lead' && (!only || g.label === only));
+    /* --every-read: also every kind a reading gave (kindOfWorkSetBy 'read'), so a change in how the kind is read reaches them
+       (21 November 2026: the purpose, not the job titles). A kind the lead chose is never touched. */
+    const everyRead = process.argv.includes('--every-read');
+    const notAKind = saved.filter((g) => (!oneOfTheKinds(g.kindOfWork) || (everyRead && g.kindOfWorkSetBy === 'read')) && g.kindOfWorkSetBy !== 'lead' && (!only || g.label === only));
     console.log(`${saved.length} check-ins have a kind of work saved. ${notAKind.length} of them hold words that are not one of the fifteen kinds.`);
     for (const g of notAKind) {
       if (!yes) { console.log(`Would read again: ${g.label} ("${g.kindOfWork}")`); continue; }

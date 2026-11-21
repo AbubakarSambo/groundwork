@@ -109,15 +109,20 @@ describe('a sales team is told from a sales organisation', () => {
     expect(THE_KIND_OF_WORK_PROMPT).toContain('When the work is selling and nothing says there are several sales teams, it is a "sales team".');
   });
 
-  it('a sales team is read from the lead\'s words and the people\'s job titles, and kept', async () => {
+  /* Changed 21 November 2026 (Hafsah): the kind is read from the check-in's purpose and the lead's words, never the people's job titles,
+     which read a new hire in the depots and a depot rollout as "distribution operations". */
+  it('a sales team is read from the lead\'s words and the check-in\'s purpose, never the job titles, and kept', async () => {
     const g: any = {
       label: 'Sales team, Q4', brief: 'Kevin, Mercy and Joseph sell our freezers to hotels and shops. I want to see every deal.', kindOfWorkSetBy: null,
+      scenario: 'OKR_ALIGNMENT',
       participants: [{ roleAsDescribed: 'Sales rep', user: { jobTitle: 'Sales rep' } }, { roleAsDescribed: null, user: { jobTitle: 'Sales manager' } }],
     };
     const { svc, updates, anthropic } = build(g, { kind: 'sales team' });
     await svc.readTheKindOfWork('g1');
     const told = String(anthropic.extract.mock.calls[0][1][0].content);
-    expect(told).toContain('The job titles of the people in it: Sales rep, Sales manager');
+    expect(told).toContain('What the check-in is for: ');
+    expect(told).not.toContain('job titles');
+    expect(told).not.toContain('Sales manager');
     expect(updates).toEqual([{ kindOfWork: 'sales team', kindOfWorkSetBy: 'read' }]);
     expect(isASalesKind(g.kindOfWork)).toBe(true);
   });

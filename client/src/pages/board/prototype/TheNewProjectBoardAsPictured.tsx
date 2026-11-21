@@ -46,7 +46,7 @@ export function TheNewProjectBoardAsPictured(p: TheNewProjectBoardAsPicturedProp
   const today = isoDay(new Date())
   const records = ((b.workRecords ?? []) as Any[]).find((s) => s.state === 'filled' && (s.rows ?? []).length) ?? null
   const rows: Any[] = records?.rows ?? []
-  const many: string = p.goals ? 'sales' : records?.holds ?? 'pieces of work'
+  const many: string = p.goals ? 'sales' : records?.holds ?? 'tasks' /* the prototype's own word where the server names none */
   const firstHeader = p.goals ? 'Deal' : capital(many.replace(/s$/, ''))
   const ownerHeader = p.goals ? 'Rep' : 'Owner'
   const [openId, setOpenId] = useState<string | null>(null)
