@@ -1,3 +1,4 @@
+import { aDaySaidInFull } from '../board/a-day-said-in-full';
 /**
  * THE REASON A TARGET EXISTS, WHERE SOMEBODY RECORDED ONE.
  *
@@ -31,7 +32,7 @@ export interface AnObjective {
 export function asALine(objective: AnObjective): string {
   const target = objective.target ? ` (target: ${objective.target})` : '';
   const due = objective.dueDate
-    ? `, due ${typeof objective.dueDate === 'string' ? objective.dueDate : objective.dueDate.toDateString()}`
+    ? `, due ${typeof objective.dueDate === 'string' ? objective.dueDate : aDaySaidInFull(objective.dueDate)}`
     : '';
 
   const lines = [`- ${objective.title}${target}${due}`];

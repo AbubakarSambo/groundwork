@@ -12,7 +12,8 @@ export interface AToDo {
   dueSaid: string | null;
 }
 
-const WHEN = /\b(?:by|on|before|this|next|end of)\s+(?:the\s+)?(?:mon|tues|wednes|thurs|fri|satur|sun)day\b|\b(?:by|on|before)\s+(?:the\s+)?\d{1,2}(?:st|nd|rd|th)?\b|\b(?:today|tomorrow|tonight|this\s+week|next\s+week|end\s+of\s+(?:the\s+)?(?:week|month|quarter))\b/i;
+/* A day as people type it, whole or short ("by Friday", "by fri", "on tues"): the same days the date reader reads (when-words-mean-a-date.ts). */
+const WHEN = /\b(?:by|on|before|this|next|end of)\s+(?:the\s+)?(?:(?:mon|tues|wednes|thurs|fri|satur|sun)day|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\b|\b(?:by|on|before)\s+(?:the\s+)?\d{1,2}(?:st|nd|rd|th)?\b|\b(?:today|tomorrow|tonight|this\s+week|next\s+week|end\s+of\s+(?:the\s+)?(?:week|month|quarter))\b/i;
 
 /** The to-do out of what they said, with their words for when if they gave any. */
 export function readToDo(subject: string | undefined, wholeMessage = ''): AToDo | null {
