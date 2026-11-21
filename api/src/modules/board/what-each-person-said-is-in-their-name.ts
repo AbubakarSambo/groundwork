@@ -22,8 +22,8 @@ import { theirWordsItCameFrom } from './the-handoff-words-the-person-typed';
  * As the board's risks and blocker check do (the-handoff-words-the-person-typed), each line is checked
  * against what the person typed in that check-in when the board is built: found whole, it is quoted;
  * drawn from sentences of theirs, those sentences are quoted instead; drawn from nothing they typed,
- * the line is a plain sentence that carries none of their words ("Kwame Mensah has made a commitment
- * here."). No verb is changed and no pronoun is guessed.
+ * the line is quoted as the record's line, never as theirs ("Kwame Mensah's line in the record reads
+ * "..."", theRecordsLineFor). No verb is changed and no pronoun is guessed.
  *
  * RUN LAST, ON WHAT IS ALREADY WALLED. The name is the row's name as this reader may read it, after
  * every rule about names has run, so this adds no name the reader could not already read above the
@@ -71,7 +71,18 @@ export function inTheirOwnWords(line: string, typed: string[] | undefined): { te
   return { text: them.join(' '), saidAs: 'their-sentences' };
 }
 
-/** A line drawn from nothing they typed: what kind of thing they said, with none of their words. */
+/**
+ * A LINE DRAWN FROM NOTHING THEY TYPED IS SAID AS THE RECORD'S LINE, NOT AS NOTHING (release test, 21 November 2026, bug 25). "Wairimu
+ * Njoroge has reported progress." and "has made a commitment here." stood for every such line on "Who owns what" and said nothing at all.
+ * The line is the record's own wording, so it is quoted as the record's, never as theirs: "Wairimu Njoroge's line in the record reads
+ * "...".". Only with no line at all is the kind said instead.
+ */
+export function theRecordsLineFor(who: string, line: string): string {
+  const w = line.trim().replace(/["“”]/g, "'");
+  return `${who === 'You' ? 'Your' : `${who}’s`} line in the record reads "${/[.!?]$/.test(w) ? w : `${w}.`}"`;
+}
+
+/** A line with no words at all: what kind of thing they said. */
 export function saidWithoutTheirWords(who: string, type?: string | null): string {
   const has = who === 'You' ? 'have' : 'has';
   const they = who === 'You' ? 'you' : 'they';
@@ -134,7 +145,7 @@ export function eachLineInTheirName<T extends AWhoOwnsWhatRow>(
         if (!text || notTheirWords.includes(text) || alreadyTheirs) return item ? rest : item;
         /* The text already says what kind of line it is ("You have reported progress."), so the screen need not
            say it again under it (request 117, part 8): `itsKindIsSaid`. */
-        if (saidAs === 'not-their-words') return { ...rest, text: saidWithoutTheirWords(who, rest.type), itsKindIsSaid: true };
+        if (saidAs === 'not-their-words') return { ...rest, text: theRecordsLineFor(who, text) };
         /* A promise not kept word for word, said in our voice (request 130 b): "Neema Achieng committed to send a photo
            of the delivery sheets on Friday." The text is the end of that sentence, so every wall ran over it already. */
         if (saidAs === 'what-they-committed-to') return { ...rest, text: `${who} committed to ${text.replace(/[.!?]+$/, '')}.`, itsKindIsSaid: true };

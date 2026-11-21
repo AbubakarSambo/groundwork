@@ -1,6 +1,6 @@
 import { GroundScenario, PartyType } from '@prisma/client';
 import { boardAs, person, answered } from './the-switchboards-sections-harness';
-import { oneLineInTheirName, inTheirOwnWords, saidWithoutTheirWords, eachLineInTheirName } from './what-each-person-said-is-in-their-name';
+import { oneLineInTheirName, inTheirOwnWords, saidWithoutTheirWords, eachLineInTheirName, theRecordsLineFor } from './what-each-person-said-is-in-their-name';
 
 /**
  * "WHO OWNS WHAT", AS EACH PERSON READS IT (review of 1 October 2026, runs re-d and run-21).
@@ -111,5 +111,14 @@ describe('how a line may be said', () => {
     expect(saidWithoutTheirWords('Kwame Mensah', 'COMMITMENT')).toBe('Kwame Mensah has made a commitment here.');
     expect(saidWithoutTheirWords('You', 'PROGRESS')).toBe('You have reported progress.');
     expect(saidWithoutTheirWords('Kwame Mensah', null)).toBe('Kwame Mensah has said what they own here.');
+  });
+  /* Release test, 21 November 2026, bug 25: "Wairimu Njoroge has reported progress." for every line said nothing. A line that is the
+     record's own wording is quoted as the record's line. */
+  it('a line not in their own words is quoted as the record\'s line, with what it says, for the lead and for the person', () => {
+    const rows = [{ participantId: 'p-w', name: 'Wairimu Njoroge', items: [{ id: 'w1', type: 'PROGRESS', text: 'We are at 22 of the 40 new weekly shops', saidAs: 'not-their-words' }] }];
+    expect(eachLineInTheirName(rows, null)[0].items![0].text).toBe('Wairimu Njoroge’s line in the record reads "We are at 22 of the 40 new weekly shops."');
+    expect(eachLineInTheirName(rows, 'p-w')[0].items![0].text).toBe('Your line in the record reads "We are at 22 of the 40 new weekly shops."');
+    expect(JSON.stringify(eachLineInTheirName(rows, null))).not.toMatch(/has reported progress/);
+    expect(theRecordsLineFor('Amani Wekesa', 'Kilimani Fresh signs on Monday.')).toBe('Amani Wekesa’s line in the record reads "Kilimani Fresh signs on Monday."');
   });
 });
