@@ -1,4 +1,4 @@
-import { aYearEndWorld } from './a-year-end-world-for-specs';
+import { aYearEndWorld } from './a-world-for-the-year-end';
 import { loadTheRecord } from './the-year-end-versions';
 import { buildTheContent } from './the-year-end-content';
 import { applyTheNarrative, THE_FLAG } from './the-year-end-narrative';

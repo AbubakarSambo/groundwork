@@ -65,7 +65,7 @@ describe('a claim somebody disputes stays disputed, and is never "done, and the 
     console.log(`WHAT FATIMA READS WHEN SHE ASKS WHAT IS OUTSTANDING\n${outstanding}`);
     expect(outstanding).toMatch(/not backed up/);
     expect(outstanding).not.toMatch(/the record shows it/i);
-    const facts = (await theFactsAboutTheTeam(x.prisma, { organizationId: 'org-1', principalUserId: 'u-fatima', first: 'Fatima', contacts: [x.contact('Amina Yusuf')], since: new Date(0), now: x.now, lead: 'week', nobodyAnswered: [] })).map((f) => f.fact.says);
+    const facts = (await theFactsAboutTheTeam(x.prisma, { organizationId: 'org-1', principalUserId: 'u-fatima', first: 'Fatima', contacts: [x.contact('Amina Yusuf')], since: new Date(0), now: x.now, lead: 'week', asks: [] })).map((f) => f.fact.says);
     console.log(`WHAT THE UPDATE SAYS\n${facts.join('\n')}`);
     expect(facts.join(' ')).toMatch(/marked as not backed up, so I have not counted it as done/);
     expect(facts.join(' ')).not.toMatch(/as the proof for .* counted as done/);

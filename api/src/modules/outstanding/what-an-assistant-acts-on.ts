@@ -73,3 +73,17 @@ export async function theMattersSheActsOn(prisma: any, a: { organizationId: stri
   }
   return out;
 }
+
+/**
+ * HER OWN DECISIONS ON HER OWN TODAY (Dangote stress test, D5: Ask said "150 things need your decision", her assistant's Today said 141, and her own Today said
+ * "Nothing needs you right now"). For somebody whose work Groundwork keeps (she has a year-end job), the decisions are read from the same register and the same
+ * words as Ask's "What needs my decision?", so the number cannot differ. Nothing for anybody else, and nothing when there is no decision.
+ */
+export async function herOwnDecisions(prisma: any, a: { organizationId: string; userId: string; now: Date }): Promise<AMatterTheyActOn[]> {
+  const job = await Promise.resolve(prisma.persistentJob?.findFirst?.({ where: { organizationId: a.organizationId, principalUserId: a.userId, kind: 'annual_report' }, select: { id: true } })).catch(() => null);
+  if (!job) return [];
+  const register = await buildTheRegister(prisma, { organizationId: a.organizationId, principalUserId: a.userId, now: a.now, forADelegate: false });
+  if (!register.rows.some((r) => r.status === 'awaiting decision' && r.decision)) return [];
+  const [title, ...rest] = whatNeedsTheDecisionSaid(register, { forName: null, now: a.now }).split('\n');
+  return [{ key: 'her-own-decisions', kind: 'decide', title, detail: rest.slice(0, 1).join(' ') || null, action: { label: 'Ask about your decisions', to: '/chat' }, groundId: '', organizationId: a.organizationId }];
+}

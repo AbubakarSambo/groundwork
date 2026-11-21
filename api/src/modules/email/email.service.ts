@@ -32,6 +32,7 @@ import { Resend } from 'resend';
 import { type AnAttachment, holdTheAttachments, releaseTheAttachments, whyTheseCannotGo } from './attachments';
 import { markTheYearEndFilesSent } from '../year-end/the-year-end-log';
 import { markAnIntroductionSent } from '../executive-onboarding/the-introduction-delivery';
+import { giveTheAskBack, theAskWent } from '../executive-onboarding/information-gaps';
 import * as nodemailer from 'nodemailer';
 import { greeting } from './a-greeting-with-no-name';
 import { howLongInWords } from '../auth/how-long-a-link-lasts';
@@ -497,6 +498,7 @@ export class EmailService implements OnModuleInit {
       this.logger.log(`Not sending "${options.subject}" to ${options.to}: ${rather}`);
       this.writeItDown(options, sender, 'suppressed', rather);
       if (context) context.outcome = 'suppressed';
+      await giveTheAskBack(this.prisma, context?.sendKey);
       return undefined;
     }
 
@@ -620,6 +622,8 @@ export class EmailService implements OnModuleInit {
       if (rather) {
         this.logger.log(`Not sending the held "${row.subject}" to ${row.toAddress}: ${rather}`);
         await this.writeItDown(options, row.sender, 'suppressed', rather);
+        /* The questions it carried were never put to anybody: they are let go of, so they are asked another day and never said to have been asked. */
+        await giveTheAskBack(this.prisma, (row.context as DeliveryContext | null)?.sendKey);
         return;
       }
     }
@@ -662,6 +666,7 @@ export class EmailService implements OnModuleInit {
     if (!(await mayItGo(this.prisma, key))) {
       this.logger.log(`Not sending "${options.subject}": the same mail already went today.`);
       if (context) context.outcome = 'suppressed';
+      await giveTheAskBack(this.prisma, context?.sendKey);
       return undefined;
     }
     try {
@@ -768,6 +773,7 @@ export class EmailService implements OnModuleInit {
       await this.delivery.recordSend(devId, options.to, context);
       await markTheYearEndFilesSent(this.prisma, context?.sendKey, devId);
       await markAnIntroductionSent(this.prisma, context?.sendKey, devId);
+      await theAskWent(this.prisma, context?.sendKey, theQuietHoursNow());
       /* A mail that is only logged is still written down as sent, the way a real one is: the once-only and one-a-day rules read this record, so without it a local run sends the same routine mail every morning, which production never does. */
       if (sender && ROUTINE_EMAILS.has(sender)) await this.writeItDown(options, sender, 'sent', null); else void this.writeItDown(options, sender, 'sent', null);
       // DEV BOUNCE CONVENTION: a recipient containing '+bounce' emits a
@@ -798,6 +804,7 @@ export class EmailService implements OnModuleInit {
     if (data?.id) await this.delivery.recordSend(data.id, options.to, context);
     await markTheYearEndFilesSent(this.prisma, context?.sendKey, data?.id);
     await markAnIntroductionSent(this.prisma, context?.sendKey, data?.id);
+    await theAskWent(this.prisma, context?.sendKey, theQuietHoursNow());
     return undefined;
   }
 
@@ -1663,8 +1670,8 @@ export class EmailService implements OnModuleInit {
     return paragraphs.map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
   }
 
-  async sendTheRoutineMessageByEmail(email: string, subject: string, text: string, linkLabel: string | null, linkUrl: string | null, participantId?: string, replyTo?: string): Promise<'sent' | 'held' | 'suppressed'> {
-    const context: DeliveryContext = { kind: 'OTHER', ...(participantId ? { participantId } : {}) };
+  async sendTheRoutineMessageByEmail(email: string, subject: string, text: string, linkLabel: string | null, linkUrl: string | null, participantId?: string, replyTo?: string, /** The questions it carries (information-gaps.ts anAskKey): marked asked by this door only when the mail really goes. */ askKey?: string): Promise<'sent' | 'held' | 'suppressed'> {
+    const context: DeliveryContext = { kind: 'OTHER', ...(participantId ? { participantId } : {}), ...(askKey ? { sendKey: askKey } : {}) };
     /* A mail that asks somebody a question carries the assistant's address as its Reply-To, so a plain reply reaches the assistant (Fatima round 1, H5: the team's asks had none and went to noreply). */
     await this.sendEmail({ to: email, subject, html: this.layout(this.whatWhatsAppCouldNotTake(text) + (linkUrl ? `<p><a href="${linkUrl}">${escapeHtml(linkLabel || 'Open Groundwork')}</a></p>` : '')), ...(replyTo ? { replyTo } : {}) }, context, 'sendTheRoutineMessageByEmail');
     return context.outcome ?? 'sent';

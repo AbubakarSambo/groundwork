@@ -106,6 +106,8 @@ export interface YearEndContent {
   shortened: string[];
   /** The report's prose, when the narrator wrote it and every sentence held up (the-year-end-narrative.ts). Absent otherwise, and then the plain lines above are the report. */
   narrative?: TheNarrative;
+  /** Which proven lines are outcomes rather than routine work, by claim id, most important first (the-year-end-narrative.ts withTheOutcomes). Absent with no model. */
+  outcomes?: { inputHash: string; ids: string[]; promptKey: string; promptVersionId: string | null };
 }
 
 export interface TheRecordForTheYear {
@@ -119,8 +121,8 @@ export interface TheRecordForTheYear {
   gaps: string[];
   /** Months with no forwarded note, "2026-03", when notes were forwarded for several other months (read from the same material that gives each month its section). */
   noteGaps?: string[];
-  /** Who is being asked about the gaps, read from what was really asked (year_end_log). Null when nobody has been asked yet. */
-  askedOf?: { months: string | null; matches: string | null };
+  /** Who is being asked about the gaps, read from what was really asked (information_gaps, only once the message went). Null when nobody has been asked yet. Matches by the pair's keys, "a|b". */
+  askedOf?: { months: string | null; matches: Record<string, string> };
 }
 
 const LETTER: Record<string, string> = { commitment: 'C', dependency: 'D', obligation: 'O', todo: 'T', request: 'Q', report: 'R', document: 'F' };
@@ -272,16 +274,17 @@ const registerLine = (r: TheRegisterRow, first: string): RegisterLine => ({
 
 const FROM_WORDS: Record<string, string> = { 'what they told Groundwork': 'what the team told Groundwork', 'your own list': 'a to-do list' };
 
-/** Lines that may be one matter in different words are asked about together once, not as a chain of pairs. */
-function theMatchesTogether(pairs: { a: { key: string; item: string }; b: { key: string; item: string } }[]): string[][] {
-  const groups: { keys: Set<string>; items: Map<string, string> }[] = [];
+/** Lines that may be one matter in different words are asked about together once, not as a chain of pairs. Each group keeps the pairs it was made from, so who was asked about it is read from those. */
+function theMatchesTogether(pairs: { a: { key: string; item: string }; b: { key: string; item: string } }[]): { items: string[]; pairs: string[] }[] {
+  const groups: { keys: Set<string>; items: Map<string, string>; pairs: string[] }[] = [];
   for (const p of pairs) {
     const hit = groups.filter((g) => g.keys.has(p.a.key) || g.keys.has(p.b.key));
-    const g = hit[0] ?? (groups[groups.push({ keys: new Set(), items: new Map() }) - 1]);
-    for (const other of hit.slice(1)) { other.keys.forEach((k) => g.keys.add(k)); other.items.forEach((v, k) => g.items.set(k, v)); groups.splice(groups.indexOf(other), 1); }
+    const g = hit[0] ?? (groups[groups.push({ keys: new Set(), items: new Map(), pairs: [] }) - 1]);
+    for (const other of hit.slice(1)) { other.keys.forEach((k) => g.keys.add(k)); other.items.forEach((v, k) => g.items.set(k, v)); g.pairs.push(...other.pairs); groups.splice(groups.indexOf(other), 1); }
     for (const x of [p.a, p.b]) { g.keys.add(x.key); g.items.set(x.key, plain(x.item).replace(/[.!?]+$/, '')); }
+    g.pairs.push(`${p.a.key}|${p.b.key}`);
   }
-  return groups.map((g) => [...g.items.values()]);
+  return groups.map((g) => ({ items: [...g.items.values()], pairs: g.pairs }));
 }
 
 /** The record, laid out as the files will say it. Pure: the same record and edits always give the same content. */
@@ -296,7 +299,16 @@ export function buildTheContent(record: TheRecordForTheYear, edits: AnEdit[] = [
   /* A forwarded note is content: what it says, for the one month it is about. A document with no month, or about several months, is kept and listed, and says nothing more than that. */
   const months = new Map<string, Claim[]>();
   const otherDocs: { ref: string; at: Date }[] = [];
-  for (const d of record.documents) {
+  /* A plain email or WhatsApp message is evidence under the month it is about, and the month says how many there are; what each says is in the appendix (D9). */
+  const messagesIn = new Map<string, string[]>();
+  for (const d of record.documents.filter((x) => x.origin === 'message')) {
+    const ref = refFor('document', d.id);
+    const said = whatANoteSays(d.text);
+    evidence.set(ref, { ref, kind: 'document', label: d.fileName === 'a WhatsApp message' ? 'a WhatsApp message' : 'an email', said: said.sentences.length ? said.sentences.join(' ') : plain(d.text).slice(0, 400), at: d.at.toISOString(), ...(d.covers?.length ? { covers: d.covers } : {}) });
+    for (const m of d.covers ?? []) messagesIn.set(m, [...(messagesIn.get(m) ?? []), ref]);
+  }
+  for (const [m, refs] of messagesIn) months.set(m, [...(months.get(m) ?? []), { id: `msg:${m}`, status: 'kept', refs, text: `${refs.length === 1 ? 'One email or WhatsApp message about' : `${refs.length} emails and WhatsApp messages about`} ${monthWords(m)} ${refs.length === 1 ? 'is' : 'are'} on the record. What ${refs.length === 1 ? 'it says is' : 'each says is'} in the evidence index.` }]);
+  for (const d of record.documents.filter((x) => x.origin !== 'message')) {
     const ref = refFor('document', d.id);
     const note = whatANoteSays(d.text);
     const covers = d.covers ?? [];
@@ -313,12 +325,13 @@ export function buildTheContent(record: TheRecordForTheYear, edits: AnEdit[] = [
     ...(otherDocs.length ? [{ id: 'f:other', status: 'kept' as const, refs: otherDocs.map((x) => x.ref), text: `${otherDocs.length} other ${otherDocs.length === 1 ? 'document was' : 'documents were'} kept that ${otherDocs.length === 1 ? 'does' : 'do'} not name one month, or cover several, or have no readable sentences. ${otherDocs.length === 1 ? 'It is' : 'They are'} listed in the evidence index, and nothing more is claimed from ${otherDocs.length === 1 ? 'it' : 'them'}.` }] : []),
   ];
 
-  const asked = record.askedOf ?? { months: null, matches: null };
+  const asked = record.askedOf ?? { months: null, matches: {} };
+  const whoIsAskedAbout = (pairs: string[]) => pairs.map((k) => asked.matches?.[k]).find(Boolean) ?? null;
   const gapClaims: Claim[] = [
     ...(record.gaps.length ? [{ id: 'g:months', status: 'gap' as const, refs: [], text: `Nothing in the record covers ${listOf(record.gaps.map((g) => MONTHS[Number(g.slice(5)) - 1]))} ${record.gaps[0].slice(0, 4)}. That does not mean nothing happened. ${asked.months ? `${asked.months} is being asked for it.` : 'Nobody has been asked for it yet.'}` }] : []),
     /* Monthly notes were forwarded and one month has none: the report says so by name, even when other records (a payment, a promise) carry that month's date. */
     ...((record.noteGaps ?? []).filter((g) => !record.gaps.includes(g)).length ? [{ id: 'g:notes', status: 'gap' as const, refs: [], text: `No note was forwarded for ${listOf((record.noteGaps ?? []).filter((g) => !record.gaps.includes(g)).map((g) => MONTHS[Number(g.slice(5)) - 1]))} ${record.year}. Whatever that note would have said is not in this report. ${asked.months ? `${asked.months} is being asked for it.` : 'Nobody has been asked for it yet.'}` }] : []),
-    ...theMatchesTogether(record.register.toAsk).map((items, i): Claim => ({ id: `m:${i}`, status: 'gap', refs: [], text: `The record may hold one matter in different words: ${listOf(items.map((x) => `"${x}"`))}. ${asked.matches ?? first} is being asked which is right, and the lines are kept apart until then.` })),
+    ...theMatchesTogether(record.register.toAsk).map((g, i): Claim => { const who = whoIsAskedAbout(g.pairs); return { id: `m:${i}`, status: 'gap', refs: [], text: `The record may hold one matter in different words: ${listOf(g.items.map((x) => `"${x}"`))}. ${who ? `${who} is being asked which is right` : 'Nobody has been asked yet which is right'}, and the lines are kept apart until then.` }; }),
     ...record.register.rows.filter((r) => r.owner === 'unconfirmed' && r.status !== 'completed' && r.status !== 'cancelled').map((r): Claim => ({ id: `n:${r.key}`, status: 'gap', refs: oneEach(r.sources.map((s) => refFor(s.kind, s.id))), text: `Nobody has confirmed who owns "${quoted(r.item)}", so it cannot move until somebody does.` })),
   ];
   const monthSections: Section[] = [...months.keys()].sort().map((m) => ({ id: `month:${m}` as SectionId, title: monthWords(m), claims: months.get(m)! }));
@@ -400,7 +413,7 @@ export function applyOneEdit(content: YearEndContent, e: AnEdit, _now: Date): Ye
     const there = alreadyThere ? [] : c.evidence.filter((x) => (x.covers?.length ? x.covers.includes(e.month) : monthOf(x.at) === e.month));
     sec.claims.push(...there.map((x): Claim => ({ id: `mm:${x.ref}`, status: 'kept', refs: [x.ref], text: `${theSourceName(x)[0].toUpperCase()}${theSourceName(x).slice(1)} says: ${sentence(x.said)}` })));
     if (!alreadyThere && !there.length && !c.edits.some((x) => x.kind === 'add_month' && x.month === e.month && x.text)) {
-      sec.claims.push({ id: `mm:none:${e.month}`, status: 'gap', refs: [], text: `Nothing in the record covers ${monthWords(e.month)} yet. The team is being asked for it.` });
+      sec.claims.push({ id: `mm:none:${e.month}`, status: 'gap', refs: [], text: `Nothing in the record covers ${monthWords(e.month)} yet, so it is marked unverified until a record arrives.` });
       const q = `Is there anything from ${monthWords(e.month)} that belongs in the year-end report?`;
       if (!c.questions.includes(q)) c.questions.push(q);
     }

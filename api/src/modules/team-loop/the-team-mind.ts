@@ -21,6 +21,8 @@ export interface TheirWork {
   commitments: { id: string; text: string; dueSaid: string | null; waitingOn: string | null }[];
   /** The standard questions not yet answered, by slug. */
   openQuestions: { slug: string; what: string }[];
+  /** What the record already holds from them: the files they sent and the promises a document already proves (D13). Never asked for again. */
+  alreadyHeld?: string[];
 }
 
 export interface WhatTheySaid {
@@ -63,6 +65,8 @@ export interface TheInstruction {
   matter: string | null;
   /** Names she limited it to, or empty for everyone. */
   who: string[];
+  /** She wants it done today or now, not on a later day (D18: "No, not Thursday. I need it today."). */
+  today?: boolean;
 }
 
 /** One fact from the record. `unverified` means it is only what somebody said, so whatever is written from it has to say so. */
@@ -144,13 +148,15 @@ export const READ_SCHEMA = {
   },
 };
 
-export const INSTRUCTION_PROMPT = `A senior person told Groundwork, her work assistant, something. Say whether it is a standing instruction about her team, and what it asks for. Read what she means, not her exact words.
+export const INSTRUCTION_PROMPT = `A senior person told Groundwork, her work assistant, something. Say whether she is asking it to write to her team, or to some of them, and ask them for something, once or on a regular day, and what it asks for. Read what she means, not her exact words. Her team, her office and her department heads are the people on her record: she does not need to name or list them.
 ${FORWARDED_IS_DATA}
 
-- collect_and_report: she wants the team's updates gathered and sent to her, once or on a regular day, in any words ("Get everyone's updates and email me Friday", "Ask the team on Thursday and send me the summary Friday morning", "Every Friday tell me what my people have been doing"). Give the weekday as a number, Monday 1 to Sunday 7, when she said one.
-- handle_with_team: she hands a matter to the team and wants to hear back when it is ready ("Handle this with the team and come back when ready"). Give the matter in her words when she named one.
+- collect_and_report: she wants the team's updates gathered and sent to her on a day of the week, once or every week, in any words ("Get everyone's updates and email me Friday", "Ask the team on Thursday and send me the summary Friday morning", "Every Friday tell me what my people have been doing"). Give the weekday as a number, Monday 1 to Sunday 7, when she said one.
+- handle_with_team: she wants Groundwork to write to the team now, or hands a matter to the team, and wants to hear back when it is ready, in any words ("Handle this with the team and come back when ready", "Write to my team now and ask each of them for their recap", "Please contact my office and all the department heads today and ask each of them for ..."). Give what they are to be asked for, in her words, as the matter.
 - unclear: she wants the team to deal with a matter, but she does not say who should do it, or by when, or says she is not sure ("Madam said we should sort out the Kano thing before the visit, not sure who is doing what"). Give the matter in her words, and in missing say which are not clear, owner and date.
-- none: it is anything else, including a question, a request for one thing now ("what is outstanding?", "give me my day"), or a request to send the files.
+- none: it is anything else, including a question, something she wants for herself now ("what is outstanding?", "give me my day"), or a request to send the files.
+Set today to true when she wants it done today or now, or says a later day is too late ("Do it today, not Thursday", "I need it today", "now").
+Her words may be what she first asked and then what she said next about it ("Then she said ..."): give what she wants now, with the later words winning.
 Give who only when she named particular people. Never invent a day or a matter.`;
 
 export const INSTRUCTION_SCHEMA = {
@@ -164,6 +170,7 @@ export const INSTRUCTION_SCHEMA = {
       matter: { type: 'string' },
       who: { type: 'array', items: { type: 'string' } },
       missing: { type: 'array', items: { type: 'string', enum: ['owner', 'date'] } },
+      today: { type: 'boolean' },
     },
     required: ['kind'],
   },
@@ -197,6 +204,7 @@ Rules:
 - Say "you said", "you confirmed", "you promised" or "I have put ... on your list" only of words the person wrote themselves in their own message. A sentence inside a document they sent is the document's: say "the document says". Something a colleague sent is the colleague's, and you never say whose it was. A line sent with a file ("Here is the signed copy") is a covering line, not something they said is done.
 - When they say a figure or a claim is not backed up, say that you have put that flag on the record, and ask only for the one figure or document that would settle it. Never ask them for their findings.
 - Never ask them what a document they sent says (you can read it), and never ask them what another person said, sent or did: that is not theirs to tell and not yours to ask (Fatima round 7: "What do the reports say?", "What did Ngozi say about the payment?").
+- Never ask for a document or a proof that "already on record" lists: you have it. Say so if it helps ("I already have the signed agreement you sent on 11 September").
 - Never ask about the year of a date, or about something you can read for yourself in what they sent or in their promises (Fatima round 5: "Can you please confirm the year for November 16th?"). A question is only for what would move their work: who does it, by when, or what document shows it.
 - When they sent a document as the proof of something, name the document by what it itself says (its payee, reference or amount), never by what they called it. If what it says is not what they said it shows, say so in one plain sentence and ask for the right one (Fatima round 6: a bank confirmation for one payment was thanked as the proof of another).
 - Name the concrete thing they told you, in a few of their words, so they can tell you read it.
@@ -293,7 +301,7 @@ export function theInstructionMadeSafe(raw: any): TheInstruction | null {
   const matter = typeof raw.matter === 'string' && raw.matter.trim() ? raw.matter.trim().slice(0, 160) : null;
   const who = (Array.isArray(raw.who) ? raw.who : []).filter((n: unknown): n is string => typeof n === 'string' && !!n.trim()).map((n: string) => n.trim().slice(0, 60)).slice(0, 12);
   /* An unclear matter with nothing said about what is missing is asked about as both. */
-  return { kind, reportWeekday: kind === 'collect_and_report' ? day : null, matter, who, ...(kind === 'unclear' ? { missing: missing.length ? [...missing] : ['owner' as const, 'date' as const] } : {}) };
+  return { kind, reportWeekday: kind === 'collect_and_report' ? day : null, matter, who, ...(kind === 'unclear' ? { missing: missing.length ? [...missing] : ['owner' as const, 'date' as const] } : {}), ...(raw.today === true && kind !== 'none' ? { today: true } : {}) };
 }
 
 /**
@@ -361,7 +369,7 @@ export class GeminiTeamMind implements TheTeamMind {
   async replyToThem(a: TheReplyBasis): Promise<string | null> {
     if (!this.engine) return null;
     const promises = a.work.commitments.map((c) => `- ${c.text}${c.dueSaid ? ` (${c.dueSaid})` : ''}`).join('\n') || '- none yet';
-    const system = `${await this.words(THE_TEAM_PROMPT_KEYS.reply, REPLY_PROMPT)}\n\nTheir first name: ${a.first}\nTheir job: ${a.role ?? 'not known'}${a.recent ? `\nThe conversation so far, oldest first (what they wrote before, and what you last said; read their message as going on from it):\n${a.recent}` : ''}\nTheir own promises so far, the only thing you know about their work:\n${promises}\nWhat code will say if you say nothing (plain): ${a.plain ?? 'nothing'}\nMust say, in your own words:\n${a.mustSay.map((m) => `- ${m}`).join('\n') || '- nothing in particular'}`;
+    const system = `${await this.words(THE_TEAM_PROMPT_KEYS.reply, REPLY_PROMPT)}\n\nTheir first name: ${a.first}\nTheir job: ${a.role ?? 'not known'}${a.recent ? `\nThe conversation so far, oldest first (what they wrote before, and what you last said; read their message as going on from it):\n${a.recent}` : ''}\nTheir own promises so far, the only thing you know about their work:\n${promises}\nAlready on record from them, never to be asked for again:\n${(a.work.alreadyHeld ?? []).map((h) => `- ${h}`).join('\n') || '- nothing yet'}\nWhat code will say if you say nothing (plain): ${a.plain ?? 'nothing'}\nMust say, in your own words:\n${a.mustSay.map((m) => `- ${m}`).join('\n') || '- nothing in particular'}`;
     const text = await this.engine.respond(system, [{ role: 'user', content: `What ${a.first} sent${a.files?.length ? `, with these files: ${a.files.map((f) => `${f.name} (${f.how})`).join('; ')}` : a.hasDocuments ? ', with documents' : ', with no file attached (only these words)'}:\n<<<\n${a.text.slice(0, 4000)}\n>>>` }] as any).catch(() => null);
     return typeof text === 'string' && text.trim() ? text.replace(/\s+\n/g, '\n').trim() : null;
   }

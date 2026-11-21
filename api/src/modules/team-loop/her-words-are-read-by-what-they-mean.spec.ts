@@ -162,7 +162,8 @@ describe('a standing instruction is understood in any words, and is read before 
     const x = await aWorld();
     const back = await x.hear(said);
     console.log(`SHE SAYS "${said}" AND READS\n${back}`);
-    expect(back).toMatch(/^Fatima, I understand\. I will ask .* now, and come back to you/);
+    /* Batch D, R5: said back as who on her record is written to, how, and about what, in place of "I understand. I will ask ... now". */
+    expect(back).toMatch(/^Fatima, I will write to 2 people on your record now, .* I will tell you as soon as they have answered, or after three days/);
     expect(x.t.persistentJob.rows.find((j: any) => j.kind.startsWith('standing:'))).toMatchObject({ state: 'proposed', details: { kind: 'handle_with_team' } });
   });
 

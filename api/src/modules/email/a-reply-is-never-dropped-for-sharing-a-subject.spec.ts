@@ -1,5 +1,5 @@
 import { EmailService } from './email.service';
-import { aRichTable } from '../year-end/a-year-end-world-for-specs';
+import { aRichTable } from '../year-end/a-world-for-the-year-end';
 
 const sendMail = jest.fn(async (_m: any) => ({}));
 jest.mock('nodemailer', () => ({ createTransport: () => ({ sendMail: (m: any) => (sendMail as any)(m) }) }));

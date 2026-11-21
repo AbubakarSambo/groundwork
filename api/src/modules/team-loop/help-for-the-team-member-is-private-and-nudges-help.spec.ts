@@ -1,3 +1,4 @@
+import { theAskWent } from '../executive-onboarding/information-gaps';
 import { aScriptedMind, aTeamLoopWorld } from './a-world-for-the-team-loop';
 import { buildTheRegister } from '../outstanding/the-outstanding-register';
 import { buildThePicture } from '../executive-onboarding/the-first-picture';
@@ -38,7 +39,7 @@ describe('what a team member says to the coach is private, in the backend', () =
     await x.service.hearATeamMember({ organizationId: 'org-1', contact: x.contact('Amina Yusuf'), text: THE_WORRY });
     const reg = await buildTheRegister(x.prisma, { organizationId: 'org-1', principalUserId: 'u-fatima', now: x.now, forADelegate: false });
     const contacts = await theTeamSheMayAsk(x.prisma, 'u-fatima');
-    const update = await theUpdateForHer(x.prisma, mind, { organizationId: 'org-1', principalUserId: 'u-fatima', first: 'Fatima', contacts, since: new Date(x.now.getTime() - 86_400_000), now: x.now, lead: 'week', nobodyAnswered: [] });
+    const update = await theUpdateForHer(x.prisma, mind, { organizationId: 'org-1', principalUserId: 'u-fatima', first: 'Fatima', contacts, since: new Date(x.now.getTime() - 86_400_000), now: x.now, lead: 'week', asks: [] });
     const gaps = await theGapsStillOpen(x.prisma, 'u-fatima');
     const everything = JSON.stringify([reg, update, gaps, x.t.principalMaterial.rows, x.t.commitment.rows, x.t.informationGap.rows, x.t.persistentJob.rows]);
     expect(everything).not.toMatch(/worried|angry|lose this job|Dear Director/i);
@@ -68,7 +69,7 @@ async function withOpenPromises(over: Record<string, unknown> = {}) {
   const x = await aTeamLoopWorld({ mind: aScriptedMind() });
   const days = (n: number) => new Date(x.now.getTime() - n * DAY);
   const make = (data: Record<string, unknown>) => x.t.commitment.create({ data: { organizationId: 'org-1', dueAt: null, state: 'OPEN', source: 'team_reply', ...data } });
-  return { x, days, make, ports: { whatsapp: { send: async (a: any) => { x.w.sent.push({ to: a.phone, text: a.text, channel: 'whatsapp', kind: a.kind }); return { sent: true }; } }, email: { send: async (a: any) => { x.w.sent.push({ to: a.to, subject: a.subject, text: a.text, channel: 'email', kind: 'routine' }); } } }, over };
+  return { x, days, make, ports: { whatsapp: { send: async (a: any) => { x.w.sent.push({ to: a.phone, text: a.text, channel: 'whatsapp', kind: a.kind }); /* as the gate does: what it asks is asked once it went */ await theAskWent(x.prisma, a.sendKey, x.now); return { sent: true }; } }, email: { send: async (a: any) => { x.w.sent.push({ to: a.to, subject: a.subject, text: a.text, channel: 'email', kind: 'routine' }); await theAskWent(x.prisma, a.askKey, x.now); } } }, over };
 }
 
 describe('a nudge goes to the person who can move the thing', () => {

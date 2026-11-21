@@ -54,13 +54,13 @@ export class TeamLoopService {
     return {
       whatsapp: {
         send: async (a) => {
-          const r = await this.whatsapp.sendFor(a.organizationId, a.phone, a.text, { kind: a.kind as any });
+          const r = await this.whatsapp.sendFor(a.organizationId, a.phone, a.text, { kind: a.kind as any, ...(a.sendKey ? { sendKey: a.sendKey } : {}) });
           /* Held for the night is taken: it goes in the morning from the held queue. One the gate refused is not, so it is tried again. */
           return { sent: !!r.sent || String(r.error ?? '').startsWith(HELD), error: r.error };
         },
       },
       email: {
-        send: (a) => this.email.sendTheRoutineMessageByEmail(a.to, a.subject, a.text, null, null, undefined, a.replyTo || undefined),
+        send: (a) => this.email.sendTheRoutineMessageByEmail(a.to, a.subject, a.text, null, null, undefined, a.replyTo || undefined, a.askKey),
         /* The one mail door refuses a second mail with the same key, which is what makes each cycle's email go once. */
         sendOnce: (a) => this.email.sendTheIntroduction(a.to, a.subject, a.text, a.replyTo, a.sendKey),
       },
@@ -147,9 +147,10 @@ export class TeamLoopService {
 
   /**
    * A team member's short words, before they are kept as material: a request for help is answered now and privately, and a correction goes through
-   * the claim probe. Anything else is null, and is kept and read as their check-in.
+   * the claim probe. Anything else is null, and is kept and read as their check-in. A correction is about the work, so the caller keeps it on the record as
+   * well (`keep.it`); a request for help, or a question about somebody else, is private and is never kept.
    */
-  async hearATeamMember(a: { organizationId: string; contact: any; text: string }): Promise<string | null> {
+  async hearATeamMember(a: { organizationId: string; contact: any; text: string; keep?: { it: boolean } }): Promise<string | null> {
     const text = String(a.text ?? '').trim();
     if (!text || text.length > 600) return null;
     const { work } = await theirWorkNow(this.db, a.contact);
@@ -163,6 +164,7 @@ export class TeamLoopService {
     /* "What did the others say about me?" is answered plainly, and nothing is passed on: what one person sent is never told to another. */
     if (said.kind === 'about_others') return NOTHING_ABOUT_OTHERS(work.first);
     if (said.kind === 'correction' && this.anthropic) {
+      if (a.keep) a.keep.it = true;
       return checkACorrectionOnTheTeamsWork(this.db, this.anthropic as any, this.prompts as any, { organizationId: a.organizationId, principalUserId: a.contact.principalUserId, contacts: [a.contact], first: work.first, message: text, now, passOnWhenUnclear: false, whichShowsIt: (x) => this.mind.whichShowsIt(x) }).catch(() => null);
     }
     return null;

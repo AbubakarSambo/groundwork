@@ -29,3 +29,21 @@ describe('the Gemini transcriber', () => {
     expect(await bad.transcribe({ buffer: Buffer.from('A'), mimeType: 'audio/ogg', fileName: 'v.ogg' })).toEqual({ ok: false });
   });
 });
+
+describe('the transcriber is given the organisation\'s own names (Batch D, D16)', () => {
+  it('reads the organisation and its roster, and gives them to the model as a spelling list only', async () => {
+    const { theNamesThisOrganisationUses } = await import('./the-transcriber');
+    const prisma: any = {
+      organization: { findUnique: async () => ({ name: 'Dangote Group (test)' }) },
+      person: { findMany: async () => [{ displayName: 'Fatima Wali Abdulrahman' }, { givenName: 'Ahmed', familyName: 'Bako' }, { displayName: '' }] },
+    };
+    const names = await theNamesThisOrganisationUses(prisma, 'org-1');
+    expect(names).toEqual(['Dangote Group', 'Fatima Wali Abdulrahman', 'Ahmed Bako']);
+    let asked = '';
+    const t = new GeminiTranscriber({ respondWithMedia: async (system: string) => { asked = system; return '{"text":"I need what I need Dangote to decide.","unclear":[]}'; } } as any);
+    const heard = await t.transcribe({ buffer: Buffer.from('x'), mimeType: 'audio/ogg', fileName: 'fatima-voice-hour0.ogg', names });
+    expect(asked).toMatch(/They are a spelling list only, not words that were said: Dangote Group; Fatima Wali Abdulrahman; Ahmed Bako\.$/);
+    expect(heard).toEqual({ ok: true, text: 'I need what I need Dangote to decide.', unclear: [] });
+    expect(await theNamesThisOrganisationUses(prisma, null)).toEqual([]);
+  });
+});

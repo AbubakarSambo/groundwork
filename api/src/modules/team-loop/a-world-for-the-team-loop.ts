@@ -11,6 +11,7 @@ import { aWorldForOnboarding, addFatima, ORG } from '../executive-onboarding/a-w
 import { keepATeamMembersReply } from '../executive-onboarding/a-team-members-reply';
 import { answerTheQuietBatches } from '../executive-onboarding/the-first-picture';
 import { TeamLoopService } from './team-loop.service';
+import { theAskWent } from '../executive-onboarding/information-gaps';
 import type { TheTeamMind, WhatTheySaid, TheInstruction } from './the-team-mind';
 
 export { ORG };
@@ -55,8 +56,9 @@ export async function aTeamLoopWorld(over: { mind?: TheTeamMind | null; now?: Da
   await says('u-fatima', 'Yes');
   w.sent.length = 0;
 
-  const mail = { sendTheRoutineMessageByEmail: async (to: string, subject: string, text: string) => { w.sent.push({ to, subject, text, channel: 'email', kind: 'routine' }); return 'sent' as const; }, sendTheIntroduction: async (to: string, subject: string, text: string, replyTo: string, sendKey: string) => { if (w.sent.some((m) => (m as any).sendKey === sendKey)) return 'suppressed' as const; w.sent.push({ to, subject, text, replyTo, channel: 'email', kind: 'once', ...({ sendKey } as any) }); return 'sent' as const; } };
-  const chat = { sendFor: async (_o: string, phone: string, text: string, ctx: any) => { w.sent.push({ to: phone, text, channel: 'whatsapp', kind: ctx?.kind }); return { sent: true }; } };
+  /* The fakes do what the one door and the one gate do: what a message asks is marked asked when it goes. */
+  const mail = { sendTheRoutineMessageByEmail: async (to: string, subject: string, text: string, _l?: unknown, _u?: unknown, _p?: unknown, _r?: unknown, askKey?: string) => { w.sent.push({ to, subject, text, channel: 'email', kind: 'routine' }); await theAskWent(prisma, askKey, now); return 'sent' as const; }, sendTheIntroduction: async (to: string, subject: string, text: string, replyTo: string, sendKey: string) => { if (w.sent.some((m) => (m as any).sendKey === sendKey)) return 'suppressed' as const; w.sent.push({ to, subject, text, replyTo, channel: 'email', kind: 'once', ...({ sendKey } as any) }); return 'sent' as const; } };
+  const chat = { sendFor: async (_o: string, phone: string, text: string, ctx: any) => { w.sent.push({ to: phone, text, channel: 'whatsapp', kind: ctx?.kind }); await theAskWent(prisma, ctx?.sendKey, now); return { sent: true }; } };
   const engine: any = over.engine ?? { extract: async () => null };
   const service = new TeamLoopService(prisma, mail as any, chat as any, over.mind === undefined ? aScriptedMind() : over.mind ?? undefined, engine, undefined);
   /* The service falls back to the model client when no mind is given; a test that wants the plain reading passes one that returns null. */

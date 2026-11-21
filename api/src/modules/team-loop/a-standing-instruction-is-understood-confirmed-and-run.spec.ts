@@ -130,7 +130,8 @@ describe('"Handle this with the team and come back when ready"', () => {
     const x = await aTeamLoopWorld({ mind: aScriptedMind({ instruction: { kind: 'handle_with_team', matter: 'the Kilele permit' } }), now: at(11, '10:00') });
     const back = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'Handle the Kilele permit with the team and come back when ready.' });
     console.log(`WHAT FATIMA READS\n${back}`);
-    expect(back).toBe('Fatima, I understand. I will ask Amina and Ibrahim about the Kilele permit now, and come back to you when I have what I need, or after three days with whatever I have and who has not answered. Shall I go ahead?');
+    /* Batch D, R5: the say-back names each person on her record, how they are reached and what is open with them, instead of first names only. */
+    expect(back).toBe('Fatima, I will write to 2 people on your record now, and ask each of them about the Kilele permit. I will write to Ibrahim Sule on WhatsApp, and to Amina Yusuf by email, and ask what they have done and what is still open. Nobody is asked for a document I already have. I will tell you as soon as they have answered, or after three days with whatever I have and who has not answered. Shall I go ahead?');
     await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'Yes' });
     const sweep = (when: Date) => runTheStandingInstructions(x.prisma, (x.service as any).ports(), when);
     expect((await sweep(at(11, '10:05'))).join()).toMatch(/asked 2/);

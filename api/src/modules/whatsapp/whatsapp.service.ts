@@ -51,6 +51,8 @@ export type SendContext = {
   paramsFor?: Record<string, string[]>;
   /** Set only by held-for-the-night.cron.ts: the message was held for quiet hours and its morning has come, so the night is not asked again. */
   afterTheNight?: boolean;
+  /** The questions this message carries (executive-onboarding/information-gaps.ts anAskKey): marked asked here only when it really goes, kept with a held message. */
+  sendKey?: string;
 };
 
 /**
@@ -91,6 +93,8 @@ import { aSignInsNumberChanged, refuseANumberOnSomebodyElse } from './one-number
 import { FIRST_CONTACT, FIRST_CONTACT_NOT_APPROVED, theFirstContactLine } from './the-first-message-to-a-number';
 import { aRoutineWhatsApp, theirRoutineMessagesToday } from '../engagement/one-routine-message-a-day';
 import { heldUntilTheMorning, QUIET_HOURS_HELD } from './quiet-hours-are-the-organisations';
+import { giveTheAskBack, theAskWent } from '../executive-onboarding/information-gaps';
+import { theQuietHoursNow } from '../../common/the-clock';
 import { GROUNDWORK_IS_PAUSED_THERE, CHECK_INS_ARE_PAUSED, thisOrganisationIsPaused } from '../billing/the-trial-grace';
 import { ATemplate, insideTheServiceWindow, isBusinessInitiated, WENT_BEFORE_THIS_RELEASE, NOT_TURNED_ON_QUIETLY, templateFor, theTemplateToUse, OUTSIDE_THE_WINDOW, THEY_SAID_STOP, FIRST_MESSAGES, APPROVALS, ONLY_HELD_BY_NOT_NOW, OPENING_OR_CLOSING, NOT_TODAY, THEY_SAID_NOT_NOW, NEVER_THE_FIRST_MESSAGE } from './a-message-outside-the-window';
 
@@ -656,6 +660,11 @@ export class WhatsAppService implements OnModuleInit {
         },
       })
       .catch((err: any) => this.logger.warn(`Could not record a WhatsApp send to ${phone}: ${err?.message}`));
+    /* WHAT A MESSAGE ASKED IS ASKED ONLY WHEN IT WENT (Dangote stress test, D4). Held for the night, it stays waiting and is marked when the morning sends it; refused, its questions are let go of. */
+    if (context.sendKey) {
+      if (result.sent) await theAskWent(this.prisma, context.sendKey, theQuietHoursNow());
+      else if (!String(result.error ?? '').startsWith(QUIET_HOURS_HELD(new Date(0)).split(';')[0])) await giveTheAskBack(this.prisma, context.sendKey);
+    }
     /* And the same fact in the ledger every channel writes to (Notification), so a failed send is findable beside a suppressed mail. */
     await this.prisma.notification
       .create({ data: { channel: 'whatsapp', organizationId, toAddress: phone, sender: context.kind ?? null, outcome: result.sent ? 'sent' : 'failed', because: result.sent ? null : (result.error ?? null) } })

@@ -1,4 +1,4 @@
-import { aYearEndWorld } from './a-year-end-world-for-specs';
+import { aYearEndWorld } from './a-world-for-the-year-end';
 import { aReadingOfHerWords } from './a-reading-of-her-words-for-specs';
 import { actOnTheJobs } from './the-year-end-owner';
 import { advanceThePersistentJobs, ensureThePrincipalsJobs } from '../outstanding/the-persistent-jobs';
@@ -89,7 +89,8 @@ describe('seven days with no conversation from Fatima (accelerated clock; real-t
 
   it('collects without her: the team is asked, once, and what they send is recognised and never asked for again', () => {
     const asks = week.w.mails.filter((m) => m.kind === 'ask');
-    expect(asks.map((m) => m.to).sort()).toEqual(['amina@example.com', 'amina@example.com', 'ibrahim@example.com']);
+    /* Changed for the Dangote stress test (D4): everything Amina is asked in one night is one message, not one for the months and one for the two lines. */
+    expect(asks.map((m) => m.to).sort()).toEqual(['amina@example.com', 'ibrahim@example.com']);
     expect(asks.some((m) => m.to === 'fatima@example.com')).toBe(false);
     expect(asks.find((m) => m.to === 'ibrahim@example.com')!.text).toContain('You said "File the quarterly assembly summary" is done.');
     expect(asks.filter((m) => m.to === 'amina@example.com').map((m) => m.text).join(' ')).toContain('Is "Prepare the quarterly payment schedule"');

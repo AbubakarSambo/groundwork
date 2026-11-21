@@ -19,6 +19,7 @@ import { theAssistantsAddress } from '../email/the-assistants-address';
 import { ASKS_FOR_THE_REFRESH, approveTheDraft, theAckBeforeTheRevision, latestDraft, readTheChange, refreshTheDraft, reviseTheDraft, type TheDraftRow } from './the-year-end-versions';
 import { contactOf, deliverTheFinal, sendTheDraft, sendTheDraftOnRequest, sendTheRegister, tellHerOnWhatsApp, type ThePorts } from './the-year-end-delivery';
 import { theRealPorts } from './the-year-end-ports';
+import { theStructureSaid } from './her-year-end-record';
 
 export const ASKS_FOR_THE_REGISTER = /^\s*send\s+(?:me\s+)?the\s+outstanding\s+(?:list|register|matters|items)\s*[.!]*\s*$/i;
 
@@ -101,7 +102,7 @@ export async function handleTheDraftWords(
     return `Thank you. I have marked version ${r.approved.version} as approved. ${f.said}`;
   }
   if (meant.asks === 'decline') return `Understood. I have not approved version ${latest.version}, and nothing has gone out as final. Tell me what to change, or say that you approve it when it is ready.`;
-  if (ASKS_FOR_THE_REGISTER.test(a.message)) return (await sendTheRegister(prisma, ports, { ...base, row: latest })).said;
+  if (ASKS_FOR_THE_REGISTER.test(a.message)) return (await sendTheRegister(prisma, ports, { ...base, row: latest, toName: isPrincipal ? 'you' : first })).said;
   if (ASKS_FOR_THE_REFRESH.test(a.message)) {
     const r = await refreshTheDraft(prisma, { ...base, by, channel: a.channel });
     if (r.version === latest.version) return r.said;
@@ -112,8 +113,11 @@ export async function handleTheDraftWords(
   const change = readTheChange(a.message, year);
   if (!change) {
     const asked = meant.asks;
-    if (asked === 'send_list') return (await sendTheRegister(prisma, ports, { ...base, row: latest })).said;
-    if (asked === 'send_draft') return sendTheDraftOnRequest(prisma, ports, { ...base, row: latest, toName: isPrincipal ? 'you' : first });
+    /* The newest version at the moment it is sent, read again here: reading her words takes the model a few seconds, and an "update the draft" a moment before can have made a newer one in that time (D17: "Send me the draft" sent version 1 minutes after version 2). */
+    const newest = (await latestDraft(prisma, { organizationId: a.organizationId, principalUserId, year })) ?? latest;
+    if (asked === 'send_list') return (await sendTheRegister(prisma, ports, { ...base, row: newest, toName: isPrincipal ? 'you' : first })).said;
+    if (asked === 'send_draft') return sendTheDraftOnRequest(prisma, ports, { ...base, row: newest, toName: isPrincipal ? 'you' : first });
+    if (asked === 'structure') return theStructureSaid(newest, isPrincipal ? 'you' : first);
   }
   /* A change asked for in ordinary words, typed or in a mail, is read as a voice note is: "make the presentation shorter" is the same change as "shorten this" (Fatima round 3). */
   /* Rewriting the report takes the model most of a minute. She is told at once that it is being done, so she is not left with nothing on her phone (Fatima round 7). */

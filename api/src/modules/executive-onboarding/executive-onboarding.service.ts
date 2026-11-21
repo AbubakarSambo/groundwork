@@ -13,7 +13,7 @@ import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { DocumentsService } from '../documents/documents.service';
 import { AnthropicService } from '../conversation/anthropic.service';
-import { TRANSCRIBER, GeminiTranscriber, COULD_NOT_FETCH_THE_VOICE_NOTE, COULD_NOT_HEAR_THE_VOICE_NOTE, type Transcriber } from '../voice/the-transcriber';
+import { TRANSCRIBER, GeminiTranscriber, theNamesThisOrganisationUses, COULD_NOT_FETCH_THE_VOICE_NOTE, COULD_NOT_HEAR_THE_VOICE_NOTE, type Transcriber } from '../voice/the-transcriber';
 import { YearEndService } from '../year-end/year-end.service';
 import { addAnExecutive, theAddressForHer, type AddAnExecutive, type TheAddition } from './onboard-an-executive';
 import { theQuietHoursNow } from '../../common/the-clock';
@@ -21,10 +21,12 @@ import { releaseTheIntroductionHeldForANumber, retryTheHeldIntroductions, type T
 import { answerTheQuietBatches, type TheAcknowledgementPorts } from './the-first-picture';
 import { herOwnWords, keepWhatWasForwarded, type TheIntakePorts } from './the-intake';
 import { hearHer, whoIsSpeakingForWhom, type TheHearingPorts } from './her-words';
+import { aWelcomeThatKnowsHerOffice } from './her-welcome';
 import { whichOneIsItFor } from './an-assistant-for-several-principals';
 import { PrincipalWork } from '../principal-work/principal-work';
 import { ReaderWithAModel, readerWithoutAModel, type TheWorkReader } from '../principal-work/the-work-reader';
 import { keepATeamMembersReply } from './a-team-members-reply';
+import { answeredByTheWork } from './the-material-for-work';
 import { closeWhatTheyAnswered } from './information-gaps';
 import { theTeamMemberWhoWroteFrom, type TheTeamPorts } from './team-introductions';
 import type { TeamLoopService } from '../team-loop/team-loop.service';
@@ -100,7 +102,7 @@ export class ExecutiveOnboardingService {
       ports: {
         email: {
           reply: (a) => this.email.sendTheAssistantsReply(a.to, a.subject, a.text, a.replyTo),
-          ask: async (a) => this.email.sendTheRoutineMessageByEmail(a.to, a.subject, a.text, null, null, undefined, (await theAddressForHer(this.db, a.organizationId).catch(() => undefined)) ?? undefined),
+          ask: async (a) => this.email.sendTheRoutineMessageByEmail(a.to, a.subject, a.text, null, null, undefined, (await theAddressForHer(this.db, a.organizationId).catch(() => undefined)) ?? undefined, a.askKey),
         },
         whatsapp: { send: async (a) => { const r = await this.whatsapp.sendFor(a.organizationId, a.phone, a.text, { kind: a.kind as any }); return { sent: !!r.sent, error: r.error }; } },
       },
@@ -133,6 +135,11 @@ export class ExecutiveOnboardingService {
   /** An administrator adds a senior person. The permission is checked in here, in the backend. */
   add(args: Omit<AddAnExecutive, 'now'>): Promise<TheAddition> {
     return addAnExecutive(this.db, this.ports(), { ...args, now: theQuietHoursNow() });
+  }
+
+  /** Her hello, met with what was set up for her office (her-welcome.ts). Null for anybody an admin did not set up. */
+  async welcomeHer(a: { organizationId: string; userId: string }): Promise<string | null> {
+    return aWelcomeThatKnowsHerOffice(this.db, a);
   }
 
   /** Her words, from chat, a reply to the mail, WhatsApp or a voice note's transcript. Null when they are not about any of this. */
@@ -174,9 +181,14 @@ export class ExecutiveOnboardingService {
     if (contact && !(await a.hasOpenCheckIn())) {
       /* Short words that ask for help, or say a record is wrong, are answered now, privately; the rest is kept and read as their check-in. */
       const files = await a.loadFiles();
-      const helped = !files.length && a.body && this.teamLoop ? await this.teamLoop.hearATeamMember({ organizationId: a.organizationId, contact, text: a.body }).catch(() => null) : null;
-      if (helped) return { became: 'kept for a team member', reply: helped };
-      await keepATeamMembersReply(this.db, this.intakePorts(), { organizationId: a.organizationId, contact, fromAddress: a.fromAddress, channel: 'email', providerId: a.providerId, subject: a.subject, body: a.body, receivedAt: a.receivedAt, files, beyondTheLimit: a.beyondTheLimit, now });
+      const keep = { it: false };
+      const helped = !files.length && a.body && this.teamLoop ? await this.teamLoop.hearATeamMember({ organizationId: a.organizationId, contact, text: a.body, keep }).catch(() => null) : null;
+      /* A request for help is private and is never kept (help-the-team-member.ts). */
+      if (helped && !keep.it) return { became: 'kept for a team member', reply: helped };
+      /* A CORRECTION IS ON THE RECORD TOO (Dangote stress test, D10 and D12: Ruth's "use 5, not 7" and Oluwaseun's correction were answered and never kept, so the next
+         version left them out and her team summary said they had sent nothing). Answered here, its batch is marked answered so it is not answered twice. */
+      const kept = await keepATeamMembersReply(this.db, this.intakePorts(), { organizationId: a.organizationId, contact, fromAddress: a.fromAddress, channel: 'email', providerId: a.providerId, subject: a.subject, body: a.body, receivedAt: a.receivedAt, files, beyondTheLimit: a.beyondTheLimit, now });
+      if (helped) { await answeredByTheWork(this.db, kept.batchId, now).catch(() => undefined); return { became: 'kept for a team member', reply: helped }; }
       return { became: 'kept for a team member', reply: null };
     }
     return null;
@@ -204,7 +216,7 @@ export class ExecutiveOnboardingService {
       /* A voice note that could not be fetched is said so, and asked for again: never kept in silence (Fatima round 3, the senior person gets an answer to every voice note). */
       if (a.arrived.what === 'recording' && !got && speaking) return { reply: COULD_NOT_FETCH_THE_VOICE_NOTE };
       if (a.arrived.what === 'recording' && got) {
-        const heard = await this.transcriber.transcribe({ buffer: got.buffer, mimeType: got.mimeType || a.arrived.mimeType, fileName: a.arrived.fileName }).catch(() => ({ ok: false as const }));
+        const heard = await this.transcriber.transcribe({ buffer: got.buffer, mimeType: got.mimeType || a.arrived.mimeType, fileName: a.arrived.fileName, names: await theNamesThisOrganisationUses(this.db, a.organizationId) }).catch(() => ({ ok: false as const }));
         if (!heard.ok && speaking) return { reply: COULD_NOT_HEAR_THE_VOICE_NOTE };
         /* What she said aloud is heard as her words first: a change to her draft, a go-ahead, names. Anything else is kept as material. */
         if (heard.ok && speaking) {
@@ -233,11 +245,12 @@ export class ExecutiveOnboardingService {
       /* A voice note is answered at once, with when the rest follows: she is not left wondering for three minutes whether it was heard (Fatima round 5). */
       return { reply: a.arrived.what === 'recording' ? 'I have your voice note and I am listening to it now. I will tell you what I made of it in a few minutes.' : null };
     }
-    if (a.arrived.kind === 'text' && this.teamLoop) {
-      const helped = await this.teamLoop.hearATeamMember({ organizationId: a.organizationId, contact, text: a.arrived.text }).catch(() => null);
-      if (helped) return { reply: helped };
-    }
-    await keepATeamMembersReply(this.db, this.intakePorts(), { organizationId: a.organizationId, contact, fromAddress: contact.email ?? phone, channel: 'whatsapp', providerId: null, subject: null, body: text, receivedAt: now, files, beyondTheLimit: 0, now });
+    const keep = { it: false };
+    const helped = a.arrived.kind === 'text' && this.teamLoop ? await this.teamLoop.hearATeamMember({ organizationId: a.organizationId, contact, text: a.arrived.text, keep }).catch(() => null) : null;
+    /* Help stays private; a correction is kept on the record, as an email's is (D10, D12), and its batch is not answered again. */
+    if (helped && !keep.it) return { reply: helped };
+    const kept = await keepATeamMembersReply(this.db, this.intakePorts(), { organizationId: a.organizationId, contact, fromAddress: contact.email ?? phone, channel: 'whatsapp', providerId: null, subject: null, body: text, receivedAt: now, files, beyondTheLimit: 0, now });
+    if (helped) { await answeredByTheWork(this.db, kept.batchId, now).catch(() => undefined); return { reply: helped }; }
     return { reply: null };
   }
 

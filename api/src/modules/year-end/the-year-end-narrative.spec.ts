@@ -1,4 +1,4 @@
-import { aYearEndWorld } from './a-year-end-world-for-specs';
+import { aYearEndWorld } from './a-world-for-the-year-end';
 import { loadTheRecord, makeTheFirstDraft, refreshTheDraft, reviseTheDraft, latestDraft } from './the-year-end-versions';
 import { buildTheContent, everyLineHasASourceOrIsUnverified } from './the-year-end-content';
 import { buildTheContentWithTheNarrative, keepWhatTheSourcesSay, theFactsAreThere, YEAR_END_NARRATIVE_PROMPT, YEAR_END_NARRATIVE_PROMPT_KEY, type TheNarrator } from './the-year-end-narrative';
@@ -283,6 +283,7 @@ describe('the versions agree, and the running words can be proved', () => {
     const w2 = (await aWorld()).w;
     const second = await makeTheFirstDraft(w2.prisma, { organizationId: w2.ORG, principalUserId: 'u-fatima', now: NOW, narrator: service });
     expect(second.row.content.narrative?.promptVersionId).toBe(edited.id);
-    expect(system[1]).toMatch(/By hand\.$/);
+    /* The proven lines are also read for outcomes, under their own key; only the narrative's words are checked here. */
+    expect(system.filter((x) => x.startsWith(YEAR_END_NARRATIVE_PROMPT.slice(0, 40)))[1]).toMatch(/By hand\.$/);
   });
 });

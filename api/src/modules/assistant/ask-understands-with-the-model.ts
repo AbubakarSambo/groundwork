@@ -38,7 +38,7 @@ Say which kind it is:
 - correction: they say something Groundwork showed them is wrong, or give the true figure or fact instead ("that's not right", "I sent it on Monday", "it should be 4 out of 14", "I have raised two fee notes this month", "she is excellent with clients").
 - update: they tell Groundwork something new about their work that is not a correction.
 - agreement: they say what Groundwork showed or asked them is right, or that there is nothing wrong, nothing to change and nothing to add ("that's right", "no, nothing is wrong", "all good", "No, that is right"). A "no" that answers "Is anything wrong?" is this, not a correction.
-- greeting: hello, or similar, with nothing else.
+- greeting: hello, or similar, with nothing else to ask or tell, or a hello that says who they are or who sent them to Groundwork ("Good morning", "Hello, I am the new finance head", "Good morning. Our administrator said you will help my office this year").
 - thanks: thank you, thanks, or goodbye, with nothing else to ask or tell.
 - finished: they say they are done, that this is all, that they have nothing more to say, or give the words of a finish button ("That's right, finish", "I'm done", "that's all"), and add nothing else to tell or ask.
 - delegate: they name a person who is their assistant, executive assistant, PA or secretary, or who should see what they see or act for them ("Zainab Musa is my executive assistant, she can see what I see", "my PA is Amina"). Put the person's name and the address they wrote in who.

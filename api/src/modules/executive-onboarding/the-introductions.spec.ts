@@ -38,6 +38,10 @@ describe('the four introductions are the plan\'s words', () => {
     expect(theOffice('Abuja office')).toBe('the Abuja office');
     expect(theOffice('the Abuja office')).toBe('the Abuja office');
     expect(theOffice(null)).toBe('the office');
+    /* D20: the name she was given already says whose office it is. */
+    expect(theOffice("Fatima's office")).toBe("Fatima's office");
+    expect(theOffice('Fatima’s office')).toBe('Fatima’s office');
+    expect(whatsAppToATeamMember('Fatima', theOffice("Fatima's office")).text).not.toMatch(/the Fatima's office/);
     expect(whatsAppToATeamMember('Amara', theOffice(null)).text.split('\n')[0]).toBe('Hello, I’m Groundwork. I’m helping Amara bring together the work and updates from the office.');
   });
 

@@ -88,3 +88,26 @@ export function progressFull(first: string, s: ASignal): AMessage {
 export const ASK_ABOUT_MONTHS = (name: string, principalFirst: string, months: string[]) =>
   `Hello ${name}, I'm putting together ${principalFirst}'s year-end report, and I don't have anything yet from ${monthNames(months)}. If you have emails, documents or notes from then, you can forward them to this address or reply here, and I'll add them. Thank you.`;
 export const ASK_THE_OWNER = (name: string, question: string) => `Hello ${name}, one question for the year-end report. ${question}`;
+
+/**
+ * EVERYTHING ONE PERSON IS ASKED IN ONE PASS, IN ONE MESSAGE (Dangote stress test, D4). One question reads as it always did, and so does a list of months
+ * alone. Several are numbered in one message, with how many more are waiting, so nobody is sent one mail for each question.
+ */
+export function THE_QUESTIONS_FOR_ONE_PERSON(name: string, principalFirst: string, a: { questions: string[]; months: string[]; more: number }): AMessage {
+  const later = a.more > 0 ? `I have ${a.more === 1 ? 'one more question' : `${a.more.toLocaleString('en-GB')} more questions`} like ${a.questions.length + (a.months.length ? 1 : 0) === 1 ? 'this' : 'these'}, and I will send ${a.more === 1 ? 'it' : 'them'} once you have answered ${a.questions.length + (a.months.length ? 1 : 0) === 1 ? 'this one' : 'these'}.` : null;
+  if (!a.questions.length) return { subject: 'Records for the year-end report', text: [ASK_ABOUT_MONTHS(name, principalFirst, a.months), later].filter(Boolean).join(' ') };
+  if (a.questions.length === 1 && !a.months.length) return { subject: 'A question about the year-end report', text: [ASK_THE_OWNER(name, a.questions[0]), later].filter(Boolean).join(' ') };
+  const items = [
+    ...(a.months.length ? [`I don't have anything yet from ${monthNames(a.months)}. If you have emails, documents or notes from then, you can forward them to this address.`] : []),
+    ...a.questions,
+  ];
+  return {
+    subject: 'Some questions about the year-end report',
+    text: [
+      `Hello ${name}, I'm putting together ${principalFirst}'s year-end report, and I have ${items.length} questions for you.`,
+      items.map((q, i) => `${i + 1}. ${q}`).join('\n'),
+      ...(later ? [later] : []),
+      'You can reply here with what you know, and I will add it. Thank you.',
+    ].join('\n\n'),
+  };
+}

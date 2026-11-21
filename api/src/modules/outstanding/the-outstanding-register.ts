@@ -19,6 +19,9 @@
 import { whenTheyMeant } from '../conversation/when-words-mean-a-date';
 import { thePaymentsNow } from '../principal-work/the-payments-work';
 import { sayMoney } from '../principal-work/the-money';
+import { theQuestionsAsked } from '../executive-onboarding/information-gaps';
+
+const listOf = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
 export type RegisterStatus =
   | 'open'
@@ -332,22 +335,40 @@ export async function buildTheRegister(prisma: any, a: BuildArgs): Promise<TheRe
   }
 
   /*
-   * HER PAYMENTS ARE ON THE SAME LIST (Fatima round 2, C2). A question about a payment (an approval nobody has seen, a payment said to be paid with nothing to
-   * show it, two amounts) is the same question the payments flow put to her or to the owner, read from the same place (thePaymentsNow), so "What needs my
-   * decision?" cannot say "nothing" while "Did you approve it?" is waiting in her mail, and "What is outstanding?" cannot say "nothing" while payments are open.
+   * HER PAYMENTS ARE ON THE SAME LIST (Fatima round 2, C2), AS A FEW MATTERS, NOT ONE FOR EACH LINE (Dangote stress test, D5: 150 "Did you approve" decisions in Ask,
+   * 141 on her assistant's Today, none on hers). Two figures for one payment are that payment's own open matter, for whoever owns it. Every payment said to be paid
+   * with nothing to show it is ONE matter, and so is every payment paid with no approval anywhere; whom they were put to is read from what was really asked
+   * (information_gaps, asked only once the message went). None of them is a decision for her: the sheet's word is a claim, and the question is a fact to find out.
    */
   const payments = await thePaymentsNow(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId }).catch(() => null);
-  for (const d of payments?.discrepancies ?? []) {
+  const discrepancies = payments?.discrepancies ?? [];
+  for (const d of discrepancies.filter((x) => x.kind === 'two amounts' || x.kind === 'two statuses')) {
     const what = `the payment of ${d.latest.amount ? sayMoney(d.latest.amount) : 'an amount I could not read'} to ${d.latest.payee}${d.latest.reference ? `, reference ${d.latest.reference}` : ''}`;
-    const asksHer = d.kind === 'approval missing';
-    const text = d.kind === 'approval missing' ? what.replace(/^the /, '').replace(/^./, (c) => c.toUpperCase()) : d.kind === 'no proof' ? `Proof that ${what} was paid` : `Which figure is right for ${what}`;
     raws.push({
-      sourceKind: asksHer ? 'request' : 'obligation', sourceId: `payment:${d.id}`, from: 'the payments tracker', text, action: asksHer ? `Decide on ${what}.` : text,
-      owner: asksHer ? 'you' : d.latest.owner ?? 'unconfirmed', workstream: 'Payments', whenSaid: null, dueGiven: null,
-      state: asksHer ? 'waiting' : 'open', settledBy: null, settledAt: null, at: d.latest.receivedAt, updatedAt: d.latest.receivedAt, external: false, dependency: null,
-      decision: asksHer ? { question: `Did you approve ${what}?`, options: ['Yes, I approved it', 'No, I did not'] } : null,
+      sourceKind: 'obligation', sourceId: `payment:${d.id}`, from: 'the payments tracker', text: `Which figure is right for ${what}`, action: `Which figure is right for ${what}`,
+      owner: d.latest.owner ?? 'unconfirmed', workstream: 'Payments', whenSaid: null, dueGiven: null,
+      state: 'open', settledBy: null, settledAt: null, at: d.latest.receivedAt, updatedAt: d.latest.receivedAt, external: false, dependency: null, decision: null,
     });
   }
+  const asks: any[] = discrepancies.length ? await theQuestionsAsked(prisma, a.principalUserId, ['queued', 'asked']) : [];
+  const together = (kind: 'no proof' | 'approval missing', says: (n: number) => string, forWhat: string) => {
+    const these = discrepancies.filter((x) => x.kind === kind);
+    if (!these.length) return;
+    const ids = new Set(these.map((x) => `payments:${x.id}`));
+    const mine = asks.filter((g) => ids.has(String(g.gapKey)));
+    const names = (state: string) => [...new Set(mine.filter((g) => g.state === state).map((g) => String(g.askedOfName ?? '')).filter(Boolean))];
+    const asked = names('asked');
+    const waiting = names('queued').filter((n) => !asked.includes(n));
+    const who = asked.length ? `I am asking ${listOf(asked)} for ${forWhat}.` : waiting.length ? `My question to ${listOf(waiting)} about ${these.length === 1 ? 'it' : 'them'} has not gone out yet.` : `Nobody has been asked for ${forWhat} yet.`;
+    const latest = these.map((x) => x.latest.receivedAt).sort((x, y) => y.getTime() - x.getTime())[0];
+    raws.push({
+      sourceKind: 'obligation', sourceId: `payments:${kind === 'no proof' ? 'no-proof' : 'no-approval'}`, from: 'the payments tracker', text: `${says(these.length)} ${who}`, action: says(these.length),
+      owner: asked[0] ?? waiting[0] ?? 'unconfirmed', workstream: 'Payments', whenSaid: null, dueGiven: null,
+      state: 'open', settledBy: null, settledAt: null, at: latest, updatedAt: latest, external: false, dependency: null, decision: null,
+    });
+  };
+  together('no proof', (n) => `${n === 1 ? 'One payment is' : `${n} payments are`} said to be paid with no proof yet.`, 'the bank confirmations');
+  together('approval missing', (n) => `${n === 1 ? 'One payment was' : `${n} payments were`} paid or scheduled with no approval in the sheet or on the record.`, 'the approvals');
 
   const notes: any[] = (await prisma.registerNote.findMany({ where: { organizationId: a.organizationId, principalUserId: a.principalUserId } })) ?? [];
   const noteOf = new Map(notes.map((n) => [`${n.sourceKind}:${n.sourceId}`, n]));
@@ -377,7 +398,7 @@ export function assemble(raws: Raw[], noteOf: Map<string, any>, a: Pick<BuildArg
       const y = raws[j];
       if (x.sourceKind === 'request' || y.sourceKind === 'request') continue;
       /* A payment question is its own matter: it is never guessed to be a line somebody said. */
-      if (x.sourceId.startsWith('payment:') || y.sourceId.startsWith('payment:')) continue;
+      if (/^payments?:/.test(x.sourceId) || /^payments?:/.test(y.sourceId)) continue;
       if (find(keyOf(x)) === find(keyOf(y))) continue;
       const nx = noteOf.get(keyOf(x));
       const ny = noteOf.get(keyOf(y));

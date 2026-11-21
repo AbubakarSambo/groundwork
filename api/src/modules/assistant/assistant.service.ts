@@ -512,6 +512,11 @@ export class AssistantService {
       : null;
     /* Thanks is answered as a colleague would, and is not a question: no menu, no "I cannot answer that one yet" (run 9). The model reads it, no word list. */
     if (userId && understood?.kind === 'thanks') return rules('thanks', text(YOURE_WELCOME));
+    /* A hello from a senior person an admin set up is met by an assistant that knows her office (Batch D, D6); for anybody else it says nothing and the hello goes on as before. */
+    if (userId && understood?.kind === 'greeting' && this.executive) {
+      const welcome = await this.executive.welcomeHer({ organizationId, userId }).catch(() => null);
+      if (welcome) { const r = rules('her_setup', text(welcome)); if (who) await this.remember(organizationId, who, message, r).catch(() => undefined); return r; }
+    }
     /* "That's right, finish." with nothing open is a finish like "finish": the model reads it, and it is answered the same plain way (run 10: six "I cannot answer that one yet"). */
     if (userId && understood?.kind === 'finished') return endWithNothingOpen();
     /* A report asked for by meaning is guided step by step (reports-on-request, S8), the quarter and year wording included when the model reads it as a report to draft (T8). */
