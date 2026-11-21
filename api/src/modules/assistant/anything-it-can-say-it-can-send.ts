@@ -25,8 +25,8 @@
 export interface SomethingToSend {
   /** The reply being sent. */
   body: string;
-  /** The question it answered, for the subject line and for the person's memory. */
-  about: string;
+  /** Their own words it answered, for the subject line and for the person's memory. Null when the reply answered a yes or a no. */
+  about: string | null;
   /** Which capability produced it, so a reader knows what kind of answer it was. */
   lane: string;
 }
@@ -56,7 +56,16 @@ export function whyThisCannotBeSent(
 
 /** What to ask before sending. Never a yes/no on something already gone. */
 export function askBeforeSending(latest: SomethingToSend, to: WhoItGoesTo): string {
-  return `I will email you what I said about "${shorten(latest.about)}", to ${to.email}. Nobody else is copied. Send it?`;
+  return latest.about
+    ? `I will email you what I said about "${shorten(latest.about)}", to ${to.email}. Nobody else is copied. Send it?`
+    : `I will email you what I just said, to ${to.email}. Nobody else is copied. Send it?`;
+}
+
+/** What became of the mail, said from the mail's own state, never a "sent" for a mail that has not gone. */
+export function whatBecameOfIt(became: 'sent' | 'held' | 'suppressed', email: string): string {
+  if (became === 'sent') return `I have sent it to ${email}. Nobody else was copied.`;
+  if (became === 'held') return `It is not sent yet. It is waiting to go to ${email}, and nobody else will be copied.`;
+  return `I have not sent it, because you have turned this kind of email off. It is still here.`;
 }
 
 /**
@@ -67,13 +76,13 @@ export function askBeforeSending(latest: SomethingToSend, to: WhoItGoesTo): stri
  * opening.
  */
 export function theMail(latest: SomethingToSend, to: WhoItGoesTo): { subject: string; text: string } {
+  /* The subject is what it is about, in their words, or the first words of what was said when it answered a yes or a no. */
   return {
-    subject: `Groundwork - ${shorten(latest.about)}`,
+    subject: `Groundwork - ${shorten(latest.about ?? latest.body)}`,
     text: [
       to.displayName ? `${to.displayName},` : 'Hello,',
       '',
-      `You asked: ${latest.about}`,
-      '',
+      ...(latest.about ? [`You asked: ${latest.about}`, ''] : []),
       latest.body,
       '',
       '---',
