@@ -28,6 +28,18 @@ function world() {
     { organizationId: ORG, externalId: 'p-wairimu', linkedUserId: 'u-wairimu', email: 'wairimu@msingi.test', displayName: 'Wairimu Njoroge', active: true },
     { organizationId: ORG, externalId: 'p-baraka', linkedUserId: 'u-baraka', email: 'baraka@msingi.test', displayName: 'Baraka Mutua', active: true },
   ];
+  /* Everybody on People. Halima Noor joined today, so she has a sign-in and no entry in the directory yet. */
+  const users: any[] = [
+    { id: 'u-halima', firstName: 'Halima', lastName: 'Noor', email: 'halima@msingi.test', phoneNumber: null, awaitingOrgApproval: false },
+  ];
+  const members: any[] = [
+    { organizationId: ORG, userId: 'u-grace', role: 'ADMIN', team: null, reportsToUserId: null, user: { firstName: 'Grace', lastName: 'Achieng' } },
+    { organizationId: ORG, userId: 'u-wairimu', role: 'LEAD', team: null, reportsToUserId: null, user: { firstName: 'Wairimu', lastName: 'Njoroge' } },
+    { organizationId: ORG, userId: 'u-baraka', role: 'LEAD', team: null, reportsToUserId: null, user: { firstName: 'Baraka', lastName: 'Mutua' } },
+    { organizationId: ORG, userId: 'u-amani', role: 'MEMBER', team: null, reportsToUserId: null, user: { firstName: 'Amani', lastName: 'Wekesa' } },
+    { organizationId: ORG, userId: 'u-halima', role: 'MEMBER', team: null, reportsToUserId: null, user: { firstName: 'Halima', lastName: 'Noor' } },
+    { organizationId: ORG, userId: 'u-olu', role: 'GUEST', team: null, reportsToUserId: null, user: { firstName: 'Olu', lastName: 'Bankole' } },
+  ];
   const matches = (row: any, where: any): boolean => Object.entries(where ?? {}).every(([k, v]: [string, any]) => {
     if (k === 'OR') return (v as any[]).some((w) => matches(row, w));
     if (v && typeof v === 'object' && 'not' in v) return row[k] !== v.not;
@@ -37,7 +49,11 @@ function world() {
     return row[k] === v;
   });
   const prisma: any = {
-    user: { findUnique: jest.fn(async () => ({ awaitingOrgApproval: false })) },
+    user: {
+      findUnique: jest.fn(async ({ where }: any) => users.find((u) => u.id === where?.id) ?? { awaitingOrgApproval: false }),
+      findMany: jest.fn(async () => []),
+    },
+    organizationMembership: { findMany: jest.fn(async ({ where }: any) => members.filter((m) => m.organizationId === where.organizationId)) },
     subject: {
       findMany: jest.fn(async ({ where }: any) => subjects.filter((s) => matches(s, where))),
       upsert: jest.fn(async ({ where, create, update }: any) => {
@@ -55,6 +71,8 @@ function world() {
     person: {
       findFirst: jest.fn(async ({ where }: any) => people.find((p) => matches(p, where)) ?? null),
       findMany: jest.fn(async ({ where }: any) => people.filter((p) => matches(p, where))),
+      create: jest.fn(async ({ data }: any) => { const row = { id: `person-${people.length + 1}`, ...data }; people.push(row); return row; }),
+      updateMany: jest.fn(async () => ({ count: 0 })),
     },
     /* The strategy's next version is kept by SubjectsService.push; nothing about it is asserted here. */
     strategyVersion: { findFirst: jest.fn(async () => null), create: jest.fn(async () => ({})) },
@@ -63,7 +81,7 @@ function world() {
   const subjectsService = new SubjectsService(prisma);
   const picture = { rebuild: jest.fn(async () => 'built') };
   const svc = new TheGoalsOnTheDeskService(prisma, subjectsService, picture as any);
-  return { svc, subjects, grounds, picture };
+  return { svc, subjects, grounds, picture, people };
 }
 
 describe('the goals on the Desk, as each reader may change them', () => {
@@ -134,10 +152,30 @@ describe('the goals on the Desk, as each reader may change them', () => {
     const served = await svc.read(grace);
     expect(served.goals!.map((g) => g.title)).toEqual(['Grow supermarket sales', 'Every depot on the new stock system']);
     expect(served.goals![0].measure).toBe('Monthly revenue');
-    expect(served.people!.map((p) => p.name)).toEqual(['Baraka Mutua', 'Grace Achieng', 'Wairimu Njoroge']);
+    /* Everybody here who is not a guest: the directory's three, and Amani and Halima, who have no entry in it yet (bug 53). */
+    expect(served.people!.map((p) => p.name)).toEqual(['Amani Wekesa', 'Baraka Mutua', 'Grace Achieng', 'Halima Noor', 'Wairimu Njoroge']);
     await svc.add(grace, { title: 'Hire two drivers', ownerId: 'p-baraka', target: 'By January', checkInIds: [] });
     await svc.change(grace, 's-2', { checkInIds: [] });
     expect(grounds.find((g) => g.id === 'g-stock')!.subjectExternalId).toBeNull();
     await expect(svc.add(grace, { title: '   ' })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('Grace puts a goal in the name of Halima Noor, who joined today, and the Desk reads "Halima Noor is responsible for this"', async () => {
+    const { svc, people } = world();
+    const halima = (await svc.read(grace)).people!.find((p) => p.name === 'Halima Noor')!;
+    const served = await svc.add(grace, { title: 'Open ten new shops in Kisumu', ownerId: halima.id, checkInIds: [] });
+    const goal = served.goals!.find((g) => g.title === 'Open ten new shops in Kisumu')!;
+    expect(goal.owner).toBe('Halima Noor');
+    /* Her entry in the directory is made once, linked to her sign-in, and she is listed once from then on. */
+    expect(people.filter((p) => p.linkedUserId === 'u-halima')).toHaveLength(1);
+    expect(served.people!.filter((p) => p.name === 'Halima Noor')).toHaveLength(1);
+    expect(goal.ownerId).toBe(served.people!.find((p) => p.name === 'Halima Noor')!.id);
+  });
+
+  it('a guest is never offered, and a sign-in that is not here is refused', async () => {
+    const { svc } = world();
+    expect((await svc.read(grace)).people!.map((p) => p.name)).not.toContain('Olu Bankole');
+    await expect(svc.add(grace, { title: 'Something', ownerId: 'member:u-olu' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(svc.add(grace, { title: 'Something', ownerId: 'member:u-nobody' })).rejects.toBeInstanceOf(BadRequestException);
   });
 });

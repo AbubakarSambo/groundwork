@@ -6,6 +6,9 @@ import { SubjectsService } from '../subjects/subjects.service';
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
 import { theCheckInsThatFeedAPriority } from './what-a-check-in-feeds';
 import { refuseAnOutsider } from './company.service';
+import { thePeopleHere } from '../suites/the-people-and-their-lines';
+import { withTheirSignIns } from '../suites/a-roster-entry-and-its-sign-in';
+import { theirOwnRosterEntry } from '../ask/their-own-roster-entry';
 import {
   ADDED_ON_THE_DESK, mayChangeGoals, mayChangeThisGoal, mayTieThisCheckIn, itsWordsAreChangedHere, whatFeedsIt,
   NOT_YOURS_TO_ADD, NOT_YOURS_TO_CHANGE, NOT_YOURS_TO_TIE, ITS_WORDS_ARE_ELSEWHERE, NO_DIRECTORY_RECORD, GIVE_IT_A_TITLE,
@@ -13,6 +16,10 @@ import {
 } from './a-goal-on-the-desk';
 
 type Reader = { userId: string; email: string; organizationId: string; role: string };
+
+/** Somebody on People with no entry in the directory yet, offered as an owner by their sign-in. */
+const A_MEMBER = 'member:';
+const NOT_SOMEBODY_HERE = 'That person is not in this organisation.';
 
 export interface AGoalYouMayChange {
   id: string;
@@ -83,12 +90,8 @@ export class TheGoalsOnTheDeskService {
     const feeding: { id: string; subjectExternalId: string }[] = await theCheckInsThatFeedAPriority(db, reader.organizationId, subjects as any).catch(() => []);
     const feedsOf = new Map(feeding.map((f) => [f.id, f.subjectExternalId]));
     const tieable = grounds.filter((g) => mayTieThisCheckIn(r, g));
-    const people: any[] = await db.person.findMany({
-      where: { organizationId: reader.organizationId, active: true },
-      select: { externalId: true, displayName: true, givenName: true, familyName: true },
-    });
-    const nameOf = (p: any) => (p.displayName || [p.givenName, p.familyName].filter(Boolean).join(' ')).trim();
-    const owners = new Map(people.map((p) => [p.externalId, nameOf(p)]));
+    const people = reader.role === 'ADMIN' ? await this.whoAGoalMayBeFor(reader.organizationId) : [];
+    const owners = new Map((reader.role === 'ADMIN' ? people : await this.theDirectory(reader.organizationId)).map((p) => [p.id, p.name]));
     const titleOf = new Map(subjects.map((s) => [s.externalId, s.title]));
     const isAdmin = reader.role === 'ADMIN';
 
@@ -112,7 +115,7 @@ export class TheGoalsOnTheDeskService {
       mayChooseOwner: isAdmin,
       goals,
       checkIns: tieable.map((g) => ({ id: g.id, label: g.label, feeds: titleOf.get(feedsOf.get(g.id) ?? '') ?? null })),
-      ...(isAdmin ? { people: people.map((p) => ({ id: p.externalId, name: nameOf(p) })).filter((p) => p.name).sort((a, b) => a.name.localeCompare(b.name)) } : {}),
+      ...(isAdmin ? { people } : {}),
     };
   }
 
@@ -187,15 +190,52 @@ export class TheGoalsOnTheDeskService {
     return { userId: reader.userId, role: reader.role, personExternalId: person?.externalId ?? null };
   }
 
-  /** An admin names an owner from the directory, or nobody. A lead's goal is always their own. */
+  /** The organisation's directory, by entry: each entry's key and name. */
+  private async theDirectory(organizationId: string): Promise<{ id: string; name: string; userId: string | null }[]> {
+    const entries: any[] = await (this.prisma as any).person.findMany({
+      where: { organizationId, active: true },
+      select: { externalId: true, linkedUserId: true, email: true, displayName: true, givenName: true, familyName: true },
+    });
+    const signed: any[] = await withTheirSignIns(this.prisma, organizationId, entries).catch(() => entries.map((e) => ({ ...e, userId: e.linkedUserId ?? null })));
+    return signed.map((p) => ({ id: p.externalId, name: (p.displayName || [p.givenName, p.familyName].filter(Boolean).join(' ')).trim(), userId: p.userId ?? null }));
+  }
+
+  /**
+   * WHO A GOAL MAY BE PUT IN THE NAME OF: everybody in the directory, and everybody here on People who has no entry in it yet
+   * (release test, 21 November 2026, bug 53: Halima Noor joined that day and was missing). Somebody with no entry is offered by
+   * their sign-in, as `member:<id>`, and their entry is made when a goal is put in their name (theOwner).
+   */
+  private async whoAGoalMayBeFor(organizationId: string): Promise<{ id: string; name: string }[]> {
+    const directory = await this.theDirectory(organizationId);
+    const inIt = new Set(directory.map((p) => p.userId).filter(Boolean));
+    const here = (await thePeopleHere(this.prisma, organizationId).catch(() => [])).filter((p) => !inIt.has(p.userId));
+    return [...directory.map(({ id, name }) => ({ id, name })), ...here.map((p) => ({ id: `${A_MEMBER}${p.userId}`, name: p.name }))]
+      .filter((p) => p.name)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /**
+   * The entry a goal is put in the name of. A lead's goal is always their own, and an admin names somebody, or nobody. Somebody
+   * here with no entry in the directory yet gets their own (their-own-roster-entry.ts, the one claim-or-make), so a person added
+   * on People can own a goal the day they join.
+   */
   private async theOwner(reader: Reader, r: AGoalReader, ownerId: string | null | undefined): Promise<string | null> {
+    const theirEntry = async (userId: string) => (await theirOwnRosterEntry(this.prisma, reader.organizationId, userId).catch(() => null))?.externalId ?? null;
     if (reader.role !== 'ADMIN') {
-      if (!r.personExternalId) throw new BadRequestException(NO_DIRECTORY_RECORD);
-      return r.personExternalId;
+      const own = r.personExternalId ?? (await theirEntry(reader.userId));
+      if (!own) throw new BadRequestException(NO_DIRECTORY_RECORD);
+      return own;
     }
     if (!ownerId) return null;
+    if (ownerId.startsWith(A_MEMBER)) {
+      const userId = ownerId.slice(A_MEMBER.length);
+      const isHere = (await thePeopleHere(this.prisma, reader.organizationId).catch(() => [])).some((p) => p.userId === userId);
+      const entry = isHere ? await theirEntry(userId) : null;
+      if (!entry) throw new BadRequestException(NOT_SOMEBODY_HERE);
+      return entry;
+    }
     const p = await this.prisma.person.findFirst({ where: { organizationId: reader.organizationId, externalId: ownerId, active: true }, select: { externalId: true } });
-    if (!p) throw new BadRequestException('That person is not in the organisation’s directory.');
+    if (!p) throw new BadRequestException(NOT_SOMEBODY_HERE);
     return p.externalId;
   }
 
