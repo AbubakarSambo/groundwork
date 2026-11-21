@@ -243,7 +243,7 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
 /* The two doors. Each reads the one field that decides it, and nothing else. */
 function MayOpenCheckIns({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore()
-  return <ADoorYouCannotOpen may={user?.mayOpenCheckIns !== false} what="open a check-in">{children}</ADoorYouCannotOpen>
+  return <ADoorYouCannotOpen may={user?.mayOpenCheckIns !== false} what="open a check-in" because={user?.whyYouCannotOpenCheckIns}>{children}</ADoorYouCannotOpen>
 }
 
 function WhoMayAddPeople({ children }: { children: React.ReactNode }) {

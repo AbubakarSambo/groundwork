@@ -42,7 +42,9 @@ describe('who you are is built in one place', () => {
   it('so the permission field cannot reach one door and miss the other', () => {
     /* Asserted on the builder rather than on either route, which is the point of there being one. */
     const shape = SRC.slice(SRC.indexOf('private theUserShape('));
-    expect(shape.slice(0, 1600)).toContain('mayOpenCheckIns: mayOpen(');
+    /* The rule is asked once at the top of the shape, and the field reads that answer (bug 95 added its reason beside it). */
+    expect(shape.slice(0, 600)).toContain('const mayOpenACheckIn = mayOpen(');
+    expect(shape.slice(0, 2400)).toContain('mayOpenCheckIns: mayOpenACheckIn.may');
   });
 
   it('fetching a profile does not mint an access token', () => {
