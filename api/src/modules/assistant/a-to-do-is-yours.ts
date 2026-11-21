@@ -47,7 +47,7 @@ export function whichToDo<T extends { id: string; text: string }>(said: string, 
 }
 
 export function listToDos(open: { text: string; dueSaid: string | null }[]): string {
-  if (!open.length) return 'Nothing on your list. Say "add X to my to-do list" and it goes here. It is yours: nobody else reads it.';
+  if (!open.length) return 'Nothing on your list. Say "add X to my to-do list" and it goes here.';
   return [`${open.length} on your list:`, ...open.map((t) => `- ${t.text}${t.dueSaid ? ` (${t.dueSaid})` : ''}`)].join('\n');
 }
 

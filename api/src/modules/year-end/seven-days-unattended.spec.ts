@@ -34,7 +34,8 @@ async function theWeek() {
   /* seeds: overlapping owners, and a payment exception the ministry has not answered */
   w.t.groundCommitment.rows.push(
     commit('c-pay-1', 'g-ministry', 'gp-amina', 'Prepare the quarterly payment schedule'),
-    commit('c-pay-2', 'g-assembly', 'gp-ibrahim', 'Quarterly payment schedule preparation'),
+/* Changed 21 November 2026 (Batch E, N6): two people's lines are never asked about as one on shared words, so the pair that may be one matter is now one person's two lines. */
+    commit('c-pay-2', 'g-ministry', 'gp-amina', 'Quarterly payment report for the board'),
   );
   w.t.groundDependency.rows.push({ id: 'd-payment', groundId: 'g-ministry', fromParticipantId: 'gp-amina', onParticipantId: null, onLabel: 'Kilele', what: 'the Kilele payment, which was paid twice', status: 'BLOCKING', createdAt: new Date('2026-11-03T10:00:00Z'), updatedAt: new Date('2026-11-03T10:00:00Z') });
 

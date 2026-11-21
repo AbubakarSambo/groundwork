@@ -1,4 +1,4 @@
-import { TheDirectMorning, useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
+import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
@@ -63,12 +63,11 @@ import { PatternPanel, EdgeList, EdgeRow } from '@/components/gw/ui'
 /** "What's yours..." varies with how many check-ins this reader has, and whether they run one
  *  (you-board-daniel.txt/kwame.txt vs you-board-miriam.txt/wairimu.txt). One check-in or none reads
  *  as the shorter, plainer sentence; more than one names the scope, as the prototype does. */
-export function theYouSubtitle(checkIns: YourCheckIn[], direct = false): string {
-  /* The direct morning (lib/the-direct-morning.tsx): what the page holds, and no privacy note. Only you may read it either way (the backend's rule). */
-  const only = direct ? '' : ' Only you see this page.'
-  if (checkIns.length <= 1) return `What’s yours, across your check-ins.${only}`
+export function theYouSubtitle(checkIns: YourCheckIn[]): string {
+  /* What the page holds, and no privacy note (the standards forbid them on screens; Dangote rerun, N13). Only you may read it: that is the backend's rule. */
+  if (checkIns.length <= 1) return 'What’s yours, across your check-ins.'
   const scope = checkIns.some(c => c.youRunIt) ? `all ${checkIns.length} check-ins` : 'every check-in you’re in'
-  return `What’s yours across ${scope}: what you said you’d do, your own reports, and what keeps coming up about your part.${only}`
+  return `What’s yours across ${scope}: what you said you’d do, your own reports, and what keeps coming up about your part.`
 }
 
 export function YouPage() {
@@ -88,7 +87,7 @@ export function YouPage() {
   return (
     <TheDirectMorning on={direct}>
     <Page>
-      <PageTitle title="You" subtitle={data ? theYouSubtitle(data.checkIns ?? [], direct) : 'What’s yours, across your check-ins.'} />
+      <PageTitle title="You" subtitle={data ? theYouSubtitle(data.checkIns ?? []) : 'What’s yours, across your check-ins.'} />
 
       {isLoading && <Skeleton what="Getting your page" shape="rows" />}
       {isError && (
@@ -104,8 +103,6 @@ export function YouPage() {
 }
 
 function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; startsAt?: string | null; createdAt?: string | null }[] }) {
-  /* The direct morning (lib/the-direct-morning.tsx), as said for the page. */
-  const direct = useTheDirectMorning()
   const startOf = new Map((grounds ?? []).map(g => [g.id, { startsAt: g.startsAt, createdAt: g.createdAt }]))
   /* "Your work in each" (below) is the one list here that carries each check-in's own id, so it is
      the one list that can reliably be told apart when two share a label - the same check this
@@ -240,7 +237,7 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
       {!!askedOfYouItems.length && (
         <Section
           heading="Everything asked of you this week"
-          note={direct ? 'From every check-in you’re in.' : 'From every check-in you’re in. Only you see this.'}
+          note="From every check-in you’re in."
           foot={b.askedOfYou?.says}
         >
           <RowList label="Everything asked of you this week">

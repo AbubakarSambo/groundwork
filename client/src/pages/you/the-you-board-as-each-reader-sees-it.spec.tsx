@@ -327,7 +327,8 @@ describe('Everything asked of you this week (D3, U.16), on your own board only',
     open(MIRIAM, ASKED)
     await screen.findByRole('heading', { name: 'Everything asked of you this week' })
     const s = section('Everything asked of you this week')
-    expect(within(s).getByText('From every check-in you’re in. Only you see this.')).toBeInTheDocument()
+    /* Changed 21 November 2026 (Batch E, N13): no "Only you see this." note on a screen. */
+    expect(within(s).getByText('From every check-in you’re in.')).toBeInTheDocument()
     const rows = within(s).getAllByRole('listitem').map((li) => li.textContent)
     expect(rows).toEqual([
       'Kwame, first 90 daysThe demo freezer booking for ThursdayThe demo freezer booking is due Thursday.',

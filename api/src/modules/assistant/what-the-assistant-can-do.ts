@@ -183,7 +183,7 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   },
   {
     key: 'add_a_to_do',
-    does: 'Put a note to yourself on your own list. Nobody else reads it and no report weighs it.',
+    does: 'Put a note to yourself on your own list. No report weighs it.',
     writes: 'after you confirm it',
     ordered: 'Above the document lane, because "add the rota to my to-do list" names a list and "add the rota" names a file.',
     owns: ['add the rota to my to-do list', 'to-do: chase the invoice', 'remind me to book the room', 'note to self: renew the domain'],

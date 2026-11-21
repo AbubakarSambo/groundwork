@@ -36,7 +36,8 @@ describe('a person is asked once for one gap', () => {
     const sentBefore = x.w.sent.length;
     await runTheStandingInstructions(x.prisma, (x.service as any).ports(), at(12, '08:30'));
     await runTheStandingInstructions(x.prisma, (x.service as any).ports(), at(12, '08:40'));
-    expect(x.w.sent.slice(sentBefore).map((m) => m.to).sort()).toEqual(['+2348035550101', 'amina@example.com']);
+    /* Changed 21 November 2026 (Batch E, N1): Ibrahim has not written on WhatsApp in the last 24 hours, so he is asked by email, as she is told. */
+    expect(x.w.sent.slice(sentBefore).map((m) => m.to).sort()).toEqual(['amina@example.com', 'ibrahim@example.com']);
   });
 });
 

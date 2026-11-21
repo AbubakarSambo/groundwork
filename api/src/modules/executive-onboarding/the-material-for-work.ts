@@ -36,18 +36,39 @@ export async function answeredByTheWork(prisma: any, batchId: string, now: Date)
 }
 
 /**
- * Her kept material that mentions any of these words, newest first: the correspondence a payment or an approval is held up against.
- * Duplicates and unreadable files are left out, and so are the sheets being read, so a tracker is never its own evidence.
+ * Her kept material, read once, and a search over it: the correspondence a payment or an approval is held up against (newest first).
+ * Duplicates and unreadable files are left out, and so are the sheets being read, so a tracker is never its own evidence. Read once and searched
+ * many times (Dangote rerun, N11: it was read again for each of 165 payments, 10,415 rows each time, and Today took 40 to 90 seconds).
  */
-export async function materialThatMentions(prisma: any, a: { principalUserId: string; terms: string[]; exceptFiles?: string[] }): Promise<AMaterialItem[]> {
-  const terms = a.terms.map((t) => t.trim().toLowerCase()).filter((t) => t.length >= 3);
-  if (!terms.length) return [];
+export async function herMaterialToSearch(prisma: any, a: { principalUserId: string; exceptFiles?: string[] }): Promise<(terms: string[]) => AMaterialItem[]> {
   const rows: any[] = (await prisma.principalMaterial.findMany({ where: { principalUserId: a.principalUserId } })) ?? [];
-  return rows
+  const kept = rows
     .filter((r) => r.state === 'kept' && r.kind !== 'archive' && !(a.exceptFiles ?? []).includes(r.fileName))
-    .filter((r) => { const hay = `${r.fileName}\n${r.subject ?? ''}\n${r.text ?? ''}`.toLowerCase(); return terms.some((t) => hay.includes(t)); })
     .sort((x, y) => new Date(y.receivedAt).getTime() - new Date(x.receivedAt).getTime())
-    .map(asItem);
+    .map((r) => ({ hay: `${r.fileName}\n${r.subject ?? ''}\n${r.text ?? ''}`.toLowerCase(), item: asItem(r) }));
+  return (words: string[]) => {
+    const terms = words.map((t) => t.trim().toLowerCase()).filter((t) => t.length >= 3);
+    return terms.length ? kept.filter((k) => terms.some((t) => k.hay.includes(t))).map((k) => k.item) : [];
+  };
+}
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/**
+ * HOW A PERSON READS ONE THING ON HER RECORD (Dangote rerun, N5: "I already have the file “seed:message:bda211c03150b9d1”"). A message and a voice note are kept
+ * with an internal name, so they are named by what they are and the day: "your WhatsApp message of 19 November", "your email “Kilele permit” of 19 November",
+ * "your voice note of 19 November". A file is named by its own name. `whose` is "your" for the sender, or a name ("Ahmed's") for anybody else.
+ */
+export function aThingOnHerRecord(m: { kind?: string | null; fileName?: string | null; channel?: string | null; subject?: string | null; receivedAt?: Date | string | null }, whose = 'your'): string {
+  const at = m.receivedAt ? new Date(m.receivedAt) : null;
+  const day = at && !Number.isNaN(at.getTime()) ? ` of ${at.getUTCDate()} ${MONTH_NAMES[at.getUTCMonth()]}` : '';
+  if (m.kind === 'voice') return `${whose} voice note${day}`;
+  if (m.kind === 'message') {
+    if (m.channel === 'whatsapp') return `${whose} WhatsApp message${day}`;
+    const subject = String(m.subject ?? '').replace(/^\s*(?:re|fwd?|fw)\s*:\s*/i, '').trim();
+    return `${whose} email${subject ? ` “${subject}”` : ''}${day}`;
+  }
+  return `the file “${m.fileName ?? 'with no name'}”${day ? ` from${day.slice(3)}` : ''}`;
 }
 
 /** The people she named and introduced, who can be asked for what is missing. Never the people she only mentioned. */

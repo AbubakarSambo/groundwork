@@ -301,8 +301,11 @@ async function theContentAndItsNarrative(record: TheRecordForTheYear, edits: AnE
      first and then its emails and WhatsApp messages, a few of each, so every month the record covers can be told; the rest stay in the evidence index. */
   const readable = record.documents.filter((d) => (d.origin === 'forwarded' || d.origin === 'message') && plain(d.text).length > 0);
   const byMonth = new Map<string, typeof readable>();
-  for (const d of readable) { const m = d.covers?.length === 1 ? d.covers[0] : 'none'; byMonth.set(m, [...(byMonth.get(m) ?? []), d]); }
-  const docs = [...byMonth.keys()].sort().flatMap((m) => [...byMonth.get(m)!].sort((x, y) => Number(x.origin === 'message') - Number(y.origin === 'message') || x.at.getTime() - y.at.getTime()).slice(0, MOST_A_MONTH)).slice(0, MOST_SOURCES);
+  /* A message about several months goes under the latest of them, and one about none under the month it came (Batch E run, D10: they went in a "none" group that sorted last and was cut, so the day's corrections were never read). */
+  const theMonthOf = (d: (typeof readable)[number]) => (d.covers?.length ? [...d.covers].sort().pop()! : d.at.toISOString().slice(0, 7));
+  for (const d of readable) { const m = theMonthOf(d); byMonth.set(m, [...(byMonth.get(m) ?? []), d]); }
+  /* A month's messages are read newest first, so a reply or a correction that came today is what the next version reads (Dangote rerun, D10: version 2 read the same oldest messages as version 1, and none of the day's corrections). */
+  const docs = [...byMonth.keys()].sort().flatMap((m) => [...byMonth.get(m)!].sort((x, y) => Number(x.origin === 'message') - Number(y.origin === 'message') || y.at.getTime() - x.at.getTime()).slice(0, MOST_A_MONTH)).slice(0, MOST_SOURCES);
   const narrator = a.narrator === undefined ? theOneRunning : a.narrator;
   if (!narrator || !docs.length) return apply(base);
   const sources: ASourceToRead[] = docs.map((d, i) => {

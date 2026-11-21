@@ -80,8 +80,9 @@ describe('R2: Ask reads her record, with how far each line is proven', () => {
     console.log(`WHAT ASK READS FOR FATIMA\n${mine.map((p) => `== ${p.fileName}\n${p.content.slice(0, 600)}`).join('\n')}`);
     expect(mine.map((p) => p.fileName)).toEqual([
       'your year-end report for 2026, version 1',
-      'the lines of your year, with how far each is proven',
-      'your outstanding register, who owns each matter and when it was due',
+      /* Changed 21 November 2026 (Batch E, N3): plain names. Ask repeated "the lines of your year, with how far each is proven" to Fatima as if it were a file. */
+      'your year, line by line',
+      'what is still outstanding for you',
       'your leadership presentation, version 1',
       'the records your year-end report rests on',
     ]);
@@ -93,6 +94,23 @@ describe('R2: Ask reads her record, with how far each line is proven', () => {
     await grantADelegate(w.prisma, { organizationId: w.ORG, principalUserId: 'u-fatima', delegateEmail: 'amina@example.com', delegateName: 'Amina Yusuf', via: 'admin' });
     const hers = await herYearEndRecordForAsk(w.prisma, { organizationId: w.ORG, userId: 'u-amina', now: NOW });
     expect(hers.map((p) => p.fileName)[0]).toBe("Fatima's year-end report for 2026, version 1");
+  });
+
+  /* DANGOTE RERUN, N9. Ask told Fatima "nothing on record says whether five payments ... were actually paid", while the sheets and their bank confirmations were there. */
+  it('reads her payments as Today counts them: each payee, its reference, its amount, and whether a bank confirmation shows it', async () => {
+    const w = await aDraftExists();
+    w.t.principalMaterial = w.aTable([], 'pm');
+    const line = (o: any) => ({ organizationId: w.ORG, principalUserId: 'u-fatima', currency: 'NGN', fileName: '2026_Payments_Final.xlsx', receivedAt: new Date('2026-09-01T09:00:00Z'), statedApproval: 'Approved', owner: 'Ngozi Eze', ...o });
+    w.t.paymentTrackerLine = w.aTable([
+      line({ id: 'l1', paymentKey: 'fieldpoint', payee: 'Fieldpoint Surveys', reference: 'FP-1014', amount: '1250000', dueOn: new Date('2026-08-14'), statedStatus: 'paid', confirmation: 'BNK-PAY1014', rowNumber: 2 }),
+      line({ id: 'l2', paymentKey: 'kestrel', payee: 'Kestrel Advisory', reference: 'KA-2026-07', amount: '12500000', dueOn: new Date('2026-08-20'), statedStatus: 'paid', confirmation: null, rowNumber: 3 }),
+    ], 'ptl');
+    const pages = await herYearEndRecordForAsk(w.prisma, { organizationId: w.ORG, userId: 'u-fatima', now: NOW });
+    const pay = pages.find((p) => p.fileName === 'your payments')!;
+    console.log(`WHAT ASK READS FOR FATIMA\n${pay.content}`);
+    expect(pay.content).toMatch(/^2 payments are on the record\. 1 is paid, with proof\. 1 payment is said to be paid, with no proof yet\./);
+    expect(pay.content).toContain('- Fieldpoint Surveys, reference FP-1014, NGN 1,250,000, due on 14 August 2026. [PROVEN paid, bank confirmation BNK-PAY1014; from the payments sheet 2026_Payments_Final.xlsx, row 2]');
+    expect(pay.content).toContain('- Kestrel Advisory, reference KA-2026-07, NGN 12,500,000, due on 20 August 2026. [SAID to be paid, with no proof yet;');
   });
 
   it('each line keeps its standing: proven, only said, disputed, open, waiting for a decision, and what an owner still owes with the day it was due', () => {

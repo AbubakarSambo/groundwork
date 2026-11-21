@@ -80,6 +80,8 @@ const GONE_FOR_EVERYBODY_NOW = [
   'Each one moving towards a decision. You always choose',
   'Open anyone to see what they said and what the proof shows.',
   'Nothing has come up three check-ins in a row yet.',
+  /* 21 November 2026 (Batch E, N13): no privacy note on a screen, whatever the switch. */
+  'Only yours',
   'Built from what each person shared in their private check-in. Use it to see what’s going on and guide the conversation. It’s not a verdict.',
   'How to read this board',
 ]

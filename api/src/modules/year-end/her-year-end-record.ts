@@ -21,6 +21,9 @@ import { whoThisPersonActsFor } from '../outstanding/a-delegate-acts-for-a-princ
 import { latestDraft, type TheDraftRow } from './the-year-end-versions';
 import { dayWords, MONTHS, STATUS_PLAIN, type Claim, type EvidenceItem, type YearEndContent } from './the-year-end-content';
 import { reportBlocks, slidesOf, whatMattersMost, theYearInWords } from './the-year-end-files';
+import { thePaymentCounts, thePaymentsNow } from '../principal-work/the-payments-work';
+import { hasProof, isPaidWithProof } from '../principal-work/the-payments-reconcile';
+import { sayMoney } from '../principal-work/the-money';
 
 /** Whose year-end work this person reads: their own, and that of each senior person they act for. */
 async function theYearEndsTheyRead(prisma: any, organizationId: string, userId: string): Promise<string[]> {
@@ -108,11 +111,11 @@ export function thePagesOfHerRecord(row: TheDraftRow, reader: 'own' | 'delegate'
     lines.push(`${(s.title || month).toUpperCase()}:`);
     for (const cl of s.claims) lines.push(aLine(c, cl));
   }
-  pages.push(page(`the lines of ${whose} year, with how far each is proven`, lines.length ? lines : ['Nothing is on the record for the year yet.']));
+  pages.push(page(`${whose} year, line by line`, lines.length ? lines : ['Nothing is on the record for the year yet.']));
 
   /* The outstanding register: what is still to be delivered, who owns it, by when, and what it waits on. Owners are named; nothing judges them. */
   const open = c.register.filter((r) => r.status !== 'completed' && r.status !== 'cancelled');
-  pages.push(page(`${whose} outstanding register, who owns each matter and when it was due`, [
+  pages.push(page(`what is still outstanding for ${reader === 'own' ? 'you' : c.principalFirstName}`, [
     `${open.length} ${open.length === 1 ? 'matter is' : 'matters are'} still outstanding. Each line says who owns it, when it was due, and what it rests on. It says what is outstanding, never how well anybody works.`,
     ...open.map((r) => `- ${clip(r.item, 220)}. Owner ${r.owner === 'unconfirmed' ? 'not confirmed' : r.owner === 'you' ? c.principalFirstName : r.owner}. ${STATUS_PLAIN[r.status] ?? r.status}.${r.dueOn ? ` It was due on ${dayWords(r.dueOn)}${r.dueInferred ? ', a date worked out from what was said' : ''}.` : ' No date was given.'}${r.decision ? ` The decision needed is ${clip(r.decision, 160)}.` : ''}${r.dependency ? ` It waits on ${clip(r.dependency, 120)}.` : ''}${r.disputed ? ' Somebody said it is not backed up.' : ''} [${whereItComesFrom(c, r.refs)}]`),
   ]));
@@ -142,9 +145,31 @@ export async function herYearEndRecordForAsk(prisma: any, a: { organizationId: s
     const own = principalUserId === a.userId;
     const row = (await latestDraft(prisma, { organizationId: a.organizationId, principalUserId, year }).catch(() => null))
       ?? (await latestDraft(prisma, { organizationId: a.organizationId, principalUserId, year: year - 1 }).catch(() => null));
-    if (row?.content) out.push(...thePagesOfHerRecord(row, own ? 'own' : 'delegate'));
+    const pages = row?.content ? thePagesOfHerRecord(row, own ? 'own' : 'delegate') : [];
+    const pay = await thePaymentsPage(prisma, { organizationId: a.organizationId, principalUserId, whose: own ? 'your' : `${row?.content?.principalFirstName ?? 'her'}'s` }).catch(() => null);
+    /* Right after the briefing, so it is read whenever a question is about money: Ask reads the pages in order until its room is used (Batch E run: last, it was cut). */
+    out.push(...pages.slice(0, 1), ...(pay ? [pay] : []), ...pages.slice(1));
   }
   return out;
+}
+
+/**
+ * HER PAYMENTS, AS TODAY AND THE REPORT COUNT THEM (Dangote rerun, N9: Ask said nothing on record showed whether the August payments were paid, while the sheets
+ * and their bank confirmations were on the record). One line for each payment, from the one count (principal-work/the-payments-work.ts): the payee, the
+ * reference, the amount, the day it was due, what the sheet says, and whether a bank confirmation or a document shows it.
+ */
+async function thePaymentsPage(prisma: any, a: { organizationId: string; principalUserId: string; whose: string }): Promise<APageOfHerRecord | null> {
+  const now = await thePaymentsNow(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId });
+  const counts = thePaymentCounts(now);
+  if (!counts.payments) return null;
+  /* What is said to be paid with no proof leads, then the newest first: the page is cut to what Ask can read, and those are what she is asked about (Batch E run: oldest first, August was cut). */
+  const saidOnly = (l: (typeof counts.latest)[number]) => (l.statedStatus === 'paid' && !hasProof(now.linksOf(l.paymentKey)) ? 0 : 1);
+  const lines = [...counts.latest].sort((x, y) => saidOnly(x) - saidOnly(y) || (y.dueOn?.getTime() ?? 0) - (x.dueOn?.getTime() ?? 0)).map((l) => {
+    const links = now.linksOf(l.paymentKey);
+    const standing = isPaidWithProof(l, links) ? `PROVEN paid${links.confirmation ? `, bank confirmation ${links.confirmation}` : ''}` : l.statedStatus === 'paid' && !hasProof(links) ? 'SAID to be paid, with no proof yet' : `the sheet says ${l.statedStatus ?? 'nothing about whether it was paid'}`;
+    return `- ${l.payee}${l.reference ? `, reference ${l.reference}` : ''}, ${l.amount ? sayMoney(l.amount) : 'amount not readable'}${l.dueOn ? `, due on ${dayWords(l.dueOn)}` : ''}. [${standing}; from the payments sheet ${l.fileName}, row ${l.rowNumber}]`;
+  });
+  return { fileName: `${a.whose} payments`, content: [`${counts.payments} ${counts.payments === 1 ? 'payment is' : 'payments are'} on the record. ${counts.paidWithProof} ${counts.paidWithProof === 1 ? 'is' : 'are'} paid, with proof. ${counts.saidPaidNoProof} ${counts.saidPaidNoProof === 1 ? 'payment is' : 'payments are'} said to be paid, with no proof yet.`, ...lines].join('\n').slice(0, AT_MOST_ON_A_PAGE) };
 }
 
 /* ------------------------------------------------------------------ the structure, asked for */

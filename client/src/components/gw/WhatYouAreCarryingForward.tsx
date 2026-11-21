@@ -62,7 +62,7 @@ export function WhatYouAreCarryingForward({
               into a sentence that would only repeat that line. */}
           <Sec title="What you are carrying forward" />
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginBottom: 4 }}>
-            From your own check-in only. Only you can see it unless you choose to share it.
+            From your own check-in only.
           </div>
           {mySoloReport?.report ? (
             /*

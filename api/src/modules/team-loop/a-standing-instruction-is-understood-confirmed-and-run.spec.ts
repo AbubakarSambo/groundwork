@@ -65,7 +65,8 @@ describe('a standing instruction is run on the clock, once, and survives a resta
     expect((await sweep(at(12, '08:30'))).join()).toMatch(/asked 2 for 2026-11-13/);
     expect(await sweep(at(12, '08:35'))).toEqual([]);
     const asks = x.w.sent.map((m) => [m.to, m.channel, m.kind]);
-    expect(asks).toEqual([['amina@example.com', 'email', 'routine'], ['+2348035550101', 'whatsapp', 'team-ask']]);
+    /* Changed 21 November 2026 (Batch E, N1): Ibrahim has not written on WhatsApp in the last 24 hours, and the ask has no approved template, so it goes by email, as she was told. (This fake accepted any WhatsApp; the real gate refuses it, which is how 55 people told "WhatsApp" got an email in the Dangote rerun.) */
+    expect(asks).toEqual([['amina@example.com', 'email', 'routine'], ['ibrahim@example.com', 'email', 'routine']]);
     console.log(`WHAT IBRAHIM READS ON THURSDAY\n${x.w.sent[1].text}\n\nWHAT AMINA READS ON THURSDAY\n${x.w.sent[0].text}`);
     expect(x.w.sent[1].text).toBe("Hello Ibrahim, Fatima asked me to collect the team's updates. Please send me where things stand on your work, and any document that shows it. You can write it here, forward it, or send a voice note.");
 
@@ -131,7 +132,8 @@ describe('"Handle this with the team and come back when ready"', () => {
     const back = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'Handle the Kilele permit with the team and come back when ready.' });
     console.log(`WHAT FATIMA READS\n${back}`);
     /* Batch D, R5: the say-back names each person on her record, how they are reached and what is open with them, instead of first names only. */
-    expect(back).toBe('Fatima, I will write to 2 people on your record now, and ask each of them about the Kilele permit. I will write to Ibrahim Sule on WhatsApp, and to Amina Yusuf by email, and ask what they have done and what is still open. Nobody is asked for a document I already have. I will tell you as soon as they have answered, or after three days with whatever I have and who has not answered. Shall I go ahead?');
+    /* Changed 21 November 2026 (Batch E, N1 and N2): the say-back names people by how they are reached, in one form whatever the number of people. */
+    expect(back).toBe('Fatima, I will write to 2 people on your record now, and ask each of them about the Kilele permit. I will write to Amina Yusuf and Ibrahim Sule by email. Nobody is asked for a document I already have. I will tell you as soon as they have answered, or after three days with whatever I have and who has not answered. Shall I go ahead?');
     await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'Yes' });
     const sweep = (when: Date) => runTheStandingInstructions(x.prisma, (x.service as any).ports(), when);
     expect((await sweep(at(11, '10:05'))).join()).toMatch(/asked 2/);

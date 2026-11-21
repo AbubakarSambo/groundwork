@@ -28,10 +28,12 @@ const text = () => document.body.textContent ?? ''
 beforeEach(() => { vi.clearAllMocks() })
 
 describe.each(['grace', 'kevin'] as const)('the You page, as %s reads it', (who) => {
-  it('off: "Only you see this page." under the title, as before', async () => {
+  /* Changed 21 November 2026 (Batch E, N13): "Only you see this page." was a privacy note on a screen, which the standards forbid. It is gone with the switch off too. Only the person may read You either way: that is the backend's rule. */
+  it('off: what the page holds, with no privacy note', async () => {
     open(who, false)
     await screen.findByText('What you said you’d do')
-    expect(screen.getByText('What’s yours, across your check-ins. Only you see this page.')).toBeTruthy()
+    expect(screen.getByText('What’s yours, across your check-ins.')).toBeTruthy()
+    expect(text()).not.toMatch(/Only you see this/)
   })
 
   it('on: what the page holds, with no privacy note, and the same sections', async () => {
@@ -47,7 +49,7 @@ describe('the You page, Kevin’s goals and promises are the same either way', (
   it('his target and what he said he would do read the same, on and off', async () => {
     const { unmount } = open('kevin', false)
     await screen.findByText('Units sold by 30 October. You have 49 of 30.')
-    const off = text().replace('What’s yours, across your check-ins. Only you see this page.', 'What’s yours, across your check-ins.')
+    const off = text()
     unmount()
     open('kevin', true)
     await screen.findByText('Units sold by 30 October. You have 49 of 30.')
