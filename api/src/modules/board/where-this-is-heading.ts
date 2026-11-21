@@ -111,6 +111,10 @@ export function whereThisIsHeading(a: {
            * "what changed since last time" reached for the same fault (request 151, E1). It
            * already says people differ, so nothing is added after it.
            */
+          /* "How progress against the team's target is described" has a verb, but it is a question asked as a thing, not a
+             sentence (live copy, 21 November: it stood alone under "The signals behind them"). It is said after "about". */
+          const aQuestionAsAThing = /^(?:Whether|What|How|Who|When|Where|Which|Why|If)\b/i.test(topic) && topic.split(/\s+/).length <= 20 && !/[.!?]/.test(topic);
+          if (aQuestionAsAThing) return `People in this check-in said different things about ${topic.charAt(0).toLowerCase() + topic.slice(1)}.`;
           const isAlreadyASentence = HAS_A_VERB_OF_ITS_OWN.test(topic);
           if (topic && isAlreadyASentence && topic.split(/\s+/).length <= 20) {
             return `${topic.charAt(0).toUpperCase()}${topic.slice(1)}.`;

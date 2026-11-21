@@ -22,13 +22,10 @@ import { theInstancesAsSentences } from '../patterns/the-next-step-for-each-patt
 import { aHolderSaidWithWhose } from '../board/a-holder-in-their-own-words';
 import { everyLineTheFinalCheckPasses, type WhatTheRecordHolds } from '../conversation/the-final-check';
 import { whatTheRecordHolds } from '../conversation/what-the-record-holds';
+import { inASentence } from '../board/a-phrase-inside-a-sentence';
 
 /** A phrase put inside a sentence, as the board does it (board.service's inASentence, kept here so
  *  the report does not import the board's service). */
-const inASentence = (phrase: string): string => {
-  const t = (phrase ?? '').trim().replace(/[.!?]+$/, '');
-  return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
-};
 
 /**
  * WHAT TODAY READS FROM THE LATEST REPORT THAT ONLY THE ENGINE CAN WRITE (week 16, screens request 3,

@@ -1,3 +1,4 @@
+import { inASentence } from '../board/a-phrase-inside-a-sentence';
 /**
  * WHAT PEOPLE SAID DIFFERENT THINGS ABOUT, AS A SENTENCE (review of 1 October 2026, re-d, sales).
  *
@@ -40,10 +41,6 @@ export function isAWholeSentence(topic: string): boolean {
   return A_VERB.test(` ${t}`) || /,\s+(?:while|whereas)\s+\S+\s+\S+/i.test(t);
 }
 
-const inASentence = (phrase: string): string => {
-  const t = phrase.trim().replace(/[.!?]+$/, '');
-  return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
-};
 
 /** "People said different things about the price list." or "People said different things. The accounts differ on ...". */
 /*

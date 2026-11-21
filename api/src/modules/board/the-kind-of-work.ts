@@ -343,7 +343,9 @@ export const THE_KIND_OF_WORK_SCHEMA = {
   input_schema: {
     type: 'object',
     properties: {
-      kind: { type: 'string', description: 'One of the fifteen names exactly, or "none".' },
+      /* The model understands the lead's words; what it may answer is the fifteen names or "none", so what is saved is always one of
+         them (Hafsah, 21 November: "a sales team" was saved, matched none, and the check-in drew the general board). */
+      kind: { type: 'string', enum: [...KINDS_OF_WORK, 'none'], description: 'One of the fifteen names exactly, or "none".' },
     },
     required: ['kind'],
   },

@@ -234,7 +234,8 @@ export function plainReading(f: PriorityFacts, tag: string): string {
     parts.push(feeding === 0 ? 'and no check-in feeds it.' : `and ${plural(feeding, 'check-in feeds', 'check-ins feed')} it.`);
     return parts.join(' ');
   }
-  if (feeding === 0) return 'No check-in feeds this priority yet, so nothing on the record can show it moving. Once a check-in reports against it, the record can show how it is going.';
+  /* One short line from the record, as the prototype's card gives (Hafsah, 21 November: the Desk read the same long sentence four times). */
+  if (feeding === 0) return 'No check-in reports against it yet.';
   parts.push(`${plural(feeding, 'check-in feeds', 'check-ins feed')} this priority, and ${plural(f.finishedLast30, 'was', 'were')} finished in the last 30 days.`);
   if (f.blocked > 0) parts.push(`${plural(f.blocked, 'handoff is', 'handoffs are')} stopping work on it.`);
   else if (f.waiting > 0) parts.push(`${plural(f.waiting, 'handoff is', 'handoffs are')} waiting on other work.`);
@@ -438,8 +439,16 @@ function levelsFrom(input: PictureInput, model: TheModelsPicture | null | undefi
 /* The model's record, and what changes the picture                                            */
 /* ------------------------------------------------------------------------------------------ */
 
+/*
+ * HOW THE PICTURE IS WRITTEN, AS PART OF WHAT IT WAS BUILT FROM (21 November 2026). A change to how a reading is worded
+ * (plainReading's one short line) changed nothing in the record, so every stored picture kept the old words until the record
+ * itself moved. Raise this whenever a writer here changes, and each picture is written again the next time it is looked at.
+ */
+export const HOW_THE_PICTURE_IS_WRITTEN = 2;
+
 export function theInputKey(input: PictureInput): string {
   const rows = [
+    `W|${HOW_THE_PICTURE_IS_WRITTEN}`,
     ...input.priorities.map((p) => ['P', p.id, p.number, p.title, p.ownerExternalId ?? '', p.ownerKnown === false ? 'unknown' : '', p.overdue, p.hasChildren, p.feedingGroundIds.slice().sort().join(','), p.finishedLast30, p.blocked, p.waiting, p.teams.slice().sort().join(',')].join('|')),
     ...input.handoffs.map((h) => ['H', h.id, h.groundId, h.team ?? '', h.about, h.status, h.priorityNumbers.join(','), h.waitsOnSomebody ?? ''].join('|')),
     ...input.subjects.map((s) => ['S', s.id, s.type, s.title, s.ownerExternalId ?? '', s.parentExternalId ?? '', s.overdue, s.measure ?? ''].join('|')),
