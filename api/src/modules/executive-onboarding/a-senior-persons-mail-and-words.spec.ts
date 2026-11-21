@@ -184,6 +184,29 @@ describe('WhatsApp', () => {
     expect(wrote).toHaveLength(1);
   });
 
+  /*
+   * RELEASE TEST 21 NOVEMBER, 82. Halima typed "add March to the report" on WhatsApp and read "I can follow up with the team on “add March to the report”. Who
+   * should take it, and by which day...": her typed words were read as an instruction to her team before her draft heard them. A voice note already went to
+   * the draft first. Typed and spoken words now go in the one order.
+   */
+  it('"add March to the report", typed on WhatsApp, is a change to her draft, never a task for her team', async () => {
+    const w = aWorldForOnboarding();
+    const email = { sendTheIntroduction: async () => 'sent', sendTheAssistantsReply: async () => 'sent' };
+    const whatsapp = { sendFor: async () => ({ sent: true }) };
+    const yearEnd = { handle: jest.fn(async ({ message, channel }: any) => (/add march/i.test(message) && channel === 'whatsapp' ? 'I have added March to your draft. Version 2 is ready, and I have emailed it to you.' : null)) };
+    const toTheTeam = 'I can follow up with the team on “add March to the report”. Who should take it, and by which day?';
+    const teamLoop = { theMind: null, hearAnInstruction: jest.fn(async () => toTheTeam), hearACorrection: async () => null };
+    const svc = new ExecutiveOnboardingService(w.prisma as any, email as any, whatsapp as any, {} as any, {} as any, w.intake.transcriber as any, undefined, yearEnd as any, teamLoop as any);
+    await addAnExecutive(w.prisma, w.ports, addFatima(w));
+    const fatima = w.t.person.rows.find((p: any) => p.email === 'fatimawale@example.com');
+    const said = await svc.onWhatsApp({ organizationId: ORG, from: '2348031112222', userId: 'u-fatima', personId: fatima.id, hasOpenCheckIn: async () => false, arrived: { kind: 'text', text: 'add March to the report' }, fetchMedia: async () => null });
+    console.log(`SHE TYPES\nadd March to the report\nSHE READS\n${said?.reply}`);
+    expect(said).toEqual({ reply: 'I have added March to your draft. Version 2 is ready, and I have emailed it to you.' });
+    expect(teamLoop.hearAnInstruction).not.toHaveBeenCalled();
+    /* Words that are not about her draft still reach her instructions. */
+    expect(await svc.onWhatsApp({ organizationId: ORG, from: '2348031112222', userId: 'u-fatima', personId: fatima.id, hasOpenCheckIn: async () => false, arrived: { kind: 'text', text: 'get everyone to send their updates' }, fetchMedia: async () => null })).toEqual({ reply: toTheTeam });
+  });
+
   it('her "slow down" and a voice note that says yes are heard, and a team member\'s WhatsApp reply is kept and verified', async () => {
     const { w, svc, quiet } = await theService();
     const say = (text: string) => svc.onWhatsApp({ organizationId: ORG, from: '2348031112222', userId: 'u-fatima', personId: w.t.person.rows.find((p: any) => p.email === 'fatimawale@example.com').id, hasOpenCheckIn: async () => false, arrived: { kind: 'text', text }, fetchMedia: async () => null });
