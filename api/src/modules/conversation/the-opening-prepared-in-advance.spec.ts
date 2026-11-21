@@ -2,7 +2,7 @@ import { theNightRunsDatabase, N, type AGroundOfTheRun } from '../engagement/the
 import { ConversationService } from './conversation.service';
 import { withTheOpeningLine } from './the-opening-line';
 import { aTeamMembersOpeningFor } from './the-one-thing-today';
-import { theFactLine, theOpeningAsRead, nothingChangedSince, thePreparedOpeningIn, KEPT_IN_THE_PLAN_AS, type APreparedOpening } from './the-opening-prepared-in-advance';
+import { theOpeningAsRead, nothingChangedSince, thePreparedOpeningIn, KEPT_IN_THE_PLAN_AS, type APreparedOpening } from './the-opening-prepared-in-advance';
 
 /**
  * EACH PERSON'S OPENER AND FIRST QUESTION, PREPARED IN ADVANCE (Hafsah, 3 November 2026 night; fix plan, batch 1, group 7, item 1).
@@ -62,10 +62,8 @@ function aCheckInOver(g: AGroundOfTheRun, first: string) {
 }
 
 describe('the opener, in its parts', () => {
-  it('is one plain fact by name, or "nothing is open from last time", and always has its question after it', () => {
-    expect(theFactLine({ firstName: 'Joseph', things: [{ says: 'Juja Hardware is waiting on the KES 4,500 price for 5 units.' } as any] })).toBe('Joseph, Juja Hardware is waiting on the KES 4,500 price for 5 units.');
-    expect(theFactLine({ firstName: 'Joseph', things: [] })).toBe('Joseph, nothing is open from last time.');
-    expect(theOpeningAsRead('Joseph, nothing is open from last time.', 'What did you get done this week?')).toBe('Joseph, nothing is open from last time. What did you get done this week?');
+  it('is one plain fact by name, and always has its question after it', () => {
+    expect(theOpeningAsRead('Joseph, Juja Hardware is waiting on the KES 4,500 price for 5 units.', 'What did they say?')).toBe('Joseph, Juja Hardware is waiting on the KES 4,500 price for 5 units. What did they say?');
   });
 
   it('a draft is fresh only while the line, the things, their updates, the lead\'s decisions and their waits are all as they were', () => {
@@ -140,10 +138,17 @@ describe('the other readers', () => {
   beforeEach(() => jest.useFakeTimers({ now: NOW, doNotFake: ['setTimeout', 'setInterval', 'setImmediate', 'clearTimeout', 'clearInterval', 'nextTick', 'queueMicrotask'] }));
   afterEach(() => jest.useRealTimers());
 
-  it('Peter, with nothing open on record: "Peter, nothing is open from last time." and the question', async () => {
-    const { service, ci, userId } = aCheckInOver('drop', 'Peter');
+  /* Release test, 21 November 2026, bugs 6 and 11: "Amani, nothing is open from last time." was said to somebody who had promised a
+     Friday update, and to somebody whose next question was about the wait she was in. With nothing on the short list, nothing is
+     prepared and the model opens from the whole record, as it does for the lead. */
+  it('Peter, with nothing on the short list: nothing is prepared, nothing says "nothing is open", and the model opens from the record', async () => {
+    const { service, anthropic, row, ci, userId } = aCheckInOver('drop', 'Peter');
+    expect(await service.prepareTheOpening(row.id)).toBeNull();
+    expect(await service.theOpeningLine(ci.id, userId)).toEqual({ line: null });
     const r: any = await service.open(ci.id, userId);
-    expect(r.reply).toBe(withTheOpeningLine(`Peter, nothing is open from last time. ${THE_QUESTION}`));
+    expect(anthropic.respond).toHaveBeenCalledTimes(1);
+    expect(r.reply).not.toMatch(/nothing is open/i);
+    expect(r.reply).toBe(withTheOpeningLine('What moved on your deals since yesterday?'));
   });
 
   it('the lead: nothing is prepared, and her opening is the model\'s, as before', async () => {
