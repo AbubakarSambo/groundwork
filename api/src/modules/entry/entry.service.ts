@@ -45,7 +45,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService, RECOMMENDED_MOMENT, DEFAULT_TIMELINE_DAYS } from '../grounds/grounds.service';
 import { EmailService } from '../email/email.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
-import { theScenarioAKindImplies } from '../board/the-switchboard';
 import type { KindOfWork } from '../board/the-kind-of-work';
 import { ConversationService } from '../conversation/conversation.service';
 import { GroundworkEvents, CheckInCompletedEvent, SetupReadEvent } from '../../common';
@@ -88,7 +87,8 @@ import { THE_EXTRACTION_SYSTEM, THE_EXTRACTION_TOOL, THE_CLOSING_REMINDER, allSe
 import { theLeadsReveal } from './the-anchor-reveal';
 import type { TheLeadsReveal, ThePeopleStepRules } from './the-anchor-served-shapes';
 import { draftFromASetUp, type ASetUpToStartFrom } from './a-set-up-can-start-from-a-recommendation';
-import { readTheSituationAndTheKind, theKindForThisSituation } from './which-situation-this-is';
+import { readTheSituationAndTheKind, whatTheReadingSets } from './which-situation-this-is';
+import { keepWhatTheLeadTyped } from '../grounds/what-the-lead-said-at-set-up';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
 import { thisAlreadyHappened, LOOK_BACK_INSTEAD } from './this-already-happened';
@@ -703,23 +703,12 @@ export class EntryService {
        */
       const read = await readTheSituationAndTheKind(this.anthropic, description, mode);
       /*
-       * A KIND OF WORK THE MODEL NAMES OVERRIDES THE SITUATION IT READ (Hafsah, 15 November 2026). The kind's switchboard row says which
-       * situation the check-in and its report run as, so the conversation, the board and the report agree: a support desk is never
-       * "discovery" and a sales organisation never a "cohort check", sure read or unsure. A situation the person picked never gets here.
-       * The kind comes from the same reading as the situation (which-situation-this-is.ts), never from a second call of its own.
+       * A KIND OF WORK THE MODEL NAMES OVERRIDES THE SITUATION IT READ (Hafsah, 15 November 2026), and THE KIND IS READ FOR A SITUATION
+       * SHE CHOSE TOO, kept with it only where the kind runs as that situation (typed situations, 22 November 2026). One rule, kept with
+       * the reading (whatTheReadingSets), so a check-in set up in the chat is set by the same rule as one set up here.
        */
-      const kindImplies = theScenarioAKindImplies(read?.kind);
-      /*
-       * THE KIND IS READ FOR A SITUATION SHE CHOSE TOO, AND IS THE ONE THE CHECK-IN IS SAVED WITH (typed situations, 22 November 2026).
-       * The kind was read a second time when the check-in was saved, from the setup's words, and the two reads disagreed: "county ag
-       * extension rollout, ministry funded" was a government programme at the door and nothing at the save. This reading is now the
-       * only one; the setup carries its kind to the save. Her chosen situation still stands, so a kind is kept with it only where the
-       * kind runs as that situation, or as none in particular.
-       */
-      const kindWithHers = chosen ? theKindForThisSituation(read, chosen) : null;
-      if (chosen) return { scenario: chosen, confidence: 'high', ...(kindWithHers ? { kind: kindWithHers } : {}) };
-      if (kindImplies) return { scenario: kindImplies, confidence: 'high', kind: read!.kind };
-      if (read) return { scenario: read.scenario, confidence: read.confidence, ...(read.kind ? { kind: read.kind } : {}) };
+      const set = whatTheReadingSets(read, chosen);
+      if (set) return set;
     } catch { /* fall through */ }
     if (chosen) return { scenario: chosen, confidence: 'high' };
     /* No answer at all: the broad category the person picked, said with the confidence it deserves. */
@@ -2417,15 +2406,8 @@ from finishing at all.`;
       .filter((t) => t && !t.startsWith('[Document:') && !t.startsWith('[Situation picked'))
       .join('\n\n')
       .slice(0, 20_000);
-    if (theirOwnWords) {
-      await (this.prisma as any).leadSetupWords
-        ?.upsert?.({
-          where: { groundId: ground.id },
-          create: { groundId: ground.id, authorUserId: initiatorId, text: theirOwnWords },
-          update: { authorUserId: initiatorId, text: theirOwnWords },
-        })
-        ?.catch?.((err: any) => this.logger.warn(`Could not keep the lead's setup words on ${ground.id}: ${err?.message}`));
-    }
+    /* The one writer of her words, which a check-in set up in the chat keeps them by too (what-the-lead-said-at-set-up.ts). */
+    await keepWhatTheLeadTyped(this.prisma, ground.id, initiatorId, theirOwnWords, this.logger);
 
     const checkIn = await this.prisma.checkIn.findFirst({
       where: { groundId: ground.id, participantId: participant.id, sessionNumber: 1 },

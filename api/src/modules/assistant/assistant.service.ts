@@ -184,6 +184,10 @@ import {
   whatBecameOfIt,
 } from './anything-it-can-say-it-can-send';
 import { whatTheyWantToCallIt } from './what-they-want-to-call-it';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ConversationService } from '../conversation/conversation.service';
+import { readTheSituationAndTheKind, whatTheReadingSets } from '../entry/which-situation-this-is';
+import { keepWhatTheLeadTyped, readTheTargetsSheGaveAtSetUp } from '../grounds/what-the-lead-said-at-set-up';
 import { CHECK_IN_SETUP_KIND, SETUP_READING_PROMPT, SETUP_READING_SCHEMA, SETUP_STOPPED, oneAnswerLaidOver, theNameFor, theNextStep, theSituationFor, whatTheModelHeard, type TheSetupSoFar, type WhatTheModelHeard } from './a-check-in-set-up-by-talking';
 import { asALine, whatIsMissingAcrossThem } from './what-a-target-was-for';
 import {
@@ -400,6 +404,9 @@ export class AssistantService {
     @Optional() private readonly reportsOnRequest?: ReportsOnRequestService,
     /* What needs you, the one source Today reads, for "what next" and "what is stuck" (Batch S round 2, T3). Without it, they answer from the record as before. */
     @Optional() private readonly whatNeedsYou?: WhatNeedsYouService,
+    /* The conversation's set-up readers, so a check-in set up here is read from her words as one set up on /start is (22 November 2026). */
+    @Optional() private readonly conversation?: ConversationService,
+    @Optional() private readonly events?: EventEmitter2,
   ) {}
 
   /**
@@ -2694,7 +2701,7 @@ export class AssistantService {
     const offered = whoWouldBeAsked(roster as any, who)
       .filter((p: any) => p.email)
       .map((p: any) => ({ name: p.displayName ?? p.externalId, email: String(p.email).toLowerCase() }));
-    const start: TheSetupSoFar = { people: [], unreachable: [], offered, asked: 'start' };
+    const start: TheSetupSoFar = { people: [], unreachable: [], offered, asked: 'start', said: [{ words: message, asked: null }] };
     const heard = await this.whatTheSetupAnswerSays(message, null);
     return this.theNextSetupStep(organizationId, who, oneAnswerLaidOver(start, message, heard, roster as any, false));
   }
@@ -2707,8 +2714,22 @@ export class AssistantService {
     return whatTheModelHeard(raw);
   }
 
+  /**
+   * THE SITUATION AND THE KIND OF WORK, FROM HER OWN WORDS, BY THE ONE READING AND THE ONE RULE /start USES (readTheSituationAndTheKind,
+   * whatTheReadingSets; 22 November 2026). A check-in set up here was opened as "a regular read" with no kind, so a sales team's board
+   * had nothing on it. Where the reading gives nothing, the situation is read from what they want updates on, as before.
+   */
+  private async theSituationAndKindSheMeans(so: TheSetupSoFar): Promise<Pick<TheSetupSoFar, 'scenario' | 'kindOfWork'>> {
+    const words = [...(so.said ?? []).map((s) => s.words), so.updatesOn ? `Updates on ${so.updatesOn}.` : ''].map((w) => String(w ?? '').trim()).filter(Boolean).join('\n');
+    const read = words ? await readTheSituationAndTheKind(this.engine as any, words).catch(() => null) : null;
+    const set = whatTheReadingSets(read);
+    return { scenario: set?.scenario ?? theSituationFor(so.updatesOn ?? '').scenario, kindOfWork: set?.kind ?? undefined };
+  }
+
   /** The next question, or the say-back, kept waiting for the answer. */
-  private async theNextSetupStep(organizationId: string, who: string, so: TheSetupSoFar): Promise<Reply> {
+  private async theNextSetupStep(organizationId: string, who: string, said: TheSetupSoFar): Promise<Reply> {
+    /* At the say-back, the situation and the kind of work are read from her words, so what is said back is what is opened. */
+    const so = theNextStep(said).asked === 'confirm' ? { ...said, ...(await this.theSituationAndKindSheMeans(said)) } : said;
     const next = theNextStep(so);
     const proposal = await this.prisma.assistantProposal.create({
       data: { organizationId, personExternalId: who, kind: CHECK_IN_SETUP_KIND, summary: next.says, payload: { ...so, asked: next.asked } as never },
@@ -2745,7 +2766,7 @@ export class AssistantService {
     if (JSON.stringify({ ...laid, asked: so.asked }) === JSON.stringify(so)) {
       return this.answer(organizationId, personId, who, message, true, where?.groundId, where?.userId);
     }
-    return this.theNextSetupStep(organizationId, who, laid);
+    return this.theNextSetupStep(organizationId, who, { ...laid, said: [...(so.said ?? []), { words: message, asked: parked.summary ?? null }] });
   }
 
   /**
@@ -3784,7 +3805,8 @@ export class AssistantService {
     try {
       ground = await this.grounds.create(organizationId, me.linkedUserId, {
         label,
-        scenario: theSituationFor(so.updatesOn ?? '').scenario as never,
+        scenario: (so.scenario ?? theSituationFor(so.updatesOn ?? '').scenario) as never,
+        ...(so.kindOfWork ? { kindOfWork: so.kindOfWork } : {}),
         moment: 'STARTING' as never,
         cadence: so.cadence as never,
         brief: `I want updates on ${so.updatesOn}.`,
@@ -3812,6 +3834,22 @@ export class AssistantService {
       : `I have opened "${label}", but none of those people could be invited.`];
     said.push(...notInvited);
     if (numbersNotKept.length) said.push(`The phone number for ${saidAsAList(numbersNotKept)} did not save, but ${numbersNotKept.length === 1 ? 'they are' : 'they are all'} on the check-in.`);
+    /*
+     * AND WHAT SHE SAID IS READ, AS ON /start (22 November 2026). Her words are kept by the one writer, then read by the same readers a
+     * save on /start runs, once the people are on it: the team's aims and each person's targets, which count as her yes. Nothing here
+     * holds the reply. Without it, "each agent sells 8 freezers and activates 4 points a week" reached no target and the board was empty.
+     */
+    const herWords = (so.said ?? []).map((s) => String(s.words ?? '').trim()).filter(Boolean);
+    await keepWhatTheLeadTyped(this.prisma, ground.id, me.linkedUserId, herWords.join('\n\n'), this.logger);
+    if (this.conversation) void readTheTargetsSheGaveAtSetUp({ prisma: this.prisma, conversation: this.conversation as any, grounds: this.grounds as any, events: this.events, logger: this.logger }, ground.id, {
+      words: herWords,
+      asked: (so.said ?? []).filter((s) => String(s.words ?? '').trim()).map((s) => s.asked),
+      given: [
+        ...so.people.filter((p) => !left.has(String(p.email))).map((p) => [p.name, p.email, p.phone].filter(Boolean).join(', ')),
+        ...(so.cadence ? [`How often: ${so.cadence}`] : []),
+        `The brief: I want updates on ${so.updatesOn}.`,
+      ],
+    }).catch((err: any) => this.logger.warn(`What the lead said setting up ${ground.id} could not be read: ${err?.message ?? err}`));
     return rules('start_a_check_in', text(said.join(' ')));
   }
 

@@ -110,6 +110,22 @@ export async function readTheSituationAndTheKind(model: AModel, words: string, m
   return readTheClassification(answer);
 }
 
+/**
+ * WHAT ONE READING SETS: THE SITUATION AND THE KIND, BY ONE RULE FOR EVERY DOOR (/start and a check-in set up in the chat, 22 November
+ * 2026). A situation she chose stands, with the kind only where it runs as that situation. Otherwise a kind the reading names decides the
+ * situation, from its switchboard row, so the conversation, the board and the report agree: a sales team is never "a regular read". Then
+ * the situation as read, which is none when the reading was unsure. Null where the reading gave nothing at all.
+ */
+export function whatTheReadingSets(read: Classification | null | undefined, chosen?: GroundScenario | null): Classification | null {
+  if (chosen) {
+    const kind = theKindForThisSituation(read, chosen);
+    return { scenario: chosen, confidence: 'high', ...(kind ? { kind } : {}) };
+  }
+  const implies = theScenarioAKindImplies(read?.kind);
+  if (implies) return { scenario: implies, confidence: 'high', kind: read!.kind };
+  return read ? { scenario: read.scenario, confidence: read.confidence, ...(read.kind ? { kind: read.kind } : {}) } : null;
+}
+
 /** The kind a reading gives a check-in whose situation is already set: kept where the kind runs as that situation, or as none in particular. */
 export function theKindForThisSituation(read: Classification | null | undefined, scenario: string | null | undefined): KindOfWork | null {
   if (!read?.kind) return null;

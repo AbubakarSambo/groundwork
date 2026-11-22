@@ -13,6 +13,7 @@
  */
 import { saidAsAList, whichSituation } from './what-a-new-check-in-would-be';
 import { theRhythmIn, type TheRhythm } from '../entry/what-they-asked-for-in-so-many-words';
+import { THE_SCENARIO_TABLE } from '../conversation/the-scenario-table';
 
 export const CHECK_IN_SETUP_KIND = 'check_in_setup';
 
@@ -32,6 +33,14 @@ export interface TheSetupSoFar {
   offered: APerson[];
   /** What was asked last, so the next message is read as its answer. */
   asked: 'start' | 'updates' | 'people' | 'often' | 'confirm';
+  /**
+   * What she said while setting it up, each with the question it answered, kept so the check-in is read from her own words once it is
+   * opened, as one set up on /start is: its kind of work, and the targets she gave (assistant.service.ts, openTheCheckInSetUpByTalking).
+   */
+  said?: { words: string; asked: string | null }[];
+  /** The situation and the kind of work, from the one reading of her words at the say-back (whatTheReadingSets), said back and opened with. */
+  scenario?: string;
+  kindOfWork?: string;
 }
 
 const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
@@ -144,13 +153,19 @@ export function theNameFor(updatesOn: string): string {
   return `Updates on ${inASentence(updatesOn)}`.slice(0, 120);
 }
 
+/** The situation it runs as, in the words its card says on /start (the scenario table), so both doors name a situation the same way. */
+function theSituationInWords(scenario: string): string {
+  const name = (THE_SCENARIO_TABLE as Record<string, { name?: string }>)[scenario]?.name ?? 'Keep a read on live work';
+  return `${name.charAt(0).toLowerCase()}${name.slice(1)}`;
+}
+
 /** The whole of it, said back before anything is opened or sent. Everybody is named, never counted. */
 export function saidBack(s: TheSetupSoFar): string {
   const updatesOn = inASentence(s.updatesOn ?? '');
   const each = s.people.map((p) => `${p.name} (${[p.email, p.phone].filter(Boolean).join(', ')})`);
   const one = s.people.length === 1;
   return [
-    `Here is the check-in I will open. It is called "${theNameFor(updatesOn)}", and it asks for updates on ${updatesOn}. I will run it as a check-in about ${theSituationFor(updatesOn).says}.`,
+    `Here is the check-in I will open. It is called "${theNameFor(updatesOn)}", and it asks for updates on ${updatesOn}. I will run it as a check-in to ${theSituationInWords(s.scenario ?? theSituationFor(updatesOn).scenario)}.`,
     `${saidAsAList(each)} will be in it, and ${one ? 'they' : 'each of them'} will be emailed an invitation.`,
     `They will check in ${RHYTHM_SAID[s.cadence as TheRhythm]}.`,
     'Shall I open it?',
