@@ -703,25 +703,25 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
             return lines.length ? lines.map((l) => <p key={l}>{l}</p>) : <p>Groundwork has not found any help that nobody mentioned yet.</p>
           })()}</div>
         </section>
+        {/* Only what the links between check-ins hold. Waiting on somebody outside them (Amani on Baraka in Operations) is under Blockers, so
+            the empty part is not drawn: "Nothing is waiting on another team" was untrue beside it (release test, 21 November 2026, bug 30). */}
+        {waiting.length > 0 && (
         <section className="sec" id="waiting">
           <div className="sec-h"><h2 className="t-h2">Waiting on other teams</h2><span className="t-small mut">These show on their boards too</span></div>
-          {waiting.length ? (
-            <div className="list">
-              {waiting.map((w) => (
-                <div className="item" key={w.id}>
-                  <i className="sp att" />
-                  <div>
-                    <div className="h">{w.team ? `${w.team}: ${w.what}` : w.what}</div>
-                    <div className="s">{`Asked ${aShortDay(w.asked)}.${w.says ? ` ${w.says}` : ''}`}</div>
-                  </div>
-                  {w.open ? <Link className="btn quiet sm" to={w.open.to}>{`Open in ${w.open.label}`}</Link> : <Link className="btn quiet sm" to={`/grounds/${groundId}/trace`}>See where it started</Link>}
+          <div className="list">
+            {waiting.map((w) => (
+              <div className="item" key={w.id}>
+                <i className="sp att" />
+                <div>
+                  <div className="h">{w.team ? `${w.team}: ${w.what}` : w.what}</div>
+                  <div className="s">{`Asked ${aShortDay(w.asked)}.${w.says ? ` ${w.says}` : ''}`}</div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="panel pad"><p className="t-small">Nothing in this check-in is waiting on another team.</p></div>
-          )}
+                {w.open ? <Link className="btn quiet sm" to={w.open.to}>{`Open in ${w.open.label}`}</Link> : <Link className="btn quiet sm" to={`/grounds/${groundId}/trace`}>See where it started</Link>}
+              </div>
+            ))}
+          </div>
         </section>
+        )}
         {(b.openIssues?.issues ?? []).length > 0 && (
           <section className="sec" id="openissues">
             <div className="sec-h"><h2 className="t-h2">Open issues</h2><span className="t-small mut">Each one moving towards a decision. You always choose</span></div>

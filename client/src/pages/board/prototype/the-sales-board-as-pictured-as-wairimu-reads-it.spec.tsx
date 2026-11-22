@@ -15,6 +15,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BoardPage } from '../BoardPage'
 import { boardApi } from '@/api/board'
 import { groundsApi } from '@/api/grounds'
+import { checkInLinksApi } from '@/api/check-in-links'
 import board from '../__fixtures__/sales-team-q4-with-deals-as-wairimu.json'
 import ground from '../__fixtures__/sales-team-q4-with-deals-ground-as-wairimu.json'
 
@@ -79,11 +80,27 @@ describe('the sales board ported from the prototype, as Wairimu reads it', { tim
     expect(text).toContain('The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.')
     const order = ['Will we reach 40 new shops a week by 28 January 2027?', 'What needs you in this check-in', 'Every deal, day by day', 'The team today', 'Blockers',
       'What keeps coming up', 'Reported vs criteria met, stage by stage', 'Who checked in', 'Over time', 'Reports', 'Every session', 'Help nobody mentioned',
-      'Waiting on other teams', 'Open issues', 'Where this is heading']
+      'Open issues', 'Where this is heading']
     for (let i = 1; i < order.length; i++) expect(at(text, order[i - 1]), `${order[i - 1]} before ${order[i]}`).toBeLessThan(at(text, order[i]))
+    /* Nothing linked to another check-in: the part is not drawn, and never says nothing is waiting while people wait on other teams under
+       Blockers (release test, 21 November 2026, bug 30). It is drawn, after "Help nobody mentioned", when a link holds something (below). */
+    expect(text).not.toContain('Waiting on other teams')
+    expect(text).not.toContain('Nothing in this check-in is waiting on another team.')
+    /* No word "ground" anywhere she reads (bug 41). */
+    expect(text).not.toMatch(/\bground\b/i)
     expect(container.querySelector('.askdock input[aria-label="Ask about this board"]')).not.toBeNull()
     expect(text).toContain('No chance-to-close percentages yet. They need a quarter of this team’s own results.')
     expect(text).toContain('These are about the work. Open anyone to see what they said and what the proof shows.')
+  })
+
+  it('what a link to another check-in holds is drawn under Waiting on other teams, after Help nobody mentioned', async () => {
+    ;(checkInLinksApi.get as any).mockResolvedValue({ waitingOnOtherTeams: [{ id: 'w1', team: 'Operations', what: 'the delivery slots for Kilimani', asked: '2026-11-20T09:00:00.000Z', open: null }] })
+    const { container } = renderIt(true)
+    await screen.findByText('Waiting on other teams', undefined, { timeout: 30000 })
+    const text = container.textContent ?? ''
+    expect(at(text, 'Help nobody mentioned')).toBeLessThan(at(text, 'Waiting on other teams'))
+    expect(text).toContain('Operations: the delivery slots for Kilimani')
+    ;(checkInLinksApi.get as any).mockResolvedValue({ waitingOnOtherTeams: [] })
   })
 
   it('the deals are grouped as the prototype groups them, each group with its reason', async () => {
