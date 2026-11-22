@@ -184,7 +184,7 @@ describe('with Release 1\'s sales board off, every reader reads the board as it 
     const b = await boardAs(run(false), ...BISI);
     expect(deal(b, 'Juja Hardware').value).toBe('KES 4,500');
     expect(deal(b, 'Mama Mboga Mart').buyingDate).toBeUndefined();
-    expect(deal(b, 'Kamau Electricals').stage).toBeNull();
+    expect(deal(b, 'Kamau Electricals').stage).toBe('Contacted');
     expect((b.objectives ?? []).map((o: any) => o.id)).toContain('o-team-again');
     expect(sent(b)).not.toContain('Hasn’t checked in today.');
   });

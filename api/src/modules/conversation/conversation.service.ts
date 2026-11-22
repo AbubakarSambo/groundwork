@@ -217,8 +217,6 @@ import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt
 
 /** The coaching block reaches a live prompt only when this platform setting is true. See coachingIsLive(). */
 export const COACHING_LIVE_KEY = 'coaching_live';
-/** askedFor stamp on the turn that asks what an uploaded document shows; the id follows. */
-export const DESCRIBES_DOCUMENT = 'describes document:';
 import {
   CORRECTION_WINDOW_KEY,
   DEFAULT_CORRECTION_WINDOW_DAYS,
@@ -2476,9 +2474,6 @@ export class ConversationService {
     });
     /* Where this turn arrived (the app, WhatsApp or the API), so the conversation's assessment can say which channel it came by. */
     theDoorsTheirTurnsCameThrough(this, checkIn.id).add(how.door ?? 'web');
-    await this.keepTheDocumentDescription(checkIn.id, personTurn.id, message).catch((err) =>
-      this.logger.warn(`Could not keep a document description on ${checkIn.id}: ${err?.message}`),
-    );
     await this.noteIfTheySaidWhy(checkIn as any, message);
 
     // Rebuild history (this party only) and ask the engine for the next turn.
@@ -9597,27 +9592,6 @@ ${told}` : '';
    * meter and What this rests on already read recallBased, so they move on their own. Runs at
    * complete() and again when a document is uploaded, so an upload after the session still counts.
    */
-  /**
-   * THE ANSWER TO "WHAT DOES THIS SHOW" IS THE DOCUMENT'S DESCRIPTION.
-   * If the turn before this one was the product asking that about a document, this message is kept
-   * as the document's uploaderNote and the description is checked against the file. 2 of 27 uploads
-   * had a description because this surface, the one people use, threw the answer away.
-   */
-  private async keepTheDocumentDescription(checkInId: string, personTurnId: string, message: string) {
-    const previous = await this.prisma.conversationTurn.findFirst({
-      where: { checkInId, role: TurnRole.AI, id: { not: personTurnId } },
-      orderBy: { createdAt: 'desc' },
-      select: { askedFor: true },
-    });
-    if (!previous?.askedFor?.startsWith(DESCRIBES_DOCUMENT)) return;
-    const docId = previous.askedFor.slice(DESCRIBES_DOCUMENT.length);
-    const said = message.trim().slice(0, 500);
-    if (!said) return;
-    await this.prisma.groundDocument.update({ where: { id: docId }, data: { uploaderNote: said } }).catch(() => undefined);
-    this.logger.log(`document-description doc=${docId} said=${JSON.stringify(said.slice(0, 120))}`);
-    await this.documents?.checkDescription(docId).catch(() => null);
-  }
-
   /** The record lines a document reads differently from that a turn has already put to this person. */
   private async theLinesAlreadyAskedAbout(participantId: string): Promise<Set<string>> {
     /* A groupBy, like the burden count: it can return the stamps and never a turn's content. */
@@ -11896,8 +11870,15 @@ ${told}` : '';
     const fromTheSheet = await this.theContextNotYetSaid(checkIn);
 
     const said = aPersonNeverReadsAnInternalName(fromTheSheet ? `${reply}\n\n${fromTheSheet}` : reply, `check-in ${checkIn.id} turn`, this.logger);
+    /*
+     * THE ANSWER TO THIS QUESTION IS NOT THE DOCUMENT'S DESCRIPTION (release test, 22 November 2026, bug 16). The question was once "what
+     * does this show", and the answer was kept as what the document is. Groundwork now reads the document and says what it is, and asks
+     * what it confirms. Amani answered with Kilimani Fresh's wait on Baraka; that was kept as what her signed order form is, the form was
+     * then read as not what she said it was, so it backed nothing and was filed on no deal, and her sale read "no proof yet" on every
+     * page. Her answer stays in the conversation, which the assessment reads; the document is what it reads as.
+     */
     await this.prisma.conversationTurn.create({
-      data: { checkInId: checkIn.id, role: TurnRole.AI, content: said, askedFor: doc ? `${DESCRIBES_DOCUMENT}${doc.id}` : stampWhatItAskedFor(said) },
+      data: { checkInId: checkIn.id, role: TurnRole.AI, content: said, askedFor: stampWhatItAskedFor(said) },
     });
 
     return { reply: said };

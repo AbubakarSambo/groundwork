@@ -290,7 +290,8 @@ export function whatMovedWithProof(people: { name: string; stored: AStoredPerson
     for (const c of p.stored?.record.claims ?? []) {
       const at = new Date(c.at).getTime();
       if (!c.proven || at < since.getTime() || at > until.getTime()) continue;
-      const key = c.about ? `${p.name}|${c.about}|${c.on}` : `${p.name}|${c.lineId}`;
+      /* One thing said once a day: Kevin's "Jane paid a deposit of KES 15,000 yesterday", kept from two check-ins on Thursday, names no deal and read twice. */
+      const key = c.about ? `${p.name}|${c.about}|${c.on}` : `${p.name}|${String(c.said ?? '').trim().toLowerCase()}|${c.on}`;
       const had = out.get(key);
       if (!had || c.said.length > had.c.said.length) out.set(key, { at, c, name: p.name });
     }

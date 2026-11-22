@@ -457,13 +457,6 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
     let proofSays: string | null = null;
     const proofIds: string[] = [];
     const typedCode = /\b(?=[A-Z0-9]{10}\b)(?=[A-Z0-9]*\d)(?=(?:[0-9]*[A-Z]){2})[A-Z0-9]{10}\b/.exec(l.text)?.[0] ?? null;
-    /*
-     * A WEEKLY COUNT IS NOT A SALE NOBODY CAN SHOW (fix plan 17 November, group 3). "I sold 5 this week" names no deal, so there is nothing
-     * on file it could be filed against; counted as a claim with no proof, an honest person who gave a specific number every week was
-     * told to the lead as "5 times something was sold or signed with nothing on file, so call Joel". A claim is held to proof where it
-     * names a deal; a number of sales said with no deal named is a count, and the board's own count reads it.
-     */
-    if (!item && l.mark !== 'proven' && l.mark !== 'confirmed' && !input.codes.some((c) => l.text.includes(c.code)) && !typedCode && /\b\d+\b/.test(sentences.find((x) => aClaimIn(x)) ?? '')) continue;
     if (l.mark === 'proven') {
       if (l.anchoredDocumentId) { proof = 'a document they added'; proofSays = 'A document you added'; proofIds.push(l.anchoredDocumentId); }
       else if (typedCode) { proof = 'an M-Pesa code'; proofSays = `The M-Pesa code ${typedCode}`; }
@@ -509,6 +502,15 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
       });
       if (answered) { proof = 'an M-Pesa code'; proofSays = `The M-Pesa code ${answered.code}`; }
     }
+    /*
+     * A WEEKLY COUNT IS NOT A SALE NOBODY CAN SHOW (fix plan 17 November, group 3). "I sold 5 this week" names no deal, so there is nothing
+     * on file it could be filed against; counted as a claim with no proof, an honest person who gave a specific number every week was
+     * told to the lead as "5 times something was sold or signed with nothing on file, so call Joel". A claim is held to proof where it
+     * names a deal; a number of sales said with no deal named, and nothing showing it, is a count, and the board's own count reads it.
+     * Read after the proof is worked out (release test fixes, 22 November): Joseph's "Mr. Mutua bought 2 units yesterday" names no deal,
+     * and the M-Pesa code he typed in answer to "What shows the sale of those two units?" shows it, so it is a sale with proof, not a count.
+     */
+    if (!item && proof === 'nothing' && /\b\d+\b/.test(sentences.find((x) => aClaimIn(x)) ?? '')) continue;
     const proven = proof !== 'nothing';
     const names = item ? theNamesOf(item) : [];
     const back = proven ? null : lines.find((x) => t(x.createdAt) > t(l.createdAt) && TAKEN_BACK.test(x.text) && (item ? names.some((n) => aSentenceNames(x.text, n)) : false));
