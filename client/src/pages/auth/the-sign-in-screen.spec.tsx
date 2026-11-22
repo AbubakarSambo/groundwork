@@ -185,7 +185,7 @@ describe('"Forgot your password?", as a signed-out visitor reads it', () => {
     expect(readable(container)).toBe([
       'Groundwork',
       'Check your email',
-      'If there is an account for nobody@baridi.test, I sent it a link to choose a new password. The link works for an hour.',
+      'If nobody@baridi.test has a Groundwork sign-in, I sent it a link to choose a new password. The link works for an hour.',
       'Send it again',
       'You can send it again in 30 seconds.',
       'Wrong address? Use a different one',
@@ -197,7 +197,7 @@ describe('"Forgot your password?", as a signed-out visitor reads it', () => {
   it('"New here? Sign up" opens the sign-up form', async () => {
     await openForgot()
     fireEvent.click(screen.getByRole('button', { name: 'New here? Sign up' }))
-    expect(await screen.findByRole('heading', { name: 'Create your account' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Sign up to Groundwork' })).toBeTruthy()
   })
 })
 
@@ -224,11 +224,11 @@ describe('signing in again never lands on "You\'re signed out"', () => {
   })
 })
 
-describe('"Create your account" says what happens next, truthfully', () => {
+describe('"Sign up to Groundwork" says what happens next, truthfully', () => {
   /* Since Hafsah's decision of 26 September, a password is optional and can be chosen here. */
   it('the link confirms the email and makes the account; nothing promises or denies a password', async () => {
     renderAt('/auth?mode=signup')
-    expect(await screen.findByText('We send you a link to confirm your email. Your account is made when you open it.')).toBeTruthy()
+    expect(await screen.findByText('We send you a link to confirm your email. You are signed up when you open it.')).toBeTruthy()
     expect(screen.queryByText(/No password to choose/)).toBeNull()
   })
 })
@@ -236,14 +236,14 @@ describe('"Create your account" says what happens next, truthfully', () => {
 describe('signing up with a password, if the person prefers (Hafsah, 26 September)', () => {
   it('the link is the default; choosing a password shows the two boxes and the prototype\'s rules', async () => {
     const { container } = renderAt('/auth?mode=signup')
-    await screen.findByRole('heading', { name: 'Create your account' })
+    await screen.findByRole('heading', { name: 'Sign up to Groundwork' })
     /* Group 3, piece 1: the choice is the shared `Choices` part now (role="radiogroup", each
        option its own role="radio" button named by its own text), not a native radio with a
        wrapping <label> - so it is found and read by role and name, not by label. */
     expect(screen.getByRole('radio', { name: 'With a link we email you' }).getAttribute('aria-checked')).toBe('true')
     expect(screen.queryByLabelText('Type it again')).toBeNull()
     fireEvent.click(screen.getByRole('radio', { name: 'With a password' }))
-    expect(readable(container)).toContain(['Password', 'Show', 'Type it again', 'Show', 'At least 8 characters', 'A number or a symbol', 'Not your email address', 'Both passwords match', 'Create account'].join(''))
+    expect(readable(container)).toContain(['Password', 'Show', 'Type it again', 'Show', 'At least 8 characters', 'A number or a symbol', 'Not your email address', 'Both passwords match', 'Sign up'].join(''))
   })
 
   it('sends the password with the sign-up, and shows "Check your email"', async () => {
@@ -256,7 +256,7 @@ describe('signing up with a password, if the person prefers (Hafsah, 26 Septembe
     fireEvent.click(screen.getByRole('radio', { name: 'With a password' }))
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'harbour7lamp' } })
     fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'harbour7lamp' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }))
     await screen.findByRole('heading', { name: 'Check your email' })
     /* "Baridi" is the organisation name suggested from the address, which they left as it was, so it
        is marked as suggested (U.3 re-review: "Create" after "Where do you work?" does not reuse it). */
@@ -269,7 +269,7 @@ describe('signing up with a password, if the person prefers (Hafsah, 26 Septembe
     fireEvent.click(screen.getByRole('radio', { name: 'With a password' }))
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wairimu@baridi.test' } })
     fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'wairimu@baridi.test' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Your password does not meet every rule in the list yet.')
     expect(authApi.entrySave).not.toHaveBeenCalled()
   })

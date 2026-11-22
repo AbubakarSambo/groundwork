@@ -555,7 +555,7 @@ export function AuthPage() {
     }
     const google = googleButton('Sign up with Google')
     return (
-      <AuthCard title="Create your account" sub={trialSentence ?? 'We send you a link to confirm your email. Your account is made when you open it.'}>
+      <AuthCard title="Sign up to Groundwork" sub={trialSentence ?? 'We send you a link to confirm your email. You are signed up when you open it.'}>
         {/*
           WHAT IS WAITING FOR THIS ADDRESS. Somebody promised a month on the house should
           read it here, while they are deciding, rather than find out on their first invoice.
@@ -620,13 +620,13 @@ export function AuthPage() {
 
             {error && <AuthError>{error}</AuthError>}
             <Button type="submit" wide disabled={createAccount.isPending}>
-              {createAccount.isPending ? 'Sending…' : 'Create account'}
+              {createAccount.isPending ? 'Sending…' : 'Sign up'}
             </Button>
           </Stack>
         </form>
 
         <p className="gwui-fine">
-          Already have an account?{' '}
+          Already signed up?{' '}
           <Button kind="quiet" onClick={() => { clearNotices(); setView('password') }}>Sign in</Button>
         </p>
       </AuthCard>
@@ -638,8 +638,8 @@ export function AuthPage() {
       <AuthCard
         title="Get a sign-in link"
         sub={isSignup
-          ? 'Enter your email. We will send you a link that creates your account.'
-          : 'Enter your email. We will send you a link. It signs you in, or creates an account if you do not have one.'}
+          ? 'Enter your email. We will send you a link that signs you up.'
+          : 'Enter your email. We will send you a link. It signs you in, or signs you up if you are new to Groundwork.'}
       >
         <form noValidate onSubmit={submitLink}>
           {trap.field}
