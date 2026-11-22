@@ -277,7 +277,8 @@ describe('the versions agree, and the running words can be proved', () => {
     const { w, a } = await aWorld();
     const first = await makeTheFirstDraft(w.prisma, { ...a, narrator: service });
     expect(first.row.content.narrative?.promptVersionId).toBe(seeded.id);
-    expect(system[0]).toBe(YEAR_END_NARRATIVE_PROMPT);
+    /* The record is read whole first (Batch F, F1), under its own key; the narrative's own call is the one checked here. */
+    expect(system.find((x) => x.startsWith(YEAR_END_NARRATIVE_PROMPT.slice(0, 40)))).toBe(YEAR_END_NARRATIVE_PROMPT);
     const edited = await prompts.createVersion(YEAR_END_NARRATIVE_PROMPT_KEY, `${YEAR_END_NARRATIVE_PROMPT}\nBy hand.`, 'a change');
     await prompts.activate(edited.id, 'admin-1');
     const w2 = (await aWorld()).w;

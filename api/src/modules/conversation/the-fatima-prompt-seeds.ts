@@ -8,6 +8,7 @@ import { SHOWS_IT_PROMPT } from '../team-loop/which-document-shows-it';
 import { ANSWER_PROMPT, ANSWER_PROMPT_KEY } from '../executive-onboarding/her-answer';
 import { THE_DRAFT_REQUEST_PROMPT, THE_DRAFT_REQUEST_PROMPT_KEY } from '../year-end/the-draft-request';
 import { YEAR_END_NARRATIVE_PROMPT, YEAR_END_NARRATIVE_PROMPT_KEY } from '../year-end/the-year-end-narrative';
+import { READ_THE_RECORD_WHOLE_PROMPT, READ_THE_RECORD_WHOLE_PROMPT_KEY } from '../outstanding/the-record-read-whole';
 
 export const THE_FATIMA_PROMPT_SEEDS: { key: string; content: string }[] = [
   { key: THE_TEAM_PROMPT_KEYS.read, content: READ_PROMPT },
@@ -20,4 +21,5 @@ export const THE_FATIMA_PROMPT_SEEDS: { key: string; content: string }[] = [
   { key: ANSWER_PROMPT_KEY, content: ANSWER_PROMPT },
   { key: THE_DRAFT_REQUEST_PROMPT_KEY, content: THE_DRAFT_REQUEST_PROMPT },
   { key: YEAR_END_NARRATIVE_PROMPT_KEY, content: YEAR_END_NARRATIVE_PROMPT },
+  { key: READ_THE_RECORD_WHOLE_PROMPT_KEY, content: READ_THE_RECORD_WHOLE_PROMPT },
 ];

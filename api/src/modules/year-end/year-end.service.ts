@@ -16,8 +16,8 @@ import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { whoIsTheReader } from '../outstanding/a-delegate-acts-for-a-principal';
 import { theAssistantsAddress } from '../email/the-assistants-address';
-import { ASKS_FOR_THE_REFRESH, approveTheDraft, theAckBeforeTheRevision, latestDraft, readTheChange, refreshTheDraft, reviseTheDraft, type TheDraftRow } from './the-year-end-versions';
-import { contactOf, deliverTheFinal, sendTheDraft, sendTheDraftOnRequest, sendTheRegister, tellHerOnWhatsApp, type ThePorts } from './the-year-end-delivery';
+import { ASKS_FOR_THE_REFRESH, approveTheDraft, theAckBeforeTheRevision, latestDraft, readTheChange, refreshTheDraft, reviseTheDraft, theVersionBeingBuilt, type TheDraftRow } from './the-year-end-versions';
+import { contactOf, deliverTheFinal, markItToldOnWhatsApp, sendTheDraft, sendTheDraftOnRequest, sendTheRegister, type ThePorts } from './the-year-end-delivery';
 import { theRealPorts } from './the-year-end-ports';
 import { theStructureSaid } from './her-year-end-record';
 
@@ -79,7 +79,8 @@ export async function handleTheDraftWords(
   const emailedNow = async (row: TheDraftRow): Promise<string> => {
     const sent = await sendTheDraft(prisma, ports, { ...base, row, direct: true });
     const o = sent[0]?.outcome;
-    await tellHerOnWhatsApp(prisma, ports, { ...base, row, kind: 'draft' }).catch(() => false);
+    /* She asked for it, so this reply is the one message that says it went: the WhatsApp line is not sent as well, now or at night (Batch F, F4; E-1). */
+    if (o === 'sent') await markItToldOnWhatsApp(prisma, { ...base, row, kind: 'draft' });
     return o === 'sent' ? `I have emailed version ${row.version} to ${isPrincipal ? 'you' : first}.` : o === 'held' ? `Version ${row.version} is ready and waiting to go to ${isPrincipal ? 'you' : first}. It has not been sent yet.` : o === 'already' ? '' : `I could not email version ${row.version} just now, and I will try again.`;
   };
 
@@ -116,7 +117,12 @@ export async function handleTheDraftWords(
     /* The newest version at the moment it is sent, read again here: reading her words takes the model a few seconds, and an "update the draft" a moment before can have made a newer one in that time (D17: "Send me the draft" sent version 1 minutes after version 2). */
     const newest = (await latestDraft(prisma, { organizationId: a.organizationId, principalUserId, year })) ?? latest;
     if (asked === 'send_list') return (await sendTheRegister(prisma, ports, { ...base, row: newest, toName: isPrincipal ? 'you' : first })).said;
-    if (asked === 'send_draft') return sendTheDraftOnRequest(prisma, ports, { ...base, row: newest, toName: isPrincipal ? 'you' : first });
+    if (asked === 'send_draft') {
+      /* A version being built now is the one she will be sent: the one before is not sent again (Batch F, F4; E-1). */
+      const coming = theVersionBeingBuilt(principalUserId);
+      if (coming && coming > newest.version) return `I am making version ${coming} now, from the record as it is today. I will email it to ${isPrincipal ? 'you' : first} as soon as it is ready, so I have not sent version ${newest.version} again.`;
+      return sendTheDraftOnRequest(prisma, ports, { ...base, row: newest, toName: isPrincipal ? 'you' : first });
+    }
     if (asked === 'structure') return theStructureSaid(newest, isPrincipal ? 'you' : first);
   }
   /* A change asked for in ordinary words, typed or in a mail, is read as a voice note is: "make the presentation shorter" is the same change as "shorten this" (Fatima round 3). */

@@ -77,7 +77,7 @@ describe('the weekly update', () => {
     const week = (await hear('Give me the weekly update'))!;
     console.log(`HER WEEK\n\n${week}`);
     expect(week.startsWith('Here is the update on the work for the week to 10 November 2026, Fatima.')).toBe(true);
-    expect(week).toContain('What moved this week\n- Send the ministry the revised brief (Amina Yusuf). It is done, and the record shows it.');
+    expect(week).toContain('What moved this week\n- Revised brief to the ministry (Amina Yusuf). It is done, and the record shows it.');
     expect(week).toContain('What is stuck, and what would help\n- Get the ministry’s reply on the budget (Amina Yusuf). It is waiting on the ministry.');
     expect(week).toContain('What waits for your decision\n- Do you approve Tunde’s request to spend NGN 120,000 on fuel for the site visits?');
     expect(week).toMatch(/Said to be done, with nothing shown yet\n- File the quarterly assembly summary\./);

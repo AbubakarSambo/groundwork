@@ -22,6 +22,7 @@ import * as crypto from 'crypto';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { understandHerAnswer } from '../executive-onboarding/her-answer';
 import { whoIsSpeakingForWhom } from '../executive-onboarding/her-words';
+import { route, THE_REGISTER_QUESTIONS } from '../assistant/the-router-is-deterministic';
 import { hasSheAskedForQuiet } from '../executive-onboarding/her-preferences';
 import { THE_ASK_FOR_AN_UPDATE, THE_INSTRUCTION_BACK, THE_INSTRUCTION_IS_OFF, THE_INSTRUCTION_IS_ON, THE_INSTRUCTION_IS_UNCLEAR, THE_TEAM_WRITTEN_TO, NO_ONE_TO_ASK, ONLY_SHE_CAN_GIVE_ONE } from './the-team-words';
 import { theirWorkNow } from './what-their-reply-says';
@@ -93,6 +94,9 @@ export async function hearAStandingInstruction(prisma: any, mind: TheTeamMind | 
   }
   /* A message of a few words cannot be an instruction about a team. Beyond that the model reads what she means, in any words. */
   if (a.message.trim().split(/\s+/).length < 4) return null;
+  /* A question the rules place on her register ("What can the team close this week") is hers to have answered by Ask, never an instruction to write to her
+     team (release test 21 November, 81): it is the one reading Ask places it with. */
+  if (THE_REGISTER_QUESTIONS.has(route(a.message).lane)) return null;
   const said = await whatTheInstructionIs(mind, a.message);
   if (said.kind === 'none') return null;
   /* A matter handed to the team with no owner or no day is asked about once, in one question, and nothing is made until it is clear. */
@@ -108,7 +112,10 @@ async function proposeIt(prisma: any, a: { organizationId: string; now: Date }, 
   if (!who.speaker.isPrincipal) return ONLY_SHE_CAN_GIVE_ONE(who.principalFirst);
   const team = await theTeamSheMayAsk(prisma, who.principalUserId);
   const named = said0.who.length ? team.filter((c) => said0.who.some((n) => String(c.name).toLowerCase().includes(n.toLowerCase()) || n.toLowerCase().includes(firstOf(c.name).toLowerCase()))) : team;
-  if (!named.length) return NO_ONE_TO_ASK(who.principalFirst);
+  if (!named.length) {
+    const notIntroducedYet = ((await prisma.outreachContact.findMany({ where: { principalUserId: who.principalUserId, kind: 'team', state: { in: ['proposed', 'held_external'] } } }).catch(() => [])) ?? []).length;
+    return NO_ONE_TO_ASK(who.principalFirst, { notIntroducedYet, namedButNotOnIt: team.length ? said0.who : [] });
+  }
   /* Today, or no day at all, is asked now: "collect and report" on a weekday only when she named one. */
   const now = !!said0.today || (said0.kind === 'collect_and_report' && !said0.reportWeekday);
   const said = now ? { ...said0, kind: 'handle_with_team' as const, reportWeekday: null } : said0;

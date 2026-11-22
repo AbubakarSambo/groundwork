@@ -19,7 +19,7 @@
  */
 import { createHash } from 'crypto';
 import { theWordsThatMatter } from '../outstanding/the-outstanding-register';
-import { applyOneEdit, buildTheContent, dayWords, monthWords, plain, refFor, theSourceName, whatANoteSays, type AnEdit, type Claim, type TheRecordForTheYear, type YearEndContent } from './the-year-end-content';
+import { isAMessageLabel, saidAsAMessage, applyOneEdit, buildTheContent, dayWords, monthWords, plain, refFor, theSourceName, whatANoteSays, type AnEdit, type Claim, type TheRecordForTheYear, type YearEndContent } from './the-year-end-content';
 
 export const YEAR_END_NARRATIVE_PROMPT_KEY = 'year-end.write-the-narrative';
 export const YEAR_END_OUTCOMES_PROMPT_KEY = 'year-end.pick-the-outcomes';
@@ -41,7 +41,7 @@ export const YEAR_END_NARRATIVE_PROMPT = `You write the narrative of a year-end 
 
 ${UNTRUSTED}
 
-How to write. Plain, full sentences that people with basic English understand, in the third person, using people's names or "the office". Warm and factual, the way a careful colleague writes a report for her manager. Use no praise and no word the source does not support: not "successfully", "significant", "demonstrated", "robust", "valuable", "commitment to", "efforts", "ensured", "managed", "coordinated" or "oversaw". Do not say more than the quotation says: if the source says a contract was signed, say a contract was signed, not that the office managed contracts. Give dates, amounts and names exactly as the source gives them, and never make a date vaguer or different (not "mid-November" for "the week of 16 November"). Do not add a person's job, title or organisation unless the quotation gives it. No lists, no colons joining pieces, no first person, no "you". Each sentence says one thing and is at most 30 words. A note is what somebody wrote down: say "the note says" or "was reported" when it matters, and never say anything was achieved, finished, approved or paid unless the source says so.
+How to write. Plain, full sentences that people with basic English understand, in the third person, using people's names or "the office". Warm and factual, the way a careful colleague writes a report for her manager. Use no praise and no word the source does not support: not "successfully", "significant", "demonstrated", "robust", "valuable", "commitment to", "efforts", "ensured", "managed", "coordinated" or "oversaw". Do not say more than the quotation says: if the source says a contract was signed, say a contract was signed, not that the office managed contracts. Give dates, amounts and names exactly as the source gives them, and never make a date vaguer or different (not "mid-November" for "the week of 16 November"). Do not add a person's job, title or organisation unless the quotation gives it. No lists, no colons joining pieces, no first person, no "you". Each sentence says one thing and is at most 30 words. A note is what somebody wrote down: say "the note says" or "was reported" when it matters, and never say anything was achieved, finished, approved or paid unless the source says so. A source can correct or update what was said before ("my summary said 7, please use 5", "it was approved in principle, the letter has not come"): say what it now says, as the correction or update it is, and who gave it.
 
 For every sentence give the id of the one source it rests on, and copy, exactly as written, the words in that source that support it (quote, at least a few words). Every number, date, amount and name in your sentence must be in that source. Never add one. Never write an email address or a link.
 
@@ -86,6 +86,8 @@ export interface TheNarrator {
   write(a: { sources: ASourceToRead[]; principalName: string; year: number }): Promise<{ raw: unknown; promptKey: string; promptVersionId: string | null } | null>;
   /** Which of the proven lines are outcomes, by id, most important first. Null when it cannot be had; then no line is put first, and none is left out. */
   outcomes?(a: { lines: { id: string; text: string }[]; principalName: string; year: number }): Promise<{ ids: string[]; promptVersionId: string | null } | null>;
+  /** The record read whole: what only she can decide, and which said claims a proven line settles (outstanding/the-record-read-whole.ts). Null when it cannot be had. */
+  readTheRecordWhole?(a: { record: unknown; principalName: string }): Promise<{ raw: unknown; promptVersionId: string | null } | null>;
 }
 
 /**
@@ -219,9 +221,22 @@ const capital = (s: string) => `${s[0].toUpperCase()}${s.slice(1)}`;
  * is never left out and never said twice. A source that held an instruction is not repeated anywhere: its sentences are cut from the evidence index, its
  * plain line goes, and one line says an instruction was found and not followed.
  */
+/**
+ * WHAT A MESSAGE SAYS IS SAID AS WHAT IT SAYS (Batch F, F-5; hard check "no fabricated accomplishments"). Version 5 opened with "The fertilizer allocation was
+ * released in October (from a WhatsApp message)", one person's word, while the correction that it was not released was on the record. A sentence that rests on
+ * an email or a WhatsApp message is laid over the content as what that message says, with its day, everywhere it is read: the opening, the months, the slide and Ask.
+ */
+export function asWhatTheMessageSays(text: string, e: { label?: string | null; at?: string | Date | null } | undefined): string {
+  if (!e || !isAMessageLabel(e.label) || text.startsWith(`${capital(String(e.label))} `)) return text;
+  const first = text.split(/\s+/)[0] ?? '';
+  const rest = JOINING.has(first.toLowerCase()) ? `${first.toLowerCase()}${text.slice(first.length)}` : text;
+  return `${capital(String(e.label))}${e.at ? ` of ${dayWords(e.at as any)}` : ''} says ${rest}`;
+}
+
 export function applyTheNarrative(base: YearEndContent, n: TheNarrative, texts: Map<string, string>): YearEndContent {
   const c: YearEndContent = JSON.parse(JSON.stringify(base));
   c.narrative = JSON.parse(JSON.stringify(n));
+  for (const s of [...c.narrative!.opening, ...Object.values(c.narrative!.months).flatMap((m) => m.sentences)]) s.text = asWhatTheMessageSays(s.text, c.evidence.find((e) => e.ref === s.ref));
   /* A sentence that states a flagged claim says so wherever it stands. */
   for (const s of [...c.narrative!.opening, ...Object.values(c.narrative!.months).flatMap((m) => m.sentences)]) if (statesAFlaggedClaim(s.text, c)) s.flagged = true;
   const poisoned = new Set(n.instructionsFound.map((i) => i.ref));
@@ -265,6 +280,10 @@ export function applyTheNarrative(base: YearEndContent, n: TheNarrative, texts: 
 /** At most this many sources for one month, and this many in all, so the narrative is a briefing and one request to the model. */
 const MOST_A_MONTH = 4;
 const MOST_SOURCES = 48;
+/** At most this many of what came in since the version before, read before the rest. */
+const MOST_NEW = 24;
+/** The opening is a paragraph, not a list: the newest sentences, at most this many. */
+const MOST_IN_THE_OPENING = 6;
 
 const hashOf = (sources: ASourceToRead[], principalName: string, year: number) => createHash('sha256').update(JSON.stringify([principalName, year, sources.map((s) => [s.ref, s.covers, s.text])])).digest('hex').slice(0, 32);
 
@@ -272,7 +291,7 @@ const hashOf = (sources: ASourceToRead[], principalName: string, year: number) =
  * The content for the year, written as a report when a narrator is given and can write, and otherwise exactly the plain content (`buildTheContent`).
  * `previous` is the narrative of the version before: the same sources are not written again, so the versions agree and an edit never rewrites the report.
  */
-export async function buildTheContentWithTheNarrative(record: TheRecordForTheYear, edits: AnEdit[], a: { narrator?: TheNarrator | null; previous?: TheNarrative | null; /** "Shorten this" is not a request to read the notes again: the narrative already written is kept as it is, and the model is not called. */ reusePrevious?: boolean; /** The outcomes the version before picked, reused when its proven lines are the same. */ previousOutcomes?: YearEndContent['outcomes'] } = {}): Promise<YearEndContent> {
+export async function buildTheContentWithTheNarrative(record: TheRecordForTheYear, edits: AnEdit[], a: { narrator?: TheNarrator | null; previous?: TheNarrative | null; /** "Shorten this" is not a request to read the notes again: the narrative already written is kept as it is, and the model is not called. */ reusePrevious?: boolean; /** The outcomes the version before picked, reused when its proven lines are the same. */ previousOutcomes?: YearEndContent['outcomes']} = {}): Promise<YearEndContent> {
   const c = await theContentAndItsNarrative(record, edits, a);
   return withTheOutcomes(c, a.narrator === undefined ? theOneRunning : a.narrator, a.previousOutcomes ?? null);
 }
@@ -305,7 +324,12 @@ async function theContentAndItsNarrative(record: TheRecordForTheYear, edits: AnE
   const theMonthOf = (d: (typeof readable)[number]) => (d.covers?.length ? [...d.covers].sort().pop()! : d.at.toISOString().slice(0, 7));
   for (const d of readable) { const m = theMonthOf(d); byMonth.set(m, [...(byMonth.get(m) ?? []), d]); }
   /* A month's messages are read newest first, so a reply or a correction that came today is what the next version reads (Dangote rerun, D10: version 2 read the same oldest messages as version 1, and none of the day's corrections). */
-  const docs = [...byMonth.keys()].sort().flatMap((m) => [...byMonth.get(m)!].sort((x, y) => Number(x.origin === 'message') - Number(y.origin === 'message') || y.at.getTime() - x.at.getTime()).slice(0, MOST_A_MONTH)).slice(0, MOST_SOURCES);
+  const spread = [...byMonth.keys()].sort().flatMap((m) => [...byMonth.get(m)!].sort((x, y) => Number(x.origin === 'message') - Number(y.origin === 'message') || y.at.getTime() - x.at.getTime()).slice(0, MOST_A_MONTH)).slice(0, MOST_SOURCES);
+  /* WHAT NO VERSION HAS READ YET IS READ FIRST, newest first (Batch F, F2; D10). The day's replies and corrections ("approved in principle", "please use 5") lost
+     every one of November's four places to its forwarded files, so the next version never read them. They are what the next version is for. */
+  const readBefore = a.previous ? new Set([...a.previous.opening.map((x) => x.ref), ...Object.values(a.previous.months).flatMap((m) => m.sentences.map((x) => x.ref)), ...a.previous.instructionsFound.map((x) => x.ref)]) : null;
+  const newest = readBefore ? readable.filter((d) => !readBefore.has(refFor('document', d.id))).sort((x, y) => y.at.getTime() - x.at.getTime()).slice(0, MOST_NEW) : [];
+  const docs = [...newest, ...spread.filter((d) => !newest.includes(d))];
   const narrator = a.narrator === undefined ? theOneRunning : a.narrator;
   if (!narrator || !docs.length) return apply(base);
   const sources: ASourceToRead[] = docs.map((d, i) => {
@@ -327,10 +351,11 @@ async function theContentAndItsNarrative(record: TheRecordForTheYear, edits: AnE
     if (!kept) return apply(base);
     const merged: Omit<TheNarrative, 'inputHash' | 'promptKey' | 'promptVersionId'> = a.previous
       ? {
-        opening: [...a.previous.opening, ...kept.opening],
+        /* What is new is said first, so the briefing, which reads a month's first sentences, reads the latest record (Batch F, F2). */
+        opening: [...kept.opening, ...a.previous.opening].slice(0, MOST_IN_THE_OPENING),
         months: Object.fromEntries([...new Set([...Object.keys(a.previous.months), ...Object.keys(kept.months)])].map((mo) => {
           const before = a.previous!.months[mo]; const now = kept.months[mo];
-          return [mo, before && now ? { sentences: [...before.sentences, ...now.sentences], status: before.status ?? now.status, notKnown: [before.notKnown, now.notKnown].filter(Boolean).join(' ') || null } : (before ?? now)];
+          return [mo, before && now ? { sentences: [...now.sentences, ...before.sentences], status: now.status ?? before.status, notKnown: [now.notKnown, before.notKnown].filter(Boolean).join(' ') || null } : (now ?? before)];
         })),
         instructionsFound: [...a.previous.instructionsFound, ...kept.instructionsFound],
       }
@@ -376,5 +401,6 @@ export function theOpeningAsAParagraph(c: YearEndContent): string | null {
   const o = c.narrative?.opening ?? [];
   if (!o.length) return null;
   /* The opening names the note each sentence is from, not the day it was forwarded: the day is in the evidence index, and repeating it five times in a row is what she would skip (round 10). */
-  return o.map((s) => `${s.text.replace(/[.!?]+$/, '')} (from ${shortSource(c, s.ref).replace(/, forwarded on .*$/, '')}).${s.flagged ? ` ${THE_FLAG}` : ''}`).join(' ');
+  /* A sentence that already says which message it is from is not told where it is from a second time. */
+  return o.map((s) => `${s.text.replace(/[.!?]+$/, '')}${saidAsAMessage(s.text) ? '' : ` (from ${shortSource(c, s.ref).replace(/, forwarded on .*$/, '')})`}.${s.flagged ? ` ${THE_FLAG}` : ''}`).join(' ');
 }

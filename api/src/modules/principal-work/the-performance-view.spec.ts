@@ -59,7 +59,7 @@ describe('the offer and her answer', () => {
     const summary = (await hear('Yes', { now: new Date(NOW.getTime() + 120_000) }))!;
     console.log(`THE SUMMARY, AS SHE READS IT\n\n${summary}`);
     expect(summary.startsWith('Here is the team summary, Fatima, from the record as it stands on 10 November 2026.')).toBe(true);
-    expect(summary).toContain('Outcomes I have verified\n- Send the ministry the revised brief (Amina Yusuf). It is done, and the record shows it.');
+    expect(summary).toContain('Outcomes I have verified\n- Revised brief to the ministry (Amina Yusuf). It is done, and the record shows it.');
     expect(summary).toContain('- Submit the Kilele proof to the ministry (Amina Yusuf). It is done, and the record shows it.');
     expect(summary).toContain('What is moving\n');
     expect(summary).toContain('Where work is stuck\n- Get the ministry’s reply on the budget. It is waiting on the ministry.');
