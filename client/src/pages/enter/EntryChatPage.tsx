@@ -2702,6 +2702,9 @@ export function EntryChatPage() {
         if (Array.isArray(res.extracted.cadenceDays) && res.extracted.cadenceDays.length >= 2) setCadenceDays(res.extracted.cadenceDays)
         /* "When I end it", as the engine heard it (piece 3a), unless she already set an end on the summary. */
         if (res.extracted.runsUntilEnded === true && !endChangedOnTheSummary.current) { setRunsUntilEnded(true); setEndChosen(true); keepTheSchedule({ runsUntilEnded: true, endChosen: true }) }
+        /* The end she named ("200 traders by March"), as the engine read it, unless she set one on the summary: the check-ins run to it
+           (release test, 22 November 2026, bug 7: "by March" got the situation's 30 days, four check-ins over 21 days). */
+        else if (/^\d{4}-\d{2}-\d{2}$/.test(res.extracted.endsOn ?? '') && !endChangedOnTheSummary.current) { setRunsUntilEnded(false); setLastCheckInBy(res.extracted.endsOn!); setEndChosen(true); keepTheSchedule({ runsUntilEnded: false, lastCheckInBy: res.extracted.endsOn, endChosen: true }) }
         /* Walk fault 5: the day she named for the check-ins ("every Monday"), unless she already chose
            one on the day picker. Without it the day came from the start date, which was a Sunday. */
         {

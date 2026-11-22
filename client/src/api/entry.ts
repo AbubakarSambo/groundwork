@@ -171,6 +171,8 @@ export interface OnboardResult {
       // not say - never guessed. GW-017.
       cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME';
       timelineDays?: number;
+      /** The day the whole period ends, YYYY-MM-DD, when they named when it ends ("by March"). */
+      endsOn?: string;
       /** True when they said it runs until they end it themselves ("when I end it"). The engine then sends no length. */
       runsUntilEnded?: boolean;
       /**
