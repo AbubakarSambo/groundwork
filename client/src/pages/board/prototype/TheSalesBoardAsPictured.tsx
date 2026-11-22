@@ -387,7 +387,7 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
                                       <b className="t-small">{r.name}</b>
                                       <div className="t-tiny mut">{[firstName(r.owner), value].filter(Boolean).join(', ')}</div>
                                     </div>
-                                    <span className="t-small" style={css('display:flex;gap:6px;align-items:center')}><i className={aMarkFor(r)} />{r.stage ?? 'Not contacted yet'}</span>
+                                    <span className="t-small" style={css('display:flex;gap:6px;align-items:center')}><i className={aMarkFor(r)} />{r.stageSays ?? r.stage ?? 'Not contacted yet'}</span>
                                     <span className="t-tiny mut">{lastContactIn(r, today)}</span>
                                     {theDots(r, thirty, today).map((s, i) => <i key={i} style={css(s)} />)}
                                     <span className="t-small" style={css(`padding-left:12px;${nextColour}`)}>{next}</span>
