@@ -96,14 +96,14 @@ describe('(a) how each priority is moving', () => {
     ['words copied from a handoff', 'The customers cannot place an order for many items at once, and 1 handoff waits.'],
   ])('replaces a sentence with %s by a plain one written from the counts', (_why, says) => {
     const r = buildPicture(input, { readings: [{ priorityId: 's1', says }] }).readings[0];
-    expect(r.says).toBe('1 check-in feeds this priority, and 1 was finished in the last 30 days. 1 handoff is waiting on other work.');
+    expect(r.says).toBe('1 check-in feeds this priority, and 1 was finished in the last 30 days. People are waiting on 1 thing for it.');
   });
 
   it('still says something plain when there is no model answer at all', () => {
     const r = buildPicture(input, null).readings;
     expect(r.map((x) => x.says)).toEqual([
-      '1 check-in feeds this priority, and 1 was finished in the last 30 days. 1 handoff is waiting on other work.',
-      '1 check-in feeds this priority, and 3 were finished in the last 30 days. 1 handoff is stopping work on it.',
+      '1 check-in feeds this priority, and 1 was finished in the last 30 days. People are waiting on 1 thing for it.',
+      '1 check-in feeds this priority, and 3 were finished in the last 30 days. 1 thing people are waiting on is stopping work on it.',
       'Nobody owns this priority yet and no check-in feeds it.',
     ]);
   });
@@ -136,7 +136,7 @@ describe('(c) named by more than one team', () => {
     expect(groups[0].teams.map((t) => t.team)).toEqual(['Customers', 'Operations', 'Sales']);
     expect(groups[0].teams[2].says).toBe('Customers cannot place a bulk order, which slows the enterprise deals the team is chasing.');
     /* Customers had no sentence from the model, so the plain one is written from the counts. */
-    expect(groups[0].teams[0].says).toBe('Customers raised this in 1 check-in, with 1 open handoff.');
+    expect(groups[0].teams[0].says).toBe('Customers raised this in 1 check-in, with 1 thing people are still waiting on.');
   });
   it('drops a group that one team alone raised, or that has a number the record does not have', () => {
     const one: TheModelsPicture = { namedByTeams: [{ title: 'The courier is late', handoffIds: ['h2', 'h4'], teams: [] }] };
@@ -152,7 +152,7 @@ describe('(c) named by more than one team', () => {
     const g = buildPicture(input, twice).namedByTeams;
     expect(g).toHaveLength(1);
     expect(JSON.stringify(g)).not.toMatch(/wairimu/i);
-    expect(g[0].teams.find((t) => t.team === 'Sales')!.says).toBe('Sales raised this in 1 check-in, with 1 open handoff.');
+    expect(g[0].teams.find((t) => t.team === 'Sales')!.says).toBe('Sales raised this in 1 check-in, with 1 thing people are still waiting on.');
   });
   it('orders groups by their title and teams by their name, never by how many people or how much', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, 'the-company-picture.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -172,7 +172,7 @@ describe('(d) what leadership says, and where the time goes', () => {
   });
   it('says it from the counts when the model\'s sentence has a number the record does not', () => {
     const bad = { showing: [{ priorityId: 's1', says: 'Only 9 in 10 visits went to enterprise.' }] };
-    expect(buildPicture(input, bad).saidAndShown[0].checkInsShow).toBe('1 of the 4 check-ins finished in the last 30 days that belong to a priority was about this one. 1 handoff is open in them.');
+    expect(buildPicture(input, bad).saidAndShown[0].checkInsShow).toBe('1 of the 4 check-ins finished in the last 30 days that belong to a priority was about this one. People are waiting on 1 thing in them.');
   });
   it('says nothing until there are enough finished check-ins to say it from', () => {
     expect(buildPicture({ ...input, finishedOnPriorities: 2 }, goodModel).saidAndShown).toEqual([]);
