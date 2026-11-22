@@ -10662,7 +10662,7 @@ ${told}` : '';
 
     /* A sum said only to ask for it is the request's, never somebody's goal (user journeys, F-9). */
     await this.putOwnedTargetsOnTheRecord(groundId, theirOwnNumbers.filter((t) => !sumsOnlyARequestSaid.has(t.target)), participantId,
-      (await this.theLeadsTargetsWaitForHerYes(groundId)) ? { holdFor: theirOwnTurns, people: ground.participants as any[] } : undefined);
+      (await this.theLeadsTargetsWaitForHerYes(groundId, !!spokenElsewhere?.length)) ? { holdFor: theirOwnTurns, people: ground.participants as any[] } : undefined);
   }
 
   /**
@@ -10673,7 +10673,7 @@ ${told}` : '';
    * whoever holds it, a number only from their own words, no figure only a private document holds, and on a sales check-in the lead's
    * targets wait for her yes.
    */
-  async keepTheTeamsAims(groundId: string, participantId: string, said: { name: string; target?: number | null }[], theirOwnTurns: string[]): Promise<void> {
+  async keepTheTeamsAims(groundId: string, participantId: string, said: { name: string; target?: number | null }[], theirOwnTurns: string[], saidInHerSetup = false): Promise<void> {
     if (!said.length) return;
     const ground: any = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { peopleWorkTogether: true, participants: { select: { id: true, partyType: true } } } });
     const me = ground?.participants?.find((p: any) => p.id === participantId);
@@ -10749,7 +10749,7 @@ ${told}` : '';
         /* A target on record said again, with the same number and the same thing counted, is that target (Hafsah's point 9; a-target-said-again-is-that-target). */
         .filter((a) => !(onASalesCheckIn && theTargetItSaysAgain({ name: a.name, target: a.target, ownerParticipantId: aimsAreShared ? null : participantId }, existing as any[])));
       /* The lead's targets wait for her yes on a sales check-in with Release 1 on (the-leads-targets-wait-for-her-yes). */
-      const heldForHerYes = fresh.length && aimsAreShared ? await this.theLeadsTargetsWaitForHerYes(groundId) : false;
+      const heldForHerYes = fresh.length && aimsAreShared ? await this.theLeadsTargetsWaitForHerYes(groundId, saidInHerSetup) : false;
       if (heldForHerYes) {
         await this.holdTheTargetsForHerYes(groundId, fresh.map((a) => ({ name: a.name, target: a.target, ownerParticipantId: null, personName: null })), theirOwnTurns);
       } else if (fresh.length) {
@@ -10787,7 +10787,7 @@ ${told}` : '';
     if (changes.length) await this.changeTheGoalsSheChanged(checkIn, changes as any[], herWords);
     const kept = aims.filter((t) => !changes.some((c: any) => String(c.aim ?? c.words ?? '').trim() === t.name));
     if (!kept.length) return;
-    await this.keepTheTeamsAims(checkIn.groundId, checkIn.participantId, kept, herWords);
+    await this.keepTheTeamsAims(checkIn.groundId, checkIn.participantId, kept, herWords, !!setup);
   }
 
   /** Each goal the lead changed, with her yes: the one goal row changes, what it was and why are kept once (a-goal-changed-by-its-lead). */
@@ -10876,8 +10876,14 @@ ${told}` : '';
   }
 
 
-  /** On a sales check-in with Release 1's sales board on, the targets read from the lead's words wait for her yes. */
-  private async theLeadsTargetsWaitForHerYes(groundId: string): Promise<boolean> {
+  /**
+   * On a sales check-in with Release 1's sales board on, the targets read from the lead's check-in words wait for her yes.
+   * The targets she typed in her set-up do not: saving the set-up is her yes, and set-up has no card to confirm them on, so held
+   * there they never reached the board. Since every release switch went on (22 November), "12m in total" and "50 new accounts per
+   * region" typed at /start were held out of sight and the board said "No targets set yet", where live put them on record (bug N7).
+   */
+  private async theLeadsTargetsWaitForHerYes(groundId: string, saidInHerSetup = false): Promise<boolean> {
+    if (saidInHerSetup) return false;
     const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { kindOfWork: true } as any }).catch(() => null);
     if (!g || !isASalesKind((g as any).kindOfWork)) return false;
     return theReleaseOneSalesBoardIsOnFor(this.prisma, groundId);
