@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { BadRequestException } from '@nestjs/common';
 import { addressesIn, namesIn, planFor } from './putting-a-whole-company-on';
-import { aRoleToInviteAs } from './the-role-an-invitation-gives';
+import { aRoleToInviteAs, HOW_A_NEW_ORG_ADDS_PEOPLE } from './the-role-an-invitation-gives';
 
 /**
  * "INVITE PEOPLE. One per line: a name and an email. Or paste a list from a spreadsheet." with the
@@ -23,14 +23,17 @@ describe('a name and an email, one per line', () => {
 });
 
 describe('the role an invitation gives', () => {
+  /* The rule now also takes who is inviting and the organisation's two settings (Hafsah, 21 November 2026). These are an admin
+     inviting under the defaults, which is what every invitation was before; what each expects is unchanged. */
+  const anAdmin = (role: string | undefined) => aRoleToInviteAs(role, 'ADMIN', HOW_A_NEW_ORG_ADDS_PEOPLE);
   it('is one of the three the page offers, and a member when none is chosen', () => {
-    expect(aRoleToInviteAs('ADMIN')).toBe('ADMIN');
-    expect(aRoleToInviteAs('LEAD')).toBe('LEAD');
-    expect(aRoleToInviteAs(undefined)).toBe('MEMBER');
+    expect(anAdmin('ADMIN')).toBe('ADMIN');
+    expect(anAdmin('LEAD')).toBe('LEAD');
+    expect(anAdmin(undefined)).toBe('MEMBER');
   });
   it('anything else is refused in a sentence, never read as a member', () => {
-    expect(() => aRoleToInviteAs('OWNER')).toThrow(new BadRequestException('Choose Admin, Can open check-ins, or Takes part.'));
-    expect(() => aRoleToInviteAs('GUEST')).toThrow(BadRequestException);
+    expect(() => anAdmin('OWNER')).toThrow(new BadRequestException('Choose Admin, Can open check-ins, or Takes part.'));
+    expect(() => anAdmin('GUEST')).toThrow(BadRequestException);
   });
   const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   it('reaches the account an invitation makes, and the membership of somebody who has one elsewhere', () => {

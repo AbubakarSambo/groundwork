@@ -235,6 +235,18 @@ describe('something that keeps coming up, on the You board', () => {
     expect(p.theirWords).toBeNull();
   });
 
+  /* 21 November 2026: the You page now draws this in "Your coaching, and what keeps coming up". What Wairimu made of it is hers, never Miriam's. */
+  it('never carries the lead’s own judgement of it, her mark, or the question she is to put to Miriam', async () => {
+    const { read } = setup([{ ...miriamsPattern, leadMark: 'WRONG', talkedAboutAt: ago(1), talkedAboutAtPeriod: 3 }]);
+    const b = await read('miriam');
+    const p = b.patterns![0] as any;
+    expect(p.leadMark ?? null).toBeNull();
+    expect(p.askThem).toBeNull();
+    expect(p).not.toHaveProperty('coachTowards');
+    expect(p).not.toHaveProperty('oneStep');
+    expect(JSON.stringify(b)).not.toMatch(/WRONG/);
+  });
+
   /* 2 November 2026 (F2): nobody but Miriam reads it, so the "shown to the person" clock that let the lead read it later is not kept. */
   it('keeps no "shown to her" clock when she reads it, since nobody else ever reads it', async () => {
     const { read, prisma } = setup([miriamsPattern]);

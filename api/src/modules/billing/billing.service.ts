@@ -5,7 +5,7 @@ import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
 import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT, freePlanApplies, WHATSAPP_ADD_ON_KIND, EXTRA_SEAT_KIND, WHATSAPP_PERSON_KIND } from './pricing.service';
-import { extraSeatsOn, thisAddsASeat, thisMonth, aCheaperPlan, seatsCost, dollarsOf, type AMonth } from './what-a-month-costs';
+import { extraSeatsOn, thisAddsASeat, whatAddingSomebodySays, thisMonth, aCheaperPlan, seatsCost, dollarsOf, type AMonth } from './what-a-month-costs';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { aReceiptLine } from '../email/email.service';
 
@@ -169,18 +169,35 @@ export class BillingService {
    * +$5 a month" when the next person goes past the plan's included seats. Read by the screen before it sends, so every
    * invite point says the same thing the bill does. Null `says` when it adds nothing to the bill.
    */
-  async theNextSeat(organizationId: string): Promise<{ addsASeat: boolean; extraSeatCents: number | null; says: string | null; included: number | null; taken: number }> {
+  async theNextSeat(organizationId: string, name: string | null = null): Promise<{ addsASeat: boolean; extraSeatCents: number | null; says: string | null; included: number | null; taken: number; line: string; needsAYes: boolean; whatsappLine: string | null }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { ...WHAT_COVER_READS, createdAt: true },
+      select: { ...WHAT_COVER_READS, createdAt: true, whatsappAddOnOn: true, whatsappFlatAddOnKept: true },
     });
     const taken = await this.seatsTaken(organizationId);
-    if (!org) return { addsASeat: false, extraSeatCents: null, says: null, included: null, taken };
-    const extra = await this.extraSeatsFor(org);
-    if (!extra) return { addsASeat: false, extraSeatCents: null, says: null, included: await this.seatsIncludedFor(organizationId), taken };
-    const adds = taken >= extra.cap;
-    return { addsASeat: adds, extraSeatCents: extra.extraSeatCents, says: adds ? thisAddsASeat(extra.extraSeatCents) : null, included: extra.cap, taken };
+    /* THE COST LINE (Hafsah, 21 November 2026): said from the same prices the bill reads, and a price only when it will be charged. */
+    const trial = typeof (this.pricing as any)?.getFreeTrial === 'function' ? await this.pricing.getFreeTrial().catch(() => null) : null;
+    const paying = !!org && isSubscribed(org as any);
+    const extra = org ? await this.extraSeatsFor(org) : null;
+    const included = extra ? extra.cap : await this.seatsIncludedFor(organizationId);
+    const plan = extra?.plan ?? (org as any)?.subscriptionPlan ?? null;
+    const prices = plan ? await (this.prisma.pricingPlan as any)?.findUnique?.({ where: { plan }, select: { whatsappPersonCents: true } }).catch(() => null) : null;
+    const said = whatAddingSomebodySays({
+      charged: !!trial?.on && paying,
+      whyFree: !trial?.on ? 'free trial' : 'not paying',
+      taken,
+      included: included ?? null,
+      extraSeatCents: extra?.extraSeatCents ?? null,
+      name,
+      whatsapp: (org as any)?.whatsappAddOnOn && !(org as any)?.whatsappFlatAddOnKept ? { personCents: prices?.whatsappPersonCents ?? null, alreadyCounted: false } : null,
+    });
+    const adds = !!extra && taken >= extra.cap;
+    return {
+      addsASeat: adds, extraSeatCents: extra?.extraSeatCents ?? null, says: adds && extra ? thisAddsASeat(extra.extraSeatCents) : null, included: included ?? null, taken,
+      line: said.line, needsAYes: said.needsAYes, whatsappLine: said.whatsappLine,
+    };
   }
+
 
   /**
    * THE EXTRA SEATS' STRIPE LINE FOLLOWS THE PEOPLE. A second line on the subscription, its quantity the number of seats past

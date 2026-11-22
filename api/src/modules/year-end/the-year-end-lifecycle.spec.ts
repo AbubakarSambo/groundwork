@@ -285,7 +285,8 @@ describe('the same files never go twice, and only to the people who may have the
   it('"Send the outstanding list" emails the register once a day for one version, and says so when nothing has changed', async () => {
     const { w, a, row } = await aSentDraft();
     expect((await sendTheRegister(w.prisma, w.ports, { ...a, row })).said).toBe('I have emailed the outstanding list from version 1 to you.');
-    expect((await sendTheRegister(w.prisma, w.ports, { ...a, row })).said).toBe('I already emailed the outstanding list for version 1 to you today, and nothing has changed since.');
+    /* Changed 21 November 2026 (Batch E, N14): "and nothing has changed since" was never checked, so it is not said. */
+    expect((await sendTheRegister(w.prisma, w.ports, { ...a, row })).said).toBe('I already emailed the outstanding list for version 1 to you today.');
     expect(w.mails.find((m) => m.subject === 'Your outstanding list')!.files.map((f) => f.filename)).toEqual(['2026-outstanding-register-v1-draft.xlsx', '2026-outstanding-summary-v1-draft.pdf']);
   });
 });

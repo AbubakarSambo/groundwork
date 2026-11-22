@@ -81,4 +81,5 @@ export function aHistorySaid(p: AHistoryPage): string {
 }
 
 export const A_HISTORY_CLOSING = 'This is the same page you see under My work for this check-in.';
-export const YOUR_OWN_HISTORY_CLOSING = 'This is the same page you see under My work, and nobody else reads it through me.';
+/* No privacy note in a message (the standards; Dangote rerun, N13). Nobody else is served it: that is the backend's rule. */
+export const YOUR_OWN_HISTORY_CLOSING = 'This is the same page you see under My work.';

@@ -283,15 +283,25 @@ export function theChosenSources(outline: ASection[], sources: ASource[]): ASour
   return sources.filter((s) => used.has(s.id));
 }
 
-/** A long report sent on WhatsApp goes in parts, each whole paragraphs, so nothing is cut off. */
+/**
+ * A long report sent on WhatsApp goes in parts, each whole paragraphs, so nothing is cut off. A paragraph longer than one part is split between
+ * its sentences (Dangote rerun, N2: a 9,000-character say-back was one paragraph, and everything after 3,800 characters was dropped mid-sentence).
+ */
 export function inParts(text: string, most = 3800): string[] {
   const parts: string[] = [];
   let now = '';
-  for (const para of String(text ?? '').split(/\n{2,}/)) {
-    const next = now ? `${now}\n\n${para}` : para;
-    if (next.length <= most) { now = next; continue; }
+  const add = (piece: string, joint: string) => {
+    const next = now ? `${now}${joint}${piece}` : piece;
+    if (next.length <= most) { now = next; return; }
     if (now) parts.push(now);
-    now = para.length <= most ? para : para.slice(0, most);
+    now = piece;
+  };
+  for (const para of String(text ?? '').split(/\n{2,}/)) {
+    if (para.length <= most) { add(para, '\n\n'); continue; }
+    let first = true;
+    for (const sentence of para.match(/[^.!?]+(?:[.!?]+["”’)]*|$)\s*/g) ?? [para]) {
+      for (let i = 0; i < sentence.length; i += most) { add(sentence.slice(i, i + most).trim(), first ? '\n\n' : ' '); first = false; }
+    }
   }
   if (now) parts.push(now);
   return parts;

@@ -7,7 +7,12 @@ import { WhoCanOpenACheckIn } from './WhoCanOpenACheckIn'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
 const wrap = (ui: any) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>)
-beforeEach(() => { vi.restoreAllMocks() })
+/* The roles offered are the server's own answer (Hafsah, 21 November 2026): an admin under the defaults, unless a test says otherwise. */
+const ADMIN_UNDER_THE_DEFAULTS = { guestsMayJoin: false, whoMayAddPeople: 'ADMINS', rolesYouMayGive: ['MEMBER', 'LEAD', 'ADMIN'] }
+function theServerSays(adding: any) {
+  vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => ({ data: url === '/users/organization/adding-people' ? adding : {} }) as any)
+}
+beforeEach(() => { vi.restoreAllMocks(); theServerSays(ADMIN_UNDER_THE_DEFAULTS) })
 
 describe('invite people (A4 people.txt)', () => {
   it('a clean list goes in one press, with the role chosen', async () => {
@@ -16,7 +21,7 @@ describe('invite people (A4 people.txt)', () => {
     }) as any)
     wrap(<InvitePeople />)
     fireEvent.change(screen.getByLabelText('Write one person on each line, with their name, their email and their phone number. Or paste a list from a spreadsheet.'), { target: { value: 'Faith Kerubo, faith@baridi.co.ke' } })
-    fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'ADMIN' } })
+    fireEvent.change(await screen.findByLabelText('Role'), { target: { value: 'ADMIN' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
     await waitFor(() => expect(post).toHaveBeenCalledWith('/users/invitations', { pasted: 'Faith Kerubo, faith@baridi.co.ke', preview: false, role: 'ADMIN' }))
     expect(post).toHaveBeenCalledWith('/users/invitations', { pasted: 'Faith Kerubo, faith@baridi.co.ke', preview: true, role: 'ADMIN' })
@@ -85,10 +90,43 @@ describe('invite people (A4 people.txt)', () => {
     expect(screen.queryByText(/^no-name@x\.com,/)).toBeNull()
   })
 
-  it('offers the three roles an invitation can give, and never a guest', () => {
+  /*
+   * CHANGED WITH THE NEW SETTING (Hafsah, 21 November 2026). This said an organisation invitation never offers a guest. It still
+   * never does while "Guests can join" is off, which is every organisation's default; once an admin turns it on, it does.
+   */
+  it('offers the three roles an invitation can give, and never a guest while guests cannot join', async () => {
     wrap(<InvitePeople />)
-    const options = Array.from((screen.getByLabelText('Role') as HTMLSelectElement).options).map((o) => o.textContent)
+    const options = Array.from(((await screen.findByLabelText('Role')) as HTMLSelectElement).options).map((o) => o.textContent)
     expect(options).toEqual(['Takes part', 'Can open check-ins', 'Admin'])
+  })
+
+  it('offers "Guest" once guests can join, and says what a guest sees when it is chosen', async () => {
+    theServerSays({ guestsMayJoin: true, whoMayAddPeople: 'ADMINS', rolesYouMayGive: ['MEMBER', 'LEAD', 'ADMIN', 'GUEST'] })
+    const post = vi.spyOn(apiClient, 'post').mockImplementation(async (_u: string, body: any) => ({
+      data: { preview: body.preview, seatsLeft: 70, rows: [{ email: 'kofi@ouma.co.ke', result: 'invited' }], summary: '1 person was invited.' },
+    }) as any)
+    wrap(<InvitePeople />)
+    const select = await screen.findByLabelText('Role') as HTMLSelectElement
+    await waitFor(() => expect(Array.from(select.options).map((o) => o.textContent)).toEqual(['Takes part', 'Can open check-ins', 'Admin', 'Guest']))
+    fireEvent.change(select, { target: { value: 'GUEST' } })
+    expect(screen.getByText('Guests only see the check-ins they are added to.')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Write one person on each line, with their name, their email and their phone number. Or paste a list from a spreadsheet.'), { target: { value: 'kofi@ouma.co.ke' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/users/invitations', { pasted: 'kofi@ouma.co.ke', preview: false, role: 'GUEST' }))
+  })
+
+  it('a member the organisation lets add people reads no choice of role, only that they join as "Takes part"', async () => {
+    theServerSays({ guestsMayJoin: true, whoMayAddPeople: 'ANYONE', rolesYouMayGive: ['MEMBER'] })
+    const post = vi.spyOn(apiClient, 'post').mockImplementation(async (_u: string, body: any) => ({
+      data: { preview: body.preview, seatsLeft: 70, rows: [{ email: 'faith@baridi.co.ke', result: 'invited' }], summary: '1 person was invited.' },
+    }) as any)
+    wrap(<InvitePeople />)
+    expect(await screen.findByText('They will join as “Takes part”.')).toBeTruthy()
+    expect(screen.queryByLabelText('Role')).toBeNull()
+    expect(screen.queryByText('Admin')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Write one person on each line, with their name, their email and their phone number. Or paste a list from a spreadsheet.'), { target: { value: 'faith@baridi.co.ke' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/users/invitations', { pasted: 'faith@baridi.co.ke', preview: false, role: 'MEMBER' }))
   })
 })
 

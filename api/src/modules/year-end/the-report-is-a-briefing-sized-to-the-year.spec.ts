@@ -98,3 +98,39 @@ describe('the presentation is sized to the material', () => {
     expect(slidesOf(c, { version: 1, status: 'draft' }).length).toBeLessThanOrEqual(8);
   });
 });
+
+/*
+ * DANGOTE RERUN, N7 AND N8. "What needs a decision" held the "is X the same thing as Y?" questions for Maryam, and the five real decisions were nowhere; and
+ * the report and the deck pasted raw notes and sheet rows ("The note for February says: Engagement,Committee,Planned,Held,Status,Notes ..."). Now the slide holds
+ * only what the record says waits on her decision, and a note itself is in the evidence index, never pasted into the report or the deck.
+ */
+describe('what the year says comes from the record, in sentences', () => {
+  it('a note that is a table is never pasted, and the decision slide holds only what waits on her', async () => {
+    const w = aFullYear();
+    w.t.principalMaterial.rows.push({ id: 'pm-csv', organizationId: w.ORG, principalUserId: 'u-fatima', batchId: 'b1', fromUserId: 'u-fatima', fromAddress: 'fatima@example.com', channel: 'email', kind: 'file', fileName: 'activity-2026-02-February-tracker.csv', mimeType: 'text/csv', text: 'Abuja office activity note, February 2026\n\nEngagement,Committee,Planned,Held,Status,Notes\nSenate,Industry,2,2,Done,Brief sent\nHouse,Trade,1,0,Open,Rescheduled', state: 'kept', receivedAt: new Date(Date.UTC(2026, 1, 27)) });
+    w.t.registerNote.rows.push({ id: 'rn-1', organizationId: w.ORG, principalUserId: 'u-fatima', sourceKind: 'commitment', sourceId: 'c-open-10', awaiting: 'decision', decisionQuestion: 'What settlement range should we offer BuildRight?', decisionOptions: [], notTheSameAs: [] });
+    const record = await loadTheRecord(w.prisma, { organizationId: w.ORG, principalUserId: 'u-fatima', now: NOW });
+    const c = await buildTheContentWithTheNarrative(record, [], { narrator: aNarrator() });
+    const report = reportBlocks(c, { version: 1, status: 'draft' }).map((b) => b.text).join('\n');
+    const slides = slidesOf(c, { version: 1, status: 'draft' });
+    const deck = slides.map((s) => `${s.title}\n${s.lines.join('\n')}`).join('\n');
+    const decide = slides.slice(-1)[0];
+    console.log(`WHAT NEEDS A DECISION\n${decide.lines.join('\n')}`);
+    expect(decide.title).toBe('What needs a decision');
+    expect(decide.lines.join(' ')).toContain('What settlement range should we offer BuildRight?');
+    expect(deck).not.toMatch(/the same thing as/);
+    for (const text of [report, deck]) expect(text).not.toMatch(/\w+,\w+,\w+,\w+/);
+  });
+});
+
+/* BATCH E RUN, D10. The day's corrections were never read for the next version: a message about no single month went in a group that sorted last and was cut. */
+describe('the day\'s corrections are what the next version reads', () => {
+  it('a correction sent today is among what the narrative reads, newest first', async () => {
+    const w = aFullYear();
+    w.t.principalMaterial.rows.push({ id: 'pm-ruth', organizationId: w.ORG, principalUserId: 'u-fatima', batchId: 'b-ruth', fromUserId: 'contact:ruth', fromAddress: 'ruth@example.com', channel: 'email', kind: 'message', fileName: 'message:ruth', subject: 'Correction to my Q2 summary', text: 'My Q2 summary said 7 ministry meetings. The weekly reports show 5. Please use 5.', state: 'kept', receivedAt: new Date('2026-11-20T11:40:00Z') });
+    const record = await loadTheRecord(w.prisma, { organizationId: w.ORG, principalUserId: 'u-fatima', now: NOW });
+    const read: string[] = [];
+    await buildTheContentWithTheNarrative(record, [], { narrator: { write: async (a) => { read.push(...a.sources.map((s) => s.text)); return null; } } });
+    expect(read.some((t) => t.includes('Please use 5'))).toBe(true);
+  });
+});

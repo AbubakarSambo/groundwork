@@ -16,7 +16,7 @@ export const THE_DRAFT_REQUEST_PROMPT = `A senior person has a year-end report a
 - approve: she says the draft is good and is to go, in any words ("I approve it", "I approve version 5", "yes, send it", "approve", "this is ready", "I am happy with it", "go ahead and send the final versions").
 - decline: she does not approve it yet, or says it is not ready, in any words ("not yet", "I do not approve this", "hold off", "not ready").
 - send_draft: she asks for the draft, the report, the presentation, the files, the latest version, or the year-end work to be sent to her, shown to her, sent again, or says she cannot find it or has not received it, in any words ("please send me the draft", "can I see the report", "send the latest", "I have not got the presentation", "resend the files").
-- send_list: she asks for the list of outstanding matters or the register to be sent to her.
+- send_list: she asks for the list of outstanding matters or the register to be sent or emailed ("send me the outstanding list", "email me the register"). A question about what is outstanding ("What is outstanding for Fatima?", "what is still open?") is none: it is answered, not sent.
 - structure: she asks what the report holds or how it is laid out, its structure, outline, parts or sections, or what has been found so far, in any words ("give me the structure of the report", "what have you found so far?", "what is in the draft?").
 - none: anything else, including asking for what the assistant just said ("email me that", "send me this"), a change to the draft ("shorten it", "add March"), or a question.
 A bare "yes", "ok" or "thanks" on its own is none: it may be an answer to something else. Approve only when the words are about this draft or its being sent.

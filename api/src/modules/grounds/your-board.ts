@@ -126,6 +126,8 @@ export interface SomethingYouSaid {
   settledBy?: 'said' | 'proven' | 'confirmed';
   /** When they said it, so their own weekly email can say the day (messages test, 19 October, finding 14). */
   saidAt?: string | null;
+  /** When it was kept or not done, as a moment. Left off while it is open. */
+  settledOn?: string;
 }
 
 /**
@@ -579,7 +581,10 @@ export function yourBoard(
     checkIns,
     turns,
     goals,
-    saidYoudDo: said.map(({ t: _t, open: _o, groundId: _g, raw: _r, whenSaid: _w, createdAt: _c, settledAt: _s, explicit: _e, status: _st, ...s }) => s),
+    /* When it was settled is served too (Hafsah, 21 November: "commitments, open and kept, with dates"): the person's own promise, on their own page. */
+    saidYoudDo: said.map(({ t: _t, open: _o, groundId: _g, raw: _r, whenSaid: _w, createdAt: _c, settledAt, explicit: _e, status: _st, ...s }) => ({
+      ...s, ...(s.state !== 'open' && settledAt ? { settledOn: new Date(settledAt as any).toISOString() } : {}),
+    })),
     todos: rows.todos
       .filter((t) => (t.text ?? '').trim())
       .map((t) => ({ id: t.id, text: t.text.trim(), when: whenInOneForm(t.dueSaid) })),

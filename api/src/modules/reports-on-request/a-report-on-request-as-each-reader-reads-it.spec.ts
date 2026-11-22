@@ -268,6 +268,13 @@ describe('a report on request, as each reader reads it', () => {
     const parts = inParts(['a'.repeat(3000), 'b'.repeat(3000), 'c'.repeat(100)].join('\n\n'));
     expect(parts).toHaveLength(2);
     expect(parts.every((p) => p.length <= 3800)).toBe(true);
+    /* Dangote rerun, N2: one paragraph of 9,000 characters reached Fatima cut off after 3,800, mid-sentence. Every sentence arrives, in parts. */
+    const sayBack = Array.from({ length: 64 }, (_, i) => `I will write to Person ${i} on WhatsApp and ask about “the matter still open with them”, which is still open.`).join(' ');
+    const inPieces = inParts(sayBack);
+    expect(inPieces.length).toBeGreaterThan(1);
+    expect(inPieces.every((p) => p.length <= 3800)).toBe(true);
+    expect(inPieces.join(' ').replace(/\s+/g, ' ')).toBe(sayBack.replace(/\s+/g, ' '));
+    expect(inPieces.every((p) => /\.$/.test(p))).toBe(true);
   });
 
   it('with no model it never writes a report on a guess', async () => {

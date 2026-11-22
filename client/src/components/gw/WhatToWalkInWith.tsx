@@ -1,4 +1,3 @@
-import { useTheDirectMorning } from '@/lib/the-direct-morning'
 import { Section } from './ui'
 
 
@@ -35,8 +34,7 @@ import { Section } from './ui'
  * participant, and this renders what it is given. A lead who is also a party gets their own.
  */
 export function WhatToWalkInWith({ guide }: { guide: { openingLine?: string; questionToCarry?: string; toAcknowledge?: string } }) {
-  /* The direct morning (lib/the-direct-morning.tsx): no privacy note. Who is served it is the backend's rule, the same either way. */
-  const direct = useTheDirectMorning()
+  /* No privacy note (the standards; Dangote rerun, N13). Who is served it is the backend's rule. */
   const rows = [
     { h: 'A way to open', text: guide.openingLine },
     { h: 'A question worth carrying in', text: guide.questionToCarry },
@@ -47,11 +45,6 @@ export function WhatToWalkInWith({ guide }: { guide: { openingLine?: string; que
   return (
     <div className="gwui-rule-blue gwui-pt-14 gwui-pb-14 gwui-pl-17 gwui-pr-17 gwui-mb-16" style={{ background: 'var(--gw-blue-bg)', borderRadius: 8 }}>
       <Section heading="Before you talk to them" />
-      {!direct && (
-        <div className="gwui-fs-13 gwui-ink-sub gwui-mb-12" style={{ lineHeight: '21px' }}>
-          Yours alone, and not part of the shared report. Nobody else is shown this.
-        </div>
-      )}
       {rows.map((r, i) => (
         <div key={i} className={i === rows.length - 1 ? 'gwui-mb-0' : 'gwui-mb-11'}>
           <div className="gwui-fs-13 gwui-ink-text gwui-mb-3" style={{ fontWeight: 700 }}>{r.h}</div>

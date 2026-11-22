@@ -57,7 +57,8 @@ describe('the code', () => {
 describe('the admin\'s switch', () => {
   it('off clears the link, so the old one stops working', async () => {
     const { s, getCode } = make();
-    expect(await s.set('baridi', 'u1', false)).toEqual({ on: false, code: null });
+    /* The state also says the role the link gives and whether guests may join (Hafsah, 21 November 2026); off is still off with no code. */
+    expect(await s.set('baridi', 'u1', false)).toMatchObject({ on: false, code: null, role: 'MEMBER' });
     expect(getCode()).toBeNull();
     expect(await s.preview('baridi-7k2p')).toEqual({ open: false });
   });

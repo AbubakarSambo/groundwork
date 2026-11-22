@@ -183,7 +183,7 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   },
   {
     key: 'add_a_to_do',
-    does: 'Put a note to yourself on your own list. Nobody else reads it and no report weighs it.',
+    does: 'Put a note to yourself on your own list. No report weighs it.',
     writes: 'after you confirm it',
     ordered: 'Above the document lane, because "add the rota to my to-do list" names a list and "add the rota" names a file.',
     owns: ['add the rota to my to-do list', 'to-do: chase the invoice', 'remind me to book the room', 'note to self: renew the domain'],
@@ -499,11 +499,12 @@ export const CAPABILITY_BY_KEY = new Map(WHAT_THE_ASSISTANT_CAN_DO.map((c) => [c
  * There used to be two lists (this registry's `does`, dumped by "what can you see", and a hand-written list in what-you-can-ask-here.ts),
  * and neither knew how anything is done on screen.
  */
-export type WhoMayUseIt = 'everyone' | 'member' | 'lead' | 'admin' | 'hr' | 'principal' | 'delegate';
+/** "inviter" is anybody who may add people here: an admin, or anybody who is not a guest where the organisation lets anyone add people. */
+export type WhoMayUseIt = 'everyone' | 'member' | 'lead' | 'admin' | 'hr' | 'principal' | 'delegate' | 'inviter';
 
 /** Who is reading, from their own standing. Every list below is cut from this, and nothing about anybody else. */
 export interface TheReader {
-  /** A guest from another organisation: answered only about their own check-in. */
+  /** A guest, from another organisation or let in as a guest: answered only about their own check-in. */
   isAGuest: boolean;
   /** A check-in they take part in as a person, that has not ended and they are not held for a seat on. */
   takesPartInOne: boolean;
@@ -523,6 +524,8 @@ export interface TheReader {
   contextIsHere: boolean;
   /** Requests that wait for this reader to approve. */
   waitingForYou?: number;
+  /** They may add people here (users/the-role-an-invitation-gives.ts): an admin, or anybody here where anyone may add people. Absent reads as no. */
+  mayAddPeople?: boolean;
 }
 
 export interface Guide {
@@ -639,8 +642,13 @@ export const THE_GUIDE: Guide[] = [
   },
   { key: 'a_document_for_everyone', section: 7, who: ['admin'], offeredWhen: (r) => r.contextIsHere && !r.runsOne, does: 'add a document for the whole organisation', example: 'Add our staff handbook for everyone.', starter: 'Add a document for the whole organisation.' },
   {
-    key: 'invite_someone', section: 6, who: ['admin'], notOffered: true, does: 'invite somebody to your organisation', example: 'How do I add someone to Groundwork?',
-    onScreen: 'Open People in the menu and press Invite a colleague. Paste their email addresses or upload a list, choose their role, and press Send their invitations.',
+    key: 'invite_someone', section: 6, who: ['inviter'], whoSaid: 'A, and M where anyone may add people', notOffered: true, does: 'invite somebody to your organisation', example: 'How do I add someone to Groundwork?',
+    onScreen: 'Open People in the menu and press Invite a colleague. Paste their email addresses or upload a list, choose their role, and press Send their invitations. If you are not an admin, there is no role to choose, and they join as “Takes part”.',
+  },
+  {
+    /* Hafsah, 21 November 2026: the two settings under Who can join on People. */
+    key: 'who_can_join', section: 6, who: ['admin'], notOffered: true, does: 'let guests join your organisation, or let anyone here add people', example: 'How do I let anyone add people?',
+    onScreen: 'Open People in the menu and go to Who can join. Turn on Guests can join to invite people as guests, who only see the check-ins they are added to. Beside Who can add people, press Change and choose Anyone here or Only admins.',
   },
   {
     key: 'change_someones_role', section: 6, who: ['admin'], notOffered: true, does: 'change somebody’s role', example: 'How do I make someone an admin?',
@@ -704,7 +712,7 @@ export const THE_GUIDE: Guide[] = [
   { key: 'switch_a_suite', doneByTellingMe: true, section: 6, who: ['admin'], notOffered: true, does: 'switch onboarding, leaving, the role map, to-dos, customers or equipment on or off', example: 'turn on onboarding' },
   { key: 'the_role_interview', section: 6, who: ['member'], notOffered: true, does: 'answer the role questions an admin sent you', example: '(answers the role questions)' },
   { key: 'a_question_the_desk_answers', section: 7, who: ['member'], notOffered: true, does: 'ask a question the company\u2019s documents answer, and be told which document', example: 'how many sick days do we get' },
-  { key: 'stop_a_delegate', doneByTellingMe: true, section: 9, who: ['principal'], notOffered: true, does: 'end the right of somebody to act for you', example: 'Amina no longer acts for me' },
+  { key: 'stop_a_delegate', doneByTellingMe: true, section: 9, who: ['principal', 'lead', 'admin'], notOffered: true, does: 'end the right of somebody to act for you', example: 'Amina no longer acts for me' },
   { key: 'what_can_the_team_close', section: 9, who: ['principal', 'delegate'], notOffered: true, does: 'ask what the team can close this week', example: 'what can the team close' },
   { key: 'the_year_end_draft', doneByTellingMe: true, section: 9, who: ['principal'], notOffered: true, does: 'change, add to or approve the year-end draft', example: 'add March' },
   { key: 'her_setup', doneByTellingMe: true, section: 9, who: ['principal'], notOffered: true, does: 'set yourself up by talking, at your own pace', example: 'slow down' },
@@ -726,7 +734,7 @@ export function mayUse(g: Guide, r: TheReader): boolean {
   if (g.who.includes('everyone')) return true;
   if (r.isAGuest) return false;
   return g.who.includes('member') || (g.who.includes('lead') && r.runsOne) || (g.who.includes('admin') && !!r.isAnAdmin) || (g.who.includes('hr') && !!r.looksAfterHr)
-    || (g.who.includes('principal') && !!r.isAPrincipal) || (g.who.includes('delegate') && !!r.actsForSomebody);
+    || (g.who.includes('principal') && !!r.isAPrincipal) || (g.who.includes('delegate') && !!r.actsForSomebody) || (g.who.includes('inviter') && !!r.mayAddPeople);
 }
 
 /** Is the suite it needs switched on for them. */
@@ -748,7 +756,12 @@ export function whatFitsThisReader(r: TheReader): Guide[] {
 /** The reader's role, said as the model reads it. */
 export function theirRoleSaid(r: TheReader): string {
   const role = theirRole(r);
-  return role === 'everyone' ? 'a guest from another organisation' : role === 'admin' ? 'an admin of the organisation' : role === 'hr' ? 'the person who looks after HR' : role === 'lead' ? 'a lead who runs a check-in' : 'a member of the organisation';
+  const said = role === 'everyone' ? 'a guest' : role === 'admin' ? 'an admin of the organisation' : role === 'hr' ? 'the person who looks after HR' : role === 'lead' ? 'a lead who runs a check-in' : 'a member of the organisation';
+  /* Whose year-end record they read is part of who they are, so the model reads a question about it as one: no lane below answers it, her record does (Batch F, F3; release test 21 November, 69). */
+  const record = 'what was achieved, which claims are proven and which are only said, who has delivered, what is still open and what leadership may ask';
+  if (r.isAPrincipal) return `${said}, and a senior person whose year-end report Groundwork prepares from her record. A question about that record (${record}) is a question that none of the things below answers`;
+  if (r.actsForSomebody) return `${said}, and the person who acts for a senior person whose year-end report Groundwork prepares from her record. A question about that record (${record}) is a question that none of the things below answers`;
+  return said;
 }
 
 /**
@@ -765,7 +778,7 @@ export function theDescriptionFor(r: TheReader): { role: string; things: { key: 
 
 /** Who does it, said as a person would, for somebody who may not. */
 export function whoDoesIt(g: Guide): string {
-  const names = g.who.filter((w) => w !== 'member' && w !== 'everyone').map((w) => (w === 'admin' ? 'an admin' : w === 'hr' ? 'the person who looks after HR' : w === 'principal' ? 'a senior person' : w === 'delegate' ? 'the person who acts for them' : 'the lead who runs the check-in'));
+  const names = g.who.filter((w) => w !== 'member' && w !== 'everyone').map((w) => (w === 'admin' || w === 'inviter' ? 'an admin' : w === 'hr' ? 'the person who looks after HR' : w === 'principal' ? 'a senior person' : w === 'delegate' ? 'the person who acts for them' : 'the lead who runs the check-in'));
   return names.length <= 1 ? names[0] ?? 'an admin' : `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
 }
 
@@ -784,7 +797,7 @@ export const WHAT_ASK_NEVER_DOES: { does: string; whoSaid: string; example: stri
 ];
 
 const THE_SECTIONS = ['Finding your way', 'Your own work', 'Check-ins', 'The team and the company', 'Requests: leave, spending, hours', 'Admin: setting things up', 'The Desk and company context', 'Reports', 'A senior person and the person who acts for her', 'What Ask must refuse or never do'];
-const WHO_IN_SHORT: Record<WhoMayUseIt, string> = { everyone: 'All', member: 'All', lead: 'L', admin: 'A', hr: 'H', principal: 'P', delegate: 'D' };
+const WHO_IN_SHORT: Record<WhoMayUseIt, string> = { everyone: 'All', member: 'All', lead: 'L', admin: 'A', hr: 'H', principal: 'P', delegate: 'D', inviter: 'A' };
 
 /**
  * docs/use-cases/what-ask-does.md, WRITTEN FROM THE GUIDE AND NOTHING ELSE (Hafsah, 20 November 2026), so the document and what Ask does cannot

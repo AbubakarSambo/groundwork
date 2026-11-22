@@ -121,3 +121,39 @@ describe('a change asked for in ordinary words, typed or mailed (Fatima round 3)
     expect(said).toContain('I have made the report and the presentation shorter in version 2.');
   });
 });
+
+/*
+ * BATCH F, F4 (E-1). "Update the draft." then "Send me the draft." made two mails for the versions and three WhatsApp messages saying version 3 was ready and sent:
+ * the draft asked for while version 3 was being built sent version 2 again, and the reply and the WhatsApp line both said version 3 went.
+ */
+describe('one send for a version, and one message saying it', () => {
+  it('while a version is being built she is told it is coming; when it is ready one mail goes and the reply is the only message', async () => {
+    const { setTheNarratorThatIsRunning } = require('./the-year-end-narrative');
+    const w = await aDraftExists();
+    w.whatsapps.length = 0;
+    /* Something new on the record, so the update is a new version. */
+    w.t.groundCommitment.rows.push({ id: 'c-new', groundId: 'g-ministry', participantId: 'gp-amina', text: 'Send the levy memo to the House committee', action: 'Send the levy memo to the House committee.', whenSaid: null, status: 'UNKNOWN', source: 'CHECK_IN', settledBy: null, settledAt: null, createdAt: NOW, updatedAt: NOW });
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((r) => { release = r; });
+    setTheNarratorThatIsRunning({ write: async () => null, readTheRecordWhole: async () => { await gate; return null; } });
+    try {
+      const say = (message: string) => handleTheDraftWords(w.prisma, w.ports, { organizationId: w.ORG, userId: 'u-fatima', message, channel: 'chat', now: NOW });
+      const updating = say('Update the draft.');
+      await new Promise((r) => setTimeout(r, 20));
+      const meanwhile = await say('Send me the draft.');
+      console.log(`WHILE VERSION 2 IS BUILT, FATIMA READS\n${meanwhile}`);
+      expect(meanwhile).toBe('I am making version 2 now, from the record as it is today. I will email it to you as soon as it is ready, so I have not sent version 1 again.');
+      release();
+      const updated = await updating;
+      console.log(`WHEN IT IS READY, FATIMA READS\n${updated}`);
+      expect(updated).toMatch(/^I have made version 2 from the record as it is now\. Version 1 is kept\. I have emailed version 2 to you\.$/);
+      expect(w.mails.filter((m) => m.kind === 'files').map((m) => m.subject)).toHaveLength(1);
+      /* The reply said it; the WhatsApp line is not sent as well, now or by the night's job. */
+      expect(w.whatsapps.filter((x) => /version 2/.test(x.text))).toHaveLength(0);
+      await actOnTheJobs(w.prisma, w.ports, new Date(NOW.getTime() + 3_600_000));
+      expect(w.whatsapps.filter((x) => /version 2/.test(x.text))).toHaveLength(0);
+    } finally {
+      setTheNarratorThatIsRunning(null);
+    }
+  });
+});

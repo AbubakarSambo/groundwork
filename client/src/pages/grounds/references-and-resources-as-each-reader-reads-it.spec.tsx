@@ -134,20 +134,21 @@ describe('Grace, who runs it, reads every section in the pictures’ order', () 
     expect(screen.getByText('The plan says “Never go below 4,200 a unit without asking me.”')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Dismiss' })).toBeTruthy()
-    expect(screen.getByText('Only you see this. Your notes on each person. They never see them. Their check-ins do not use them yet.')).toBeTruthy()
+    expect(screen.getByText('Your notes on each person. Their check-ins do not use them yet.')).toBeTruthy()
     expect(screen.getByText('Closes well. Doesn’t write down next steps.')).toBeTruthy()
     expect(screen.getByText('A next step and a day on every deal.')).toBeTruthy()
     expect(screen.getByText('Written before References and resources. Their check-ins do not use these.')).toBeTruthy()
   })
 
-  /* 21 October: People says who else may read it, as the server names them; only you where nobody else may. */
-  it('People says only you where nobody else may read it, and names the admin who set it up where one did', async () => {
+  /* Changed 21 November 2026 (Batch E, N13). This said who else may read People ("Only you see this, and Otieno, ..."), a privacy note on a screen, which the
+     standards forbid. Who may read it is the backend's rule and is unchanged; the screen says what People holds, whoever else may read it. */
+  it('People says what it holds and no privacy note, whoever else may read it', async () => {
     const { unmount } = renderAs({ ...SERVED_TO_GRACE, peopleAlsoSeenBy: '' }, true)
-    expect(await screen.findByText('Only you see this. Your notes on each person. They never see them. Their check-ins do not use them yet.')).toBeTruthy()
+    expect(await screen.findByText('Your notes on each person. Their check-ins do not use them yet.')).toBeTruthy()
     unmount()
     renderAs({ ...SERVED_TO_GRACE, peopleAlsoSeenBy: 'Otieno, the admin who set up this check-in' }, true)
-    expect(await screen.findByText('Only you see this, and Otieno, the admin who set up this check-in. Your notes on each person. They never see them. Their check-ins do not use them yet.')).toBeTruthy()
-    expect(screen.queryByText(/^Only you see this\. Your notes on each person/)).toBeNull()
+    expect(await screen.findByText('Your notes on each person. Their check-ins do not use them yet.')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/Only you see this|They never see/)
   })
 
   it('Documents with who can see each, and every piece of evidence with what it belongs to', async () => {

@@ -96,46 +96,33 @@ describe('a claim somebody disputes stays disputed, and is never "done, and the 
   });
 });
 
-describe('something that happened on the day is an activity with its own question, and never a "done?" probe', () => {
-  /* The questions are what the real model wrote for these words (journey/fatima-fix-c-reads-with-the-real-model.ts); a test stands them in. */
-  const EVENTS: { said: string; ask: string }[] = [
-    { said: 'The seating chart is done.', ask: 'Who has seen the seating chart?' },
-    { said: 'I delivered the letter from the Abuja office.', ask: 'Who received the letter and what did they say?' },
-    { said: 'The visit to Kano went ahead on Tuesday and about 40 people came.', ask: 'Who was there and what was agreed?' },
-    { said: 'The lunch has moved to 1:30.', ask: 'Who has been told about the new lunch time?' },
-    { said: 'The hall booking is confirmed for 11:00.', ask: 'Who has the booking confirmation?' },
-    { said: 'We handed over the invitations at the Governor\'s office.', ask: 'Who took the invitations, and did they say when the Governor will reply?' },
-    { said: 'The delegation arrived at 9:15.', ask: 'Who met the delegation, and did anything go wrong?' },
-    { said: 'The minister could not attend, so his deputy came.', ask: 'What did the deputy say on the minister\'s behalf?' },
-    { said: 'Transport was arranged for 12 guests.', ask: 'Which guests still need a ride?' },
-    { said: 'I changed the venue to the ballroom.', ask: 'Has everybody been told about the new venue?' },
+/*
+ * Changed 21 November 2026 (Batch E, N10). These tests pinned the old behaviour, where every event got a model-written question about what came of it. In the
+ * Dangote rerun that asked Ahmed "What is scheduled for 10 December?" about a date he had just given, and asked people about things that did not matter. An event
+ * is still kept as what happened and put on nobody's list; nothing is asked about it now.
+ */
+describe('something that happened on the day is what happened, never a "done?" probe, and nothing is asked about it', () => {
+  const EVENTS: { said: string }[] = [
+    { said: 'The seating chart is done.' },
+    { said: 'I delivered the letter from the Abuja office.' },
+    { said: 'The visit to Kano went ahead on Tuesday and about 40 people came.' },
+    { said: 'The lunch has moved to 1:30.' },
+    { said: 'The hall booking is confirmed for 11:00.' },
+    { said: 'We handed over the invitations at the Governor\'s office.' },
+    { said: 'The delegation arrived at 9:15.' },
+    { said: 'The minister could not attend, so his deputy came.' },
+    { said: 'Transport was arranged for 12 guests.' },
+    { said: 'I changed the venue to the ballroom.' },
   ];
-  it.each(EVENTS)('"$said" is kept as what happened, put on nobody\'s list, and asked about once, in its own words', async ({ said, ask }) => {
-    const mind = aScriptedMind({ readings: [['', { kind: 'update', events: [{ text: said.replace(/\.$/, ''), ask }] }]] });
+  it.each(EVENTS)('"$said" is kept as what happened, put on nobody\'s list, and not asked about', async ({ said }) => {
+    const mind = aScriptedMind({ readings: [['', { kind: 'update', events: [{ text: said.replace(/\.$/, '') }] }]] });
     const x = await aTeamLoopWorld({ mind });
     const read = await x.theyWrite('Amina Yusuf', { words: said });
     console.log(`WHAT AMINA READS\n${read}`);
     expect(x.t.commitment.rows).toHaveLength(0);
-    expect(read!).not.toMatch(/ is done\.? |what was the result|a message or a document I can see/i);
-    expect((read!.match(/\?/g) ?? []).length).toBe(1);
-    expect(read!).toContain(ask);
-    expect(asks(x)).toHaveLength(1);
-  });
-
-  it('when the model has no question worth asking about an event, nothing is asked and nothing is made', async () => {
-    const mind = aScriptedMind({ readings: [['', { kind: 'update', events: [{ text: 'I am forwarding two draft reports', ask: null }] }]] });
-    const x = await aTeamLoopWorld({ mind });
-    const read = await x.theyWrite('Amina Yusuf', { words: 'I am forwarding two draft reports.' });
+    expect(String(read ?? '')).not.toMatch(/ is done\.? |what was the result|a message or a document I can see/i);
     expect(String(read ?? '')).not.toMatch(/\?/);
-    expect(x.t.commitment.rows).toHaveLength(0);
-  });
-
-  it('asks about the same event only once', async () => {
-    const mind = aScriptedMind({ readings: [['', { kind: 'update', events: [{ text: 'The seating chart is done', ask: 'Who has seen the seating chart?' }] }]] });
-    const x = await aTeamLoopWorld({ mind });
-    await x.theyWrite('Amina Yusuf', { words: 'The seating chart is done.' });
-    const again = await x.theyWrite('Amina Yusuf', { words: 'The seating chart is done.', at: new Date(x.now.getTime() + 3_600_000) });
-    expect(String(again ?? '')).not.toMatch(/Who has seen the seating chart/);
+    expect(asks(x)).toHaveLength(0);
   });
 
   it('the model\'s reading is kept only as their own words, with nothing both an event and a result, and a dispute is never a result', () => {
@@ -144,13 +131,13 @@ describe('something that happened on the day is an activity with its own questio
     const read = theReadingMadeSafe({
       kind: 'update',
       outcomes: [{ text: 'The seating chart is done' }, { text: 'The figures in this draft are unsupported' }, { text: 'Something I invented' }],
-      events: [{ text: 'The seating chart is done', ask: 'Who sat at the top table? And who is missing?' }],
+      events: [{ text: 'The seating chart is done' }],
       disputed: [{ text: 'The figures in this draft are unsupported' }, { text: 'Not what they wrote' }],
       disputesWhatWasForwarded: true,
     }, text, false, work)!;
     expect(read.disputesWhatWasForwarded).toBe(true);
     expect(read.outcomes).toEqual([]);
-    expect(read.events).toEqual([{ text: 'The seating chart is done', ask: null }]);
+    expect(read.events).toEqual([{ text: 'The seating chart is done' }]);
     expect(read.disputed).toEqual([{ text: 'The figures in this draft are unsupported' }]);
   });
 });

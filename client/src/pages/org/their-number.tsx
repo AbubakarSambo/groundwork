@@ -35,8 +35,14 @@ export function TheirNumberInTheRow({ m, first, whatsappOn }: { m: OrgMember; fi
   }
   return (
     <span className="gwui-note" data-testid="their-number">
-      {' '}{m.phoneNumber ? `Their phone number is ${m.phoneNumber}. ` : 'No phone number yet. '}
-      {whatsappOn && m.whatsappSays ? `${m.whatsappSays} ` : ''}
+      {/* One plain line from the server (can-they-check-in-on-whatsapp.ts theirPhoneLine): the number, whether it is connected, and
+          whether they can check in on WhatsApp (Hafsah, 21 November 2026). An older server that sends none reads as before. */}
+      {' '}{m.phoneLine ? `${m.phoneLine} ` : (
+        <>
+          {m.phoneNumber ? `Their phone number is ${m.phoneNumber}. ` : 'No phone number yet. '}
+          {whatsappOn && m.whatsappSays ? `${m.whatsappSays} ` : ''}
+        </>
+      )}
       {!m.noAccountYet && (
         <Button kind="quiet" size="small" aria-label={`${m.phoneNumber ? 'Change' : 'Add'} the phone number for ${first}`} onClick={() => { setDraft(m.phoneNumber ?? ''); setEditing(true) }}>
           {m.phoneNumber ? 'Change' : 'Add'}

@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
  * they were or let them in when there was room. They are kept here, one list per organisation, as a setting row (no account is made and
  * no seat is used), shown on People and in the queue of people waiting for a seat, and invited when there is room.
  */
-export interface AnInvitationWaiting { email: string; name: string | null; role: 'ADMIN' | 'LEAD' | 'MEMBER'; at: string }
+export interface AnInvitationWaiting { email: string; name: string | null; role: 'ADMIN' | 'LEAD' | 'MEMBER' | 'GUEST'; at: string }
 
 const KEY = (organizationId: string) => `invitations.waiting-for-a-seat.${organizationId}`;
 

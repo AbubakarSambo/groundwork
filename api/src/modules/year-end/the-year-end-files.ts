@@ -330,7 +330,9 @@ export function slidesOf(c: YearEndContent, v: TheVersion): ASlide[] {
   /* The year, by quarter: each month in one line, its first sentences, from what its notes and messages say. */
   const noted = c.sections.filter((x) => x.id.startsWith('month:')).flatMap((x) => x.claims.filter((cl) => cl.status === 'noted').map((cl) => ({ key: x.id.slice(6), month: MONTHS[Number(x.id.slice(-2)) - 1], cl })));
   if (noted.length) {
-    const byMonth = [...new Map(noted.map(({ key, month, cl }) => [key, { month, text: cl.id.startsWith('nn:') ? noted.filter((x) => x.key === key && x.cl.id.startsWith('nn:')).slice(0, 2).map((x) => x.cl.text).join(' ') : cl.text }])).entries()].sort(([a], [b]) => a.localeCompare(b));
+    /* The checked narrative's sentences for a month when it has them, else the note's own (D8: the last line used to win, and the last was the raw note). */
+    const forMonth = (key: string) => { const all = noted.filter((x) => x.key === key); const told = all.filter((x) => x.cl.id.startsWith('nn:')); return (told.length ? told.slice(0, 2) : all.slice(0, 1)).map((x) => x.cl.text).join(' '); };
+    const byMonth = [...new Map(noted.map(({ key, month }) => [key, { month, text: forMonth(key) }])).entries()].sort(([a], [b]) => a.localeCompare(b));
     const lineOf = ({ month, text }: { month: string; text: string }) => `${month}: ${clip(text.replace(/^The (?:note|email) for \w+ says: /, '').replace(/ This is what the (?:note|email) says.*$/, ''), 190)}`;
     if (byMonth.length <= LINES_ON_A_SLIDE || shortened) body.push({ title: 'What the monthly notes report, not yet proven', lines: [...byMonth.slice(0, LINES_ON_A_SLIDE).map(([, m]) => lineOf(m)), ...more(Math.min(LINES_ON_A_SLIDE, byMonth.length), byMonth.length)] });
     else for (let q = 0; q < 4; q += 1) {
@@ -354,9 +356,10 @@ export function slidesOf(c: YearEndContent, v: TheVersion): ASlide[] {
   const stillOpen = claimsIn(c, 'open').map((cl) => slideLine(c, cl));
   const openLead = open.length === 0 ? 'Nothing is open on the record.' : `${carried.length ? `${carried.length} of the ${open.length} open ${open.length === 1 ? 'matter is' : 'matters are'} marked to carry into ${c.year + 1}.` : `None of the ${open.length} open ${open.length === 1 ? 'matter is' : 'matters are'} marked yet to carry into ${c.year + 1}.`} ${noOwner ? `${noOwner} ${noOwner === 1 ? 'has' : 'have'} no confirmed owner.` : 'Each has an owner.'}`;
   const openSlides = over(`What is open and carried into ${c.year + 1}`, [openLead, ...stillOpen], 2);
-  const decisions = claimsIn(c, 'decision').map((cl) => slideLine(c, cl));
-  const questions = c.questions.slice(0, 4);
-  const decide: ASlide = { title: 'What needs a decision', lines: decisions.length || questions.length ? [...decisions.slice(0, LINES_ON_A_SLIDE), ...questions.slice(0, Math.max(0, LINES_ON_A_SLIDE - decisions.length)), ...more(Math.min(LINES_ON_A_SLIDE, decisions.length), countIn('decision'))] : [`Nothing is waiting for a decision from ${c.principalFirstName}.`] };
+  /* The decision itself is the line: the matter and the question she must answer, not the matter's first sentence alone (Batch E, N7). */
+  const decisions = claimsIn(c, 'decision').map((cl) => slideLine(c, cl).replace(clip(firstSentence(cl.text), 150), clip(cl.text, 220)));
+  /* Only what the record says waits on her decision (Dangote rerun, N7: the slide filled itself with "is X the same thing as Y?" questions for Maryam). */
+  const decide: ASlide = { title: 'What needs a decision', lines: decisions.length ? [...decisions.slice(0, LINES_ON_A_SLIDE), ...more(Math.min(LINES_ON_A_SLIDE, decisions.length), countIn('decision'))] : [`Nothing is waiting for a decision from ${c.principalFirstName}.`] };
   /* The head, then the body as far as it fits, and always what is open and what needs a decision last. */
   const room = MOST_SLIDES - head.length - openSlides.length - 1;
   return [...head, ...body.slice(0, Math.max(0, room)), ...openSlides, decide];

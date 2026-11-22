@@ -383,7 +383,7 @@ export const billingApi = {
   /** WhatsApp, the paid add-on (decision 78). The server decides the shape; see `WhatsAppBilling` above. */
   /** Fix list item 6: whether the next invitation adds a paid seat, and "This adds a seat: +$5 a month" when it does. */
   nextSeat: () =>
-    apiClient.get<{ addsASeat: boolean; says: string | null }>('/billing/next-seat', { skipServerErrorToast: true } as any).then(r => r.data),
+    apiClient.get<{ addsASeat: boolean; says: string | null; line?: string; needsAYes?: boolean; whatsappLine?: string | null }>('/billing/next-seat', { skipServerErrorToast: true } as any).then(r => r.data),
 
   getWhatsApp: () =>
     apiClient.get<WhatsAppBilling>('/billing/whatsapp').then(r => r.data),

@@ -97,12 +97,13 @@ describe('fix 9: "or", and the engine\'s own "Only yours" note', () => {
    * whole - the lead may well have added one for somebody else. The body sentence now says so
    * ("None of the releases or tasks so far is yours."), beside the same "Only yours." note.
    */
-  it('reads "None of the releases or tasks so far is yours." with "Only yours." beside the heading', async () => {
+  /* Changed 21 November 2026 (Batch E, N13): the sentence stays; the "Only yours." note beside the heading is gone (a privacy note the standards forbid). */
+  it('reads "None of the releases or tasks so far is yours.", with no "Only yours." note', async () => {
     me = { id: 'p-aisha', firstName: 'Aisha', role: 'MEMBER' }
     renderBoard(ENG_PARTICIPANT_BOARD)
     await screen.findByRole('heading', { name: 'Engineering release, test' })
     expect(screen.getByText(/None of the releases or tasks so far is yours\./)).toBeTruthy()
     expect(screen.queryByText(/None of the releases and tasks so far is yours\./)).toBeNull()
-    expect(screen.getByText('Only yours.')).toBeTruthy()
+    expect(screen.queryByText('Only yours.')).toBeNull()
   })
 })

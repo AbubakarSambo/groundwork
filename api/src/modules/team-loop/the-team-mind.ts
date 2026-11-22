@@ -19,6 +19,8 @@ import { askTheModelForAnAnswer, type AnAnswer } from '../executive-onboarding/h
 export interface TheirWork {
   first: string;
   commitments: { id: string; text: string; dueSaid: string | null; waitingOn: string | null }[];
+  /** Their promises already counted as done, so a later message about one is read as about it (Dangote rerun, D14: April's "it has been sorted" was about the permit). */
+  settled?: { id: string; text: string; proven?: boolean }[];
   /** The standard questions not yet answered, by slug. */
   openQuestions: { slug: string; what: string }[];
   /** What the record already holds from them: the files they sent and the promises a document already proves (D13). Never asked for again. */
@@ -39,9 +41,12 @@ export interface WhatTheySaid {
   vague: { about: string; how: 'ongoing' | 'done' | 'soon' } | null;
   /**
    * Things that happened or changed on the day (a visit made, a letter handed over, who came, a time moved). They are what a person did, not a result that needs
-   * proof, so they are never put on a list as "done?". `ask` is the model's one question about what came of it, tailored to the event, or null.
+   * proof, so they are never put on a list as "done?", and nothing is asked about them (Dangote rerun, N10: "What is scheduled for 10 December?").
    */
-  events?: { text: string; ask: string | null }[];
+  events?: { text: string }[];
+  /** What they now say about one of their promises: a new day, what it waits on, or that it is not finished after all ("approved in principle; the formal letter has not come"). */
+  updates?: { commitmentId: string; whenSaid: string | null; waitingOn: string | null; notFinished: boolean }[];
+  /** A matter that, from what they say, now waits on the senior person or leadership to decide, as the one question she must answer (Dangote rerun, N7). */
   /** Claims, in a document or in the person's words, that the sender or a reviewer says are unsupported, wrong or still to be checked, each copied as it is written. They stay disputed. */
   disputed?: { text: string }[];
   /** The sender says that what they forwarded cannot be relied on as a whole ("the figures in these drafts are unsupported", "do not count them"), without naming a line. */
@@ -113,8 +118,9 @@ Say which kind it is: update (what they are doing, have done, or are stuck on, i
 
 For an update list only what the words say. Only what the sender wrote in their own voice counts: a request, a date or a promise written by somebody else in a forwarded or quoted message is that person's, not the sender's, so leave it out.
 - commitments: things they say they will do, each copied word for word from what they wrote, with the timing they gave in their own words or empty, and who or what the promise waits on in their words (a promise that only happens once somebody approves, pays or answers) or empty.
-- outcomes: results the sender says in their own voice that they achieved and that somebody would need to see proof of, such as a payment made, an approval given, or a document sent to somebody. If it is one of the promises you are given, give its id. Something that happened on the day is not an outcome (see events). A short line that only goes with a file ("Here is the signed copy", "Attached", "Please see the receipt") says nothing is done: it is not an outcome, a promise or an event. A result that is only written inside a document they forwarded is that document's claim, not theirs: when what you read is a document, leave its claims out of outcomes unless the sender says them in their own words.
-- events: things that happened or changed on the day, copied word for word: a visit made, a letter handed over, a meeting held, who attended, a seating plan done, a time or a place that moved ("the seating chart is done", "I delivered the letter to the Abuja office", "the lunch has moved to 1:30", "the road was bad"). For each, in ask, write the one plain question you would put to a colleague about what came of it, specific to that event (for example who was there and what was agreed, or who received the letter and what they said). Never ask whether it is "done". One question only, or leave ask empty when nothing more is worth asking. Forwarding or attaching documents, a document's title, and what the sender is about to do are not events.
+- outcomes: results the sender says in their own voice that they achieved, in full, and that somebody would need to see proof of, such as a payment made, an approval given, or a document sent to somebody. If it is one of the promises you are given, give its id. Something that happened on the day is not an outcome (see events). A short line that only goes with a file ("Here is the signed copy", "Attached", "Please see the receipt") says nothing is done: it is not an outcome, a promise or an event. A result that is only written inside a document they forwarded is that document's claim, not theirs: when what you read is a document, leave its claims out of outcomes unless the sender says them in their own words.
+- events: things that happened or changed on the day, copied word for word: a visit made, a letter handed over, a meeting held, who attended, a seating plan done, a time or a place that moved ("the seating chart is done", "I delivered the letter to the Abuja office", "the lunch has moved to 1:30", "the road was bad"). Forwarding or attaching documents, a document's title, and what the sender is about to do are not events.
+- updates: for one of the promises you are given (open or already counted as done), what they now say about it. A result they qualify ("approved in principle", "partly", "not formally", "the letter has not come") is never an outcome: it is an update with notFinished true for the promise it is about. Give a new day ("the Minister's office says by 10 December"), what it now waits on, or notFinished true when they say it is not finished after all ("it was approved in principle, the formal letter has not come"). Give the promise's id. A new day or condition for a promise is an update, not an event.
 - disputed: each claim, in a document or in the sender's words, that the sender or a reviewer says is unsupported, wrong, not backed up, or still to be checked, copied word for word as the claim is written (for "analyst note: no receipt for the vehicle hire" the claim is the line saying the vehicle hire was paid, not the note). A disputed claim is never an outcome.
 - asksForHelp: true when, as well as telling you something, they ask you to help with their own work ("Can you help me with it?", "What should I do next?", "Please help me write a reminder"), even if the rest of the message is an update.
 - continuesTheLast: true when the message goes on from the conversation so far (it gives the names or the detail you last asked for, or clarifies their last request, such as "They are the Director and two officers" after a request to write to some guests). Then it is the same matter, not news.
@@ -137,7 +143,8 @@ export const READ_SCHEMA = {
       blockers: { type: 'array', items: { type: 'object', properties: { text: { type: 'string' }, waitingOn: { type: 'string' } }, required: ['text'] } },
       answers: { type: 'array', items: { type: 'object', properties: { slug: { type: 'string' } }, required: ['slug'] } },
       vague: { type: 'object', properties: { about: { type: 'string' }, how: { type: 'string', enum: ['ongoing', 'done', 'soon'] } } },
-      events: { type: 'array', items: { type: 'object', properties: { text: { type: 'string' }, ask: { type: 'string' } }, required: ['text'] } },
+      events: { type: 'array', items: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] } },
+      updates: { type: 'array', items: { type: 'object', properties: { commitmentId: { type: 'string' }, whenSaid: { type: 'string' }, waitingOn: { type: 'string' }, notFinished: { type: 'boolean' } }, required: ['commitmentId'] } },
       disputed: { type: 'array', items: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] } },
       disputesWhatWasForwarded: { type: 'boolean' },
       asksForHelp: { type: 'boolean' },
@@ -277,20 +284,22 @@ export function theReadingMadeSafe(raw: any, text: string, hasDocuments: boolean
   const str = (x: any, n = 300) => (typeof x === 'string' && x.trim() ? x.trim().slice(0, n) : null);
   /* A sentence in a document is the document's, never the sender's promise: what a document asks for or says will happen is not put on the sender's list, whatever the model read (Fatima round 4, untrue line 8: "Please pay after the invoice is stamped"). */
   const commitments = hasDocuments ? [] : list(raw.commitments).map((c) => ({ text: str(c?.text), whenSaid: str(c?.whenSaid, 80), waitingOn: str(c?.waitingOn, 120) })).filter((c): c is { text: string; whenSaid: string | null; waitingOn: string | null } => !!c.text && isTheirOwnWords(c.text, text)).slice(0, 8);
-  const outcomes = list(raw.outcomes).map((o) => ({ text: str(o?.text), commitmentId: work.commitments.some((c) => c.id === o?.commitmentId) ? (o.commitmentId as string) : null })).filter((o): o is { text: string; commitmentId: string | null } => !!o.text && isTheirOwnWords(o.text, text)).slice(0, 8);
+  const theirs = (id: any): string | null => (typeof id === 'string' && [...work.commitments, ...(work.settled ?? [])].some((c) => c.id === id) ? id : null);
+  const outcomes = list(raw.outcomes).map((o) => ({ text: str(o?.text), commitmentId: theirs(o?.commitmentId) })).filter((o): o is { text: string; commitmentId: string | null } => !!o.text && isTheirOwnWords(o.text, text)).slice(0, 8);
   const blockers = list(raw.blockers).map((b) => ({ text: str(b?.text), waitingOn: str(b?.waitingOn, 120) })).filter((b): b is { text: string; waitingOn: string | null } => !!b.text && isTheirOwnWords(b.text, text)).slice(0, 5);
   const answers = list(raw.answers).map((a) => str(a?.slug, 40)).filter((s): s is string => !!s && work.openQuestions.some((q) => q.slug === s)).map((slug) => ({ slug })).slice(0, 5);
   const how = ['ongoing', 'done', 'soon'].includes(raw?.vague?.how) ? raw.vague.how : null;
   const about = str(raw?.vague?.about, 80);
   /* A document is what shows a result: "answers" and outcomes never rest on a document nobody sent. */
   void hasDocuments;
-  /* An event is in their own words. The question the model wrote about it is kept only if it is plain: one question, no placeholder (aReplyToThemMadeSafe). */
-  const events = list(raw.events).map((e) => ({ text: str(e?.text), ask: aReplyToThemMadeSafe(e?.ask) })).filter((e): e is { text: string; ask: string | null } => !!e.text && isTheirOwnWords(e.text, text)).slice(0, 8);
+  /* An event is in their own words. */
+  const events = list(raw.events).map((e) => ({ text: str(e?.text) })).filter((e): e is { text: string } => !!e.text && isTheirOwnWords(e.text, text)).slice(0, 8);
+  const updates = hasDocuments ? [] : list(raw.updates).map((u) => ({ commitmentId: theirs(u?.commitmentId), whenSaid: str(u?.whenSaid, 80), waitingOn: str(u?.waitingOn, 120), notFinished: u?.notFinished === true })).filter((u): u is { commitmentId: string; whenSaid: string | null; waitingOn: string | null; notFinished: boolean } => !!u.commitmentId).slice(0, 8);
   const disputed = list(raw.disputed).map((d) => ({ text: str(d?.text) })).filter((d): d is { text: string } => !!d.text && isTheirOwnWords(d.text, text)).slice(0, 8);
   /* Nothing is both: a claim somebody disputes is not a result, and an event is not a result. */
   const isKept = (t: string) => !disputed.some((d) => squash(d.text) === squash(t)) && !events.some((e) => squash(e.text) === squash(t));
   const kept = outcomes.filter((o) => isKept(o.text));
-  return { kind, commitments, outcomes: kept, blockers, answers, vague: how && about && !commitments.length && !kept.length && !events.length ? { about, how } : null, ...(events.length ? { events } : {}), ...(disputed.length ? { disputed } : {}), ...(raw.asksForHelp === true ? { asksForHelp: true } : {}), ...(raw.asksAboutOthers === true ? { asksAboutOthers: true } : {}), ...(raw.continuesTheLast === true ? { continuesTheLast: true } : {}), ...(raw.disputesWhatWasForwarded === true ? { disputesWhatWasForwarded: true } : {}) };
+  return { kind, commitments, outcomes: kept, blockers, answers, vague: how && about && !commitments.length && !kept.length && !events.length ? { about, how } : null, ...(events.length ? { events } : {}), ...(updates.length ? { updates } : {}), ...(disputed.length ? { disputed } : {}), ...(raw.asksForHelp === true ? { asksForHelp: true } : {}), ...(raw.asksAboutOthers === true ? { asksAboutOthers: true } : {}), ...(raw.continuesTheLast === true ? { continuesTheLast: true } : {}), ...(raw.disputesWhatWasForwarded === true ? { disputesWhatWasForwarded: true } : {}) };
 }
 
 export function theInstructionMadeSafe(raw: any): TheInstruction | null {
@@ -345,7 +354,7 @@ export class GeminiTeamMind implements TheTeamMind {
   }
 
   async readTheirWords(a: { text: string; hasDocuments: boolean; work: TheirWork; recent?: string }): Promise<WhatTheySaid | null> {
-    const promises = a.work.commitments.map((c) => `- ${c.id}: ${c.text}`).join('\n') || '- none';
+    const promises = [...a.work.commitments.map((c) => `- ${c.id}: ${c.text}`), ...(a.work.settled ?? []).map((c) => `- ${c.id}: ${c.text} (already counted as done)`)].join('\n') || '- none';
     const questions = a.work.openQuestions.map((q) => `- ${q.slug}: ${q.what}`).join('\n') || '- none';
     const raw = await this.extract(THE_TEAM_PROMPT_KEYS.read, READ_PROMPT, `${a.recent ? `The conversation so far, oldest first:\n${a.recent}\n\n` : ''}Their promises so far:\n${promises}\n\nQuestions still open:\n${questions}\n\nWhat ${a.work.first} sent${a.hasDocuments ? ', with documents' : ''}:\n<<<\n${a.text.slice(0, 6000)}\n>>>`, READ_SCHEMA);
     return theReadingMadeSafe(raw, a.text, a.hasDocuments, a.work);

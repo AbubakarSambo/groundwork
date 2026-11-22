@@ -1,4 +1,3 @@
-import { aRoleToInviteAs } from '../users/the-role-an-invitation-gives';
 import { Controller, Post, Get, Patch, Body, Query, HttpCode, HttpStatus, UseGuards, Req, Res, Logger, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -8,7 +7,7 @@ import { AuthService } from './auth.service';
 import { GoogleCallbackGuard, GoogleStartGuard } from './google-callback.guard';
 import { aPathInThisApp } from '../../common/a-path-in-this-app';
 import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto, UpdateProfileDto, EntrySaveDto, CreateOrganisationDto } from './dto';
-import { Public, CurrentUser, CurrentUserData, Roles, Role } from '../../common';
+import { Public, CurrentUser, CurrentUserData } from '../../common';
 import { aNameFromAnEmailAddress } from '../../common/an-email-domain';
 
 /**
@@ -385,15 +384,17 @@ export class AuthController {
     return this.authService.requestPasswordSetupForUser(user.id);
   }
 
+  /* Not admin-only by decorator (Hafsah, 21 November 2026): the organisation's "Who can add people" decides, through the one rule. */
   @Post('team-invite')
   @ApiBearerAuth()
-  @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.OK)
   @Throttle({ global: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Invite a colleague to Groundwork as a member of the same org' })
   async teamInvite(@CurrentUser() user: CurrentUserData, @Body() body: { email: string; role?: string; name?: string }) {
     const orgName = (user as any).organizationName ?? 'Groundwork';
-    /* The role and the name chosen on the People page (U.4). */
-    return this.authService.teamInvite(orgName, body.email, user.organizationId, { role: aRoleToInviteAs(body.role), name: body.name ?? null });
+    /* The role and the name chosen on the People page (U.4), if this person may give that role here. */
+    const role = await this.authService.theRoleTheyMayGive(user.organizationId, user.id, body.role);
+    if (user.role !== 'ADMIN') await this.authService.onlyAnAdminAddsAPaidSeat(user.organizationId);
+    return this.authService.teamInvite(orgName, body.email, user.organizationId, { role, name: body.name ?? null });
   }
 }
