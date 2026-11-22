@@ -1,6 +1,6 @@
 import { boardAs, SALES_RUN, BISI, FEMI, type Setup } from './the-switchboards-sections-harness';
 import { theMarkForTheDeal, theDocumentsWords } from './a-deals-proof-is-about-that-deal';
-import { fileProofThatWasFiledOnNothing } from '../documents/proof-filed-on-its-item';
+import { fileProofThatWasFiledOnNothing, fileTheProofOnItsItem, whatTheProofIs } from '../documents/proof-filed-on-its-item';
 import { ConversationService } from '../conversation/conversation.service';
 
 /**
@@ -71,7 +71,7 @@ describe('her answer to "what does it confirm" is not the form\'s description', 
     expect(svc.keepTheDocumentDescription).toBeUndefined();
   });
 
-  it('the form, as it reads, is filed on Mama Njeri Duka once her deals are on record; her answer kept as its note filed it on nothing', async () => {
+  it('the form, as it reads, is filed on Mama Njeri Duka once her deals are on record, whatever note it was added with', async () => {
     const run = async (note: string | null) => {
       const evidence = [{ id: 'ev-1', groundId: 'g-1', documentId: 'doc-order', participantId: 'p-femi', workItemId: null as string | null, itemName: null as string | null, countsAsProof: true }];
       const prisma: any = {
@@ -86,7 +86,34 @@ describe('her answer to "what does it confirm" is not the form\'s description', 
       return evidence[0].itemName;
     };
     expect(await run(null)).toBe('Mama Njeri Duka');
-    expect(await run(HER_ANSWER)).toBeNull();
+    /* The form's own words name Mama Njeri Duka; a note that names Kilimani Fresh no longer files it on nothing (final run, 22 November). */
+    expect(await run(HER_ANSWER)).toBe('Mama Njeri Duka');
+  });
+
+  it('an order form with the customer\'s signature on it reads as a signed order and counts as proof', () => {
+    expect(whatTheProofIs(`order.png ${ORDER_FORM}`, 'image/png')).toEqual({ readAs: 'A signed order', countsAsProof: true });
+    expect(whatTheProofIs('order.png MSINGI FOODS ORDER FORM Shop: Mama Njeri Duka Item: Unga 2kg cartons x 20', 'image/png').readAs).not.toBe('A signed order');
+  });
+
+  it('added two minutes before her deals were on record, the form is kept as a signed order on nothing, then filed on Mama Njeri Duka', async () => {
+    const evidence: any[] = [];
+    let items: any[] = [];
+    const prisma: any = {
+      ground: { findUnique: async () => ({ organizationId: 'o-1' }) },
+      workItem: { findMany: async () => items },
+      conversationTurn: { findFirst: async () => ({ content: HER_ANSWER }) },
+      itemEvidence: {
+        create: async ({ data }: any) => { const e = { id: 'ev-1', ...data }; evidence.push(e); return e; },
+        findMany: async ({ where }: any) => evidence.filter((e) => e.workItemId === null && (!where.countsAsProof || e.countsAsProof)),
+        update: async ({ where, data }: any) => Object.assign(evidence.find((e) => e.id === where.id), data),
+      },
+      groundDocument: { findUnique: async () => ({ fileName: 'order.png', uploaderNote: HER_ANSWER, content: ORDER_FORM }) },
+    };
+    await fileTheProofOnItsItem(prisma, { id: 'doc-order', groundId: 'g-1', participantId: 'p-femi', fileName: 'order.png', mimeType: 'image/png', uploaderNote: HER_ANSWER, content: ORDER_FORM });
+    expect(evidence[0]).toMatchObject({ readAs: 'A signed order', countsAsProof: true, workItemId: null });
+    items = RUN.items ?? [];
+    expect(await fileProofThatWasFiledOnNothing(prisma, 'g-1')).toBe(1);
+    expect(evidence[0]).toMatchObject({ workItemId: 'w-njeri', itemName: 'Mama Njeri Duka' });
   });
 
   it('the form proves Mama Njeri Duka and not Kilimani Fresh; with her answer as its note it named Kilimani Fresh too', () => {

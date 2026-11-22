@@ -1087,8 +1087,8 @@ export class GroundsCron implements OnApplicationBootstrap {
 
   /**
    * THE DIRECT MORNING BY SEVEN (engagement/the-direct-morning.ts; Hafsah, 20 October 2026): every quarter hour, for every organisation,
-   * the lead's morning summary goes in the hour from seven where the organisation is, before the check-ins open, once a day
-   * a lead. The 9am sweep above sends it only to a lead it did not reach.
+   * the lead's morning summary goes from seven where the organisation is (at the first sweep after seven, before midday), before the
+   * check-ins open, once a day a lead. The 9am sweep above sends it only to a lead it did not reach.
    */
   @Cron('*/15 * * * *', { timeZone: 'UTC' })
   async sendTheDirectMorningsAtSeven() {

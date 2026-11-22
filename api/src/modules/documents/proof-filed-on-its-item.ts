@@ -67,6 +67,26 @@ export function whatItShows(content: string | null | undefined): string | null {
   return first.length < t.length && !/[.!?]$/.test(first) ? `${first}...` : first;
 }
 
+type ADocumentsWords = { fileName?: string | null; uploaderNote?: string | null; content?: string | null };
+
+/** A document's words: its name, the note it was added with, and its text where it could be read. */
+function theWordsOf(doc: ADocumentsWords): string {
+  return [doc.fileName, doc.uploaderNote, weCouldNotReadIt(doc.content) ? '' : doc.content].filter((x) => String(x ?? '').trim()).join(' ');
+}
+
+/**
+ * THE ITEM A DOCUMENT IS ABOUT IS THE ONE ITS OWN WORDS NAME (release test, 22 November 2026, bug 16). Amani added order.png, which
+ * reads "MSINGI FOODS ORDER FORM Shop: Mama Njeri Duka, Kilimani ... Signed: N. Wanjiru", with the note "kilimani is waiting on baraka
+ * ... or we lose kilimani fresh". Read together, the note named Kilimani Fresh and the form named Mama Njeri Duka, so two items were
+ * named and the form was filed on neither, and the board, My work and Ask said her sale had no proof. A document that can be read is
+ * about the customers it names (the board's rule, a-deals-proof-is-about-that-deal.ts); the note and the file name are read only where
+ * its own text names no item.
+ */
+export function theItemTheDocumentNames(doc: ADocumentsWords, items: AnItem[], participantId: string | null): AnItem | null {
+  const text = weCouldNotReadIt(doc.content) ? '' : String(doc.content ?? '').trim();
+  return (text ? theItemItNames(text, items, participantId) : null) ?? theItemItNames(theWordsOf(doc), items, participantId);
+}
+
 export async function fileTheProofOnItsItem(
   prisma: any,
   doc: { id: string; groundId: string; participantId: string | null; fileName: string; mimeType: string; uploaderNote?: string | null; content: string },
@@ -74,13 +94,13 @@ export async function fileTheProofOnItsItem(
 ): Promise<{ id: string; itemName: string | null } | null> {
   const ground = await prisma?.ground?.findUnique?.({ where: { id: doc.groundId }, select: { organizationId: true } }).catch(() => null);
   if (!ground) return null;
-  const words = [doc.fileName, doc.uploaderNote, weCouldNotReadIt(doc.content) ? '' : doc.content].filter((x) => String(x ?? '').trim()).join(' ');
+  const words = theWordsOf(doc);
   const reading = whatTheProofIs(words, doc.mimeType);
   const items: AnItem[] = (await prisma.workItem?.findMany?.({
     where: { groundId: doc.groundId },
     select: { id: true, kind: true, name: true, ownerParticipantId: true, fields: true },
   }).catch(() => [])) ?? [];
-  let item = theItemItNames(words, items, doc.participantId);
+  let item = theItemTheDocumentNames(doc, items, doc.participantId);
   if (!item && doc.participantId) {
     const said: any = await prisma.conversationTurn?.findFirst?.({
       where: { role: 'PERSON', createdAt: { gte: new Date(now.getTime() - 15 * 60000) }, checkIn: { groundId: doc.groundId, participantId: doc.participantId } },
@@ -125,8 +145,7 @@ export async function fileProofThatWasFiledOnNothing(prisma: any, groundId: stri
   for (const o of orphans) {
     const doc: any = await Promise.resolve(prisma.groundDocument?.findUnique?.({ where: { id: o.documentId }, select: { fileName: true, uploaderNote: true, content: true } })).catch(() => null);
     if (!doc) continue;
-    const words = [doc.fileName, doc.uploaderNote, weCouldNotReadIt(doc.content) ? '' : doc.content].filter((x) => String(x ?? '').trim()).join(' ');
-    const item = theItemItNames(words, items, o.participantId ?? null);
+    const item = theItemTheDocumentNames(doc, items, o.participantId ?? null);
     if (!item) continue;
     await prisma.itemEvidence.update({ where: { id: o.id }, data: { workItemId: item.id, itemName: item.name } }).catch(() => undefined);
     filed++;

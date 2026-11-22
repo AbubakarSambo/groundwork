@@ -144,6 +144,28 @@ describe('the summary she is sent, with the switch on', () => {
     expect((await sendTheLeadsDailyNudges(d.deps, new Date('2026-10-20T03:30:00Z'), { onlyTheDirectMorningAt7: true })).tried).toBe(0);
     expect(d.sent).toHaveLength(0);
   });
+
+  it('missed at seven, it goes by email at the next sweep that morning, once, with the approved headings; never after midday (bug 34)', async () => {
+    /* Wairimu's case: no WhatsApp for her, and the first sweep after seven in Nairobi ran at half past nine. */
+    const d = await doors('drop', true);
+    d.deps.whatsapp.isEnabled = async () => false;
+    expect((await sendTheLeadsDailyNudges(d.deps, new Date('2026-10-20T06:30:00Z'), { onlyTheDirectMorningAt7: true })).tried).toBe(1);
+    expect(d.sent).toHaveLength(0);
+    expect(d.mails.map((m) => m.kind)).toEqual(['direct']);
+    const [, subject, first, parts, label] = d.mails[0].a;
+    expect(subject).toBe('Grace: 45 short of 120, and Joseph needs your yes on Juja Hardware');
+    expect(first).toBe('Grace');
+    expect(parts[0]).toEqual({ heading: 'Will we reach 120 units sold by 30 October?', lines: ['75 of 120 sold, 47 paid, 45 short, and the open deals cover 40.'] });
+    expect(parts[1].heading).toBe('What needs you today');
+    expect(parts[1].lines[0]).toBe('Juja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph.');
+    expect(label).toBe('Open your board');
+    /* Once a day: the next sweep and the 9am sweep send nothing more. */
+    expect((await sendTheLeadsDailyNudges(d.deps, new Date('2026-10-20T06:45:00Z'), { onlyTheDirectMorningAt7: true })).tried).toBe(0);
+    expect((await sendTheLeadsDailyNudges(d.deps, new Date('2026-10-20T08:00:00Z'))).tried).toBe(0);
+    expect(d.mails).toHaveLength(1);
+    const late = await doors('drop', true);
+    expect((await sendTheLeadsDailyNudges(late.deps, new Date('2026-10-20T09:15:00Z'), { onlyTheDirectMorningAt7: true })).tried).toBe(0);
+  });
 });
 
 describe('Wanjiru’s direct morning, Muchemi & Co (test): fee notes and the litigation team in one message', () => {

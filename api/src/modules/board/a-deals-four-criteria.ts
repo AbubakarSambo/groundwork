@@ -186,8 +186,12 @@ export function readsAsAPayment(text: string | null | undefined): boolean {
   return A_PAYMENT.test(String(text ?? ''));
 }
 
-/** A signed order, as a document or a line says it: a purchase order, an order signed by the customer, an LPO. Not a quote. */
-const A_SIGNED_ORDER = /\bpurchase order\b|\bsigned (?:the |an |our )?(?:purchase )?order\b|\border (?:was |is |has been )?signed\b|\bsigned order\b|\bL\.?P\.?O\b|\bPO[-\s]?\d{2,}\b/i;
+/**
+ * A signed order, as a document or a line says it: a purchase order, an order signed by the customer, an LPO, or an order form with
+ * the customer's signature on it ("ORDER FORM ... Signed: N. Wanjiru", Amani's order from Mama Njeri Duka; Hafsah, 22 November 2026:
+ * a signed order counts as proof). Not a quote.
+ */
+const A_SIGNED_ORDER = /\bpurchase order\b|\bsigned (?:the |an |our )?(?:purchase )?order\b|\border (?:was |is |has been )?signed\b|\bsigned order\b|\border form\b[\s\S]*\b(?:signed|signature)\s*(?:by)?\s*:|\bL\.?P\.?O\b|\bPO[-\s]?\d{2,}\b/i;
 export function readsAsASignedOrder(text: string | null | undefined): boolean {
   return A_SIGNED_ORDER.test(String(text ?? ''));
 }
