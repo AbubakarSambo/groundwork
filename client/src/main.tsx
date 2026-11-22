@@ -15,6 +15,10 @@ import './styles/product.css'
 import './styles/design-rules.css'
 /* The design pass of 21 November, off unless this browser switched it on (lib/the-design-pass.ts). */
 import './styles/the-design-pass.css'
+/* The design system of 23 November: every value in one token file, and the building blocks that read
+   only from it. Its classes are drawn only on a page rebuilt with <Page title=...>, so nothing else moves. */
+import './styles/tokens.css'
+import './components/gw/ui/blocks.css'
 import { startTheDesignPass } from './lib/the-design-pass'
 import './lib/posthog'
 import { registerServiceWorker } from './lib/service-worker'
