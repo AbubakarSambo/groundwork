@@ -8,10 +8,14 @@ import { KINDS_OF_WORK } from './the-kind-of-work';
  * "which situation is this?" about work Groundwork already recognised.
  */
 describe('a kind of work names its situation', () => {
-  it('a support desk, operations and an engineering release run as keeping the team on its targets, not as discovery', () => {
-    for (const kind of ['support desk', 'distribution operations', 'engineering release', 'sales org']) {
+  it('a support desk and operations run as keeping the team on its targets, not as discovery', () => {
+    for (const kind of ['support desk', 'distribution operations', 'sales org']) {
       expect(theScenarioAKindImplies(kind)).toBe(GroundScenario.OKR_ALIGNMENT);
     }
+  });
+  /* Changed 22 November 2026 (Hafsah): the prototype draws its engineering release as a new project, which overrides the 15 November ruling for this kind. */
+  it('an engineering release runs as a new project, as the prototype draws it', () => {
+    expect(theScenarioAKindImplies('engineering release')).toBe(GroundScenario.NEW_PROJECT);
   });
   it('a legal matter, a government programme and a founder run as a pulse check; fee notes and loans as collecting what is owed', () => {
     expect(theScenarioAKindImplies('a law firm matter')).toBe(GroundScenario.PULSE_CHECK);

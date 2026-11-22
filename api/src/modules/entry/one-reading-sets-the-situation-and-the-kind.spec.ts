@@ -85,4 +85,10 @@ describe('the door makes one call, and the lead reads the situation it settled',
     expect(r).toEqual({ scenario: 'OKR_ALIGNMENT', confidence: 'high' });
     expect(whatTheLeadReads(r.scenario)).toBe('Set goals and keep the team on track');
   });
+
+  it('an engineering release is a new project, as the prototype draws it (Hafsah, 22 November 2026)', async () => {
+    const r = await aService('{"scenario":"NEW_PROJECT","confidence":"high","kind":"engineering release"}').classifyIntent('new project kicking off - mobile app release v2');
+    expect(r).toEqual({ scenario: 'NEW_PROJECT', confidence: 'high' });
+    expect(whatTheLeadReads(r.scenario)).toBe('Get a new project off to a good start');
+  });
 });

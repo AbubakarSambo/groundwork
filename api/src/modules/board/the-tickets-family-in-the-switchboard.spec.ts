@@ -11,6 +11,8 @@ const OFF = { release1SalesBoardOn: false, release2CollectionsOn: false, release
 const prismaFor = (sw: Record<string, boolean>) => ({ organization: { findUnique: jest.fn(async () => sw) } });
 const ground = (kindOfWork: string, scenario = 'OKR_ALIGNMENT') => ({ organizationId: 'org', scenario, kindOfWork, kindOfWorkSetBy: 'read', checkInType: null, checkInTypeConfirmedAt: null });
 const KINDS: [string, string][] = [['support desk', 'support tickets'], ['distribution operations', 'incidents'], ['engineering release', 'engineering tasks']];
+/* The situation each runs as: an engineering release is a new project, as the prototype draws it (Hafsah, 22 November 2026). */
+const RUNS_AS: Record<string, string> = { 'support desk': 'OKR_ALIGNMENT', 'distribution operations': 'OKR_ALIGNMENT', 'engineering release': 'NEW_PROJECT' };
 
 describe('the type is read from the kind of work', () => {
   it.each(KINDS)('%s reads as %s', (kind, type) => {
@@ -32,7 +34,7 @@ describe('what it picks', () => {
 
 describe('what the board is told', () => {
   it.each(KINDS)('%s: the type and the tickets board where Release 4 is on, and nothing at all where it is off', async (kind, type) => {
-    expect(await whatTheSwitchboardServes(prismaFor(ON), ground(kind))).toEqual({ type, typeConfirmed: false, drawnAs: expect.any(String), board: 'the tickets board', reports: 'short' });
+    expect(await whatTheSwitchboardServes(prismaFor(ON), ground(kind, RUNS_AS[kind]))).toEqual({ type, typeConfirmed: false, drawnAs: expect.any(String), board: 'the tickets board', reports: 'short' });
 /* 15 November 2026: every board is on for every organisation, so a stored switch of false no longer hides it (the-switchboard.ts theSwitchesOf). */
     expect(await whatTheSwitchboardServes(prismaFor(OFF), ground(kind))).toEqual(await whatTheSwitchboardServes(prismaFor(ON), ground(kind)));
   });
