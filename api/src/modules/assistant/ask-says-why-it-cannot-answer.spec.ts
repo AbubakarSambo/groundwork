@@ -38,3 +38,12 @@ describe('when Ask cannot answer, the lead is told why and what Ask can do', () 
     expect(ANSWER_FROM_THE_DOCUMENTS_PROMPT).toMatch(/never begin with "The document/i);
   });
 });
+
+/* RE-TEST, 22 NOVEMBER 2026 EVENING (bug 33): Grace asked "how is Wairimu doing?" and read "There is no record of Wairimu Njoroge's check-ins
+   or performance in the files." The prompt itself told the model to call the record "the files". */
+describe('the record is never called "the files"', () => {
+  it('tells the model to say "the record", never "the files"', () => {
+    expect(ANSWER_FROM_THE_DOCUMENTS_PROMPT).not.toMatch(/say "what the team has said" or "the files"/);
+    expect(ANSWER_FROM_THE_DOCUMENTS_PROMPT).toContain('never use the words "documents" or "files" for what is on record: say "what the team has said" or "the record".');
+  });
+});
