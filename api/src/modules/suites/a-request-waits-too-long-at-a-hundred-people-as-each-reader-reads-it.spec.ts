@@ -44,7 +44,8 @@ describe('it is passed on after the two working days, to the right person', () =
     expect(await said(request.id, 'support.head')).toEqual([`Groundwork passed it to you on 7 October, because ${first('support.manager')} was on leave.`]);
     expect(await said(request.id, 'support.manager')).toEqual([`Groundwork passed it to ${first('support.head')} on 7 October, because you were on leave.`]);
     const mine = await w.leaveBoard.mine(w.as('support.m1'), TODAY);
-    expect(mine.requests.find((r) => r.id === request.id)!.where).toBe(`Your leave from Wednesday 21 October to Friday 23 October is waiting for ${first('support.head')}, who heads Customer Support.`);
+    /* Changed 22 November 2026 (release test, #54): the person who asked also reads why it waits for somebody else now, from the record's own line. */
+    expect(mine.requests.find((r) => r.id === request.id)!.where).toBe(`Your leave from Wednesday 21 October to Friday 23 October is waiting for ${first('support.head')}, who heads Customer Support. Groundwork passed it to ${first('support.head')} on 7 October, because ${first('support.manager')} was on leave.`);
   });
 
   it('a request that has not waited long, and whose approver is here, is left alone, for every reader', async () => {
