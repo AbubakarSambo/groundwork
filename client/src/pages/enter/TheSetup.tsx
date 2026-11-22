@@ -2,7 +2,7 @@ import { inASentence } from '@/lib/how-long-setup-takes'
 import { useRef, useState } from 'react'
 import { Choices, FieldLabel, Panel, Select, SetupBlock, SetupBlocks, Stack, Text, TextField } from '@/components/gw/ui'
 import { ordinal } from '@/components/gw/AnchorDayPicker'
-import { whenTheCheckInsLand, type Cadence } from '@/components/gw/when-the-check-ins-land'
+import type { Cadence } from '@/components/gw/when-the-check-ins-land'
 import { cadenceLabel } from '@/lib/cadence'
 import { theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
 import type { ThePeopleStepRules } from '@/api/anchorShapes'
@@ -162,38 +162,26 @@ export function theDay(d: Date): string {
 }
 
 /**
- * "Check-ins open on Wed 1 July, Thu 2, Fri 3, Mon 6, Tue 7 and on from there, until 30 September: 65 in all."
- * Without an end date the count is unknown, so the sentence stops at "and on from there". One check-in
- * says the one day. "When I choose" has no dates, so it says nothing.
+ * "Check-ins open on Wed 1 July, Thu 2, Fri 3, Mon 6, Tue 7 and on from there, until 30 September, 65 in all." (setup.txt), said from the
+ * days the server's schedule gives (POST /entry/the-dates), never counted here: the page counted its own and said 29 where the saved
+ * check-in held 25 (Hafsah, 22 November 2026). Without an end the count is unknown, so it stops at "and on from there". One check-in says
+ * its one day. "When I choose" has no dates, so it says nothing.
  */
-export function whenTheyOpen(a: { cadence: Cadence; anchorDay: number | null; startsOn: string; endsOn: string; workingDays: number[]; today?: Date }): string | null {
-  if (a.cadence === 'SEQUENTIAL') return null
-  const startsAt = a.startsOn ? fromIso(a.startsOn) : null
-  if (a.cadence === 'ONE_TIME') {
-    const [only] = whenTheCheckInsLand({ cadence: 'ONE_TIME', anchorDay: null, startsAt, workingDays: a.workingDays, today: a.today })
-    return `The check-in opens on ${theDay(only)}.`
-  }
-  const end = a.endsOn ? fromIso(a.endsOn) : null
-  const all = whenTheCheckInsLand({ cadence: a.cadence, anchorDay: a.anchorDay, startsAt, workingDays: a.workingDays, today: a.today, howMany: end ? 400 : 5 })
-  /* Compared as days, never as times: see whenTheCheckInsLand. */
-  const inRange = a.endsOn ? all.filter((d) => iso(d) <= a.endsOn) : all
-  if (!inRange.length) return null
-  const shown = inRange.slice(0, 5)
-  const words = shown.map((d, i) => {
-    const sameMonth = i > 0 && d.getMonth() === shown[i - 1].getMonth()
+export function theDatesInWords(r: { days: string[]; count: number | null }, cadence: Cadence, endsOn = ''): string | null {
+  if (cadence === 'SEQUENTIAL' || !r.days.length) return null
+  const days = r.days.map(fromIso)
+  if (cadence === 'ONE_TIME') return `The check-in opens on ${theDay(days[0])}.`
+  const words = days.map((d, i) => {
+    const sameMonth = i > 0 && d.getMonth() === days[i - 1].getMonth()
     return sameMonth ? `${DAY_SHORT[d.getDay()]} ${d.getDate()}` : `${DAY_SHORT[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`
   })
   const list = words.length === 1 ? words[0] : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
-  if (!end) return `Check-ins open on ${words.join(', ')} and on from there.`
-  /*
-   * SCREEN FAULT 10 (FINAL WALK): "UNTIL 23 DECEMBER: 12 IN ALL" JOINED TWO PIECES WITH A COLON,
-   * AND NEVER SAID WHAT WAS BEING COUNTED. "12" on its own, after a colon, reads as a label and a
-   * number rather than a sentence - said now as "until 23 December, 12 sessions in all.".
-   */
-  /* Setup page review, 13 October: the prototype's own word, "check-ins", not "sessions". */
-  const sessionsInAll = `${inRange.length} check-in${inRange.length === 1 ? '' : 's'} in all`
-  if (inRange.length <= 5) return `Check-ins open on ${list}, ${sessionsInAll}.`
-  return `Check-ins open on ${words.join(', ')} and on from there, until ${end.getDate()} ${MONTHS[end.getMonth()]}${end.getFullYear() !== (startsAt ?? a.today ?? new Date()).getFullYear() ? ` ${end.getFullYear()}` : ''}, ${sessionsInAll}.`
+  if (r.count == null) return `Check-ins open on ${words.join(', ')} and on from there.`
+  /* Setup page review, 13 October: the prototype's own word, "check-ins", and a sentence, never "until 23 December: 12". */
+  const inAll = `${r.count} check-in${r.count === 1 ? '' : 's'} in all`
+  if (r.count <= words.length) return `Check-ins open on ${list}, ${inAll}.`
+  const end = endsOn ? fromIso(endsOn) : null
+  return `Check-ins open on ${words.join(', ')} and on from there${end ? `, until ${end.getDate()} ${MONTHS[end.getMonth()]}` : ''}, ${inAll}.`
 }
 
 /*
@@ -232,12 +220,6 @@ export function thePlanInTheHeader(a: { planned: number; cadence: Cadence; runsU
   return `${a.planned} ${a.planned === 1 ? 'check-in planned' : 'check-ins planned'}`
 }
 
-/** The weekday a weekly rhythm really lands on while no day is picked: its second landing's day. */
-export function theDayItLandsOn(cadence: Cadence, startsOn: string, workingDays: number[], today: Date): number {
-  const [first, second] = whenTheCheckInsLand({ cadence, anchorDay: null, startsAt: startsOn ? fromIso(startsOn) : null, workingDays, today, howMany: 2 })
-  return (second ?? first ?? today).getDay()
-}
-
 export function TheSetup(p: {
   cadence: Cadence
   cadenceChosen: boolean
@@ -261,6 +243,8 @@ export function TheSetup(p: {
   nameField?: React.ReactNode
   /** How long each check-in takes, as the server serves it (useACheckInTakes); nothing is said until it is. */
   takes?: string | null
+  /** The dates it opens on, in words, from the server's schedule (theDatesInWords); nothing is said until they are served. */
+  opens?: string | null
   /** Who is in it: the page's own people step, drawn as the last block. */
   people?: React.ReactNode
   /** One sentence above the people step, such as that nobody is added yet. */
@@ -278,7 +262,7 @@ export function TheSetup(p: {
   const isWeekly = (c: Cadence) => c === 'WEEKLY' || c === 'FORTNIGHTLY'
   const chosenWeekday = useRef<number | null>(isWeekly(p.cadence) ? p.anchorDay : null)
   const chosenMonthDay = useRef<number | null>(p.cadence === 'MONTHLY' ? p.anchorDay : null)
-  const opens = whenTheyOpen({ cadence: p.cadence, anchorDay: p.anchorDay, startsOn: p.startsOn, endsOn: untilEnded ? '' : p.endsOn, workingDays: p.workingDays, today })
+  const opens = p.opens ?? null
 
   return (
     <SetupBlocks>
@@ -337,7 +321,7 @@ export function TheSetup(p: {
             <Choices
               label={THE_SETUP.onWhichDay}
               options={WEEK_FROM_MONDAY.map((d) => ({ key: String(d), label: DAY_SHORT[d] }))}
-              value={String(p.anchorDay ?? theDayItLandsOn(p.cadence, p.startsOn, p.workingDays, today))}
+              value={p.anchorDay != null ? String(p.anchorDay) : '' /* Never a day nobody chose: the dates below say where it lands. */}
               onChange={(k) => { chosenWeekday.current = Number(k); p.onAnchorDay!(Number(k)) }}
             />
           </Stack>

@@ -56,7 +56,7 @@ describe('saving the setup, with the team named by first name only', () => {
         <MemoryRouter initialEntries={['/start']}><EntryChatPage /></MemoryRouter>
       </QueryClientProvider>,
     )
-    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
+    /* The panel holds the one save from the moment something is said: no End check-in first (22 November 2026). */
     fireEvent.click(await screen.findByRole('button', { name: 'Send 2 invitations' }))
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     expect(screen.queryByText(/but they are not in the box/)).toBeNull()

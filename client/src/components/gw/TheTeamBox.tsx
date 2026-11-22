@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { entryApi } from '@/api/entry'
 import { Button, TextArea, Note } from '@/components/gw/ui'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
-import { roleAndTeam, type APerson } from '@/components/gw/PeoplePicker'
+import { roleWord } from './your-organisations'
 
 /**
  * ADDING A TEAM, ONE WAY, EVERYWHERE (Hafsah, 31 October 2026: "Make adding a team the top pattern for the next round ... make it
@@ -23,6 +23,33 @@ import { roleAndTeam, type APerson } from '@/components/gw/PeoplePicker'
  * lost"): the lines in the box ARE the team, and the press that saves the check-in takes them, so the page holds the box's words
  * (`text`, `onText`) and says what a line still needs (`said`).
  */
+/** A colleague, as GET /users/colleagues serves them: an id, a name, a role and a team, never an address (U.4). */
+export interface APerson {
+  id: string
+  name: string
+  role?: string
+  team?: string | null
+}
+
+/**
+ * B-054: THE PRODUCT'S OWN WORD FOR THE ROLE, NOT THE SERVER'S CODE. `GET /users/colleagues` serves
+ * `role` as it is stored - "MEMBER", "LEAD" - and this used to print that straight under the name,
+ * so a lead read "Arjun Shah, MEMBER" and searching "takes part" or "account manager" found nobody,
+ * because nothing on screen or in the search read those words. `roleWord` (your-organisations.ts) is
+ * the one mapping the People page itself already uses for the same codes - "Admin", "Can open
+ * check-ins", "Takes part" - so this reads and searches the same word a lead already knows from
+ * there, never a second translation of the same codes.
+ *
+ * Role and team together, comma-joined as the rest of the product already writes two facts side
+ * by side (see `whereTheySitLine`, people-here.ts) - never a colon, dot or arrow between them.
+ */
+export function roleAndTeam(p: APerson): string {
+  const role = roleWord(p.role).trim()
+  const team = (p.team ?? '').trim()
+  if (role && team) return `${role}, ${team}`
+  return role || team
+}
+
 export interface APersonOnALine { name: string | null; email: string | null; phone: string | null }
 
 export function readTheLines(pasted: string): Promise<APersonOnALine[]> {
@@ -219,6 +246,14 @@ export function TheTeamBox({ prefilled, onAdd, adding, heading, text: textGiven,
     }
   }
 
+  /*
+   * NOTHING TYPED IS LOST ON LEAVING (Hafsah, 22 November 2026: lines typed into People and setup's box went when she left the page
+   * without pressing Add). Where the box adds people itself, whatever is still in it is added as the page closes, the same as Add.
+   */
+  const addOnLeaving = useRef<() => void>(() => {})
+  addOnLeaving.current = () => { if (onAdd && textRef.current.trim()) void readTheLines(textRef.current).then((people) => onAdd(people)).catch(() => {}) }
+  useEffect(() => () => addOnLeaving.current(), [])
+
   const busy = reading || !!adding
   return (
     <div className="gwui-team-box">
@@ -267,12 +302,12 @@ export function TheTeamBox({ prefilled, onAdd, adding, heading, text: textGiven,
         </ul>
       )}
       {needEmail.length > 0 && (
-        <Note tone="muted">{`Add an email for ${andList(needEmail)}, then press Add everyone again.`}</Note>
+        <Note tone="muted">{`Add an email for ${andList(needEmail)}, then press Add again.`}</Note>
       )}
       {said && <Note tone="muted">{said}</Note>}
       {onAdd && (
         <div>
-          <Button kind="secondary" onClick={addEveryone} disabled={busy || !text.trim()}>{busy ? 'Adding…' : 'Add everyone'}</Button>
+          <Button kind="secondary" onClick={addEveryone} disabled={busy || !text.trim()}>{busy ? 'Adding…' : 'Add'}</Button>
         </div>
       )}
     </div>

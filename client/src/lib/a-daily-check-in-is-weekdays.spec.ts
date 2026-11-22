@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { theDaysADailyCheckInTakes, theDaysToSave } from './a-daily-check-in-is-weekdays'
 import { theScheduleTheySaid } from './the-schedule-they-said'
-import { whenTheyOpen } from '@/pages/enter/TheSetup'
+import { theDatesInWords } from '@/pages/enter/TheSetup'
 
 /**
  * A DAILY CHECK-IN IS MONDAY TO FRIDAY UNLESS THE LEAD SAYS OTHERWISE (Hafsah, 15 October 2026). In the local test of
@@ -14,7 +14,8 @@ describe('what Hafsah reads on the setup when she says "daily"', () => {
   it('the days default to Monday to Friday, and the list skips the weekend', () => {
     const days = theDaysADailyCheckInTakes('DAILY', [], false, false)!
     expect(days).toEqual([1, 2, 3, 4, 5])
-    expect(whenTheyOpen({ cadence: 'DAILY', anchorDay: null, startsOn: '2026-10-15', endsOn: '2026-12-31', workingDays: days, today: TODAY }))
+    /* The days and the count are the server's now (POST /entry/the-dates); this is how they read. */
+    expect(theDatesInWords({ days: ['2026-10-15', '2026-10-16', '2026-10-19', '2026-10-20', '2026-10-21'], count: 56 }, 'DAILY', '2026-12-31'))
       .toBe('Check-ins open on Thu 15 October, Fri 16, Mon 19, Tue 20, Wed 21 and on from there, until 31 December, 56 check-ins in all.')
   })
 

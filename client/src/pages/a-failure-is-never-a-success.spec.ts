@@ -93,18 +93,5 @@ describe('the five this batch fixed stay fixed', () => {
   })
 })
 
-describe('SaveCard', () => {
-  const src = readFileSync(join(__dirname, 'home/SaveCard.tsx'), 'utf8')
-  const save = mutationsIn(src).find((x) => x.name === 'saveSession')!
-
-  it('on failure stays on the card, says so, and does not navigate or write the "sent" keys', () => {
-    const onError = save.block.slice(save.block.indexOf('onError'))
-    expect(onError).toMatch(/setEmailError\(/)
-    expect(onError).not.toMatch(/navigate\(/)
-    expect(onError).not.toMatch(/Storage\.setItem/)
-  })
-
-  it('builds invite links from a real origin', () => {
-    expect(src).toMatch(/import\.meta\.env\.VITE_APP_URL \|\| window\.location\.origin/)
-  })
-})
+/* SaveCard.tsx is gone (22 November 2026): nothing but specs imported it, so its own checks went with it. The entry chat's save is
+   checked where it lives now (pages/enter/setup-is-the-chat-and-the-panel.spec.tsx). */

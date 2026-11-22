@@ -22,7 +22,7 @@ describe('copy()', () => {
   })
   it('and no page calls the clipboard directly any more', () => {
     const direct: string[] = []
-    for (const rel of ['pages/home/SaveCard.tsx', 'pages/billing/BillingPage.tsx', 'pages/grounds/GroundAdminPage.tsx', 'pages/enter/EntryChatPage.tsx', 'pages/org/IntegrationsPage.tsx', 'pages/auth/MagicVerifyPage.tsx', 'components/CodeShareCard.tsx']) {
+    for (const rel of ['pages/billing/BillingPage.tsx', 'pages/grounds/GroundAdminPage.tsx', 'pages/enter/EntryChatPage.tsx', 'pages/org/IntegrationsPage.tsx', 'pages/auth/MagicVerifyPage.tsx', 'components/CodeShareCard.tsx']) {
       if (/navigator\.clipboard/.test(strip(readFileSync(path.join(SRC, rel), 'utf8')))) direct.push(rel)
     }
     expect(direct).toEqual([])

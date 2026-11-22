@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { whenTheyOpen } from './TheSetup'
+import { theDatesInWords } from './TheSetup'
 import { whereAndUntil } from '../invite/InvitePage'
 import { theLastDay } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -12,26 +12,24 @@ import { theLastDay } from '@/lib/a-date-reads-the-same-everywhere'
  */
 const SUNDAY = new Date(2026, 9, 11, 15, 0)
 
-describe('setup counts the sessions the server saves', () => {
-  it('weekly on Mondays, "Now" on Sunday 11 October, until Sunday 29 November: 7', () => {
-    expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: 1, startsOn: '', endsOn: '2026-11-29', workingDays: [], today: SUNDAY }))
-      .toBe('Check-ins open on Sun 11 October, Mon 19, Mon 26, Mon 2 November, Mon 9 and on from there, until 29 November, 7 check-ins in all.')
+/* Setup no longer counts: the days and the count are the server's own (POST /entry/the-dates, the-dates-before-it-is-saved.spec.ts on
+   the API), so the two can never disagree (Hafsah, 22 November 2026: 29 on the page, 25 saved). These check how the served days read. */
+describe('setup says the days the server will open, and its count', () => {
+  it('weekly on Mondays, seven in all', () => {
+    expect(theDatesInWords({ days: ['2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09'], count: 7 }, 'WEEKLY', '2026-11-29'))
+      .toBe('Check-ins open on Mon 12 October, Mon 19, Mon 26, Mon 2 November, Mon 9 and on from there, until 29 November, 7 check-ins in all.')
   })
-  it('fortnightly on Mondays, until Monday 30 November: 5', () => {
-    expect(whenTheyOpen({ cadence: 'FORTNIGHTLY', anchorDay: 1, startsOn: '', endsOn: '2026-11-30', workingDays: [], today: SUNDAY }))
-      .toBe('Check-ins open on Sun 11 October, Mon 19, Mon 2 November, Mon 16 and Mon 30, 5 check-ins in all.')
+  it('all of them, when they fit in one sentence', () => {
+    expect(theDatesInWords({ days: ['2026-10-12', '2026-10-26', '2026-11-09'], count: 3 }, 'FORTNIGHTLY', '2026-11-30'))
+      .toBe('Check-ins open on Mon 12 October, Mon 26 and Mon 9 November, 3 check-ins in all.')
   })
-  it('monthly on the 20th, until 15 January: 3', () => {
-    expect(whenTheyOpen({ cadence: 'MONTHLY', anchorDay: 20, startsOn: '', endsOn: '2027-01-15', workingDays: [], today: SUNDAY }))
-      .toBe('Check-ins open on Sun 11 October, Fri 20 November and Sun 20 December, 3 check-ins in all.')
+  it('with no end, it says "and on from there"', () => {
+    expect(theDatesInWords({ days: ['2026-10-20', '2026-11-20'], count: null }, 'MONTHLY'))
+      .toBe('Check-ins open on Tue 20 October, Fri 20 November and on from there.')
   })
 })
 
 describe('the end date is never read as the day it was made', () => {
-  it('setup says the year of an end in another year', () => {
-    expect(whenTheyOpen({ cadence: 'DAILY', anchorDay: null, startsOn: '', endsOn: '2027-10-11', workingDays: [1, 2, 3, 4, 5], today: SUNDAY }))
-      .toBe('Check-ins open on Mon 12 October, Tue 13, Wed 14, Thu 15, Fri 16 and on from there, until 11 October 2027, 261 check-ins in all.')
-  })
   it('the invitation says it too, and keeps the prototype\'s "until 30 September" in the same year', () => {
     expect(whereAndUntil({ organisationName: 'Brightloom', endsAt: '2027-10-11T00:00:00.000Z', today: SUNDAY })).toBe('Brightloom, until 11 October 2027.') /* F5: the target journey's words */
     expect(theLastDay('2026-09-30T00:00:00.000Z', new Date(2026, 5, 30))).toBe('30 September')

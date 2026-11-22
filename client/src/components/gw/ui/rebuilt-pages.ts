@@ -171,7 +171,6 @@ export const REBUILT_PAGES: string[] = [
    * `CreateGroundPage.tsx` and `EntryChatPage.tsx` are the rest of this piece and are not on this
    * list yet - see the morning report for why.
    */
-  'pages/home/SaveCard.tsx',
   /*
    * GROUP 3, PIECE 4 (continued, 4d-4): `EntryChatPage.tsx` itself, the live way to start a
    * check-in at /start - done in four parts (4d-1 the frame/header/composer, 4d-2 the attach menu

@@ -43,12 +43,9 @@ describe('the sweep', () => {
       expect(forms.length).toBeGreaterThan(0)
       for (const f of forms) expect(f).toContain('noValidate')
     }
-    expect(strip(readFileSync(path.join(SRC, 'pages/enter/EntryChatPage.tsx'), 'utf8'))).toMatch(/<form noValidate onSubmit=\{e => \{ e\.preventDefault\(\); handleSave\(\) \}\}>/)
+    expect(strip(readFileSync(path.join(SRC, 'pages/enter/EntryChatPage.tsx'), 'utf8'))).toMatch(/<form noValidate onSubmit=\{\(e\) => \{ e\.preventDefault\(\); handleSave\(\) \}\}>/)
   })
   it('no address test returns in silence any more', () => {
-    const save = strip(readFileSync(path.join(SRC, 'pages/home/SaveCard.tsx'), 'utf8'))
-    expect(save).toMatch(/if \(!looksLikeAnAddress\(trimmed\)\) \{ setParticipantError\(NOT_AN_ADDRESS\); return \}/)
-    expect(save).toMatch(/if \(!session\) \{ setParticipantError\(/)
     /* Moved from the dead ReportBody (ReportPage.tsx)'s HiddenContributorsSection to
        HiddenContributorRow on the board - see the comment at the top of ReportPage.tsx. */
     const board = strip(readFileSync(path.join(SRC, 'pages/board/BoardPage.tsx'), 'utf8'))

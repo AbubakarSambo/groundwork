@@ -31,6 +31,6 @@ export function addThroughTheTeamBox(lines: string) {
 export function saveWithMyEmail(address = 'lead@example.test') {
   const yourName = screen.queryByPlaceholderText('Your name')
   if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } })
-  fireEvent.change(screen.getByPlaceholderText('your@email.com'), { target: { value: address } })
-  fireEvent.submit(screen.getByPlaceholderText('your@email.com').closest('form')!)
+  fireEvent.change(screen.getByPlaceholderText('you@company.com'), { target: { value: address } })
+  fireEvent.submit(screen.getByPlaceholderText('you@company.com').closest('form')!)
 }

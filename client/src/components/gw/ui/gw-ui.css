@@ -2034,79 +2034,14 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-modal-actions > * { flex: 1; }
 
 /* 4D-3: the save card and what follows saving, and the new-scenario-conflict dialog. */
-.gwui-ec-savecard-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50; overflow-y: auto; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px 48px; transition: opacity .3s, visibility .3s; }
-.gwui-ec-savecard-overlay-hidden { opacity: 0; pointer-events: none; visibility: hidden; }
-.gwui-ec-savecard-overlay-shown { opacity: 1; pointer-events: auto; visibility: visible; }
-.gwui-ec-savecard { width: 100%; max-width: 640px; background: white; border-radius: var(--gw-radius-pop); overflow: clip; box-shadow: var(--gw-shadow-modal); }
-.gwui-ec-savecard-header { background: var(--gw-dark); color: white; padding: 16px 24px 16px; }
-.gwui-ec-savecard-eyebrow { font-size: 13px; color: var(--gw-green-b); font-weight: 700; margin-bottom: 4px; line-height: 20px;}
-.gwui-ec-savecard-title { font-size: 18px; font-weight: 700; letter-spacing: -.01em; line-height: 22px; }
-.gwui-ec-savecard-venn-row { display: flex; align-items: flex-start; gap: 8px; margin-top: 4px; }
-.gwui-ec-savecard-venn-icon { flex-shrink: 0; margin-top: 2px; background: white; border-radius: 8px; padding: 2px 3px; }
-.gwui-ec-savecard-venn-text { font-size: 13px; color: rgba(255,255,255,.6); line-height: 20px; }
-.gwui-ec-savecard-venn-text b { color: rgba(255,255,255,.85); }
-.gwui-ec-savecard-stat-row { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
-.gwui-ec-savecard-stat { font-size: 13px; color: rgba(255,255,255,.55); line-height: 20px;}
-.gwui-ec-savecard-body { padding: 16px 16px 24px; }
-.gwui-ec-savecard-status { margin-bottom: 16px; }
-.gwui-ec-savecard-retry { background: var(--gw-clay-bg); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
-.gwui-ec-savecard-retry-text { flex: 1; font-size: 13px; color: var(--gw-clay); line-height: 20px; }
-.gwui-ec-savecard-add-pending { font-size: 13px; color: var(--gw-green-t); font-weight: 700; margin-top: 4px; line-height: 20px;}
-.gwui-ec-savecard-add-row { display: flex; gap: 4px; margin-top: 4px; }
-.gwui-ec-savecard-add-error { font-size: 13px; color: var(--gw-red-t); margin-top: 4px; line-height: 20px;}
-.gwui-ec-savecard-whatnext { background: var(--gw-blue-bg); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
 /* SCREEN FAULT 10 (FINAL WALK): "WHAT HAPPENS NEXT" IN CAPITALS. The prototype's own end-card
    (check-in-end-card.txt) writes this heading in sentence case, not as a small label - so the
    uppercase transform is dropped; the rest of the heading's own styling (size, weight, colour,
    spacing) is unchanged. */
-.gwui-ec-savecard-whatnext-title { font-size: 13px; font-weight: 700; color: var(--gw-navy); margin-bottom: 8px; letter-spacing: .06em; line-height: 20px;}
-.gwui-ec-savecard-whatnext-list { display: flex; flex-direction: column; gap: 8px; }
-.gwui-ec-savecard-whatnext-row { display: flex; gap: 8px; align-items: flex-start; }
-.gwui-ec-savecard-whatnext-num { width: 22px; height: 22px; border-radius: 50%; background: var(--gw-navy); color: white; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; line-height: 20px;}
-.gwui-ec-savecard-whatnext-text { font-size: 13px; color: var(--gw-text); line-height: 20px; }
-.gwui-ec-savecard-section { margin-bottom: 16px; }
 /* SAVE STAYS IN VIEW (round 5: at phone width the signed-in lead's Save was far below the team box, and impatient leads left without
    finding it). The section that holds it, the one with "Start over instead", is pinned to the foot of the card while the setup above it
    scrolls. The card clips rather than hides its overflow, so it is not a scroller of its own and the pin follows the page's scroll. */
-.gwui-ec-savecard-section:has(> .gwui-ec-savecard-clear-row) { position: sticky; bottom: 0; z-index: 1; background: white; margin: 24px -20px 16px; padding: 12px 16px; border-top: 1px solid var(--gw-border); }
-.gwui-ec-savecard-helper { font-size: 13px; color: var(--gw-muted); line-height: 20px; text-align: center; padding-top: 8px; }
-.gwui-ec-savecard-clear-row { text-align: center; padding-top: 4px; font-size: 13px; color: var(--gw-muted); line-height: 20px;}
-.gwui-ec-savecard-clear-confirm { display: inline-flex; gap: 8px; align-items: center; }
-.gwui-ec-savecard-clear-danger { color: var(--gw-red-t); font-weight: 700; }
-.gwui-ec-savecard-field { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
-.gwui-ec-savecard-field-error { border-color: var(--gw-danger); }
-.gwui-ec-savecard-error { font-size: 13px; color: var(--gw-red-t); margin-bottom: 4px; line-height: 20px;}
-.gwui-ec-savecard-or-row { display: flex; align-items: center; gap: 8px; padding: 12px 0 8px; }
-.gwui-ec-savecard-or-text { font-size: 13px; color: var(--gw-muted); line-height: 20px;}
-.gwui-ec-savecard-confirm-box { position: sticky; top: 8px; z-index: 5; background: var(--gw-green-bg); border: 1px solid var(--gw-green-b-soft); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
-.gwui-ec-savecard-confirm-title { font-size: 14px; font-weight: 700; color: var(--gw-green-t); margin-bottom: 4px; }
-.gwui-ec-savecard-confirm-body { font-size: 13px; color: var(--gw-green-t); line-height: 21px; }
-.gwui-ec-savecard-confirm-sub { font-size: 13px; color: var(--gw-green-t); line-height: 21px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gw-green-b-soft); }
-.gwui-ec-savecard-divider { border-top: 1px solid var(--gw-border); margin-bottom: 16px; }
-.gwui-ec-savecard-name-block { margin-bottom: 12px; }
-.gwui-ec-savecard-name-label { font-size: 13px; font-weight: 700; color: var(--gw-sub); margin-bottom: 4px; line-height: 20px;}
-.gwui-ec-savecard-name-hint { font-size: 13px; color: var(--gw-sub); line-height: 20px; }
-.gwui-ec-savecard-invite-block { border-bottom: 1px solid var(--gw-border); margin-bottom: 16px; padding-bottom: 16px; }
-.gwui-ec-savecard-invite-subtext { font-size: 13px; color: var(--gw-muted); line-height: 20px; margin-bottom: 8px; }
-.gwui-ec-savecard-invite-banner { font-size: 13px; color: var(--gw-navy); background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); border-radius: 8px; padding: 8px 12px; line-height: 20px; margin-bottom: 8px; }
-.gwui-ec-savecard-invite-later { font-size: 13px; color: var(--gw-sub); line-height: 20px; margin-bottom: 8px; }
-.gwui-ec-savecard-invite-notice { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b-soft); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 13px; color: var(--gw-amber-t); line-height: 20px; }
-.gwui-ec-savecard-invite-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
-.gwui-ec-savecard-invite-chip { font-size: 13px; color: var(--gw-green-t); background: var(--gw-green-bg); border-radius: 8px; padding: 4px 8px; line-height: 20px;}
-.gwui-ec-savecard-invite-context { background: var(--gw-paper-2); border: 1px solid var(--gw-border); border-radius: 8px; padding: 12px 12px; }
-.gwui-ec-savecard-invite-context-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-.gwui-ec-savecard-invite-context-name { font-size: 13px; font-weight: 700; color: var(--gw-text); line-height: 20px;}
-.gwui-ec-savecard-invite-context-more { font-size: 13px; color: var(--gw-muted); line-height: 20px;}
-.gwui-ec-savecard-invite-context-ask { font-size: 13px; color: var(--gw-sub); margin-bottom: 8px; line-height: 20px; }
-.gwui-ec-savecard-row-gap8 { display: flex; gap: 8px; }
-.gwui-ec-savecard-row-gap8-grow-last > *:last-child { flex: 1; }
 
-.gwui-ec-savecard-invite-add-row { display: flex; gap: 8px; margin-bottom: 8px; }
-.gwui-ec-savecard-invite-add-row > :first-child { flex: 1; }
-.gwui-ec-savecard-link-row { display: flex; align-items: center; gap: 8px; }
-.gwui-ec-savecard-link-box { flex: 1; font-size: 13px; color: var(--gw-navy); background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); border-radius: 8px; padding: 8px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 20px;}
-.gwui-ec-savecard-done { text-align: center; padding-top: 8px; }
-.gwui-ec-savecard-done-text { font-size: 13px; color: var(--gw-muted); padding-top: 8px; line-height: 21px; }
 
 /* 4D-4: the closed-session invite bar, and the check-in composer's own centred width (the
    message list above it centres the same way, still with its own inline maxWidth/margin until
@@ -2149,6 +2084,21 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-ec-onboarding-talk .gwui-ec-messages { padding: 16px; }
   .gwui-ec-onboarding-talk .gwui-ec-composer-inner { padding: 4px 12px 12px; }
   .gwui-ec-onboarding-talk .gwui-ec-doc-panel { margin: 0 12px 12px; }
+}
+/* The first report's own classes (TheReportYouSawAtTheEnd, on My work); the save card that also used them is gone. */
+.gwui-ec-savecard-invite-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+/*
+ * THE SETUP PAGE (setup.txt, setup.jpg), opened by Change in the panel, in place of the conversation: the breadcrumb, the name as the
+ * title with its one line, the primary button at the top right, then the two-column rows of TheSetup. On a phone the button goes under
+ * the title, inside the 16px gutter. And on a phone the one way to save sits under the conversation (Hafsah, 22 November 2026).
+ */
+.gwui-ec-setup-page { flex: 1; overflow-y: auto; padding: 24px 48px 48px; display: flex; flex-direction: column; gap: 16px; max-width: 1040px; box-sizing: border-box; width: 100%; }
+.gwui-ec-setup-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.gwui-ec-setup-head .gwui-ec-onboarding-title { font-size: 26px; line-height: 32px; margin: 0 0 6px; }
+.gwui-ec-save-under { padding: 0 16px 16px; }
+@media (max-width: 640px) {
+  .gwui-ec-setup-page { padding: 16px 16px 32px; }
+  .gwui-ec-setup-head .gwui-ec-onboarding-title { font-size: 22px; line-height: 28px; }
 }
 .gwui-ec-checkin { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .gwui-ec-checkin-notice { background: var(--gw-amber-bg); border-bottom: 1px solid var(--gw-amber-b-soft); padding: 8px 16px; flex-shrink: 0; }

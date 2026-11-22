@@ -49,7 +49,6 @@ describe('the field itself', () => {
 
 describe('and it is rendered on the forms that actually create accounts', () => {
   const pages = [
-    'pages/home/SaveCard.tsx',
     'pages/auth/AuthPage.tsx',
     'pages/enter/EntryChatPage.tsx',
   ]

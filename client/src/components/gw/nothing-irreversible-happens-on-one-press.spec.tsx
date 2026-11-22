@@ -55,9 +55,6 @@ describe('the six sites', () => {
     /* The dialog still names what the press does. The marker was "nobody closes it alone", which
        went with the agreement rule - closing is the lead's now, on every scenario. */
     expect(panel).toContain('As the lead, your answer closes this check-in.')
-    const save = read('pages/home/SaveCard.tsx')
-    expect(save.match(/<StartOver onClear=\{onClear\} \/>/g)?.length).toBe(2)
-    expect(save).toContain('This throws away this check-in and everything in it.')
   })
   it('and every one of the three integration mutations now says when it fails', () => {
     const integrations = read('pages/org/IntegrationsPage.tsx')

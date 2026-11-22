@@ -13,8 +13,8 @@ import { IT_IS_SOMETHING_ELSE } from './ThisSoundsLike'
  * the days, the dates once they are set, and the people mentioned or added. Nothing is guessed. A
  * row that is not known yet shows its name with an empty mark and no value.
  *
- * Not here: the prototype's "Change" buttons (the name is changed in the header, and the rest on the
- * save card). See item 17 of docs/morning-report-ui.md.
+ * Change, beside each line, opens the setup page (setup.txt) in place of the conversation (Hafsah, 22 November 2026). The panel ends
+ * with the one way to save; nothing opens by itself.
  *
  * THE TEAM IS GIVEN IN THE CONVERSATION, AND SHOWN HERE (F5, the approved target journey, stage 3; new.txt). The lead pastes names,
  * emails and phone numbers into the one box she always types in; the page reads them into the team (EntryChatPage owns the lines), and
@@ -59,16 +59,25 @@ export const FILLS_IN = {
   whoIsIn: 'Who’s in it',
   people: (n: number) => (n === 1 ? '1 person' : `${n} people`),
   change: 'Change',
-  /* The target journey's line for somebody named with no email yet. */
-  noEmailYet: (names: string[], listed: number) => `${listed ? `${names.length} more you mentioned: ${andList(names)}` : `You mentioned ${andList(names)}`}. ${names.length === 1 ? 'Add their email here when you have it.' : 'Add their emails here when you have them.'}`,
+  /* new.txt's line for somebody named with no email yet, in one line: they are given in the chat, where changes are made. */
+  noEmailYet: (names: string[], listed: number) => `${listed ? `${names.length} more you mentioned: ${andList(names)}` : `You mentioned ${andList(names)}`}. ${names.length === 1 ? 'Add their email in the chat.' : 'Add their emails in the chat.'}`,
+  invitedSoFar: 'Invited so far',
   ready: 'Ready to send when you are',
-  sends: (n: number, opens: string) => `${n === 1 ? '1 person gets an invitation now' : `${n} people get an invitation now`}. ${opens}`,
-  send: (n: number) => (n === 1 ? 'Send 1 invitation' : `Send ${n} invitations`),
+  sends: (n: number, opens: string) => (n === 0 ? 'Nobody else is on it yet. You can add people any time.' : `${n === 1 ? '1 person gets an invitation now' : `${n} people get an invitation now`}. ${opens}`),
+  send: (n: number) => (n === 0 ? 'Start it' : n === 1 ? 'Send 1 invitation' : `Send ${n} invitations`),
   /* The approved journey, stage 5 (Hafsah, 3 November 2026): the invitations stay ready until "Send N invitations" on Today. */
   later: 'Check in on your own first, invite later',
   /* The phone's one line above the answer box (stage 3). */
   /* Hafsah's own form for the phone's one line, 3 November evening: "4 people · Sales team". */
   inOneLine: (n: number, kind: string) => [n ? (n === 1 ? '1 person' : `${n} people`) : null, kind || null].filter(Boolean).join(' · ') || 'What is set so far',
+} as const
+
+/* start-chat.txt, word for word: what somebody not signed in reads where the panel ends. */
+export const KEEP_THIS_CONVERSATION = {
+  heading: 'Keep this conversation',
+  why: 'You’re not signed in, so it lives only in this tab. Add your email and it’s saved as you go, and you can come back to it from any device.',
+  save: 'Save it',
+  noPassword: 'No password. We send a link when you want to come back.',
 } as const
 
 /**
@@ -131,14 +140,11 @@ export type WhatSetupKnows = {
   people?: string[]
   /** Who was named and has no email yet. */
   noEmailYet?: string[]
-  /** The page's one team box, drawn under "Who’s in it" only while the lead is changing the team. */
-  team?: React.ReactNode
-  /** "Change" under "Who’s in it" opens the box. */
-  onChangeTeam?: () => void
-  /** When setup is ready: what sending does, and the one button. */
-  ready?: { opens: string; onSend: () => void; sending: boolean; why?: string } | null
-  /** Once setup is ready, "Change" beside the name, how often and when it runs opens the full setup. */
-  onChangeSetup?: () => void
+  /** Change, beside every line: opens the setup page (setup.txt). */
+  onChange?: () => void
+  /** Where the panel ends: the one way to save ("Send N invitations", or the email for somebody not signed in). On a phone the page
+      draws it under the conversation instead, so it is never folded away inside the one line. */
+  save?: React.ReactNode
   /** On a phone: one line above the answer box that opens the panel. */
   asOneLine?: boolean
 }
@@ -193,57 +199,60 @@ export function theRows(k: WhatSetupKnows): { label: string; set: boolean; value
 export function FillsInAsYouTalk(k: WhatSetupKnows) {
   const isAnchor = !!k.anchorItems
   const rows = isAnchor ? theAnchorRows(k.anchorItems!) : theRows(k)
-  /* A line is there once the conversation has given it; who is in it is there too while the box is open or someone still needs an email. */
-  const known = rows.filter((r) => r.value || (r.label === FILLS_IN.whoIsIn && (!!k.team || (k.noEmailYet ?? []).length > 0)))
+  /* A line is there once the conversation has given it; who is in it is there too while someone still needs an email. */
+  const known = rows.filter((r) => r.value || (r.label === FILLS_IN.whoIsIn && (k.noEmailYet ?? []).length > 0))
   const fromTheChat = !isAnchor && !!k.people
-  const readyToSend = !!k.ready && fromTheChat && k.people!.length > 0
-  const addedNotYet = !isAnchor && k.added.length ? notYetAdded(k) : []
+  const addedNotYet = !isAnchor && !fromTheChat && k.added.length ? notYetAdded(k) : []
   const name = k.name.trim()
+  const change = (label: string) => (k.onChange && !isAnchor ? (
+    <button type="button" className="gwui-plain-link" onClick={k.onChange} aria-label={`Change ${label.toLowerCase()}`}>{FILLS_IN.change}</button>
+  ) : null)
   const panel = (
     <aside aria-label={FILLS_IN.label}>
-      <Panel>
-        <Stack gap={10}>
-          {name && <SubHeading>{name}</SubHeading>}
-          {k.situation && (
-            <div>
-              <span className="gwui-setrow-label">{k.situation}</span>
-              {k.meaning && <span className="gwui-setrow-value">{k.meaning}</span>}
-              {k.onSomethingElse && <button type="button" className="gwui-plain-link" onClick={k.onSomethingElse}>{IT_IS_SOMETHING_ELSE}</button>}
-            </div>
-          )}
-          {/* Once setup has ended, one Change opens the whole setup (the name, how often, when it runs) on the save card. */}
-          {fromTheChat && k.onChangeSetup && <button type="button" className="gwui-plain-link" onClick={k.onChangeSetup}>{FILLS_IN.change}</button>}
-          {known.length > 0 && (
-            <RowList label="What's set so far">
-              {known.filter((r) => r.label !== FILLS_IN.name).map((r) => (
-                <Row key={r.label} columns="1fr">
-                  <span>
-                    <span className="gwui-setrow-label">{r.label}</span>
-                    {r.value && <span className="gwui-setrow-value">{r.value}</span>}
-                    {fromTheChat && r.label === FILLS_IN.whoIsIn && k.people!.map((line) => <span key={line} className="gwui-setrow-value gwui-setrow-value-name">{line}</span>)}
-                    {!fromTheChat && !isAnchor && r.label === FILLS_IN.whoIsIn && k.added.map((a) => <span key={a} className="gwui-setrow-value gwui-setrow-value-name">{a}</span>)}
-                    {addedNotYet.length > 0 && r.label === FILLS_IN.whoIsIn && (
-                      <span className="gwui-setrow-value gwui-setrow-more">{`${addedNotYet.length} more you mentioned: ${andList(addedNotYet)}.`}</span>
-                    )}
-                    {r.label === FILLS_IN.whoIsIn && fromTheChat && (k.noEmailYet ?? []).length > 0 && <span className="gwui-setrow-value gwui-setrow-more">{FILLS_IN.noEmailYet(k.noEmailYet!, k.people!.length)}</span>}
-                    {r.label === FILLS_IN.whoIsIn && (k.team ?? (fromTheChat && k.onChangeTeam && (
-                      <button type="button" className="gwui-plain-link" onClick={k.onChangeTeam}>{FILLS_IN.change}</button>
-                    )))}
-                  </span>
-                </Row>
-              ))}
-            </RowList>
-          )}
-          {readyToSend && k.ready && <ReadyToSend people={k.people!.length} {...k.ready} />}
-        </Stack>
-      </Panel>
+      <Stack gap={12}>
+        <Panel>
+          <Stack gap={10}>
+            {name && <SubHeading>{name}</SubHeading>}
+            {k.situation && (
+              <div>
+                <span className="gwui-setrow-label">{k.situation}</span>
+                {k.meaning && <span className="gwui-setrow-value">{k.meaning}</span>}
+                {k.onSomethingElse && <button type="button" className="gwui-plain-link" onClick={k.onSomethingElse}>{IT_IS_SOMETHING_ELSE}</button>}
+              </div>
+            )}
+            {known.length > 0 && (
+              <RowList label="What's set so far">
+                {known.map((r) => (
+                  <Row key={r.label} columns="1fr auto">
+                    <span>
+                      <span className="gwui-setrow-label">{r.label}</span>
+                      {r.value && <span className="gwui-setrow-value">{r.value}</span>}
+                    </span>
+                    {change(r.label)}
+                  </Row>
+                ))}
+              </RowList>
+            )}
+            {fromTheChat && k.people!.length > 0 && (
+              <div>
+                <span className="gwui-setrow-label">{FILLS_IN.invitedSoFar}</span>
+                {k.people!.map((line) => <span key={line} className="gwui-setrow-value gwui-setrow-value-name">{line}</span>)}
+              </div>
+            )}
+            {!fromTheChat && !isAnchor && k.added.map((a) => <span key={a} className="gwui-setrow-value gwui-setrow-value-name">{a}</span>)}
+            {addedNotYet.length > 0 && <span className="gwui-setrow-value gwui-setrow-more">{`${addedNotYet.length} more you mentioned: ${andList(addedNotYet)}.`}</span>}
+            {fromTheChat && (k.noEmailYet ?? []).length > 0 && <Note>{FILLS_IN.noEmailYet(k.noEmailYet!, k.people!.length)}</Note>}
+          </Stack>
+        </Panel>
+        {k.save && !k.asOneLine && <Panel>{k.save}</Panel>}
+      </Stack>
     </aside>
   )
   if (!k.asOneLine) return panel
   /* Everybody named so far, with an email or still without one. */
   const howMany = k.people ? k.people.length + (k.noEmailYet ?? []).length : k.added.length + notYetAdded(k).length
   return (
-    <details className="gwui-ec-panel-line" open={readyToSend || undefined}>
+    <details className="gwui-ec-panel-line">
       <summary>{FILLS_IN.inOneLine(howMany, k.situation || name)}</summary>
       {panel}
     </details>
@@ -254,6 +263,7 @@ export function ReadyToSend({ people, opens, onSend, onLater, sending, why, line
   return (
     <section aria-label={FILLS_IN.ready}>
       <Stack gap={6}>
+        <SubHeading>{FILLS_IN.ready}</SubHeading>
         {lines && lines.length > 0 && (
           <div>
             {lines.map((l) => <span key={l} className="gwui-setrow-value gwui-setrow-value-name">{l}</span>)}

@@ -60,7 +60,6 @@ const WHAT_A_PARTICIPANT_READS = [
   'TheReportYouSawAtTheEnd.tsx',
   '../../pages/invite/InvitePage.tsx',
   '../../pages/join/JoinPage.tsx',
-  '../../pages/home/SaveCard.tsx',
   '../../pages/home/HomePage.tsx',
   '../../pages/enter/EntryChatPage.tsx',
   '../../pages/grounds/CreateGroundPage.tsx',
