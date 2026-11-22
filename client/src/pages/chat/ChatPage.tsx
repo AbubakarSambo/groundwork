@@ -639,14 +639,14 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
       /* Now that it has landed, the sheet can go. */
       setDocContextMode(false); setPendingDoc(null); setDocContext('')
       setPasteMode(false); setPasteText(''); setPasteLabel('')
-      /* Said as what happened, and who can open it: the server's own answer for this file. What
-         they typed about it is not repeated back; it is kept with the file (see mutationFn). */
+      /* Said as what happened, with no note about who can open it (Hafsah's standards: no privacy notes on screen; release test,
+         22 November 2026: "You added “order.png”. Only you can open it."). Who may open it is the server's rule, kept there. What they
+         typed about it is not repeated back; it is kept with the file (see mutationFn). */
       void ctx
-      const privateToThem = !doc.visibility || doc.visibility === 'OWN'
       const newMsgs: Msg[] = [{
         id: `doc-note-${Date.now()}`,
         role: 'AI',
-        content: `You added “${doc.name}”.${privateToThem ? ' Only you can open it.' : ''}`,
+        content: `You added “${doc.name}”, and it is kept with this check-in.`,
       }]
       if (doc.assessment) {
         newMsgs.push({
