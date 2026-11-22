@@ -125,9 +125,10 @@ describe('who the one count counts', () => {
     const rows = [row('lead', 'COMPLETED'), row('a', 'COMPLETED'), row('b', 'COMPLETED'), row('c', 'NOT_STARTED'), session2('lead'), session2('a'), session2('b')];
     const ground = { participants: people, checkIns: rows, scenario: 'SALES', timelineDays: 360, cadence: 'MONTHLY', runsUntilEnded: false };
     expect(theSessionAndItsCount(ground, { now: NOW }).clock.says).toBe('Check-in 2 of 12.');
-    /* Let in, C is somebody the round waits on, so the same rows read session 1: the hold is what moves it, nothing else. */
+    /* Let in, C still does not hold the team back: session 2 has begun, so session 1 is over and C missed it (Hafsah, 22 November 2026,
+       "Yes, move it on"; before, this read "Check-in 1 of 12." once C was let in). */
     const letIn = { ...ground, participants: people.map((p) => (p.id === 'c' ? { ...p, notLetIn: false } : p)) };
-    expect(theSessionAndItsCount(letIn, { now: NOW }).clock.says).toBe('Check-in 1 of 12.');
+    expect(theSessionAndItsCount(letIn, { now: NOW }).clock.says).toBe('Check-in 2 of 12.');
   });
 });
 

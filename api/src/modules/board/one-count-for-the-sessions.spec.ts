@@ -6,8 +6,8 @@ import { whatEachSessionSays, theHeaderSays } from './one-count-for-the-sessions
  *
  * The board read "Session 1 of 12" in its header beside "Session 2 opened on 30 September". Here
  * Baraka has not finished session 1, and Rukia has already done session 2. Every reader reads one
- * story: the header counts the open round, and session 2's line says it started while session 1 is
- * still open. The check-in runs weekly for 28 days, so 4 sessions are planned.
+ * story: the header counts the latest session begun (Hafsah, 22 November 2026), and session 1 is over
+ * with Baraka's missed. The check-in runs weekly for 28 days, so 4 sessions are planned.
  */
 const at = (d: string) => new Date(`2026-${d}T16:00:00Z`);
 const STRAGGLER = [
@@ -21,13 +21,15 @@ describe('one count for the sessions, for every reader', () => {
   for (const [name, reader] of Object.entries({ Amina: AMINA, Rukia: RUKIA, Baraka: BARAKA, Juma: JUMA, 'the admin who set it up': SETUP_ADMIN })) {
     it(`as ${name}, the header and the check-in lines tell one story`, async () => {
       const b = await boardAs({ checkIns: STRAGGLER }, reader[0], reader[1]);
-      expect(theHeaderSays(b.phaseSpine.currentSession, b.phaseSpine.plannedSessions, false)).toBe('Check-in 1 of 4.');
-      expect(b.phaseSpine.currentSession).toBe(1);
+      /* Changed 22 November 2026 (Hafsah, "Yes, move it on"): Rukia has begun session 2, so it is the team's session, and session 1 is
+         over with Baraka's missed. Before, the header read "Check-in 1 of 4." and session 2 "has started for some people". */
+      expect(theHeaderSays(b.phaseSpine.currentSession, b.phaseSpine.plannedSessions, false)).toBe('Check-in 2 of 4.');
+      expect(b.phaseSpine.currentSession).toBe(2);
       expect(b.phaseSpine.sessions.map((s: any) => s.says)).toEqual([
-        'Check-in 1 opened on 15 September, and it is still open.',
-        'Check-in 2 has started for some people, while check-in 1 is still open.',
+        'Check-in 1 is over, and one person missed it.',
+        'Check-in 2 opened on 30 September, and it is still open.',
       ]);
-      expect(JSON.stringify(b.phaseSpine)).not.toMatch(/Check-in 2 opened/);
+      expect(JSON.stringify(b.phaseSpine)).not.toMatch(/still open\.?"[^]*while check-in/);
     });
   }
 

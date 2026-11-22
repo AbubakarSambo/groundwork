@@ -123,10 +123,10 @@ describe('one count of who has checked in, read the same on every surface', () =
 });
 
 /**
- * THE WORLD AS THE 22 NOVEMBER RERUN LEFT IT. Juma and Neema never answered session 2, so staging's rule holds the team's session at 2
- * (whether a late answer holds the header back is Hafsah's question, still open). Olu was added during session 3 and finished his own
- * first session. Every surface counts the same session, Olu is not counted in a session that ran before he joined, and his first
- * session never closes the team's session 1 ("check-in 1 is complete ... 7 people took part").
+ * THE WORLD AS THE 22 NOVEMBER RERUN LEFT IT. Juma and Neema never answered session 2. Hafsah decided that day that a session is over
+ * once the next one has begun ("Yes, move it on"), so the team is on session 3 after three check-ins, and Juma and Neema missed session
+ * 2. Olu was added during session 3 and finished his own first session, which is the team's session 3. Every surface counts session 3,
+ * Olu is not counted in a session that ran before he joined, and his first session never closes the team's session 1.
  */
 describe('the 22 November world: two people who never answered session 2, and Olu, added in session 3, who has checked in', () => {
   const W1 = D('2026-11-08T04:35:00Z');
@@ -148,13 +148,21 @@ describe('the 22 November world: two people who never answered session 2, and Ol
   const world = { ...GROUND, participants: people, checkIns: rows };
   const { clock, count } = theSessionAndItsCount(world as any, { now: LATER, names: { readerUserId: 'u-wairimu' } });
 
-  it('every surface reads session 2, and Olu, who was not on the check-in then, is not counted in it', () => {
-    expect(clock.currentSession).toBe(2);
-    expect(count.says).toBe('4 of 6 have checked in; Juma and Neema haven’t started yet.');
+  it('every surface reads session 3, the latest begun, with Olu in it, and session 2 is over', () => {
+    expect(clock.currentSession).toBe(3);
+    expect(clock.says).toBe('Check-in 3 of 12.');
+    expect(count.says).toBe('4 of 7 have checked in; Zawadi, Juma and Neema haven’t started yet.');
     const going = howACheckInIsGoing({ ...world, dependencies: [], sharedPicture: null, round: clock.currentSession } as any, LATER);
     expect([going.glance.progress.answeredThisRound, going.glance.progress.ofPeople]).toEqual([count.answered, count.ofPeople]);
-    expect(going.glance.progress.roundsDone).toBe(1);
-    expect(theRoundsDone(theSessionRowsOf(rows as any, people), undefined, LATER, clock.currentSession)).toBe(1);
+    expect(going.glance.progress.roundsDone).toBe(2);
+    expect(theRoundsDone(theSessionRowsOf(rows as any, people), undefined, LATER, clock.currentSession)).toBe(2);
+  });
+
+  it('Juma and Neema missed session 2: the weekly letter and the lead read it as a miss, never as still waiting', () => {
+    for (const who of ['juma', 'neema']) {
+      const theirs = inTheTeamsNumbering(rows as any[]).filter((r) => r.participantId === who);
+      expect(theirClosedSessions(theirs as any, [], LATER, { theClocksSession: clock.currentSession }).filter((c) => c.missed).map((c) => c.sessionNumber)).toEqual([2]);
+    }
   });
 
   it('Olu’s first check-in counts in the team’s session 3, where he has checked in', () => {

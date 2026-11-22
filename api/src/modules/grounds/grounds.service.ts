@@ -1602,13 +1602,8 @@ export class GroundsService {
       const found = await Promise.resolve((this.prisma as any).user?.findMany?.({ where: { id: { in: [...adminLeadIds] } }, select: { id: true, isActive: true, firstName: true, lastName: true } })).catch(() => []);
       for (const l of found ?? []) leadAccounts.set(l.id, l);
     }
-    /* Whether each organisation reads Release 1's clock (a finished round hands the count on), as the board and the page read it. One read per organisation. */
-    const handsOnIn = new Map<string, boolean>();
-    for (const orgId of new Set([...orgGrounds, ...participantGrounds].map((g: any) => g.organizationId).filter(Boolean))) {
-      handsOnIn.set(orgId as string, await theReleaseOneSalesBoardIsOn(this.prisma, orgId as string));
-    }
     /* When each organisation paused, if it is paused now: the one owner of when a round could be answered reads it (a-round-that-could-be-answered.ts). */
-    const pausedOn = await whenTheseOrganisationsPaused(this.prisma, [...handsOnIn.keys()], new Date()).catch(() => new Map<string, Date>());
+    const pausedOn = await whenTheseOrganisationsPaused(this.prisma, [...new Set([...orgGrounds, ...participantGrounds].map((g: any) => g.organizationId as string).filter(Boolean))], new Date()).catch(() => new Map<string, Date>());
     const setupFor = (g: any) => {
       if (userId && g.initiatorId === userId) return { leadHasLeft: false, mayChangeSetup: true };
       const lead = g.initiatorId && g.organizationId === organizationId && mayAdminHere(g) ? leadAccounts.get(g.initiatorId) : null;
@@ -1687,7 +1682,7 @@ export class GroundsService {
           participants: listedPeople, checkIns: checkIns as any, scenario: (rest as any).scenario ?? null,
           timelineDays: (rest as any).timelineDays ?? null, cadence: (rest as any).cadence ?? null, cadenceDays: (rest as any).cadenceDays ?? null, runsUntilEnded: !!(rest as any).runsUntilEnded,
         /* By name, as the check-in's page asks it: the sentence is served only to a reader shown the others (theCountAsServed). */
-        }, { handOn: handsOnIn.get((rest as any).organizationId) === true, leave: leaveOnTheList, names: { readerUserId: userId ?? null }, pausedFrom: pausedOn.get((rest as any).organizationId) ?? null });
+        }, { leave: leaveOnTheList, names: { readerUserId: userId ?? null }, pausedFrom: pausedOn.get((rest as any).organizationId) ?? null });
         const going = howACheckInIsGoing({
           /* The session the check-in's clock names, the one the board, the page and Ask count (this-sessions-count.ts). The people
              here are already marked for who has not joined and who is not let in, above. */
@@ -2162,8 +2157,6 @@ export class GroundsService {
         runsUntilEnded: noEnd,
       },
       {
-        /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
-        handOn: await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId),
         leave: await leaveOfThePeopleOn(this.prisma as any, [id]).catch(() => undefined),
         /* By name, for the reader the count is served to (thisSession is withheld from a reader walled from the others). */
         names: { readerUserId: requestingUserId ?? null },

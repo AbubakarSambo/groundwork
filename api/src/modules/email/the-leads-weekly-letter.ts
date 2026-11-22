@@ -1,3 +1,4 @@
+import { theSessionAndItsCount } from '../grounds/this-sessions-count';
 import { inTheTeamsNumbering } from '../board/which-round-is-open';
 import { theSessionClock } from '../board/one-count-for-the-sessions';
 import { whenACheckInBegan } from '../grounds/a-round-that-could-be-answered';
@@ -360,9 +361,26 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   const checkedInThisWeek = new Set((finished as any[]).map((r) => r.participantId));
   /* Invited, not joined yet: not counted and never "not yet" (decision 8 redone, night run 3). */
   const notJoined = await whoHasNotJoinedYet(prisma, people as any[]).catch(() => new Set<string>());
-  const counted = (people as any[]).filter((p) => !notJoined.has(p.id) || checkedInThisWeek.has(p.id)).filter((p) => !p.managingOnly && (owesThisSession(p) || checkedInThisWeek.has(p.id)) && !isNotLetInYet(p));
+  /*
+   * ON A WEEKLY CHECK-IN THE WEEK IS THE SESSION (Hafsah, 22 November 2026: a session is over once the next one has begun). The letter
+   * counted who finished anything in the last seven days, so a late answer to last week's session and a newcomer's first one made "Five
+   * of the seven people checked in this week" beside the board's "4 of 7". Here it reads the session's one count (theSessionAndItsCount),
+   * the board's own. Other rhythms keep the week's count.
+   */
+  const weekly = String(g.cadence ?? '').toUpperCase() === 'WEEKLY';
+  const theSession = weekly
+    ? (() => {
+      const c = theSessionAndItsCount({ participants: (people as any[]).map((p) => (notJoined.has(p.id) ? { ...p, notJoinedYet: true } : p)), checkIns: sessions, cadence: g.cadence ?? null }, { now });
+      return c.bySession[c.clock.currentSession] ?? null;
+    })()
+    : null;
+  const counted = theSession
+    ? (people as any[]).filter((p) => theSession.onTheCheckIn.includes(p.id) && (!notJoined.has(p.id) || theSession.answered.includes(p.id)))
+    : (people as any[]).filter((p) => !notJoined.has(p.id) || checkedInThisWeek.has(p.id)).filter((p) => !p.managingOnly && (owesThisSession(p) || checkedInThisWeek.has(p.id)) && !isNotLetInYet(p));
   const countedIds = new Set(counted.map((p) => p.id));
-  const finishedIds = new Set((finished as any[]).map((r) => r.participantId).filter((id: string) => countedIds.has(id)));
+  const finishedIds = theSession
+    ? new Set(theSession.answered.filter((id) => countedIds.has(id)))
+    : new Set((finished as any[]).map((r) => r.participantId).filter((id: string) => countedIds.has(id)));
   const notYet = counted
     .filter((p) => !finishedIds.has(p.id))
     .map((p) => (p.userId && p.userId === g.initiatorId ? 'you' : nameToCall(p)))
@@ -438,7 +456,9 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   }
   /* SOMEBODY INVITED WHO HAS NOT JOINED IS ONE OF THE PEOPLE ON THE CHECK-IN, and "five of five people checked in" was said with Ruth never having joined (run 7, mail 90). The one count
      (reports/how-many-have-answered.ts) counts them, and the "what is new" mail already reads it; this count is the same people. They are never listed as "not yet": they have not started. */
-  const notJoinedButOnIt = (people as any[]).filter((p) => notJoined.has(p.id) && !checkedInThisWeek.has(p.id) && !p.managingOnly && owesThisSession(p) && !isNotLetInYet(p));
+  const notJoinedButOnIt = theSession
+    ? (people as any[]).filter((p) => notJoined.has(p.id) && theSession.onTheCheckIn.includes(p.id) && !theSession.answered.includes(p.id))
+    : (people as any[]).filter((p) => notJoined.has(p.id) && !checkedInThisWeek.has(p.id) && !p.managingOnly && owesThisSession(p) && !isNotLetInYet(p));
   return { groundId: g.id, label: g.label, ofHowMany: counted.length + notJoinedButOnIt.length, checkedIn: finishedIds.size, answerableIds: [...counted, ...notJoinedButOnIt].map((p) => p.userId ?? p.id), checkedInIds: counted.filter((p) => finishedIds.has(p.id)).map((p) => p.userId ?? p.id), notYet, saidWhatNext: saidNextBy.size, done: done as number, waiting: waiting as number, closedBy, waitingOn, checkInsDue, checkInsMade, ...(missedBy.length ? { missedBy } : {}), ...(releaseOne ? { releaseOne: true } : {}), ...(claims.length ? { claims } : {}), ...(reminded.length ? { reminded } : {}) };
 }
 

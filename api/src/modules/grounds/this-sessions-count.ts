@@ -177,7 +177,7 @@ export function thePlannedSessionsOf(g: { runsUntilEnded?: boolean | null; timel
 
 export function theSessionAndItsCount(
   g: WhatTheCountReads,
-  opts: { now?: Date; handOn?: boolean; leave?: Map<string, Stretch[]>; names?: { readerUserId?: string | null }; pausedFrom?: Date | string | null } = {},
+  opts: { now?: Date; leave?: Map<string, Stretch[]>; names?: { readerUserId?: string | null }; pausedFrom?: Date | string | null } = {},
 ): { clock: TheSessionClock; count: ThisSession; bySession: Record<number, TheServedCount> } {
   const now = opts.now ?? theQuietHoursNow();
   const participants = (g.participants ?? []) as any[];
@@ -187,7 +187,7 @@ export function theSessionAndItsCount(
   const checkInsAsked = inTheTeamsNumbering(((g.checkIns ?? []) as any[]).filter((c) => !thePauseOpened.has(Number(c.sessionNumber))));
   const rows = checkInsAsked.filter((c) => !c.isSetup);
   const planned = thePlannedSessionsOf(g);
-  const clock = theSessionClock(rows, whoHoldsTheClock(participants), planned, now, opts.handOn ?? true);
+  const clock = theSessionClock(rows, whoHoldsTheClock(participants), planned, now);
   const progress = howACheckInIsGoing({
     checkIns: checkInsAsked,
     participants,

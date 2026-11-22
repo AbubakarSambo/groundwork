@@ -120,7 +120,7 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = theQuietHoursNow
   const roundsPlanned = totalSessionsFor(it.timelineDays as any, it.cadence as any, it.cadenceDays) ?? null;
   /* There is no round after the last planned one: a stray session-2 row on a one-session run made the board
      read "0 of 2 answered this round" to somebody who had just answered (21 Sep 2026). */
-  const openRoundRaw = sessions.length ? theTeamsOpenRound(sessions as any, (it.participants ?? []) as any) : 1;
+  const openRoundRaw = sessions.length ? theTeamsOpenRound(sessions as any, (it.participants ?? []) as any, now) : 1;
   const openRound = it.round ?? (roundsPlanned && roundsPlanned > 0 ? Math.min(openRoundRaw, roundsPlanned) : openRoundRaw);
   /* Done from the same clock the count reads: a session the clock has moved past is over (theRoundsDone). */
   const roundsDone = theRoundsDone(sessions as any[], it.leave, now, openRound);

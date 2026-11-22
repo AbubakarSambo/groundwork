@@ -29,7 +29,8 @@ import { theGlanceInASentence } from './the-glance-in-a-sentence';
 import { aPartyOutside, aWaitOnOneself, theWaitsAsABoardReadsThem } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
 import { whoSeesThisDifferently } from './who-sees-this-differently';
-import { theRoundCappedAtThePlan, whatEachSessionSays } from './one-count-for-the-sessions';
+import { whatEachSessionSays } from './one-count-for-the-sessions';
+import { inTheTeamsNumbering } from './which-round-is-open';
 import { aWaitSaidInFull } from './a-wait-said-in-full';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { theBlockers } from './the-blockers';
@@ -854,7 +855,7 @@ export class BoardService {
     /* Decision 133: the round's clock is the team's; the lead checks in when they choose. */
     const givers = whoHoldsTheClock(ground.participants as any[]);
     const mine = checkIns.filter((c) => givers.has(c.participantId));
-    const openRound = mine.length ? whichRoundIsOpen(mine as any) : maxSession;
+    const openRound = mine.length ? whichRoundIsOpen(mine as any, now) : maxSession;
     /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the
        board runs the same engines over all of them, so the two share a vocabulary and differ only in
        scope. Same tiles, same settled-and-open, same question engine. */
@@ -1036,7 +1037,7 @@ export class BoardService {
       cadenceDays: (ground as any).cadenceDays ?? null,
       runsUntilEnded: !!(ground as any).runsUntilEnded,
     /* By name for whoever is served the count (theCount, below): "You and Aisha have checked in. David has started and not finished yet." */
-    }, { now, handOn: releaseOne, leave: theLeave, names: { readerUserId: requestingUserId }, pausedFrom: whenItPaused });
+    }, { now, leave: theLeave, names: { readerUserId: requestingUserId }, pausedFrom: whenItPaused });
     /* The switchboard's pick, once: its type decides which board the screen draws, and the screen reads it (kindOfWork below). */
     const theSwitchboardsPicked = await this.theSwitchboardsPick(ground as any);
     const out: Record<string, any> = {
@@ -1346,8 +1347,8 @@ export class BoardService {
        * See one-count-for-the-sessions.
        */
       const planned = thePlannedSessionsOf(ground as any) ?? null;
-      /* A finished round hands the count to the next one that has come (theRoundThatHasCome), by the board's own clock. */
-      const theRound = theRoundCappedAtThePlan(openRound, planned, mine as any[], now, releaseOne);
+      /* The team's session, the latest begun, from the one count above (theSessionAndItsCount), so the header and Today read one session. */
+      const theRound = theOneCount.clock.currentSession;
       const roundNumbers = Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b);
       /* The header is drawn from these two numbers ("Session 1 of 12."); see theHeaderSays for its words. */
       out.phaseSpine = {
@@ -1363,7 +1364,7 @@ export class BoardService {
              next sessions will start" (Hafsah, 22 Sep 2026); the pill said "Session 2" and nothing else.
              The earliest availableFrom across that session's check-ins is the day it opens. */
           const opens = forSession.map((c: any) => c.availableFrom).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
-          const line = whatEachSessionSays(n, mine as any[], theRound, now, releaseOne);
+          const line = whatEachSessionSays(n, inTheTeamsNumbering(mine as any[]) as any[], theRound, now);
           /* A session somebody has already checked in to, or started, is open, never "upcoming" (request 115 g):
              session 2 read as upcoming while two people had answered it, because session 1 was still open. */
           const somebodyIsIn = forSession.some((c) => c.status !== CheckInStatus.NOT_STARTED);
@@ -1825,7 +1826,7 @@ export class BoardService {
       const heldAtTheDoor = new Set(ground.participants.filter((p: any) => isNotLetInYet(p)).map((p: any) => p.id));
       const roundRows = checkIns.filter((c) => !heldAtTheDoor.has(c.participantId) || c.status === CheckInStatus.COMPLETED || c.status === CheckInStatus.DECLINED);
       /* And never set by the lead's own extra check-in (journey test, 12 October): theTeamsOpenRound. */
-      const openRound = theTeamsOpenRound((roundRows.length ? roundRows : checkIns) as any, ground.participants as any);
+      const openRound = theTeamsOpenRound((roundRows.length ? roundRows : checkIns) as any, ground.participants as any, now);
       /*
        * WHAT EACH CHECK-IN PUT ON THE RECORD, so the board can say whether anything a person has said can be checked. The whole
        * record, not this round alone (Hafsah, 2 November 2026: silence is never a finding): proof from any check-in counts.

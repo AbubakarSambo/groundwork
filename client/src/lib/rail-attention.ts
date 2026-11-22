@@ -99,7 +99,8 @@ export function railAttention(g: RailGround, _reader?: string | null, now: Date 
    */
   const choosesWhen = new Set((g.participants ?? []).filter((p) => p.partyType === 'INITIATOR' || !!p.managingOnly).map((p) => p.id))
   const theTeams = checkIns.filter((c) => !choosesWhen.has(c.participantId))
-  const round = openRound(theTeams.length ? theTeams : checkIns, now)
+  /* The team's session as the server's one clock names it; only a row served without a count works it out from the rows. */
+  const round = (g as { theCount?: { session?: number } | null }).theCount?.session ?? openRound(theTeams.length ? theTeams : checkIns, now)
   /*
    * B-078: A LEAD WHO ONLY MANAGES IS NOT COUNTED PAST HER OWN SET-UP ROUND. Grace runs "Shops
    * reorder in two days" (HELP_TEAM_UNDERSTAND) and never checks in; the server's one count leaves

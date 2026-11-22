@@ -21,6 +21,10 @@ const NOW = new Date('2026-10-01T09:00:00Z');
 const day = 86_400_000;
 const ago = (d: number) => new Date(NOW.getTime() - d * day);
 const ahead = (d: number) => new Date(NOW.getTime() + d * day);
+/* The list and Today read the one clock (theQuietHoursNow), and a session whose day has come has begun (Hafsah, 22 November 2026), so
+   these rows are read at the world's own moment. */
+beforeAll(() => { jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'queueMicrotask'] }); jest.setSystemTime(NOW); });
+afterAll(() => { jest.useRealTimers(); });
 
 const person = (id: string, userId: string, type: string, first: string, last: string, n: number) => ({
   id, userId, email: `${first.toLowerCase()}@x.test`, partyType: type, createdAt: new Date(`2026-09-0${n}`), user: { firstName: first, lastName: last },

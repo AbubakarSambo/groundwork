@@ -160,8 +160,10 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
    * whichever of that and the schedule's own number is LOWER agrees with the board whenever the
    * two differ, and still agrees with the schedule once everybody has caught up to it.
    */
+  /* The team's session as the server's one clock names it (theCount.session: the latest session that has begun, Hafsah, 22 November
+     2026). Only a row served without a count works it out from the rows, as before. */
   const scheduleRound = openRound(g.checkIns as never, now)
-  const round = scheduleRound > 0 ? Math.min(done + 1, scheduleRound) : 0
+  const round = (g as { theCount?: { session?: number } | null }).theCount?.session ?? (scheduleRound > 0 ? Math.min(done + 1, scheduleRound) : 0)
 
   /* FINISHED: when it ended, and the way back to it. */
   if (isFinished(g)) {
