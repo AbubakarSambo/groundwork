@@ -37,8 +37,12 @@ export interface WhatSetupKnows {
   endsOn?: string;
   /** They said it runs until they end it (request 37). */
   runsUntilEnded?: boolean;
+  /** The days people work, 0 is Sunday, where they said ("weekdays only"). */
+  workingDays?: number[];
+  /** The one day it happens on, where they said: a weekday (0 is Sunday) for weekly or fortnightly, a day of the month for monthly. */
+  cadenceAnchorDay?: number;
   yourRole?: string;
-  /** The name they gave in so many words ("Call it ..."). */
+  /** What they called it ("Call it ..."), or else a short name read from what they said. */
   name?: string;
   /** The kind of check-in, read once from what they first said (or the card they picked). */
   classifiedScenario?: string;
@@ -84,7 +88,7 @@ export function whatSetupKnowsNow(before: WhatSetupKnows | null | undefined, rea
   const out: WhatSetupKnows = {};
   const scalars: (keyof WhatSetupKnows)[] = [
     'mode', 'noAimAndTheySaidSo', 'initial', 'whoInvolved', 'decision', 'goals', 'brief', 'cadence', 'cadenceDays', 'timelineDays', 'endsOn',
-    'runsUntilEnded', 'yourRole', 'name',
+    'runsUntilEnded', 'workingDays', 'cadenceAnchorDay', 'yourRole', 'name',
   ];
   for (const key of scalars) {
     const value = itIsThere(now[key]) ? now[key] : was[key];
@@ -125,8 +129,10 @@ const WHAT_EACH_ONE_IS: { key: keyof WhatSetupKnows; said: string }[] = [
   { key: 'timelineDays', said: 'How long it runs, in days' },
   { key: 'endsOn', said: 'The day it ends' },
   { key: 'runsUntilEnded', said: 'It runs until they end it, with no set length' },
+  { key: 'workingDays', said: 'The days people work, 0 is Sunday' },
+  { key: 'cadenceAnchorDay', said: 'The day it happens on (a weekday, 0 is Sunday, or a day of the month)' },
   { key: 'brief', said: 'What they want the questions to focus on' },
-  { key: 'name', said: 'What they called it' },
+  { key: 'name', said: 'The name of the check-in' },
 ];
 
 /**

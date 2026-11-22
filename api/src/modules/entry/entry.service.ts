@@ -1,5 +1,4 @@
 import { theSessionANewcomerStartsIn } from '../grounds/the-session-a-person-is-on';
-import { REFERENCES_AND_RESOURCES, PEOPLE_AND_SETUP } from '../../common/the-tab-names';
 import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
 import { notTheLeadHerself, herSetupWordsAsATurn, howSheDescribesHerself, aLineThatDescribesNothing } from './the-lead-is-you-in-her-report';
 import { theSettersRole } from '../../common/a-role-or-nothing';
@@ -72,7 +71,7 @@ import { theThingsThatCannotBeMissed } from '../conversation/the-last-thing-it-r
 import { whatYouAskedLastTurn } from '../conversation/you-asked-that-last-turn';
 import { knownDontAsk, whatSetupKnowsNow, type WhatSetupHasSoFar, type WhatSetupKnows } from './what-setup-knows';
 import { whatTheyAskedFor } from './what-they-asked-for-in-so-many-words';
-import { theAddressesTheyGave, withoutThePersonSettingItUp } from './the-people-the-lead-named-are-other-people';
+import { withoutThePersonSettingItUp } from './the-people-the-lead-named-are-other-people';
 import { whatTheyAlreadyHave, thePeopleAlreadyHere, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { THE_FIRST_UPDATE_TOO, SETUP_IS_DONE, withoutTalkOfTheNextScreen } from './setup-is-the-first-check-in';
 import { HOW_SETUP_ENDS } from '../conversation/a-short-day';
@@ -790,6 +789,10 @@ export class EntryService {
       peoplePhones?: Record<string, string>;
       /** What each named person does, as the lead described them, by the name on the list. */
       peopleRoles?: Record<string, string>;
+      /** The days people work, 0 is Sunday, only where they said. */
+      workingDays?: number[];
+      /** The one day it happens on, where they said: a weekday (0 is Sunday) for weekly or fortnightly, a day of the month for monthly. */
+      cadenceAnchorDay?: number;
     } & TheSevenItems;
     ready: boolean;
     /** Party path only: setup can finish, but nobody has been named yet and they are told so. */
@@ -843,7 +846,7 @@ AFTER THAT, ASK ONLY WHAT YOU DO NOT ALREADY KNOW. There is no number of questio
 
 WHO IS ON THE TEAM is asked once, and only when nobody has been named and nobody is already listed: "Who is on the team? A name and an email for each person is enough, and a phone number if they use WhatsApp. I will invite them when you are ready." When they give people, say once, by first name, that you have them ("Got them: John, Jane, Peter and Mary."), and if somebody they named has no email, say so in one sentence ("Add Samuel's and Omar's emails here when you have them."). Never ask for the team again.
 
-HOW LONG AND HOW OFTEN ARE NOT QUESTIONS. The panel beside the conversation proposes them from their words, and they change them there. Never ask how long this runs or how often they want to check in, and never ask why now or what their own part is unless they raise it.
+HOW LONG AND HOW OFTEN ARE NOT QUESTIONS. The panel beside the conversation proposes them from their words. When they say a change here ("make it Mondays", "until March"), it is taken here, the panel follows it, and you say in half a sentence that it is done. A CHECK-IN OPENS AT THE START OF ITS DAY, AND NOTHING KEEPS A TIME OF DAY: if they name an opening time ("from 4pm"), say once, in half a sentence, that each check-in opens at the start of the day and they can answer any time that day. Never promise a time. Never ask how long this runs or how often they want to check in, and never ask why now or what their own part is unless they raise it.
 
 You are Groundwork, helping someone set up a record for a situation involving more than one person.
 
@@ -956,18 +959,10 @@ Your job is to gather these things through natural conversation:
    ASK IT ABOUT THE SITUATION, NEVER ABOUT THEM. "Is this a one time check in, or will you be
    checking in regularly?" was asked live and the honest reply was "is this about me or the other
    person?" - because "will YOU be checking in" is a question about who answers, and this is a
-   question about how long the situation runs. Ask the shape of the thing, and in the same breath
-   say where the rest of it gets set, because somebody answering this does not yet know that the
-   dates, the cadence and the context are theirs to change afterwards - Hafsah's wording, 15
-   September 2026:
-   "Is this a one-off check-in, or something that you will track over time? You can set context and
-    change the settings on the ${REFERENCES_AND_RESOURCES} and ${PEOPLE_AND_SETUP} tabs once this first conversation is done."
-   Ask it as one question. The second sentence is not a second ask and does not need an answer.
-   NEVER SEND THAT SECOND SENTENCE ON ITS OWN, AND NEVER AS THE WHOLE REPLY (B-012). After "We are
-   rolling out the new stock system in four depots... I have not decided who leads Nakuru and Eldoret
-   yet" the whole reply was that sentence, which asks nothing and says nothing back. Every reply first
-   says back, in half a sentence, what they just told you, including what is still undecided (four
-   depots, two leads named, two not decided yet), and then asks the next thing.
+   question about how long the situation runs. Ask the shape of the thing, as one question:
+   "Is this a one-off check-in, or something that you will track over time?"
+   Every reply first says back, in half a sentence, what they just told you, including what is still
+   undecided (B-012), and then asks the next thing.
 3. initial: what the situation is actually about
 4. whoInvolved: who else is part of this AND their role.
    ASK IT SO A TEAM OR A DEPARTMENT IS A VALID ANSWER, NOT ONLY A LIST OF NAMES. "Who else is
@@ -1044,10 +1039,9 @@ Rules:
   over what is already on the screen is the clearest possible sign that nothing is being read. If
   their message IS the material - a long paste, a brief, a list of questions - say what you now know
   from it and ask the next thing you still do not know.
-- THEIR TEAM CAN BE ADDED AT ANY TIME. The box headed "Who’s in it" takes them, one person per line with an email,
-  and End session opens it too. When they want to add their team, say that in one sentence and carry on with the
-  work. Never say the team can only be added later (round 6, 1 November 2026: a lead asked eleven times to add her
-  team and was told "I can't add them right now").
+- THEIR TEAM CAN BE ADDED AT ANY TIME. They give people here, a name and an email each, or under "Who’s in it" in the panel.
+  When they want to add their team, say that in one sentence and carry on with the work. Never say the team can only be added
+  later (round 6, 1 November 2026: a lead asked eleven times to add her team and was told "I can't add them right now").
 - If someone asks who will see this: say what is actually true, which is narrower than it used to
   say here and is the version both invite pages already give. Nobody on their team sees the words
   they write. Once everybody has checked in, the shared picture shows where what people said lines
@@ -1200,6 +1194,11 @@ Fields:
   they say "I am Kofi", "my name is Kofi" or "this is Kofi", Kofi is the one typing, who is setting this up,
   and is not somebody to invite. Leave it out entirely if no individual has been identified - an empty
   list is an honest answer and is handled.
+  A GROUP IS NEVER AN ENTRY, EVEN WHEN A PERSON IS NAMED IN THE SAME SENTENCE: "my national assembly team", "the ops team",
+  "our partners" are groups. "Weekly updates from Abubakar Sambo and my national assembly team" is one entry, Abubakar Sambo.
+- peopleEmails: for each person in peopleNamed whose email address they typed, that person's name exactly as in peopleNamed and the
+  address they gave for THAT person. An address goes with the one person it was given for, never with others named in the same
+  sentence: "Amina, Brian and Esther esther@x.com" gives Esther that address and gives Amina and Brian none. Leave it out if none.
 - peoplePhones: for each person in peopleNamed whose phone number they typed, that person's name exactly as
   in peopleNamed and the number exactly as they typed it. Only numbers they typed; leave it out if none.
 - peopleRoles: for each person in peopleNamed whose job or part in this they described, that person's name
@@ -1216,6 +1215,9 @@ Fields:
 - brief: anything specific to focus on or probe
 - cadence: how often they check in, IF they said. One of "DAILY", "WEEKLY", "FORTNIGHTLY", "MONTHLY", "ONE_TIME". Map their own words: "daily", "every day", "every working day" or "each day" -> DAILY; "weekly" or "every week" -> WEEKLY; "every two weeks", "fortnightly", "every other week" -> FORTNIGHTLY; "monthly" or "once a month" -> MONTHLY; "just once", "a single check-in" -> ONE_TIME. Only words about how often THIS CHECK-IN happens count: "I own the weekly review" or "our monthly target" names another meeting or a number, not the check-in's rhythm, and never changes a rhythm they already gave. Omit it entirely if they did not say.
 - cadenceDays: ONLY when they said the check-in happens more than once a week on days they named ("twice a week, on Monday and Thursday", "Mondays and Thursdays"): those weekdays as numbers, 0 is Sunday and 6 is Saturday, with cadence "WEEKLY". Omit it for once a week, or when they named no days.
+- workingDays: ONLY when they said which days of the week people work or check in ("weekdays only" -> [1,2,3,4,5], "Monday to Saturday" -> [1,2,3,4,5,6]), as numbers, 0 is Sunday and 6 is Saturday. Omit it if they did not say.
+- cadenceAnchorDay: ONLY when they named the one day it happens on. For a weekly or fortnightly check-in, the weekday, 0 is Sunday and 6 is Saturday ("Mondays", "every Thursday"); for a monthly one, the day of the month ("on the 15th" -> 15). A day mentioned for something else ("I spoke to Brian on Monday") is not it. Omit it if they did not say.
+- name: what they called the check-in. If they did not name it, a short plain name of two to six words for it, from what they said, such as "Bill updates from Abubakar" or "Sales team, Q3". Never the name of a situation type alone, and never a placeholder.
 - runsUntilEnded: true ONLY if they said it runs until they end it themselves ("when I end it", "until I stop it", "no end date"). Then leave timelineDays out.
 - timelineDays: how long the whole period runs, in days, IF they said. "90 days" or "three months" -> 90; "60 days" -> 60; "a quarter" -> 90; "two weeks" -> 14; "three weeks" -> 21; "a month" -> 30. Omit if they did not say. A goal or milestone inside the period is not its length: "by day 30 he should know the routes", "in his first month he shadows Tobi" or "settled in within two weeks" say what should be true by then, not when the check-in ends, so they give no timelineDays.
 - endsOn: the day the whole period ends, as YYYY-MM-DD, IF they named when it ends rather than how long it runs: "200 traders trained by March" -> the last day of March, "until 30 December" -> that day. A milestone inside it ("by day 30") is not when it ends. Omit if they did not say.
@@ -1262,6 +1264,8 @@ from finishing at all.`;
           /* Each person's phone number, where the person setting this up typed one beside their name (Hafsah, 30 October 2026: the
              team is added with their numbers). The model reads whose number is whose; only a number they typed is kept. */
           peoplePhones: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, phone: { type: 'string' } }, required: ['name', 'phone'] } },
+          /* Each person's own address, read by the model as it reads the numbers: an address goes with the one person it was given for. */
+          peopleEmails: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, email: { type: 'string' } }, required: ['name', 'email'] } },
           /* What each named person does, as the lead described it (round 7, the clinic: four roles said in setup, each set again by hand). */
           peopleRoles: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, role: { type: 'string' } }, required: ['name', 'role'] } },
           decision: { type: 'string' },
@@ -1277,6 +1281,9 @@ from finishing at all.`;
           endsOn: { type: 'string', description: 'The day the whole period ends, YYYY-MM-DD, only if they named when it ends.' },
           cadenceDays: { type: 'array', items: { type: 'integer', minimum: 0, maximum: 6 } },
           runsUntilEnded: { type: 'boolean' },
+          workingDays: { type: 'array', items: { type: 'integer', minimum: 0, maximum: 6 } },
+          cadenceAnchorDay: { type: 'integer', minimum: 0, maximum: 31 },
+          name: { type: 'string' },
         },
         /**
          * MODE REQUIRED, AND THIS IS WHY THE SETUP USED TO DEAD-END.
@@ -1321,14 +1328,22 @@ from finishing at all.`;
       if (said.cadence) extracted.cadence = said.cadence;
       if (said.timelineDays && extracted.runsUntilEnded !== true) extracted.timelineDays = said.timelineDays;
       if (said.name) (extracted as any).name = said.name;
-      /* The people they named are other people (never the one setting it up), and an address typed beside a name stays with it (F-6). */
+      /* The people they named are other people (never the one setting it up), and each keeps the address typed for them (F-6). */
+      if (!extracted.peopleNamed?.length) delete (extracted as any).peopleEmails;
       if (extracted.peopleNamed?.length) {
         const me = askedBy?.userId
           ? await this.prisma.user.findUnique({ where: { id: askedBy.userId }, select: { firstName: true, lastName: true } }).catch(() => null)
           : null;
         extracted.peopleNamed = withoutThePersonSettingItUp(extracted.peopleNamed, me);
-        const theirAddresses = theAddressesTheyGave(extracted.peopleNamed, messages.filter((m) => m.role === 'user').map((m) => m.content));
-        if (Object.keys(theirAddresses).length) (extracted as any).peopleEmails = theirAddresses;
+        /* An address is kept only when they typed it, and only for somebody on the list: nothing invented reaches the card. */
+        const theirWordsLower = messages.filter((m) => m.role === 'user').map((m) => m.content ?? '').join(' ').toLowerCase();
+        const theirAddresses: Record<string, string> = {};
+        for (const x of ((extracted as any).peopleEmails ?? []) as { name?: string; email?: string }[]) {
+          const address = String(x.email ?? '').trim().toLowerCase();
+          const who = extracted.peopleNamed.find((p) => p.trim().toLowerCase() === String(x.name ?? '').trim().toLowerCase());
+          if (who && address.includes('@') && theirWordsLower.includes(address)) theirAddresses[who] = address;
+        }
+        if (Object.keys(theirAddresses).length) (extracted as any).peopleEmails = theirAddresses; else delete (extracted as any).peopleEmails;
         /* A number is kept only when its digits are in what they typed, and only for somebody on the list: nothing invented reaches the card. */
         const typed = messages.filter((m) => m.role === 'user').map((m) => m.content ?? '').join(' ').replace(/\D/g, '');
         const theirNumbers: Record<string, string> = {};

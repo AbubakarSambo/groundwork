@@ -50,11 +50,11 @@ describe('the setup chat', () => {
      * context are theirs to change later, so the answer carries more weight than it should.
      */
     expect(ONBOARD).toMatch(/Is this a one-off check-in, or something that you will track over time\?/);
-    /* Changed in batch 2, group 6 (S16): the tabs are named from the one constant, so a rename reaches setup too. */
-    expect(ONBOARD).toMatch(/\$\{REFERENCES_AND_RESOURCES\} and \$\{PEOPLE_AND_SETUP\} tabs once this first conversation is done/);
+    /* Changed 22 November 2026 (setup flow): changes said in the chat are applied in the chat, so setup no longer sends people to the
+       tabs to change the settings afterwards. */
+    expect(ONBOARD).not.toMatch(/once this first conversation is done/);
+    expect(ONBOARD).not.toMatch(/REFERENCES_AND_RESOURCES|PEOPLE_AND_SETUP/);
     expect(ONBOARD).not.toMatch(/Context and Setup tabs/);
-    /* One ask. The second sentence tells them where the rest lives; it is not a second question. */
-    expect(ONBOARD).toMatch(/The second sentence is not a second ask/);
   });
 
   it('never says what this stage does not count as', () => {
@@ -72,5 +72,17 @@ describe('the setup chat', () => {
   it('and never apologises to somebody it confused', () => {
     expect(ONBOARD).toMatch(/NEVER APOLOGISE/);
     expect(ONBOARD).toMatch(/reassuring the software/);
+  });
+});
+
+describe('the setup chat, as the set-up flow is now (22 November 2026)', () => {
+  it('never sends the team to End session, and takes the team here or under "Who’s in it"', () => {
+    expect(ONBOARD).not.toMatch(/End session opens it/);
+    expect(ONBOARD).toMatch(/They give people here, a name and an email each, or under "Who’s in it" in the panel/);
+  });
+  it('takes a change said in the conversation, and never promises a time of day', () => {
+    expect(ONBOARD).toMatch(/When they say a change here/);
+    expect(ONBOARD).toMatch(/each check-in opens at the start of the day/);
+    expect(ONBOARD).toMatch(/Never promise a time/);
   });
 });

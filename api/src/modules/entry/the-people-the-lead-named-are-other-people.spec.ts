@@ -1,5 +1,5 @@
 import { SETUP_IS_DONE } from './setup-is-the-first-check-in';
-import { theAddressesTheyGave, withoutThePersonSettingItUp } from './the-people-the-lead-named-are-other-people';
+import { withoutThePersonSettingItUp } from './the-people-the-lead-named-are-other-people';
 
 const SAID = 'Check in weekly for four weeks. The new starter is Chidi Okafor, chidi.okafor@kito.test, a customer support agent. Wairimu Njoroge leads it.';
 
@@ -11,18 +11,6 @@ describe('the person setting it up is not one of the people named', () => {
   });
   it('a stranger with no name known is left alone', () => {
     expect(withoutThePersonSettingItUp(['Chidi Okafor', 'Wairimu Njoroge'], null)).toEqual(['Chidi Okafor', 'Wairimu Njoroge']);
-  });
-});
-
-describe('the address they typed goes with the name', () => {
-  it('Chidi keeps his address, and Wairimu is given none she did not type', () => {
-    expect(theAddressesTheyGave(['Chidi Okafor', 'Wairimu Njoroge'], [SAID])).toEqual({ 'Chidi Okafor': 'chidi.okafor@kito.test' });
-  });
-  it('an address far from the name, in another sentence, is not guessed to be theirs', () => {
-    expect(theAddressesTheyGave(['Amani'], ['Amani runs sales. Please send everything to finance@kito.test.'])).toEqual({});
-  });
-  it('an address that is plainly theirs is theirs wherever it is said', () => {
-    expect(theAddressesTheyGave(['Njeri Kamau'], ['Add njeri.kamau@kito.test too.'])).toEqual({ 'Njeri Kamau': 'njeri.kamau@kito.test' });
   });
 });
 
@@ -43,7 +31,8 @@ describe('what the setup screen is handed', () => {
     return service;
   };
   const said = [{ role: 'user' as const, content: SAID }];
-  const model = { mode: 'something_new', initial: 'Chidi Okafor joining as a customer support agent', peopleNamed: ['Chidi Okafor', 'Wairimu Njoroge'] };
+  /* The model reads whose address is whose (setup flow, 22 November 2026): it hands back each person with the address typed for them. */
+  const model = { mode: 'something_new', initial: 'Chidi Okafor joining as a customer support agent', peopleNamed: ['Chidi Okafor', 'Wairimu Njoroge'], peopleEmails: [{ name: 'Chidi Okafor', email: 'Chidi.Okafor@kito.test' }] };
 
   it('the lead is not among the people, Chidi keeps the address she typed, and nobody is told to add them', async () => {
     const out: any = await world(model, 'Thank you.').onboard(said as any, undefined, undefined, undefined, undefined, { userId: 'u-w', organizationId: 'o1' });
@@ -60,5 +49,40 @@ describe('what the setup screen is handed', () => {
     /* Changed 3 November 2026: no "Anything else I should know?" is put under it any more; its talk of a next screen still comes out. */
     expect(out.reply).toBe(`This will help us track Chidi.\n\n${SETUP_IS_DONE}`);
     expect(out.reply).not.toMatch(/account/i);
+  });
+});
+
+describe('each person keeps the address typed for them, and only that (setup flow, 22 November 2026)', () => {
+  const world = (extracted: any) => {
+    const prisma: any = {
+      platformSetting: { findUnique: jest.fn(async () => null) },
+      user: { findUnique: jest.fn(async () => null) },
+      ground: { findMany: jest.fn(async () => []) },
+    };
+    const anthropic: any = { extract: jest.fn(async () => extracted), respond: jest.fn(async () => 'Got them.') };
+    const prompts: any = { getActive: jest.fn(async () => { throw new Error('none'); }) };
+    const service = new EntryService(anthropic, prisma, {} as any, {} as any, {} as any, {} as any, {} as any, prompts);
+    (service as any).guardedReply = jest.fn(async () => 'Got them.');
+    return service;
+  };
+  const said = [{ role: 'user' as const, content: 'Weekly. Amina, Brian and Esther esther@x.test are on it.' }];
+
+  it('Esther gets her address, and Amina and Brian get none, as the model read it', async () => {
+    const out: any = await world({ mode: 'recurring', peopleNamed: ['Amina', 'Brian', 'Esther'], peopleEmails: [{ name: 'Esther', email: 'esther@x.test' }] }).onboard(said as any);
+    expect(out.extracted.peopleEmails).toEqual({ Esther: 'esther@x.test' });
+  });
+
+  it('an address they never typed is dropped, and so is one for somebody not on the list', async () => {
+    const out: any = await world({
+      mode: 'recurring',
+      peopleNamed: ['Amina', 'Brian', 'Esther'],
+      peopleEmails: [{ name: 'Amina', email: 'amina@x.test' }, { name: 'Zawadi', email: 'esther@x.test' }, { name: 'Esther', email: 'esther@x.test' }],
+    }).onboard(said as any);
+    expect(out.extracted.peopleEmails).toEqual({ Esther: 'esther@x.test' });
+  });
+
+  it('nobody named means no addresses at all', async () => {
+    const out: any = await world({ mode: 'recurring', peopleEmails: [{ name: 'Esther', email: 'esther@x.test' }] }).onboard(said as any);
+    expect(out.extracted.peopleEmails).toBeUndefined();
   });
 });

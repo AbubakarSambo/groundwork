@@ -150,3 +150,21 @@ describe('what setup knows now', () => {
     expect(block).toContain('- What they want out of it: 20 schools signed up, 1000 parents making payments');
   });
 });
+
+describe('the name, the days and the day it happens on are part of the one reading (setup flow, 22 November 2026)', () => {
+  it('are kept from turn to turn, and a newer reading wins', () => {
+    const was = whatSetupKnowsNow(null, { name: 'Bill updates', workingDays: [1, 2, 3, 4, 5], cadenceAnchorDay: 1 });
+    expect(was).toMatchObject({ name: 'Bill updates', workingDays: [1, 2, 3, 4, 5], cadenceAnchorDay: 1 });
+    const now = whatSetupKnowsNow(was, { name: 'Bill updates from Abubakar' });
+    expect(now).toMatchObject({ name: 'Bill updates from Abubakar', workingDays: [1, 2, 3, 4, 5], cadenceAnchorDay: 1 });
+  });
+  it('Sunday, day 0, is a day that was said', () => {
+    expect(whatSetupKnowsNow(null, { cadenceAnchorDay: 0 }).cadenceAnchorDay).toBe(0);
+  });
+  it('are handed to the model as known, so it does not ask for them again', () => {
+    const block = whatIsSettledAndWhatIsNot({ name: 'Bill updates from Abubakar', workingDays: [1, 2, 3, 4, 5], cadenceAnchorDay: 1 });
+    expect(block).toMatch(/The name of the check-in: Bill updates from Abubakar/);
+    expect(block).toMatch(/The days people work, 0 is Sunday: 1, 2, 3, 4, 5/);
+    expect(block).toMatch(/The day it happens on \(a weekday, 0 is Sunday, or a day of the month\): 1/);
+  });
+});
