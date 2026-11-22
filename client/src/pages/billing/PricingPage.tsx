@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatDollars, type SubscriptionPlan } from '@/api/billing'
 import { theFreeTrialSentence } from '@/lib/the-free-trial'
-import { whatCoversThem } from './what-plan-and-billing-says'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 import { Mark } from '@/components/gw/ui'
@@ -42,7 +41,6 @@ export function PricingPage() {
     enabled: !!user,
     retry: false,
   })
-  const onFree = !!user && !!status?.people && whatCoversThem(status) === 'free'
 
   /** Live prices (Admin -> System -> Pricing) - PLAN_PRICES is only the pre-load fallback. */
   const { data: livePricing } = useQuery({
@@ -50,14 +48,6 @@ export function PricingPage() {
     queryFn: billingApi.getPricing,
     staleTime: 60 * 1000,
   })
-  /*
-   * NOTHING IS SAID ABOUT THE FREE PLAN UNTIL THE SERVER HAS SAID WHAT IS FREE (run 10). While the request was on its way, or had failed, this
-   * page said "Start free with 10 check-ins, for teams of 5 or fewer" and "Free, Always" from numbers it shipped with, while the app said the
-   * free month ends on 19 December. A page that does not yet know says no free offer at all; the numbers are the server's alone.
-   */
-  const pricingKnown = !!livePricing
-  const freeGrounds = livePricing?.free?.groundLimit
-  const freeTeam = livePricing?.free?.memberLimit
   /*
    * THE FREE MONTH IS SAID WHEREVER THE APP SAYS IT (run 9). The app told an admin "Your free month has started" while this page said "Start free with 10
    * check-ins" and "Free, Always", because the page read only the setting for new organisations. Signed in, an organisation that is on a free month is
@@ -147,7 +137,7 @@ export function PricingPage() {
             Pricing
           </h1>
           <p style={{ fontSize: 15, color: 'var(--gw-sub)', maxWidth: 520, margin: '0 auto', lineHeight: '25px' }}>
-            {trialSentence ?? (pricingKnown ? `Start free with ${freeGrounds} check-ins, for teams of ${freeTeam} or fewer, including you.` : '')} Subscribe as your team grows. Unlimited check-ins and reports on every plan.
+            {trialSentence ?? ''} Subscribe as your team grows. Unlimited check-ins and reports on every plan.
           </p>
         </div>
 
@@ -183,59 +173,6 @@ export function PricingPage() {
             </div>
           </div>
         )}
-
-        {/*
-          THE FREE PLAN, ONLY WHILE THE SWITCH IS OFF (Hafsah, 27 September). One switch, the free
-          trial's: while it is off the free plan is offered as today; once it is on, the trial above is
-          the only free period and new organisations pay, so the free plan is not offered to anybody.
-        */}
-        {pricingKnown && !trialSentence && <div style={{ background: 'var(--gw-card)', border: '1px solid var(--rule2-crisp)', borderRadius: 14, padding: '28px 32px', marginBottom: 'var(--gw-space-section)' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 'var(--gw-space-line)' }}>
-                <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-navy)' }}>Free</span>
-                <span style={{ fontSize: 11, background: 'var(--gw-green-bg)', color: 'var(--gw-green)', border: '1px solid var(--gw-green-b)', borderRadius: 6, padding: '2px 8px', fontWeight: 700 }}>Always</span>
-              </div>
-              <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', marginBottom: 'var(--gw-space-block)' }}>
-                Create up to {freeGrounds} check-ins for free, for teams of {freeTeam} or fewer including you. No card required. Unlimited check-ins and reports on every check-in.
-              </p>
-              <ul style={{ fontSize: 12, color: 'var(--gw-sub)', paddingLeft: 16, margin: 0, lineHeight: '22px' }}>
-                {/* "Templates" was listed here and on the marketing pricing page. There
-                    is no templates feature anywhere in the product - the only
-                    match in the codebase is "More templates" in a feature-REQUEST
-                    list. A free-tier bullet nobody can find erodes trust in the
-                    rest of the list. */}
-                {[`${freeGrounds} check-ins`, `Teams of ${freeTeam} or fewer`, 'Unlimited check-ins', 'Unlimited reports', 'Admin dashboard'].map((f) => (
-                  <li key={f}>{f}</li>
-                ))}
-              </ul>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>$0</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>forever</div>
-              {/*
-                * A CARD WITH NO STATE AND NO BUTTON READS AS UNAVAILABLE.
-                *
-                * Every paid plan below has something to press and this one had nothing at all, so
-                * the free tier looked like the one option that could not be chosen. It cannot be
-                * chosen, because it is where everybody already is - which is a completely different
-                * thing and was nowhere on the screen. Reported by somebody signing up: "start for
-                * free is not selectable, you can only select from the other options".
-                */}
-              {user && <div
-                style={{
-                  marginTop: 'var(--gw-space-block)', fontSize: 12, fontWeight: 700,
-                  color: onFree ? 'var(--gw-green-t)' : 'var(--gw-sub)',
-                  background: onFree ? 'var(--gw-green-bg)' : 'transparent',
-                  border: `1px solid ${onFree ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
-                  borderRadius: 7, padding: '6px 12px', display: 'inline-block',
-                }}
-              >
-                {onFree ? 'Your current plan' : 'Included with every plan'}
-              </div>}
-            </div>
-          </div>
-        </div>}
 
         {/* Subscription plans */}
         <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 'var(--gw-space-line)' }}>

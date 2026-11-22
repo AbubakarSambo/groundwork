@@ -124,10 +124,12 @@ describe('the situation step', () => {
     expectAtMostOnePrimaryButton(container)
   })
 
-  it('shows the free-limit notice as a Callout, still with one primary button, when the server refuses', async () => {
-    canCreateResult = { allowed: false, reason: 'Subscribe to open more.', groundsUsed: 10 }
+  /* Updated 23 November 2026: there is no free check-in limit (Hafsah, 22 November); the refusal is "no plan yet". */
+  it('shows the no-plan notice as a Callout, still with one primary button, when the server refuses', async () => {
+    canCreateResult = { allowed: false, reason: 'Your organisation has no plan yet. Choose one on Plan and billing to open a check-in.', noPlan: true }
     const { container } = renderPage()
-    await waitFor(() => expect(screen.getByText(/You have used all 10 of your free check-ins/)).toBeTruthy())
+    await waitFor(() => expect(screen.getAllByText('No plan yet').length).toBeGreaterThan(0))
+    expect(document.body.textContent).not.toMatch(/free check-ins/)
     expectNoOldKitClasses(container)
     expectNoBannedInlineStyles(container)
     expectAtMostOnePrimaryButton(container)
@@ -165,14 +167,14 @@ describe('the coach step', () => {
 })
 
 describe('the billing (paywall) step', () => {
-  it('is reached once the free limit is used up, and is free of old classes, banned inline styles, with one primary button', async () => {
-    canCreateResult = { allowed: false, reason: 'Subscribe to open more.', groundsUsed: 10 }
+  it('is reached when the organisation has no plan, and is free of old classes, banned inline styles, with one primary button', async () => {
+    canCreateResult = { allowed: false, reason: 'Your organisation has no plan yet. Choose one on Plan and billing to open a check-in.', noPlan: true }
     const { container } = renderPage()
     await pickNewHireCard()
     fireEvent.click(screen.getByText('Continue'))
     /* This screen's own heading - there is no B1 equivalent (see the file comment). */
     await waitFor(() => expect(screen.getByText('Before you continue')).toBeTruthy())
-    await waitFor(() => expect(screen.getByText('Subscribe to create more')).toBeTruthy())
+    await waitFor(() => expect(screen.getAllByText('No plan yet').length).toBeGreaterThan(0))
     expectNoOldKitClasses(container)
     expectNoBannedInlineStyles(container)
     expectAtMostOnePrimaryButton(container)

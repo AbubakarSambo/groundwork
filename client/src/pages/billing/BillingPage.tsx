@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPrice, formatDollars, isWhatsAppBillingAdmin, type SubscriptionPlan, FALLBACK_FREE_LIMITS } from '@/api/billing'
+import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPrice, formatDollars, isWhatsAppBillingAdmin, type SubscriptionPlan } from '@/api/billing'
 import { theFreeTrialSentence } from '@/lib/the-free-trial'
 import { whatCoversThem, thePlanLine, theNextPaymentLine, theNextPaymentSentence, whoCounts, theTrialNotices } from './what-plan-and-billing-says'
 import { theMonthFor } from './what-a-month-costs'
@@ -153,8 +153,6 @@ export function BillingPage() {
     onError: (e: any) => toast.error(aPersonsSentenceForAServerError(e?.response?.data?.message, 'WhatsApp did not change. Try again.')),
   })
 
-  const freeGrounds = livePricing?.free?.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
-  const freeTeam = livePricing?.free?.memberLimit ?? FALLBACK_FREE_LIMITS.memberLimit
 
   function priceLabel(plan: SubscriptionPlan): string {
     const live = livePricing?.plans?.find(p => p.plan === plan)
@@ -228,11 +226,9 @@ export function BillingPage() {
   const isPaused = orgSub?.status === 'paused'
   const endsAt = orgSub?.endsAt ?? null
   const peopleOverCap = billingStatus?.people?.cap != null && billingStatus.people.count > billingStatus.people.cap
-  const hasBillingHistory = (billingStatus?.activeGrounds ?? []).length > 0
   /* "IN PROGRESS": ONE SENTENCE ABOVE THE LIST WHEN IT IS TRUE OF EVERY ROW, never a tag repeated
      on each one for a fact that is the same for all of them. See the comment where this is used. */
   const allFreeRows = grounds.length > 0 && (grounds as any[]).every((g: any) => g.isFreeGround)
-  const anyExtensionUsed = (grounds as any[]).some((g: any) => g.org?.freeExtensionUsed ?? false)
 
   /*
    * B-216: A DEAD END, NOT ANY MORE. "You need admin access to manage billing for your
@@ -319,7 +315,7 @@ export function BillingPage() {
             <p className="gwui-panel-text"><b>You are on us until {whenItWas(billingStatus.onTheHouse.until, 'full')}</b></p>
             <p className="gwui-panel-text-muted">
               Everything the {PLAN_LABELS[billingStatus.onTheHouse.plan as SubscriptionPlan] ?? String(billingStatus.onTheHouse.plan)} plan
-              covers, at no cost. Nothing is charged and there is no card on file. After that date the free plan applies unless you subscribe.
+              covers, at no cost. Nothing is charged and there is no card on file. After that date, choose a plan to keep opening check-ins.
             </p>
           </Stack>
         </Panel>
@@ -387,7 +383,7 @@ export function BillingPage() {
           <FieldRows>
             <FieldRow
               label="Plan"
-              value={`${thePlanLine(billingStatus, livePricing, freeGrounds)}${peopleOverCap ? ` ${billingStatus?.overThePlanSays?.trim() || 'More people have accounts here than this plan covers.'}` : ''}`}
+              value={`${thePlanLine(billingStatus, livePricing)}${peopleOverCap ? ` ${billingStatus?.overThePlanSays?.trim() || 'More people have accounts here than this plan covers.'}` : ''}`}
               /*
                * SCREEN FAULT 11 (FINAL WALK): "MORE PEOPLE HAVE ACCOUNTS HERE THAN THIS PLAN COVERS."
                * NAMED A PROBLEM WITH NO NEXT STEP BESIDE IT. The row's own action was the same plain
@@ -470,17 +466,6 @@ export function BillingPage() {
             </Stack>
           </Panel>
         </Section>
-      )}
-
-      {!hasBillingHistory && covers === 'free' && (
-        <Panel>
-          <Stack gap={10}>
-            <p className="gwui-panel-text"><b>Your first {freeGrounds} check-ins are free.</b></p>
-            <p className="gwui-panel-text-muted">
-              Create up to {freeGrounds} check-ins with unlimited check-ins and reports, no card required. The free plan covers {freeTeam} people including you. Subscribe when your team outgrows it.
-            </p>
-          </Stack>
-        </Panel>
       )}
 
       {month ? (
@@ -662,33 +647,14 @@ export function BillingPage() {
           <Panel><p className="gwui-panel-text-muted">Nothing active yet.</p></Panel>
         ) : (
           <Stack gap={10}>
-            {/*
-             * ONE SENTENCE ABOVE THE LIST, NOT A TAG ON EVERY ROW (group 1 review): "Free
-             * check-in" and "Free extension available" repeated on every row read as clipped
-             * labels, not sentences, saying the same thing over and over for the same
-             * organisation-wide facts (every ground here is free the same way, and the free
-             * extension is an organisation's, not a ground's). Said once above the list instead,
-             * and only when it is true of every row - if the rows differ (some free, some metered,
-             * or the extension already used on this organisation), each row keeps its own tag
-             * below rather than a sentence that would not be true of all of them.
-             */}
-            {/*
-             * GROUP 1'S THIRD REVIEW: "You can extend any of them for free" was not true of
-             * anything on this page - the free extension is claimed from inside a check-in itself
-             * (SessionPaywallModal.tsx's "Continue for free", shown when a session completes),
-             * never from Plan and billing. Said truthfully, naming where it actually happens.
-             */}
-            {allFreeRows && !anyExtensionUsed && (
-              <p className="gwui-panel-text-muted">Each of these is a free check-in. You can extend one for free from its own check-in.</p>
-            )}
-            {allFreeRows && anyExtensionUsed && (
-              <p className="gwui-panel-text-muted">Each of these is a free check-in. The one free extension for your organisation has already been used.</p>
+            {/* One sentence above the list, not a tag on every row, and only when it is true of every row (group 1 review). */}
+            {allFreeRows && (
+              <p className="gwui-panel-text-muted">Each of these is a free check-in.</p>
             )}
             <FieldRows>
               {(grounds as any[]).map((g: any) => {
                 const balance: number | undefined = g.sessionsBalance
                 const isFree: boolean = !!g.isFreeGround
-                const extUsed: boolean = g.org?.freeExtensionUsed ?? false
                 return (
                   <FieldRow
                     key={g.id}
@@ -703,8 +669,6 @@ export function BillingPage() {
                         ) : balance !== undefined ? (
                           <Tag tone={balance > 0 ? 'plain' : 'concern'}>{balance} check-in{balance !== 1 ? 's' : ''} left</Tag>
                         ) : null}
-                        {!isSubscribed && !allFreeRows && !extUsed && <Tag tone="proven">Free extension available</Tag>}
-                        {!isSubscribed && !allFreeRows && extUsed && <Tag tone="plain">Free extension used</Tag>}
                       </span>
                     )}
                     action={!isFree && !isSubscribed

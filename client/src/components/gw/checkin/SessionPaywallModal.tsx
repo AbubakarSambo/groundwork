@@ -50,22 +50,6 @@ export function SessionPaywallModal({
               Did Groundwork help your team move forward? Choose what works best for you.
             </div>
 
-            {paywall.freeExtensionAvailable && (
-              <div style={{ border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 12, background: 'var(--gw-green-bg)' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-t)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Add one more free check-in</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px', marginBottom: 12 }}>
-                  Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free check-in and continue your Check-in.
-                </div>
-                <button className="btn sec"
-                  onClick={() => paywall.claimFreeExtension.mutate()}
-                  disabled={paywall.claimFreeExtension.isPending}
-                  style={{ width: '100%' }}
-                >
-                  {paywall.claimFreeExtension.isPending ? 'Adding...' : 'Continue for free'}
-                </button>
-              </div>
-            )}
-
             <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Upgrade organisation</div>
               <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px', marginBottom: 12 }}>

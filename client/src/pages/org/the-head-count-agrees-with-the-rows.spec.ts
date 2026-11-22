@@ -8,9 +8,9 @@ describe('the head count on People agrees with the rows below it', () => {
       .toBe('5 people, on the Starter plan, which is for up to 10. Ruth is invited, with no account yet.')
   })
   it('says so when there are more people than the plan covers', () => {
-    expect(howManyHere(4, null, 1)).toBe('4 people, on the free plan, which is for up to 1. That is more people than the plan covers.')
+    expect(howManyHere(4, null, 1)).toBe('4 people, with no plan chosen yet, which covers up to 1. That is more people than the plan covers.')
   })
   it('leaves the usual sentence alone', () => {
-    expect(howManyHere(3, null, 5)).toBe('3 people, on the free plan, which is for up to 5.')
+    expect(howManyHere(3, null, 5)).toBe('3 people, with no plan chosen yet, which covers up to 5.')
   })
 })

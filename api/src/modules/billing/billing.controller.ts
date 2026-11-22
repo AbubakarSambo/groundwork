@@ -160,17 +160,6 @@ export class BillingController {
     return this.billing.cancelAccount(organizationId);
   }
 
-  @Post('free-extension')
-  @ApiBearerAuth()
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Claim one free session extension for the org (one-time per org)' })
-  async claimFreeExtension(
-    @CurrentUser('organizationId') organizationId: string,
-    @Body() body: { groundId: string },
-  ) {
-    return this.billing.claimFreeExtension(organizationId, body.groundId);
-  }
-
   @Post('subscription')
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
@@ -288,7 +277,7 @@ export class BillingController {
       userId,
       body.sessionsGranted,
       body.note,
-      body.allowCodeCreation ?? false,
+      body.allowCodeCreation ?? true,
       body.parentCodeId,
     );
   }

@@ -48,7 +48,9 @@ for (const m of all.matchAll(/platformSetting\.(?:upsert|update|create)\(\{[\s\S
 
 describe('every platform setting the API reads', () => {
   it('is read somewhere (the sweep sees the keys)', () => {
-    expect([...readKeys].sort()).toEqual(expect.arrayContaining(['coaching_live', 'correction_window_days', 'whatsapp_enabled']));
+    expect([...readKeys].sort()).toEqual(expect.arrayContaining(['correction_window_days', 'whatsapp_enabled']));
+    /* Coaching is always on (Hafsah, 22 November 2026): its setting is read nowhere, so nothing can switch it off. */
+    expect([...readKeys]).not.toContain('coaching_live');
   });
 
   it('has a writer in the API, not only in SQL', () => {
@@ -56,9 +58,9 @@ describe('every platform setting the API reads', () => {
     expect(unwritable).toEqual([]);
   });
 
-  it('and the two that had none are written from the admin routes that had none', () => {
+  it('and the correction window is written from its admin route, and coaching has no switch to write', () => {
     const controller = strip(readFileSync(join(__dirname, 'admin.controller.ts'), 'utf8'));
-    expect(controller).toMatch(/@Patch\('coaching'\)/);
+    expect(controller).not.toMatch(/@Patch\('coaching'\)/);
     expect(controller).toMatch(/@Patch\('correction-window'\)/);
   });
 });

@@ -41,14 +41,11 @@ describe('GW-FREE-TIER-UNLIMITED: free-tier grounds are never session-paywalled'
     const res = await svc.canStartSession('g1');
     expect(res.allowed).toBe(false);
     expect(res.sessionsBalance).toBe(0);
-    // The INTENT here is that a non-free ground with no subscription is still
-    // blocked - that has not changed. Only what it says has: "add a session for
-    // $5" pointed at a purchase that no longer exists.
-    expect(res.reason).toBe("You've used your free check-ins. Upgrade to carry on.");
-    expect(res.reason).not.toMatch(/\$5|add a check-in/i);
-    // And it must tell them their record is safe, because the person who hits
-    // this is usually a participant who chose neither to pay nor to cancel.
-    expect(res.reason).toBe("You've used your free check-ins. Upgrade to carry on.");
+    // The INTENT here is that a non-free ground with no cover is still blocked - that has not changed. What it says has
+    // (23 November 2026): there are no free check-ins to have used, so it says the check-in is paused until the team
+    // subscribes, and that their answers are kept, because the person who hits this usually chose neither to pay nor to cancel.
+    expect(res.reason).toBe('This check-in is paused until your team subscribes. Only an admin can do that, and your answers so far are kept.');
+    expect(res.reason).not.toMatch(/\$5|add a check-in|free check-ins/i);
   });
 
   it('an active subscription is still unlimited (-1) on a non-free ground (paid path intact)', async () => {

@@ -49,7 +49,7 @@ const FREE = { subscription: { plan: null, status: null }, people: { count: 3, c
 beforeEach(() => {
   m.user = null
   m.status = {}
-  m.pricing = { plans: PLANS, free: { groundLimit: 10, memberLimit: 5 }, trial: { on: false, teamsUnder: 20, months: 1 } }
+  m.pricing = { plans: PLANS, trial: { on: false, teamsUnder: 20, months: 1 } }
 })
 
 describe('a visitor who is not signed in', () => {
@@ -60,7 +60,9 @@ describe('a visitor who is not signed in', () => {
        the currency symbol and the number are kept, "/mo" becomes the plain words. */
     await waitFor(() => expect(text()).toContain('$410 a month'))
     expect(text()).not.toContain('Your current plan')
-    expect(text()).toContain('Start free with 10 check-ins, for teams of 5 or fewer, including you. Subscribe as your team grows. Unlimited check-ins and reports on every plan.')
+    /* Updated 23 November 2026: no free check-ins are offered anywhere (Hafsah, 22 November). */
+    expect(text()).not.toMatch(/Start free with|10 check-ins/)
+    expect(text()).toContain('Subscribe as your team grows. Unlimited check-ins and reports on every plan.')
     expect(text()).toContain('For small teams getting what each person says written down.')
   })
 
@@ -71,10 +73,11 @@ describe('a visitor who is not signed in', () => {
     expect(text()).not.toMatch(/no trial that expires|No proration surprises/)
   })
 
-  it('while the switch is off, reads the free plan as today, but never as theirs', async () => {
+  /* Updated 23 November 2026: there is no free plan to fall back to, so a trial an admin switched off offers nothing free. */
+  it('with the trial switched off, offers nothing free at all, and never says a plan is theirs', async () => {
     renderIt()
     await waitFor(() => expect(text()).toContain('$410 a month'))
-    expect(text()).toContain('forever')
+    expect(text()).not.toMatch(/forever|Start free with|free check-ins/)
     expect(text()).not.toContain('Your current plan')
   })
 
@@ -112,18 +115,20 @@ describe('a visitor who is not signed in', () => {
 })
 
 describe('somebody signed in', () => {
-  it('on the free plan reads that it is their current plan', async () => {
+  /* Updated 23 November 2026: there is no free plan to call anybody's current plan (Hafsah, 22 November). */
+  it('with nothing covering them, is never told a free plan is their current plan', async () => {
     m.user = { id: 'u1', role: 'ADMIN', organization: { subscriptionPlan: null } }
     m.status = FREE
     renderIt()
-    await waitFor(() => expect(text()).toContain('Your current plan'))
+    await waitFor(() => expect(text()).toContain('$410 a month'))
+    expect(text()).not.toMatch(/Your current plan|free plan/)
   })
 
   it('inside a free run, or paying, is not told they are on the free plan', async () => {
     m.user = { id: 'u1', role: 'ADMIN', organization: { subscriptionPlan: null } }
     m.status = { ...FREE, onTheHouse: { plan: 'SMALL_TEAM', until: '2026-12-27T00:00:00.000Z' } }
     renderIt()
-    await waitFor(() => expect(text()).toContain('Included with every plan'))
+    await waitFor(() => expect(text()).toContain('$410 a month'))
     expect(text()).not.toContain('Your current plan')
   })
 
@@ -139,7 +144,7 @@ describe('somebody signed in', () => {
     m.user = { id: 'u1', role: 'ADMIN', organization: { subscriptionPlan: null } }
     m.status = FREE
     renderIt()
-    await waitFor(() => expect(text()).toContain('Your current plan'))
+    await waitFor(() => expect(text()).toContain('$410 a month'))
     expect(screen.getByRole('link', { name: 'Go to your check-ins' })).toHaveAttribute('href', '/today')
     expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull()
   })

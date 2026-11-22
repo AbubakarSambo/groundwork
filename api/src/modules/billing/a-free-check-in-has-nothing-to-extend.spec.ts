@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { BillingEventType } from '@prisma/client';
 import { BillingService } from './billing.service';
 
@@ -24,23 +24,12 @@ const service = (ground: any, org = { freeExtensionUsed: false }) => {
   return { s, writes };
 };
 
+/* Rewritten 23 November 2026: the free extension went with the free plan (Hafsah, 22 November: the only free plan is the free
+   trial). There is nothing left to claim, and no route to claim it. */
 describe('the free extension', () => {
-  it('is refused on a free check-in, with purchaseSession’s reason, before anything is spent', async () => {
-    const { s } = service({ id: 'g', isFreeGround: true });
-    await expect(s.claimFreeExtension('org', 'g')).rejects.toBeInstanceOf(ForbiddenException);
-    await expect(s.claimFreeExtension('org', 'g')).rejects.toThrow(/already has unlimited free sessions, so there is nothing to extend/);
-    expect(s.prisma.$transaction).not.toHaveBeenCalled();
-  });
-
-  it('says that "already used" is permanent, rather than "try again"', async () => {
-    const { s } = service({ id: 'g', isFreeGround: false }, { freeExtensionUsed: true });
-    await expect(s.claimFreeExtension('org', 'g')).rejects.toThrow(/already used its one free extension.*does not reset/);
-  });
-
-  it('is granted once on a metered check-in', async () => {
+  it('is gone: nothing on billing can spend one', () => {
     const { s } = service({ id: 'g', isFreeGround: false });
-    await s.claimFreeExtension('org', 'g');
-    expect(s.prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(s.claimFreeExtension).toBeUndefined();
   });
 });
 

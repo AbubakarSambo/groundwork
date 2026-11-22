@@ -27,8 +27,10 @@ describe('the Reports list in a pause', () => {
 })
 
 describe('People, for an organisation with no plan yet', () => {
-  it('does not say "on the free plan" of a team the free plan was never given to, as Plan and billing does not', () => {
-    expect(howManyHere(4, null, 1, [], [], [], [], null, [], true)).toBe('4 people, with no plan chosen yet, which covers up to 1. That is more people than the plan covers.')
-    expect(howManyHere(4, null, 5)).toBe('4 people, on the free plan, which is for up to 5.')
+  /* Updated 22 November 2026: there is no free plan any more, only the free trial, so a team with no plan is never told it is "on the free plan". */
+  it('says a team with no plan has no plan chosen yet, never "on the free plan"', () => {
+    expect(howManyHere(4, null, 1, [], [], [], [], null, [])).toBe('4 people, with no plan chosen yet, which covers up to 1. That is more people than the plan covers.')
+    expect(howManyHere(4, null, 5)).toBe('4 people, with no plan chosen yet, which covers up to 5.')
+    expect(howManyHere(4, 'SMALL_TEAM', 20)).toBe('4 people, on the Small Team plan, which is for up to 20.')
   })
 })

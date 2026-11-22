@@ -201,7 +201,7 @@ describe('the doors, for an organisation in its four weeks, paused, and then pay
       const open = await w.billing.canStartSession('g-sales');
       const make = await w.billing.canCreateGround('org-baridi');
       if (stops) {
-        expect(open).toEqual({ allowed: false, reason: PAUSED_UNTIL_THEY_SUBSCRIBE, sessionsBalance: 0, freeExtensionAvailable: false });
+        expect(open).toEqual({ allowed: false, reason: PAUSED_UNTIL_THEY_SUBSCRIBE, sessionsBalance: 0 });
         expect(make).toEqual({ allowed: false, reason: NO_PLAN_TO_OPEN, noPlan: true });
       } else {
         expect(open.allowed).toBe(true);
@@ -222,7 +222,8 @@ describe('the doors, for an organisation in its four weeks, paused, and then pay
     const forTheAdmin = await w.billing.getStatus('org-baridi', true).catch((e: any) => ({ error: e?.message } as any));
     console.log(`GRACE READS ON PLAN AND BILLING: ${forTheAdmin.afterTheTrial}`);
     expect(forTheAdmin.afterTheTrial).toBe('Groundwork is paused at Baridi Appliances until you choose a plan. No check-ins open and no messages go out. Everything is kept, and you can still read it all.');
-    expect(forTheAdmin.onTheFreePlan).toBe(false);
+    /* There is no free plan any more (23 November 2026), so nothing says it. */
+    expect(forTheAdmin).not.toHaveProperty('onTheFreePlan');
     expect(forTheAdmin.onTheHouse).toBeNull();
     const forJuma = await w.billing.getStatus('org-baridi', false).catch((e: any) => ({ error: e?.message } as any));
     expect(forJuma.afterTheTrial).toBeNull();

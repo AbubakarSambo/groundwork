@@ -102,7 +102,7 @@ export async function theGraceSetting(prisma: any): Promise<TrialGraceSetting> {
 }
 
 /**
- * THE GRACE IN FORCE NOW: the weeks and the moment nobody's weeks start before. Null while the free trial's switch is off, which
+ * THE GRACE IN FORCE NOW: the weeks and the moment nobody's weeks start before. Null only while the free trial's switch is off, which
  * means no trial ends into a pause. Read straight from the two rows so every door (the email door, the WhatsApp door, the gates)
  * reads the same thing without needing the pricing service.
  */
@@ -112,8 +112,9 @@ export async function theGraceInForce(prisma: any): Promise<TheGrace | null> {
     theGraceSetting(prisma),
   ]);
   const trial = trialRow?.value as { on?: unknown; onSince?: unknown } | undefined;
-  if (trial?.on !== true) return null;
-  const moments = [setting.onSince, typeof trial.onSince === 'string' ? trial.onSince : undefined]
+  /* On unless the row says off (22 November 2026), as the free trial itself reads. */
+  if (trial?.on === false) return null;
+  const moments = [setting.onSince, typeof trial?.onSince === 'string' ? trial.onSince : undefined]
     .map((s) => (s ? new Date(s).getTime() : NaN))
     .filter((t) => !Number.isNaN(t));
   return { weeks: setting.weeks, notBefore: moments.length ? new Date(Math.max(...moments)) : null };

@@ -72,8 +72,10 @@ describe('the words a person reads are the product\'s own', () => {
     }
   });
 
-  it('the free-plan refusal says check-ins, and says what to do', () => {
+  /* Updated 23 November 2026: there is no free plan of check-ins to refuse from (Hafsah, 22 November). */
+  it('the no-plan refusal says check-ins, and says what to do, and nothing names free check-ins', () => {
     const billing = strip('src/modules/billing/billing.service.ts');
-    expect(billing).toContain('Your free plan includes ${freeGroundLimit} check-ins. Subscribe to open more.');
+    expect(billing).toContain('Your organisation has no plan yet. Choose one on Plan and billing to open a check-in.');
+    expect(billing).not.toMatch(/free plan includes|free check-ins/);
   });
 });

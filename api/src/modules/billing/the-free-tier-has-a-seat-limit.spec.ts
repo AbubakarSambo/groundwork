@@ -1,14 +1,16 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { BillingService, freeSeatLimitMessage, paidSeatLimitMessage } from './billing.service';
-import { DEFAULT_FREE_MEMBER_LIMIT } from './pricing.service';
+import { BillingService, freeSeatLimitMessage, paidSeatLimitMessage, NO_PLAN_TO_ADD } from './billing.service';
 
 /**
  * PERSON NUMBER SIX WAS SIMPLY ADDED.
  *
  * `canInviteMember` returned `{ allowed: true }` on its first line for any organisation without an
- * active subscription, so free accounts were exempt from seat caps entirely. The free tier is now
- * "10 check-ins, for teams of 5 or fewer", and this is the gate that means it.
+ * active subscription, so free accounts were exempt from seat caps entirely.
+ *
+ * UPDATED 23 November 2026: there is no free tier of five people any more (Hafsah, 22 November: the free plan is the free trial,
+ * for teams under 20). An organisation that nothing covers, because its trial is over or its team starts on a plan, adds
+ * nobody new until it chooses a plan. Nobody already here is removed.
  *
  * Three properties, all of which were decided rather than assumed:
  *
@@ -23,7 +25,6 @@ function svc(opts: {
   seats: number;
   plan?: string | null;
   status?: string | null;
-  freeLimit?: number;
   cap?: number | null;
 }) {
   const prisma = {
@@ -39,47 +40,22 @@ function svc(opts: {
     },
   } as any;
   const pricing = {
-    getFreeMemberLimit: async () => opts.freeLimit ?? DEFAULT_FREE_MEMBER_LIMIT,
     memberCapFor: async () => (opts.cap === undefined ? null : opts.cap),
   } as any;
   return new BillingService(prisma, { stripe: {} } as any, pricing, {} as any, { sendMemberCapWarning: async () => undefined } as any, {} as any);
 }
 
-describe('a free organisation has a seat limit', () => {
-  it('the fifth person is allowed, because the limit is five INCLUDING the creator', async () => {
-    /** Four already there, the creator among them, so the fifth is the last one that fits. */
-    const res = await svc({ seats: 4 }).canInviteMember('org1');
-    expect(res.allowed).toBe(true);
+describe('an organisation nothing covers adds nobody new', () => {
+  it('the person who set it up is there; the next person waits for a plan', async () => {
+    const res = await svc({ seats: 1 }).canInviteMember('org1');
+    expect(res).toEqual({ allowed: false, reason: NO_PLAN_TO_ADD });
+    expect(NO_PLAN_TO_ADD).toBe('Your organisation has no plan yet. Choose one on Plan and billing to add people.');
   });
 
-  it('the sixth is refused', async () => {
-    const res = await svc({ seats: 5 }).canInviteMember('org1');
-    expect(res.allowed).toBe(false);
-  });
-
-  it('and the refusal says the count includes them, and what subscribing gives', async () => {
-    const res = await svc({ seats: 5 }).canInviteMember('org1');
-    expect(res.reason).toContain('including you');
-    expect(res.reason).toContain('invite 4 others');
-    expect(res.reason).toContain('Subscribe');
-    /** Plain and non-punitive: nothing about what they did wrong, no "not allowed". */
-    expect(res.reason).not.toMatch(/not allowed|cannot|denied|exceeded/i);
-  });
-
-  it('an account ALREADY over the limit keeps everybody and is only stopped from adding', async () => {
-    /**
-     * The no-retroactive-lockout property, as behaviour. A free account sitting at nine people is
-     * refused a tenth and nothing else happens to it: this method only ever answers "may I add
-     * one more", and it has no path that removes anybody.
-     */
+  it('an account ALREADY over it keeps everybody and is only stopped from adding', async () => {
     const res = await svc({ seats: 9 }).canInviteMember('org1');
     expect(res.allowed).toBe(false);
-    expect(res.reason).toContain('including you');
-  });
-
-  it('the limit is whatever an admin has set, not a number in this file', async () => {
-    expect((await svc({ seats: 7, freeLimit: 8 }).canInviteMember('org1')).allowed).toBe(true);
-    expect((await svc({ seats: 8, freeLimit: 8 }).canInviteMember('org1')).allowed).toBe(false);
+    expect(res.reason).not.toMatch(/not allowed|denied|exceeded/i);
   });
 });
 
@@ -101,7 +77,7 @@ describe('a subscribed organisation uses its plan cap, from the database', () =>
     expect(res.allowed).toBe(true);
   });
 
-  it('a lapsed subscription falls back to the FREE limit rather than to unlimited', async () => {
+  it('a lapsed subscription falls back to no plan rather than to unlimited', async () => {
     /**
      * The dangerous middle state. `subscriptionPlan` is set and the status is not active, which
      * the old code read as "no subscription, therefore no limit". It has to mean the free limit,
@@ -109,7 +85,7 @@ describe('a subscribed organisation uses its plan cap, from the database', () =>
      */
     const res = await svc({ seats: 30, plan: 'SCALE', status: 'canceled' }).canInviteMember('org1');
     expect(res.allowed).toBe(false);
-    expect(res.reason).toContain('free plan');
+    expect(res.reason).toBe(NO_PLAN_TO_ADD);
   });
 });
 
@@ -141,7 +117,8 @@ describe('the messages, and where the caps are allowed to live', () => {
     const code = readFileSync(join(__dirname, 'pricing.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '');
-    const labels = code.slice(code.indexOf('PLAN_LABELS'), code.indexOf('FREE_GROUND_LIMIT_KEY'));
+    const start = code.indexOf('PLAN_LABELS');
+    const labels = code.slice(start, code.indexOf('export', start + 1));
     expect(labels).not.toMatch(/up to \d/i);
     expect(labels).not.toMatch(/people/i);
   });

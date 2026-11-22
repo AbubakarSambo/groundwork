@@ -1,39 +1,34 @@
-import { BillingService } from './billing.service';
+import { BillingService, NO_PLAN_TO_OPEN } from './billing.service';
 
 /**
- * THE FREE PLAN IS AN ALLOWANCE, NOT A LIFETIME TALLY.
+ * THERE IS NO ALLOWANCE OF FREE CHECK-INS (rewritten 23 November 2026: Hafsah, 22 November, "there's nothing like 10 free
+ * checkins"; the free plan is the free trial).
  *
- * canCreateGround counted every check-in the organisation had ever made against the free limit, so
- * an organisation that opened forty while subscribed and then cancelled had "used all ten free
- * check-ins" without ever having had one. The pricing page is frozen and says "up to 10 check-ins
- * for free"; a check-in opened on a subscription is stamped isFreeGround=false at creation; so the
- * function counts free check-ins, and means what the page says.
+ * This file used to prove that canCreateGround counted only free check-ins against a limit of ten. There is no limit now, so
+ * nothing is counted: an organisation with no cover and no trial left is told it has no plan, however many check-ins it made.
  */
 const service = (count: jest.Mock) => {
   const s = Object.create(BillingService.prototype) as any;
   s.prisma = {
-    organization: { findUnique: jest.fn(async () => ({ subscriptionPlan: null, subscriptionStatus: 'cancelled', careFeeStatus: null })) },
+    organization: { findUnique: jest.fn(async () => ({ subscriptionPlan: null, subscriptionStatus: 'cancelled', careFeeStatus: null, freeTrialStartedAt: new Date('2026-06-01'), freeUntil: new Date('2026-07-01'), freePlan: 'SMALL_TEAM' })) },
     ground: { count },
+    platformSetting: { findUnique: jest.fn(async () => null) },
   };
-  s.pricing = { getFreeGroundLimit: jest.fn(async () => 10) };
+  s.pricing = { getFreeTrial: jest.fn(async () => ({ on: true, teamsUnder: 20, months: 1 })) };
   return s;
 };
 
-describe('the free allowance', () => {
-  it('counts free check-ins, not every check-in ever made', async () => {
+describe('no free allowance', () => {
+  it('never counts check-ins to decide whether another may be opened', async () => {
     const count = jest.fn(async () => 3);
     await service(count).canCreateGround('org');
-    expect(count).toHaveBeenCalledWith({ where: { organizationId: 'org', isFreeGround: true } });
+    expect(count).not.toHaveBeenCalled();
   });
 
-  it('so forty paid check-ins and three free ones is three of ten, and the fourth is allowed', async () => {
-    const res = await service(jest.fn(async () => 3)).canCreateGround('org');
-    expect(res).toEqual({ allowed: true, freeReason: 'FREE_TIER', groundsUsed: 3 });
-  });
-
-  it('and ten free ones is the limit the page names', async () => {
-    const res = await service(jest.fn(async () => 10)).canCreateGround('org');
-    expect(res.allowed).toBe(false);
-    expect(res.reason).toMatch(/free plan includes 10 check-ins/);
+  it('three check-ins or forty, an organisation whose trial is over is told it has no plan, not a count', async () => {
+    for (const n of [3, 40]) {
+      const res = await service(jest.fn(async () => n)).canCreateGround('org');
+      expect(res).toEqual({ allowed: false, reason: NO_PLAN_TO_OPEN, noPlan: true });
+    }
   });
 });

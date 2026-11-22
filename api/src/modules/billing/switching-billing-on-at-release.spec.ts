@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
-import { PricingService, freePlanApplies } from './pricing.service';
+import { PricingService } from './pricing.service';
 import { WhatsAppAddOnService } from './whatsapp-add-on.service';
 
 /**
@@ -13,6 +13,10 @@ import { WhatsAppAddOnService } from './whatsapp-add-on.service';
  * check (docs/deploy.md, "Switching billing on at release"), never by a migration that cannot look first.
  *
  * Every organisation here was made on 1 August 2026. The switch goes on at release, 6 October 2026. Today is 15 October.
+ *
+ * UPDATED 23 November 2026 (Hafsah, 22 November: "turn the switch on, nothing switch off from now on" and "there's nothing like
+ * 10 free checkins"): the trial is on by default and is the only free plan. An organisation already here with no cover is no
+ * longer kept on an old free plan; it is given the free trial once, the first time it needs cover, WhatsApp included.
  */
 const NOW = new Date('2026-10-15T10:00:00Z');
 const RELEASE = '2026-10-06T00:00:00Z';
@@ -42,7 +46,9 @@ function world(org: any, trial: any = { on: true, teamsUnder: 20, months: 1, onS
         return q?.where?.OR && either ? [{ id: row.id }] : [];
       }),
       update: jest.fn(async (q: any) => { Object.assign(row, q.data); return row; }),
+      updateMany: jest.fn(async (q: any) => { if (row.freeTrialStartedAt) return { count: 0 }; Object.assign(row, q.data); return { count: 1 }; }),
     },
+    ground: { findFirst: jest.fn(async () => null), findMany: jest.fn(async () => []) },
     pricingPlan: {
       findMany: jest.fn(async () => plans),
       findUnique: jest.fn(async (q: any) => plans.find((p) => p.plan === q.where.plan)),
@@ -61,7 +67,7 @@ function world(org: any, trial: any = { on: true, teamsUnder: 20, months: 1, onS
       upsert: jest.fn(async () => ({})),
       updateMany: jest.fn(async () => ({ count: 0 })),
     },
-    user: { findMany: jest.fn(async () => [{ email: 'admin@existing.test', firstName: 'Ngozi' }]) },
+    user: { findMany: jest.fn(async () => [{ email: 'admin@existing.test', firstName: 'Ngozi' }]), count: jest.fn(async () => 6) },
   };
   const stripeCalls: any[] = [];
   const stripe: any = {
@@ -85,31 +91,28 @@ function world(org: any, trial: any = { on: true, teamsUnder: 20, months: 1, onS
 
 const withoutComments = (t: string): string => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-describe('an existing client on the free plan', () => {
-  it('keeps WhatsApp, is charged nothing, is emailed nothing, and the nightly sweep never reaches Stripe', async () => {
-    const { addOn, stripeCalls, emails } = world(ON_THE_FREE_PLAN);
+describe('an existing client with no cover', () => {
+  it('is given the free trial once, keeps WhatsApp, is charged nothing, is emailed nothing, and the nightly sweep never reaches Stripe', async () => {
+    const { addOn, stripeCalls, emails, row } = world(ON_THE_FREE_PLAN) as any;
     expect(await addOn.mayWeSend('org-existing', NOW)).toEqual({ send: true });
+    expect(row.freeTrialStartedAt).toBeInstanceOf(Date);
+    expect(row.freePlan).toBe('SMALL_TEAM');
     const s = await addOn.standing('org-existing', NOW);
-    expect(s).toMatchObject({ switchOn: true, onTheFreePlan: true, charged: false, heldBecause: null });
+    expect(s).toMatchObject({ switchOn: true, inAFreeRun: true, charged: false, heldBecause: null });
+    expect(s).not.toHaveProperty('onTheFreePlan');
     await addOn.syncEveryLine(NOW);
     expect(stripeCalls).toEqual([]);
     expect(emails).toEqual([]);
   });
-
-  it('keeps the free plan after release, while a team made after the switch does not', () => {
-    const trial = { on: true, teamsUnder: 20, months: 1, onSince: RELEASE };
-    expect(freePlanApplies(trial, MADE)).toBe(true);
-    expect(freePlanApplies(trial, new Date('2026-10-07T09:00:00Z'))).toBe(false);
-  });
 });
 
 describe('an existing client in a free run Groundwork gave it', () => {
-  it('keeps WhatsApp and is charged nothing during the run, and keeps the free plan after it', async () => {
+  it('keeps WhatsApp and is charged nothing during the run, and after it is given the free trial, once', async () => {
     const during = world(ON_THE_HOUSE);
     expect(await during.addOn.mayWeSend('org-existing', NOW)).toEqual({ send: true });
     expect((await during.addOn.standing('org-existing', NOW)).charged).toBe(false);
     const after = world(ON_THE_HOUSE_ENDED);
-    expect(await after.addOn.standing('org-existing', NOW)).toMatchObject({ onTheFreePlan: true, sending: true, charged: false });
+    expect(await after.addOn.standing('org-existing', NOW)).toMatchObject({ inAFreeRun: true, sending: true, charged: false });
     await after.addOn.syncEveryLine(NOW);
     expect(after.stripeCalls).toEqual([]);
   });
@@ -135,8 +138,8 @@ describe('an existing client that pays: why the switch is a release step after a
   });
 });
 
-describe('the switch itself gives nothing to anybody already here', () => {
-  it('the trial is given only when somebody says their team size, never by the switch, a cron or a migration', () => {
+describe('the trial is given by the cover reads, never by a cron or a migration', () => {
+  it('billing and WhatsApp give it, through the trial service, and nothing gives it on a schedule', () => {
     const src = withoutComments(readFileSync(join(__dirname, 'the-free-trial.service.ts'), 'utf8'));
     expect(src).toMatch(/@OnEvent\(GroundworkEvents\.ORG_SIZE_SAID\)\s*\n\s*async whenTheySayTheirSize/);
     expect(src).not.toMatch(/@Cron\(/);
@@ -149,11 +152,6 @@ describe('the switch itself gives nothing to anybody already here', () => {
       }
     };
     walk(join(__dirname, '..', '..'));
-    expect(callers).toEqual(['the-free-trial.service.ts']);
-  });
-
-  it('a switch written on without the moment it went on ends the free plan for nobody, not even a new team', () => {
-    /* Which is why it is switched on at Admin, System, Pricing (or with `onSince` written), never as a bare {"on": true}. */
-    expect(freePlanApplies({ on: true, teamsUnder: 20, months: 1 } as any, new Date('2026-10-07T09:00:00Z'))).toBe(true);
+    expect(callers.sort()).toEqual(['billing.service.ts', 'the-free-trial.service.ts', 'whatsapp-add-on.service.ts']);
   });
 });

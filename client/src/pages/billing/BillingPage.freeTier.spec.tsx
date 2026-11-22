@@ -53,17 +53,20 @@ function renderBilling() {
 describe('BUG6: free-tier billing page has no $5 / buy-a-session UI', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('shows the real free-tier framing on a non-subscribed org', async () => {
+  /* Updated 23 November 2026: there is no free tier of check-ins (Hafsah, 22 November: "there's nothing like 10 free checkins").
+     A non-subscribed organisation that nothing covers reads that it has no plan yet, and never "free check-ins". */
+  it('shows a non-subscribed org that it has no plan yet, and never promises free check-ins', async () => {
     renderBilling()
     await waitFor(() => {
-      expect(screen.getByText(/Your first 10 check-ins are free/i)).toBeTruthy()
+      expect(screen.getByText(/No plan yet\. Choose one below to open check-ins and add people\./)).toBeTruthy()
     })
+    expect(screen.queryByText(/first 10 check-ins|free check-ins|free plan/i)).toBeNull()
   })
 
   it('does NOT render a "$5 per session" card or a "Buy a session" button', async () => {
     renderBilling()
     await waitFor(() => {
-      expect(screen.getByText(/Your first 10 check-ins are free/i)).toBeTruthy()
+      expect(screen.getByText(/No plan yet\./)).toBeTruthy()
     })
     expect(screen.queryByText(/Buy a session/i)).toBeNull()
     expect(screen.queryByText(/per session/i)).toBeNull()

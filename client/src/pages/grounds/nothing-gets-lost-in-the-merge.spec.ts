@@ -132,7 +132,8 @@ const OPERATIONS: Record<string, string[]> = {
    * not on /billing. Moving it would break the paid path for the person who is
    * not the admin - rule 2 of the inventory.
    */
-  billing: ['claimFreeExtension(', 'createSubscription(', 'redeemContributorCode(', 'getContributorCodeShareCard('],
+  /* claimFreeExtension went with the free plan (22 November 2026): the only free plan is the free trial. */
+  billing: ['createSubscription(', 'redeemContributorCode(', 'getContributorCodeShareCard('],
   /**
    * The two that exist nowhere else, and the reason the report cannot simply be
    * dropped into the board: did this check-in actually help, and can I take my

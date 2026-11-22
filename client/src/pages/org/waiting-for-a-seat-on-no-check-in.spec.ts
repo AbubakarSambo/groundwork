@@ -10,7 +10,7 @@ describe('People says who waits for a seat, and why, truly', () => {
   it('says the server\'s sentence when the plan is full, not "on a check-in"', () => {
     const said = howManyHere(7, null, 1, [], [], [], ['Ayo', 'Bisi', 'Ceci', 'Dayo', 'Efua', 'Femi'],
       '6 people are waiting for a seat because your plan is full. Choose a plan so everyone keeps checking in.')
-    expect(said).toBe('7 people, on the free plan, which is for up to 1. 6 people are waiting for a seat because your plan is full. Choose a plan so everyone keeps checking in.')
+    expect(said).toBe('7 people, with no plan chosen yet, which covers up to 1. 6 people are waiting for a seat because your plan is full. Choose a plan so everyone keeps checking in.')
     expect(said).not.toContain('on a check-in')
   })
   it('says a kept invitation waits for a seat, without a check-in it is not on', () => {

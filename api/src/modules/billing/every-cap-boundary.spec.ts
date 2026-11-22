@@ -1,4 +1,4 @@
-import { BillingService } from './billing.service';
+import { NO_PLAN_TO_ADD, BillingService } from './billing.service';
 import { PricingService, DEFAULT_FREE_MEMBER_LIMIT } from './pricing.service';
 
 /**
@@ -37,25 +37,12 @@ function gate(seats: number, plan: string | null, cap: number | null, freeLimit 
   return new BillingService(prisma, { stripe: {} } as any, pricing, {} as any, { sendMemberCapWarning: async () => undefined } as any, {} as any);
 }
 
-describe('the free tier at 5 and 6 people', () => {
-  it('5 people is the limit, so the FIFTH person is allowed in', async () => {
-    /** Four on the account, the creator among them. The fifth fits. */
-    expect((await gate(4, null, null).canInviteMember('o')).allowed).toBe(true);
-  });
-
-  it('the SIXTH is refused', async () => {
-    expect((await gate(5, null, null).canInviteMember('o')).allowed).toBe(false);
-  });
-
-  it('and the refusal says the five includes them, so "5" is not read as "5 invites"', async () => {
-    const res = await gate(5, null, null).canInviteMember('o');
-    expect(res.reason).toContain('5 people, including you');
-    expect(res.reason).toContain('invite 4 others');
-  });
-
-  it('the shipped default IS five, so the copy and the code agree', () => {
-    /** "10 free check-ins, for teams of 5 or fewer" is on the pricing page. This is that 5. */
-    expect(DEFAULT_FREE_MEMBER_LIMIT).toBe(5);
+/* Rewritten 23 November 2026: there is no free tier of five people (Hafsah, 22 November: the free plan is the free trial).
+   An organisation that nothing covers adds nobody new until it chooses a plan. */
+describe('an organisation nothing covers', () => {
+  it('the person who set it up is there, and the next is refused with the no-plan sentence', async () => {
+    const res = await gate(1, null, null).canInviteMember('o');
+    expect(res).toEqual({ allowed: false, reason: NO_PLAN_TO_ADD });
   });
 });
 
@@ -115,11 +102,12 @@ describe('nobody already on an account is removed by any of this', () => {
   });
 });
 
-describe('the free CHECK-IN limit is a separate number from the free TEAM SIZE', () => {
-  it('the two defaults are 10 and 5 and are not the same constant', () => {
+/* Updated 23 November 2026: there is no free check-in limit and no free team size any more; the only free plan is the trial. */
+describe('there is no free CHECK-IN limit and no free TEAM SIZE setting', () => {
+  it('the pricing service reads neither, and a check-in made on the old free plan keeps its cap of 5', () => {
     const svc = new PricingService({} as any, {} as any);
-    expect(typeof svc.getFreeGroundLimit).toBe('function');
-    expect(typeof svc.getFreeMemberLimit).toBe('function');
+    expect((svc as any).getFreeGroundLimit).toBeUndefined();
+    expect((svc as any).getFreeMemberLimit).toBeUndefined();
     expect(DEFAULT_FREE_MEMBER_LIMIT).toBe(5);
   });
 });

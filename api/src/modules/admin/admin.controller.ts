@@ -106,25 +106,13 @@ export class AdminController {
     return this.pricing.listPlans();
   }
 
-  @Get('pricing/free-ground-limit')
-  @ApiOperation({ summary: 'How many grounds an organisation gets before it needs a subscription' })
-  async getFreeGroundLimit() {
-    return { freeGroundLimit: await this.pricing.getFreeGroundLimit() };
-  }
-
-  @Get('pricing/free-member-limit')
-  @ApiOperation({ summary: 'How many people a free organisation may have, the creator included' })
-  async getFreeMemberLimit() {
-    return { freeMemberLimit: await this.pricing.getFreeMemberLimit() };
-  }
-
   @Get('pricing/free-trial')
   @ApiOperation({ summary: 'The free trial: whether it is on, the team size it is for, and how many months' })
   async getFreeTrial() {
     return this.pricing.getFreeTrial();
   }
 
-  /** Switch it on only once billing really grants it (U.19); until then the screens stay quiet about it. */
+  /** On by default (22 November 2026). The trial is the only free plan. */
   @Patch('pricing/free-trial')
   @ApiOperation({ summary: 'Change the free trial' })
   async setFreeTrial(@CurrentUser('id') userId: string, @Body() body: { on?: boolean; teamsUnder?: number; months?: number }) {
@@ -149,23 +137,11 @@ export class AdminController {
     return this.pricing.getAnchorTrial();
   }
 
-  /** Off until Hafsah turns it on. Only on or off: its length and size are fixed (anchor piece 34). */
+  /** On by default (22 November 2026). Only on or off: its length and size are fixed (anchor piece 34). */
   @Patch('pricing/anchor-trial')
   @ApiOperation({ summary: 'Switch the anchor trial on or off' })
   async setAnchorTrial(@CurrentUser('id') userId: string, @Body() body: { on?: boolean }) {
     return this.pricing.setAnchorTrial(body ?? {}, userId);
-  }
-
-  @Patch('pricing/free-member-limit')
-  @ApiOperation({ summary: 'Change the free member limit' })
-  async setFreeMemberLimit(@CurrentUser('id') userId: string, @Body() body: { freeMemberLimit: number }) {
-    return { freeMemberLimit: await this.pricing.setFreeMemberLimit(Number(body?.freeMemberLimit), userId) };
-  }
-
-  @Patch('pricing/free-ground-limit')
-  @ApiOperation({ summary: 'Change the free ground limit' })
-  async setFreeGroundLimit(@CurrentUser('id') userId: string, @Body() body: { freeGroundLimit: number }) {
-    return { freeGroundLimit: await this.pricing.setFreeGroundLimit(body?.freeGroundLimit, userId) };
   }
 
   @Patch('pricing/:plan')
@@ -373,15 +349,9 @@ export class AdminController {
   }
 
   @Get('coaching')
-  @ApiOperation({ summary: 'Every coaching state row with the read that produced it, and whether the block is live. Read these before setting coaching_live.' })
+  @ApiOperation({ summary: 'Every coaching state row with the read that produced it. Coaching is always on.' })
   getCoaching() {
     return this.adminService.getCoaching();
-  }
-
-  @Patch('coaching')
-  @ApiOperation({ summary: 'Let the coaching block reach a live prompt, or stop it. Read GET /admin/coaching first.' })
-  setCoachingLive(@CurrentUser('id') userId: string, @Body() body: { live: boolean }) {
-    return this.adminService.setCoachingLive(!!body?.live, userId);
   }
 
   @Get('delivery-alert')

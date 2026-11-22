@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { type GroundScenario, type GroundMoment } from '@/api/grounds'
 import { SituationCard } from '@/components/gw/SituationCard'
 import { OR_PICK_ONE_THAT_FITS } from '@/lib/one-way-to-say-what-a-situation-does'
-import { billingApi, FALLBACK_FREE_LIMITS } from '@/api/billing'
+import { billingApi } from '@/api/billing'
 import { entryApi } from '@/api/entry'
 import { SCENARIO_LABELS, GROUPS_YOU_PICK_FROM, SCENARIO_FACTS, RECOMMENDED_MOMENT, COACH_CARD, type ScenarioGroupKey } from '@/lib/scenario-catalog'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
@@ -641,18 +641,6 @@ const MIN_OWN_DESCRIPTION = 20
 
 export function CreateGroundPage() {
   // Asked once, on load, so the answer is on screen before any effort is spent.
-  /**
-   * The live free limit. This page rendered the hardcoded 10 in four sentences while the API read
-   * the number an admin had set, so lowering the limit in the admin panel changed what the server
-   * enforced and none of the four sentences a person actually read.
-   */
-  const { data: livePricing } = useQuery({
-    queryKey: ['public-pricing'],
-    queryFn: billingApi.getPricing,
-    staleTime: 60 * 1000,
-  })
-  const freeLimit = livePricing?.free?.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
-
   const canCreate = useQuery({
     queryKey: ['can-create-ground'],
     queryFn: () => billingApi.checkCanCreateGround(),
@@ -853,15 +841,13 @@ export function CreateGroundPage() {
   const [billingFree, setBillingFree] = useState(false)
   /* True when the check itself failed, which is neither allowed nor refused. */
   const [billingUnknown, setBillingUnknown] = useState(false)
-  const [groundsUsed, setGroundsUsed] = useState<number | null>(null)
-  /* U.19: the server's refusal when the organisation has no plan and the free plan has stopped for it. */
+  /* The server's refusal when nothing covers the organisation (its free trial is over, or its team starts on a plan). */
   const [noPlan, setNoPlan] = useState<string | null>(null)
   const [showCodeInput, setShowCodeInput] = useState(false)
   const [codeInput, setCodeInput] = useState('')
   const [codeApplied, setCodeApplied] = useState(false)
   const [codeError, setCodeError] = useState<string | null>(null)
   const [codeChecking, setCodeChecking] = useState(false)
-  const [appliedAccessCode, setAppliedAccessCode] = useState<string | null>(null)
   const [billingLoading, setBillingLoading] = useState(false)
 
 
@@ -900,7 +886,6 @@ export function CreateGroundPage() {
       billingApi.checkCanCreateGround().then(res => {
         setBillingChecked(true)
         setBillingLoading(false)
-        if (res.groundsUsed != null) setGroundsUsed(res.groundsUsed)
         setNoPlan(res.noPlan ? (res.reason ?? null) : null)
         if (res.allowed) {
           setBillingFree(true)
@@ -932,7 +917,6 @@ export function CreateGroundPage() {
       const res = await billingApi.checkCanCreateGround(codeInput.trim())
       if (res.allowed && res.freeReason) {
         setCodeApplied(true)
-        setAppliedAccessCode(codeInput.trim())
         setCodeError(null)
       } else {
         setCodeError('This code is not valid or has already been used.')
@@ -1161,10 +1145,7 @@ export function CreateGroundPage() {
                 the timeline and the people, and only then was told she could
                 not. The block was right; the timing made it feel like a trick. */}
             {canCreate.data && !canCreate.data.allowed && (
-              <Callout tone="warning" title={
-                /* U.19: once the free trial's switch is on, a new organisation has no free check-ins at all. */
-                canCreate.data.noPlan ? 'No plan yet' : `You have used all ${freeLimit} of your free check-ins`
-              }>
+              <Callout tone="warning" title={canCreate.data.noPlan ? 'No plan yet' : 'This check-in cannot be created yet'}>
                 {planLimitNotice({
                   reason: canCreate.data.reason ?? 'Subscribe to open more.',
                   isAdmin,
@@ -1603,22 +1584,8 @@ export function CreateGroundPage() {
               {!billingLoading && billingChecked && billingFree && (
                 <Stack gap={12}>
                   <Callout tone="success" title="No payment needed">
-                    {/* One statement about what they have, not two that disagree.
-                        This said "unlimited Grounds" directly above "0 of 10
-                        Grounds used" - the first thing a new admin reads about
-                        money, contradicting itself. A paid plan really is
-                        unlimited; the free tier is not, and should say so once. */}
-                    {groundsUsed != null && !appliedAccessCode
-                      ? <>Your free plan includes {freeLimit} check-ins, with unlimited check-ins and reports in each. You have used <b>{groundsUsed}</b>.</>
-                      : <>This one is covered. Unlimited check-ins and reports.</>}
+                    This one is covered. Unlimited check-ins and reports.
                   </Callout>
-                  {/* The warning stays, but only when they are actually near the
-                      wall. Repeating the count when they have eight left is noise. */}
-                  {groundsUsed != null && !appliedAccessCode && groundsUsed >= freeLimit - 2 && (
-                    <Callout tone="warning">
-                      Only {freeLimit - groundsUsed} {freeLimit - groundsUsed === 1 ? 'check-in' : 'check-ins'} left on the free plan. After that you will need a subscription to open another.
-                    </Callout>
-                  )}
                   <Button onClick={() => setStep(stepAfter(visibleSteps, step))}>Continue →</Button>
                 </Stack>
               )}
@@ -1635,9 +1602,9 @@ export function CreateGroundPage() {
                 <Stack gap={18}>
                   <Panel>
                     <Stack gap={10}>
-                      <h3 className="t-h3">{noPlan ? 'No plan yet' : 'Subscribe to create more'}</h3>
+                      <h3 className="t-h3">No plan yet</h3>
                       <p className="gwui-panel-text-muted">
-                        {noPlan ?? `Your free plan includes ${freeLimit} check-ins. Subscribe for unlimited check-ins and reports.`}
+                        {noPlan ?? 'Your organisation has no plan yet. Choose one on Plan and billing to open a check-in.'}
                       </p>
                       {/* A LINK, NOT A BUTTON: it only goes to the pricing page, and this step's one
                           primary action is "Continue →" once a code is applied below. */}

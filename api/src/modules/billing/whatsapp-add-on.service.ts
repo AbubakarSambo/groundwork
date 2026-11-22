@@ -1,15 +1,15 @@
 import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SubscriptionPlan, UserRole } from '@prisma/client';
-import { theNewBillingPartsAreShown } from '../admin/what-is-hidden-at-release';
 import { PrismaService } from '../prisma/prisma.service';
 import { onceAcrossCopies, theDay, theHour } from '../prisma/once-across-copies';
 import { EmailService } from '../email/email.service';
-import { PricingService, PLAN_LABELS, freePlanApplies, WHATSAPP_ADD_ON_KIND, WHATSAPP_PERSON_KIND } from './pricing.service';
+import { PricingService, PLAN_LABELS, WHATSAPP_ADD_ON_KIND, WHATSAPP_PERSON_KIND } from './pricing.service';
 import { whatsappPeopleCharged } from './what-a-month-costs';
 import { seatsIn } from '../../common/seats';
 import { StripeService } from './stripe.service';
-import { whatCoversThem, isSubscribed } from '../../common/subscription';
+import { whatCoversThem, isSubscribed, isPaused } from '../../common/subscription';
+import { TheFreeTrialService } from './the-free-trial.service';
 import { theGraceInForce } from './the-trial-grace';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
@@ -96,8 +96,6 @@ export interface WhatsAppStanding {
   /** True while the organisation is in its free trial (or another free run we gave it). */
   inAFreeRun: boolean;
   freeTrial: { months: number; endsOn: Date } | null;
-  /** True while the organisation is on the free plan. */
-  onTheFreePlan: boolean;
   /** WhatsApp's own free month, which every organisation gets, and when it ends. */
   whatsappFreeUntil: Date | null;
   inTheFreeWhatsAppMonth: boolean;
@@ -167,8 +165,15 @@ export class WhatsAppAddOnService {
 
   /** Where this organisation stands with WhatsApp now. Throws only for an organisation that does not exist. */
   async standing(organizationId: string, now: Date = new Date()): Promise<WhatsAppStanding> {
-    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: ORG_FIELDS });
+    let org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: ORG_FIELDS });
     if (!org) throw new NotFoundException('We could not find that organisation, so sign in again and try once more.');
+    /* The free trial is the only free plan, and every organisation gets it once, the first time it needs cover (22 November
+       2026): the same grant billing makes, so WhatsApp and the check-ins never disagree about whether a team is covered. */
+    const graceNow = await theGraceInForce(this.prisma).catch(() => null);
+    if (whatCoversThem(org, now, graceNow).covers === 'free tier' && !isPaused(org, graceNow)) {
+      const got = await new TheFreeTrialService(this.prisma, this.pricing).grantIfItApplies(organizationId, 'fewer', now).catch(() => null);
+      if (got?.granted) org = (await this.prisma.organization.findUnique({ where: { id: organizationId }, select: ORG_FIELDS })) ?? org;
+    }
     const [trial, plans, use] = await Promise.all([
       this.pricing.getFreeTrial(),
       this.prisma.pricingPlan.findMany(),
@@ -178,14 +183,13 @@ export class WhatsAppAddOnService {
     /* The four weeks after a free month are part of it for WhatsApp too: everything keeps working until the pause (2 November). */
     const inAFreeRun = (!!org.freeUntil && new Date(org.freeUntil).getTime() > now.getTime() && !!org.freePlan) || !!cover.afterItsTrial;
     const switchOn = trial.on;
-    const onTheFreePlan = cover.covers === 'free tier' && freePlanApplies(trial, org.createdAt);
 
-    /* The plan that applies: what they pay for, else the free run's plan, else the plan the free plan's size fits. */
+    /* The plan that applies: what they pay for, else the free run's plan, else the plan the free trial's size fits. */
     let plan: SubscriptionPlan | null = null;
     if (inAFreeRun) plan = org.freePlan as SubscriptionPlan;
     else if (cover.covers === 'paid') plan = org.subscriptionPlan as SubscriptionPlan;
     else {
-      const freeSize = await this.pricing.getFreeMemberLimit();
+      const freeSize = trial.teamsUnder - 1;
       const fits = plans
         .filter((p) => p.amountCents !== null && (p.memberCap === null || p.memberCap >= freeSize))
         .sort((a, b) => (a.amountCents as number) - (b.amountCents as number));
@@ -207,7 +211,7 @@ export class WhatsAppAddOnService {
     const charged = switchOn && org.whatsappAddOnOn && cover.covers === 'paid' && !!org.subscriptionStripeId && !inAFreeRun && !freeMonth
       && (flatKept ? addOnCents !== null : personCents !== null);
     let heldBecause: WhyHeld | null = null;
-    if (switchOn && !inAFreeRun && !onTheFreePlan && !freeMonth) {
+    if (switchOn && !inAFreeRun && !freeMonth) {
       if (!org.whatsappAddOnOn) heldBecause = 'not turned on';
       else if (cover.covers !== 'paid') heldBecause = 'not on a paid plan';
     }
@@ -218,7 +222,6 @@ export class WhatsAppAddOnService {
       plan,
       inAFreeRun,
       freeTrial: inAFreeRun && org.freeTrialStartedAt && !cover.afterItsTrial ? { months: trial.months, endsOn: new Date(org.freeUntil as Date) } : null,
-      onTheFreePlan,
       whatsappFreeUntil: org.whatsappFreeUntil ? new Date(org.whatsappFreeUntil) : null,
       inTheFreeWhatsAppMonth: freeMonth,
       addOnOn: org.whatsappAddOnOn,
@@ -492,11 +495,10 @@ export class WhatsAppAddOnService {
     const offSays = !s.addOnOn && !s.inTheFreeWhatsAppMonth ? WHATSAPP_REMINDERS_ARE_OFF : null;
     /*
      * THE WHATSAPP PART IS SHOWN TO AN ADMIN (Hafsah, 13 October 2026, evening: "This screen is meant to be there."). It
-     * was hidden with the other new billing parts at release, and nobody could turn WhatsApp on from any screen. The
-     * rest of those parts stay as the release setting says.
+     * was hidden with the other new billing parts at release, and nobody could turn WhatsApp on from any screen. The release
+     * setting that hid them (`release.planAndBillingNewParts`) is gone: everything is shown (22 November 2026).
      */
     if (!isAdmin) return { sending: s.sending, says: personSays ?? offSays };
-    void theNewBillingPartsAreShown;
 
     const label = s.plan ? PLAN_LABELS[s.plan] : null;
     const says: Record<string, string | null> = {
@@ -511,13 +513,9 @@ export class WhatsAppAddOnService {
           ? `WhatsApp is free until ${aDay(s.whatsappFreeUntil)}. After that it is paid as part of your subscription.`
           : `WhatsApp is free until ${aDay(s.whatsappFreeUntil)}. To keep it after that, add it to your subscription with the switch above.`)
         : null,
-      /* An organisation on the free plan has no plan to name: the plan its size fits only sets its monthly limit
-         (release blocker, 5 October: the page read "on your Starter plan" to a free organisation). */
       /* Fix list item 6: the light prototype's own words, "$4 per person who uses it, per month, on any plan". The old flat
          price is said only to an organisation that keeps it. */
-      price: s.onTheFreePlan
-        ? null
-        : s.flatKept && s.plan && s.addOnCents !== null
+      price: s.flatKept && s.plan && s.addOnCents !== null
           ? `WhatsApp costs ${dollars(s.addOnCents)} a month on your ${label} plan, the price you have paid until now. It moves to ${s.personCents != null ? dollars(s.personCents) : 'a price'} per person who uses it if you add a seat, switch WhatsApp off and on, or move plan.`
           : s.plan && s.personCents != null
             ? `${dollars(s.personCents)} per person who uses it, per month, on any plan.`
@@ -530,9 +528,7 @@ export class WhatsAppAddOnService {
         : null,
       charge: !s.switchOn
         ? 'Nothing is charged for WhatsApp at the moment.'
-        : s.onTheFreePlan
-          ? 'Nothing is charged for WhatsApp while you are on the free plan.'
-          : s.inAFreeRun && s.freeTrial
+        : s.inAFreeRun && s.freeTrial
             /* No date here: the plan line on the same page already says when it ends, and two calendars (the screen's and the server's UTC) gave two different days (clean-install run, 6 October). */
             ? `Your free trial lasts ${s.freeTrial.months} ${s.freeTrial.months === 1 ? 'month' : 'months'}. Nothing is charged for WhatsApp until it ends.`
             : s.inAFreeRun
@@ -559,15 +555,13 @@ export class WhatsAppAddOnService {
          add-on switch alone, so in the free month Connections read it and said "Your organisation has not turned on WhatsApp"
          while this page said "WhatsApp is on for your organisation during its free month". This is the fact `onOrOff` says. */
       onForTheOrganisation: s.addOnOn || s.inTheFreeWhatsAppMonth,
-      /* Never a plan's name or price for an organisation on the free plan; its limit is in `use`. */
-      plan: s.onTheFreePlan ? null : s.plan,
-      price: s.onTheFreePlan ? null : s.flatKept ? (s.addOnCents === null ? null : { amountCents: s.addOnCents, currency: 'USD' }) : (s.personCents == null ? null : { amountCents: s.personCents, currency: 'USD', perPerson: true }),
+      plan: s.plan,
+      price: s.flatKept ? (s.addOnCents === null ? null : { amountCents: s.addOnCents, currency: 'USD' }) : (s.personCents == null ? null : { amountCents: s.personCents, currency: 'USD', perPerson: true }),
       people: { usedIt: s.peopleUsedIt, charged: s.peopleCharged, seats: s.seats },
       flatKept: s.flatKept,
       charged: s.charged,
       freeTrial: s.freeTrial,
       freeUntil: s.inTheFreeWhatsAppMonth ? s.whatsappFreeUntil : null,
-      onTheFreePlan: s.onTheFreePlan,
       use: { month: s.month, sent: s.sent, limit: s.limit, startsAgainOn: theNextMonthStarts(now) },
       sending: s.sending,
       heldBecause: s.heldBecause,

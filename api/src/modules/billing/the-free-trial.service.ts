@@ -17,7 +17,8 @@ import { seatsIn } from '../../common/seats';
  * BEHIND THE ONE SETTING. `pricing.freeTrial` holds the size and the length and whether it is on,
  * and the screens say the trial's sentence only while it is on (client/src/lib/the-free-trial.ts).
  * This grants it only while it is on, so turning the setting on makes the sentence and the grant true
- * together, and while it is off nothing here does anything at all. It is off by default.
+ * together, and while it is off nothing here does anything at all. It is on by default (22 November 2026), and it is
+ * the only free plan: billing gives it to any organisation that has never had it, the first time it needs cover.
  *
  * WHEN. "Create an organisation" asks whether the team is fewer than the trial's size, and only while
  * the trial is on. The answer "fewer" is what grants it; "Teams of 20 or more start on a plan", as the
@@ -25,8 +26,8 @@ import { seatsIn } from '../../common/seats';
  *
  * WHAT. The months are an ordinary free run (`freeUntil` and `freePlan`), which every gate already
  * reads as cover, and nothing touches Stripe: no customer, no card, no subscription, no charge. When
- * the months end, the organisation is back on the free tier exactly as today, and nothing is charged
- * until an admin chooses a plan. The plan it covers is the smallest plan with a price whose seat limit
+ * the months end, the four weeks after the trial follow, then no new check-in until an admin chooses a plan, and
+ * nothing is charged until then. The plan it covers is the smallest plan with a price whose seat limit
  * holds a team just under the trial's size, read from `pricing_plans`, so the size and the plan can
  * never disagree (Small Team today, up to 20 people).
  *
@@ -189,8 +190,10 @@ export class TheFreeTrialService {
        * anchor's months. A free run given any other way (by staff, or with the anchor trial off) is left alone, as is an
        * anchor month that has ended: the organisation has had its free month. See theAnchorMonthOf.
        */
+      /* A free run that has ended is not the trial: every organisation gets the trial once (22 November 2026). */
       const anchorMonth = await this.theAnchorMonthOf(organizationId, org, now);
-      if (org.freeUntil && !anchorMonth) return { granted: false, why: 'it has a free run of its own' };
+      const aFreeRunIsGoing = !!org.freeUntil && new Date(org.freeUntil).getTime() > now.getTime();
+      if (aFreeRunIsGoing && !anchorMonth) return { granted: false, why: 'it has a free run of its own' };
 
       /* What they said is checked against who is really here, counted as billing counts a seat. */
       const seats = await this.prisma.user.count({ where: seatsIn(organizationId) });
@@ -216,7 +219,7 @@ export class TheFreeTrialService {
       const until = anchorMonth && org.freeUntil && new Date(org.freeUntil).getTime() > full.getTime() ? new Date(org.freeUntil) : full;
       /* Only if still untouched, so two answers at once cannot give it twice or overwrite a free run. */
       const written = await this.prisma.organization.updateMany({
-        where: { id: organizationId, freeTrialStartedAt: null, freeUntil: anchorMonth ? org.freeUntil : null },
+        where: { id: organizationId, freeTrialStartedAt: null, freeUntil: org.freeUntil },
         data: { freeTrialStartedAt: now, freeUntil: until, freePlan: planGiven },
       });
       if (!written.count) return { granted: false, why: 'it changed while we looked' };

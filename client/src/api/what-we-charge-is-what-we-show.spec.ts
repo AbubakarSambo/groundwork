@@ -3,7 +3,6 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import {
   FALLBACK_PLAN_PRICES_CENTS,
-  FALLBACK_FREE_LIMITS,
   PLAN_PRICES,
   formatMonthlyPrice,
   type SubscriptionPlan,
@@ -79,26 +78,12 @@ describe('the cents the API seeds are the cents the client falls back to', () =>
   })
 })
 
-describe('the free limits are one number each, not nine', () => {
-  it('the API default and the client fallback are the same free CHECK-IN limit', () => {
-    /**
-     * Read from the pricing service, which is where the default now lives - billing.service.ts
-     * imports it rather than restating it, so there is no digit there to match against.
-     */
-    const m = PRICING_SERVICE.match(/DEFAULT_FREE_GROUND_LIMIT = (\d+)/)
-    expect(m, 'the pricing service should define a default free ground limit').toBeTruthy()
-    expect(FALLBACK_FREE_LIMITS.groundLimit).toBe(Number(m![1]))
-  })
-
-  it('and the same free PEOPLE limit', () => {
-    /**
-     * The second free limit, added with the seat cap. It gets the same treatment as the first for
-     * the same reason: the client's fallback and the API's default are the only two hardcoded
-     * starting points left, and they are one edit away from disagreeing.
-     */
-    const m = PRICING_SERVICE.match(/DEFAULT_FREE_MEMBER_LIMIT = (\d+)/)
-    expect(m, 'the pricing service should define a default free member limit').toBeTruthy()
-    expect(FALLBACK_FREE_LIMITS.memberLimit).toBe(Number(m![1]))
+describe('there is no count of free check-ins (Hafsah, 22 November 2026: "there\'s nothing like 10 free checkins")', () => {
+  it('the pricing service has no free check-in limit, and billing counts none', () => {
+    expect(PRICING_SERVICE).not.toMatch(/DEFAULT_FREE_GROUND_LIMIT|FREE_GROUND_LIMIT_KEY|getFreeGroundLimit/)
+    const billing = readFileSync(join(__dirname, '../../../api/src/modules/billing/billing.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    expect(billing).not.toMatch(/getFreeGroundLimit|groundCount < |FREE_TIER/)
   })
 
   it('a free check-in seats the same number of people the free PLAN does', () => {
@@ -134,19 +119,6 @@ describe('the free limits are one number each, not nine', () => {
     expect(grounds).not.toMatch(/freeParticipantCap: (?:dto\.freeParticipantCap \?\? )?\d+/)
   })
 
-  it('and billing enforces the live limit rather than the constant', () => {
-    /**
-     * The constant is only the fallback. If the gate reads it directly, editing the limit in the
-     * admin panel changes the number on every screen and paywalls nobody differently.
-     */
-    const billing = readFileSync(
-      join(__dirname, '../../../api/src/modules/billing/billing.service.ts'),
-      'utf8',
-    )
-    expect(billing).toMatch(/await this\.pricing\.getFreeGroundLimit\(\)/)
-    expect(billing).toMatch(/groundCount < freeGroundLimit/)
-  })
-
   it('and no page writes the number out by hand', () => {
     /**
      * It was the literal "10" in nine places across three builds, and one of them had already
@@ -155,6 +127,7 @@ describe('the free limits are one number each, not nine', () => {
     for (const page of ['../pages/billing/PricingPage.tsx', '../pages/billing/BillingPage.tsx', '../pages/grounds/CreateGroundPage.tsx']) {
       const src = readFileSync(join(__dirname, page), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
       expect(src, `${page} still hardcodes the free ground count`).not.toMatch(/\b10 [Gg]rounds\b/)
+      expect(src, `${page} still promises free check-ins`).not.toMatch(/free check-ins|free plan includes|first \{freeGrounds\}/i)
     }
   })
 })
