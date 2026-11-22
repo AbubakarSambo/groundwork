@@ -188,7 +188,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:14px;font-weight:70
  --rec:#085041;--rec-soft:#E1F5EE;--rec-b:#5DCAA5;--att:#8A5C1A;--att-soft:#FDF3E3;--att-b:#E8A94A;--act:#0C447C;--act-soft:#EEF4FB;--act-b:#B5D4F4;--con:#791F1F;--con-soft:#FCEBEB;--con-b:#F09595;
  --chat:#F1EFEB;--on-ink:#FFFFFF;--navy:#0C447C;--navy-d:#042C53;--dark:#0A1628;--band:#F1EFEB}
 
-.btn.pri{background:var(--navy);color:var(--gw-white)}.btn.pri:hover{background:var(--navy-d);filter:none}
+.btn.pri{background:var(--navy);color:#fff}.btn.pri:hover{background:var(--navy-d);filter:none}
 .seg button.on,.chip.on,.views a.on{background:var(--navy);color:var(--gw-white)}
 .tab.on{border-bottom-color:var(--navy)}
 .tag.rec{box-shadow:inset 0 0 0 1px var(--rec-b)}.tag.att{box-shadow:inset 0 0 0 1px var(--att-b)}.tag.act{box-shadow:inset 0 0 0 1px var(--act-b)}.tag.con{box-shadow:inset 0 0 0 1px var(--con-b)}

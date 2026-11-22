@@ -316,54 +316,49 @@ export function theRecordSections(kind: KindOfWork | null, leadsStages: unknown,
 
 // --- Reading the kind of work from setup -------------------------------------------------------
 
-export const THE_KIND_OF_WORK_PROMPT = `You are reading how a lead described a check-in they are setting up, to say what kind of work it is about.
-
-Choose one of these fifteen kinds, or none:
-- "sales team": one team selling to customers, with one lead and the people who sell under them (for example reps, sales executives or account managers), and deals that move through stages.
+/*
+ * THE KINDS, IN WORDS, AND HOW ONE IS CHOSEN: one source (Hafsah, 21 November 2026; release test bug 3). The kind's own read at setup
+ * (below) and the reading of the situation at the door (entry/which-situation-this-is.ts) both read these, so the situation and the kind
+ * are worked out from the same words by the same understanding and cannot be told two different things.
+ */
+export const THE_KINDS_IN_WORDS = `- "sales team": one team selling to customers, with one lead and the people who sell under them (for example reps, sales executives or account managers), and deals that move through stages.
 - "sales org": a sales organisation of several sales teams, each with its own lead, such as teams for different regions or products, selling to customers with deals that move through stages.
 - "engineering release": engineers building and shipping software, with tasks and releases.
 - "support desk": a customer support team answering customers' questions and problems, as tickets, emails or chats, however its work is described.
-- "distribution operations": sites, deliveries, equipment and suppliers, with incidents.
+- "distribution operations": the day-to-day running of sites, deliveries, equipment and suppliers, with incidents as they happen. A project that changes how the sites work, such as moving them onto a new system, is not distribution operations: it is a project, which is none of these kinds.
 - "trader training programme": a training or development programme for groups of people across places, with check-ins.
-- "founder's own check-in": one person checking in with themselves about their own commitments and decisions.
+- "founder's own check-in": a founder, owner or chief executive checking in on their own, about their own commitments and decisions and a read on everything they run.
 - "asset loans": a cohort of people who borrowed money to buy equipment or stock for their business and are repaying it. Money that customers or clients owe for work done, such as unpaid invoices, bills or fee notes, is not a loan, and is none of these kinds.
-- "MarketView where next": a workshop of many people choosing priorities or where to focus next.
+- "MarketView where next": a workshop of many people choosing priorities or where to focus next. Choosing between a few options, such as suppliers or vendors, is a decision, which is a situation and none of these kinds.
 - "MarketView Q4": a quarter's goals for a product, such as paying subscribers and weekly users, checked against a payments system.
 - "a law firm matter": a legal case or matter, with parties, a court and deadlines.
 - "a government programme": a government or public programme run through counties or regions and their projects.
 - "leadership": a leadership or executive team, such as a chief executive and the directors, agreeing the company's priorities across its teams and where they are not aligned. The lead has to say it is that team. "The business", "the company" or "my team" with something going wrong is not leadership.
 - "a funded project": a project paid for by a donor, funder or grant, with a workplan, milestones, a budget, money in and out, and partners or stakeholders to report to.
-- "client delivery": work delivered to a client under an agreement, such as a website, a software build or a branding project, with deliverables, approvals, milestones and invoices. Money that clients owe for work already done, such as unpaid invoices, bills or fee notes, is not client delivery: the work is finished and the question is collecting what is owed, so it is none of these kinds.
+- "client delivery": work delivered to a client under an agreement, such as a website, a software build or a branding project, with deliverables, approvals, milestones and invoices. Money that clients owe for work already done, such as unpaid invoices, bills or fee notes, is not client delivery: the work is finished and the question is collecting what is owed, so it is none of these kinds.`;
 
-Give the kind's name exactly as written above. Choose a kind only when the lead's words clearly say it. The people's job titles, where they are given, help: sales reps and a sales manager are selling. When the work is selling and nothing says there are several sales teams, it is a "sales team". When the work is none of these, or you are not sure, give none. A lead who says only that something is wrong, or that they are worried, without saying who is involved or what the work is, has not named a kind: give none, so the conversation asks. A wrong kind is worse than none.`;
-
-export const THE_KIND_OF_WORK_SCHEMA = {
-  name: 'emit_kind_of_work',
-  description: 'Emit the kind of work this check-in is about, or none.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      kind: { type: 'string', description: 'One of the fifteen names exactly, or "none".' },
-    },
-    required: ['kind'],
-  },
-};
+export const HOW_A_KIND_IS_CHOSEN = `Choose a kind only when the lead's words clearly say it. What the check-in is for is why the lead set it up, and it is not a kind of work: a new hire's first weeks, one person's plan, or getting a new project off to a good start, such as moving sites onto a new system, is none of these kinds, unless the lead's own words say the check-in is about that kind of work itself, such as a sales team's deals or a support desk's tickets. Never decide from the job titles of the people in it, or from a place or a word that appears in passing; what the lead says about themselves, such as "founder here", is the lead's own words and counts. When the work is selling and nothing says there are several sales teams, it is a "sales team". When the work is none of these, or you are not sure, give none. A lead who says only that something is wrong, or that they are worried, without saying who is involved or what the work is, has not named a kind: give none, so the conversation asks. A wrong kind is worse than none.`;
 
 /**
  * The lead's words the read is given: the name, the brief, and the end they are working toward; and, where they are known,
  * the job titles of the people in it (release plan, Release 1: a sales team is detected from its words and its job titles).
  */
+/*
+ * WHAT THE KIND IS READ FROM (Hafsah, 21 November 2026): the check-in's purpose and what the lead said it is for, never the people's job
+ * titles. "The new stock system, four depots" (a new project) and "Imani Hassan, first ninety days" (a new hire) were read as
+ * "distribution operations" from an operations analyst's title and the word depots; the purpose says what the check-in is.
+ */
 export function theSetupWords(
   g: { label?: string | null; brief?: string | null; endState?: string | null; resolutionState?: string | null },
-  jobTitles: (string | null | undefined)[] = [],
+  /** What the check-in is for, in the scenario table's words ("Get a new project off to a good start"). */
+  purpose?: string | null,
 ): string {
-  const titles = [...new Set(jobTitles.map((t) => String(t ?? '').trim()).filter(Boolean))].slice(0, 20);
   return [
+    purpose ? `What the check-in is for: ${purpose}` : '',
     g.label ? `What the lead called it: ${g.label}` : '',
     g.brief ? `What the lead said about it: ${g.brief}` : '',
     g.endState ? `What they are working toward: ${g.endState}` : '',
     g.resolutionState ? `How they hope it ends: ${g.resolutionState}` : '',
-    titles.length ? `The job titles of the people in it: ${titles.join(', ')}` : '',
   ].filter(Boolean).join('\n\n');
 }
 

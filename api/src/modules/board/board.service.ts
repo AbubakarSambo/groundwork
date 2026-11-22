@@ -185,7 +185,7 @@ import { patternQuestionsToSettleFirst } from './pattern-questions-to-settle-fir
 import { everyDivergenceReadable } from '../reports/a-field-name-is-not-a-heading';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { theFirstNameFrom, theShortNameOf, theFirstNameOfAParticipant, aSurnameOrNothing } from '../reports/a-title-is-not-a-first-name';
-import { aWaitInTheirOwnWords } from './a-holder-in-their-own-words';
+import { aWaitInTheirOwnWords, aThingWithoutItsHolder } from './a-holder-in-their-own-words';
 import { yourOwnRowsSayYou } from './your-own-read-says-you';
 import { theRoomForThisReader } from './the-room-for-this-reader';
 import { askTheReportsDoor, theLeadsNamesOf, theLeadsLineAsAParticipantMayRead, aboutOneOfThem } from '../reports/one-persons-circumstances-stay-their-own';
@@ -261,6 +261,8 @@ import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collection
 import { withTheStageKept, theStagesToKeep } from './a-deals-stages-are-kept';
 import { WHAT_EACH_MARK_SAYS } from '../reports/the-mark-on-every-line';
 import { REFERENCES_AND_RESOURCES } from '../../common/the-tab-names';
+import { inASentence } from './a-phrase-inside-a-sentence';
+export { inASentence };
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -309,10 +311,6 @@ export function whoSaidDifferentThings(d: any, nameForLabel: (label: string) => 
   return 'People in this check-in';
 }
 
-export const inASentence = (phrase: string): string => {
-  const t = (phrase ?? '').trim().replace(/[.!?]+$/, '');
-  return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
-};
 
 /* What the Owner column says when nobody has been named, in a sentence (screens request 88). */
 const NOBODY_NAMED_TO_DECIDE = 'Nobody has been named to decide this.';
@@ -2271,7 +2269,7 @@ export class BoardService {
     // who can fix it.
     if (has('objectives') && (out.objectives ?? []).length === 0 && isInitiator) {
       out.objectivesPrompt =
-        'No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this ground is aiming for.';
+        'No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this check-in is aiming for.';
     }
 
     /*
@@ -2691,7 +2689,10 @@ export class BoardService {
          * line is from their last check-in, with its day, and its tag says when ("Last in 14 Oct").
          */
         const weekday = new Intl.DateTimeFormat('en-GB', { timeZone: zone, weekday: 'short' }).format(now);
-        const aDayItRuns = !(/^(?:Sat|Sun)/.test(weekday) && String((ground as any).cadence ?? '').toUpperCase() === 'DAILY');
+        /* "Today" is a daily check-in's word. A weekly one read "Hasn't checked in today" beside "has checked in" (21 November): for any
+           check-in that is not daily, each person's line is from their last check-in, with its day, as on a day a daily one does not run. */
+        const daily = String((ground as any).cadence ?? '').toUpperCase() === 'DAILY';
+        const aDayItRuns = daily && !/^(?:Sat|Sun)/.test(weekday);
         const last = new Map<string, any>();
         if (!aDayItRuns) {
           for (const row of out.eachPersonToday as any[]) {
@@ -2720,7 +2721,13 @@ export class BoardService {
             const shortDay = new Intl.DateTimeFormat('en-GB', { timeZone: zone, day: 'numeric', month: 'short' }).format(new Date(before.completedAt)).replace('Sept', 'Sep');
             return { ...row, line: words ? `On ${on}, ${first} said, “${words}”` : `${first} last checked in on ${on}.`, checkedInToday: false, lastIn: shortDay };
           }
-          if (!c) return { ...row, line: HAS_NOT_CHECKED_IN_TODAY, checkedInToday: false };
+          if (!c) {
+            /* Whether they have answered this session is the one count's (theSessionAndItsCount), the rule every count of it reads: an
+               answer by declining is an answer, and is said as one, never as "Hasn't checked in yet" beside a count that has them in. */
+            const thisRound = theOneCount.bySession[theOneCount.clock.currentSession];
+            if (!daily && thisRound?.declined?.includes(row.participantId)) return { ...row, line: 'Said they would not check in this time.', checkedInToday: false };
+            return { ...row, line: daily ? HAS_NOT_CHECKED_IN_TODAY : 'Hasn’t checked in yet.', checkedInToday: false };
+          }
           const line = isInitiator
             ? theirLine((said as any[]).filter((l) => l.checkInId === c.id).map((l) => ({ text: cleanText(String(l.text ?? '')), type: l.type ?? null, createdAt: l.createdAt })), deals.filter((d) => d.ownerParticipantId === row.participantId).map((d) => String(d.name ?? '')))
             : null;
@@ -3351,8 +3358,10 @@ export class BoardService {
             const onIt = readable.filter((w) => w.dealId === row.id && saidOf.has(w.id));
             if (!onIt.length) continue;
             row.waitingOnTheCustomer = onIt.map((w) => {
-              const what = String(w.what ?? '').trim().replace(/[.\s]+$/, '');
-              return { id: w.id, says: saidOf.get(w.id)!, step: `Waiting on ${String(w.onLabel).trim()} for ${/^[A-Z][a-z]/.test(what) ? what.charAt(0).toLowerCase() + what.slice(1) : what}` };
+              /* The same words every other wait is said in: the holder once, and the thing mid-sentence ("Waiting on the Quickmart buyer
+                 for a reply", not "for A reply from the buyer at Quickmart"; 21 November). */
+              const what = inASentence(aThingWithoutItsHolder(String(w.what ?? '').trim().replace(/[.\s]+$/, ''), w.onLabel));
+              return { id: w.id, says: saidOf.get(w.id)!, step: `Waiting on ${String(w.onLabel).trim()} for ${what}` };
             });
             if (!row.next && !row.nextStep) row.nextStep = row.waitingOnTheCustomer[row.waitingOnTheCustomer.length - 1].step;
           }

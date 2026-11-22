@@ -60,6 +60,9 @@ describe('Akinyi’s first board, the first screen', () => {
       /* Her own setup words are not on the first screen ahead of these. */
       const assumes = t.indexOf('Every rep closes two a month.')
       if (assumes >= 0) expect(assumes).toBeGreaterThan(unknown)
+      /* A sales board has no decision on record, so nothing on it says there is one to make (release test, 22 November 2026, bug 5):
+         "For you to decide once Juma and Neema’s answer is in." and "Answered, with no view of the decision on record." were on it. */
+      expect(t).not.toMatch(/to decide|the decision/)
     })
   }
 })

@@ -1,5 +1,9 @@
 import { GroundsService } from './grounds.service';
-import { KINDS_OF_WORK, oneOfTheKinds, isASalesKind, THE_KIND_OF_WORK_PROMPT } from '../board/the-kind-of-work';
+import { KINDS_OF_WORK, oneOfTheKinds, isASalesKind } from '../board/the-kind-of-work';
+import { theClassifierPrompt } from '../entry/which-situation-this-is';
+/* Changed 22 November 2026: the kind of work is read by the one reading (which-situation-this-is.ts), so these words are checked in its prompt; THE_KIND_OF_WORK_PROMPT is gone. */
+const THE_KIND_OF_WORK_PROMPT = theClassifierPrompt('');
+
 
 /**
  * THE KIND OF WORK IS READ FROM WHAT THE LEAD SAID AT SETUP, AND THE LEAD HAS THE LAST WORD.
@@ -40,7 +44,7 @@ describe('the kind of work, read at setup (request 76)', () => {
     const { svc, updates, anthropic } = build(g, { kind: 'sales org' });
     await svc.readTheKindOfWork('g1');
     expect(anthropic.extract).toHaveBeenCalledTimes(1);
-    expect(String(anthropic.extract.mock.calls[0][1][0].content)).toContain('I want to see which deals are real.');
+    expect(String(anthropic.extract.mock.calls[0][0])).toContain('I want to see which deals are real.'); /* Changed 22 November 2026: the one reading carries the words in its prompt. */
     expect(updates).toEqual([{ kindOfWork: 'sales org', kindOfWorkSetBy: 'read' }]);
   });
 
@@ -109,15 +113,23 @@ describe('a sales team is told from a sales organisation', () => {
     expect(THE_KIND_OF_WORK_PROMPT).toContain('When the work is selling and nothing says there are several sales teams, it is a "sales team".');
   });
 
-  it('a sales team is read from the lead\'s words and the people\'s job titles, and kept', async () => {
+  /* Changed 21 November 2026 (Hafsah): the kind is read from the check-in's purpose and the lead's words, never the people's job titles,
+     which read a new hire in the depots and a depot rollout as "distribution operations". */
+  it('a sales team is read from the lead\'s words and the check-in\'s purpose, never the job titles, and kept', async () => {
     const g: any = {
       label: 'Sales team, Q4', brief: 'Kevin, Mercy and Joseph sell our freezers to hotels and shops. I want to see every deal.', kindOfWorkSetBy: null,
+      scenario: 'OKR_ALIGNMENT',
       participants: [{ roleAsDescribed: 'Sales rep', user: { jobTitle: 'Sales rep' } }, { roleAsDescribed: null, user: { jobTitle: 'Sales manager' } }],
     };
     const { svc, updates, anthropic } = build(g, { kind: 'sales team' });
     await svc.readTheKindOfWork('g1');
-    const told = String(anthropic.extract.mock.calls[0][1][0].content);
-    expect(told).toContain('The job titles of the people in it: Sales rep, Sales manager');
+    /* Changed 22 November 2026: the one reading carries the words in its prompt, which itself says "never decide from the job titles";
+       what it is given of this check-in is its purpose and the lead's words, never a job title. */
+    const told = String(anthropic.extract.mock.calls[0][0]);
+    const given = told.slice(told.indexOf('Description: '));
+    expect(given).toContain('What the check-in is for: ');
+    expect(given).not.toContain('Sales rep');
+    expect(told).not.toContain('Sales manager');
     expect(updates).toEqual([{ kindOfWork: 'sales team', kindOfWorkSetBy: 'read' }]);
     expect(isASalesKind(g.kindOfWork)).toBe(true);
   });

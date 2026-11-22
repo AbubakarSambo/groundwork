@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import './gw-ui.css'
 import { useIsAPhone } from '../../../lib/a-phone-is-not-a-narrow-desktop'
+import { useTheDesignPass } from '../../../lib/the-design-pass'
 
 /**
  * "SHOW ALL" AFTER THREE (light prototype, s72). A long list shows its first three, then
@@ -12,6 +13,9 @@ export function ShowAll<T>({ items, render, first = 3 }: {
   first?: number
 }) {
   const [all, setAll] = useState(false)
+  /* The design pass (Hafsah, 21 November: "nothing gone and no folding"): every row is shown, made quiet; nothing waits behind a tap. */
+  const designPass = useTheDesignPass()
+  if (designPass) return <>{items.map(render)}</>
   const shown = all ? items : items.slice(0, first)
   return (
     <>
@@ -35,7 +39,8 @@ export function OnAPhoneShowFirst<T>({ items, render, first = 10 }: {
   first?: number
 }) {
   const phone = useIsAPhone()
-  const [all, setAll] = useState(false)
+  const designPass = useTheDesignPass()
+  const [all, setAll] = useState(designPass)
   const cut = phone && !all && items.length > first
   const shown = cut ? items.slice(0, first) : items
   return (

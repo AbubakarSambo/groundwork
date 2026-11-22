@@ -1,0 +1,1298 @@
+{
+ "groundId": "967d0977-7607-4307-8749-9db17ba0520c",
+ "renders": true,
+ "mode": "SHARED",
+ "family": "DELIVERY",
+ "peopleWorkTogether": true,
+ "sections": [
+  "phaseSpine",
+  "quickRead",
+  "objectives",
+  "startingState",
+  "divergence",
+  "whatTheRoomIsAbout",
+  "whoOwnsWhat",
+  "dependencies",
+  "checkInGrid",
+  "contribution",
+  "coverage",
+  "cascade",
+  "hiddenContributors",
+  "patterns",
+  "decisions",
+  "poll"
+ ],
+ "title": "Sales organisation",
+ "scenario": "OKR_ALIGNMENT",
+ "kindOfWork": "sales org",
+ "releaseOneSalesBoard": false,
+ "releaseFourTeams": true,
+ "template": null,
+ "switchboard": {
+  "type": "sales organisation",
+  "typeConfirmed": false,
+  "board": "the sales organisation board",
+  "drawnAs": "sales org",
+  "reports": "short"
+ },
+ "kindsOffered": [
+  "sales team",
+  "sales org",
+  "engineering release",
+  "support desk",
+  "distribution operations",
+  "trader training programme",
+  "founder's own check-in",
+  "asset loans",
+  "MarketView where next",
+  "MarketView Q4",
+  "a law firm matter",
+  "a government programme",
+  "leadership",
+  "a funded project",
+  "client delivery"
+ ],
+ "theCount": {
+  "session": 2,
+  "planned": 12,
+  "bySession": {
+   "1": {
+    "sessionNumber": 1,
+    "onTheCheckIn": [
+     "8460ea42-a64b-4120-90c8-a960bbf66cd0",
+     "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+     "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+     "72200e48-1611-40b4-a704-7045f300532c",
+     "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc"
+    ],
+    "answered": [
+     "8460ea42-a64b-4120-90c8-a960bbf66cd0",
+     "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+     "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+     "72200e48-1611-40b4-a704-7045f300532c",
+     "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc"
+    ],
+    "notYet": [],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "2": {
+    "sessionNumber": 2,
+    "onTheCheckIn": [
+     "8460ea42-a64b-4120-90c8-a960bbf66cd0",
+     "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+     "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+     "72200e48-1611-40b4-a704-7045f300532c",
+     "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc"
+    ],
+    "answered": [
+     "8460ea42-a64b-4120-90c8-a960bbf66cd0",
+     "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+     "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+     "72200e48-1611-40b4-a704-7045f300532c"
+    ],
+    "notYet": [
+     "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "3": {
+    "sessionNumber": 3,
+    "onTheCheckIn": [
+     "8460ea42-a64b-4120-90c8-a960bbf66cd0",
+     "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+     "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+     "72200e48-1611-40b4-a704-7045f300532c",
+     "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc"
+    ],
+    "answered": [
+     "8460ea42-a64b-4120-90c8-a960bbf66cd0",
+     "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0"
+    ],
+    "notYet": [
+     "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+     "72200e48-1611-40b4-a704-7045f300532c",
+     "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "4": {
+    "sessionNumber": 4,
+    "onTheCheckIn": [
+     "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+     "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+     "72200e48-1611-40b4-a704-7045f300532c",
+     "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc"
+    ],
+    "answered": [],
+    "notYet": [
+     "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+     "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+     "72200e48-1611-40b4-a704-7045f300532c",
+     "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   },
+   "5": {
+    "sessionNumber": 5,
+    "onTheCheckIn": [
+     "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+     "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+     "72200e48-1611-40b4-a704-7045f300532c",
+     "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc"
+    ],
+    "answered": [],
+    "notYet": [
+     "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+     "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+     "72200e48-1611-40b4-a704-7045f300532c",
+     "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc"
+    ],
+    "notJoined": [],
+    "declined": [],
+    "notLetIn": []
+   }
+  },
+  "said": {
+   "says": "4 of 5 have checked in; One person hasn\u2019t started yet.",
+   "whoSays": "One person hasn\u2019t started yet.",
+   "notJoinedSays": null,
+   "notCountedSays": null,
+   "everyoneIn": false,
+   "othersHaveAnswered": true
+  }
+ },
+ "howItIsGoing": {
+  "latestSummary": null,
+  "glance": {
+   "progress": {
+    "roundsDone": 1,
+    "roundsPlanned": 12,
+    "answeredThisRound": 4,
+    "ofPeople": 5,
+    "waitingOn": [
+     "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc"
+    ]
+   },
+   "inTheWay": {
+    "count": 0,
+    "oldest": null,
+    "daysWaiting": null,
+    "since": null,
+    "sinceSays": null,
+    "says": "No wait is listed against a named person, but 4 worries are on record."
+   }
+  }
+ },
+ "groundStatus": "ACTIVE",
+ "endState": null,
+ "coverageVariant": "text",
+ "startingState": null,
+ "whatTheAnswersSay": null,
+ "theJudgement": null,
+ "theTable": null,
+ "overTime": null,
+ "myParticipantId": "8460ea42-a64b-4120-90c8-a960bbf66cd0",
+ "canEditFrame": true,
+ "readOnlyNote": null,
+ "lastChangedAt": "2026-11-08T08:47:29.759Z",
+ "participants": [
+  {
+   "id": "8460ea42-a64b-4120-90c8-a960bbf66cd0",
+   "name": "Mira Costa",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "INITIATOR"
+  },
+  {
+   "id": "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+   "name": "Dov Ellison",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  },
+  {
+   "id": "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+   "name": "Pia Lund",
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  },
+  {
+   "id": "72200e48-1611-40b4-a704-7045f300532c",
+   "name": null,
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  },
+  {
+   "id": "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc",
+   "name": null,
+   "role": null,
+   "managingOnly": false,
+   "signedOffAt": null,
+   "partyType": "PARTICIPANT"
+  }
+ ],
+ "aTeamReportComes": true,
+ "waitingToBeLetIn": null,
+ "whoIsAway": [],
+ "phaseSpine": {
+  "startsAt": "2026-10-25T07:40:49.730Z",
+  "endsAt": "2027-01-23T07:40:49.730Z",
+  "currentSession": 2,
+  "plannedSessions": 12,
+  "sessions": [
+   {
+    "n": 1,
+    "state": "done",
+    "date": "2026-10-25T08:47:29.735Z",
+    "opensOn": "2026-10-25T07:40:49.735Z",
+    "openedOn": "2026-10-25T07:40:49.737Z",
+    "says": "Check-in 1 finished on 25 October."
+   },
+   {
+    "n": 2,
+    "state": "current",
+    "date": "2026-11-01T08:47:29.746Z",
+    "opensOn": "2026-11-01T07:40:49.746Z",
+    "openedOn": "2026-11-01T07:40:49.749Z",
+    "says": "Check-in 2 opened on 1 November, and it is still open."
+   },
+   {
+    "n": 3,
+    "state": "current",
+    "date": "2026-11-08T08:47:29.757Z",
+    "opensOn": "2026-11-08T07:40:49.757Z",
+    "openedOn": "2026-11-08T07:40:49.759Z",
+    "says": "Check-in 3 has started for some people, while check-in 2 is still open."
+   },
+   {
+    "n": 4,
+    "state": "upcoming",
+    "date": null,
+    "opensOn": "2026-11-15T07:40:49.763Z",
+    "openedOn": "2026-11-15T07:40:49.763Z",
+    "says": "Check-in 4 opened on 15 November, while check-in 2 is still open."
+   }
+  ]
+ },
+ "targetsNobodyOwns": null,
+ "objectives": [],
+ "eachPersonsOwn": [],
+ "whyTheNumbersDoNotMatch": [],
+ "stillUnanswered": [],
+ "eachPerson": [
+  {
+   "participantId": "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc",
+   "who": "One colleague",
+   "nameIsTheirRole": true,
+   "target": null,
+   "count": 0,
+   "reason": "has not answered",
+   "says": "One colleague has not checked in yet.",
+   "ask": "Ask this colleague to check in.",
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null
+  },
+  {
+   "participantId": "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+   "who": "Dov Ellison",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "nothing to do",
+   "says": "Dov Ellison has checked in, and nothing here needs you this week.",
+   "ask": null,
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null
+  },
+  {
+   "participantId": "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+   "who": "Pia Lund",
+   "nameIsTheirRole": false,
+   "target": null,
+   "count": 0,
+   "reason": "nothing to do",
+   "says": "Pia Lund has checked in, and nothing here needs you this week.",
+   "ask": null,
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null
+  },
+  {
+   "participantId": "72200e48-1611-40b4-a704-7045f300532c",
+   "who": "Another colleague",
+   "nameIsTheirRole": true,
+   "target": null,
+   "count": 0,
+   "reason": "nothing to do",
+   "says": "Another colleague has checked in, and nothing here needs you this week.",
+   "ask": null,
+   "notLetIn": false,
+   "notLetInBy": null,
+   "notLetInAt": null
+  }
+ ],
+ "toLookAt": [],
+ "checkInGrid": {
+  "sessions": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "rows": [
+   {
+    "participantId": "8460ea42-a64b-4120-90c8-a960bbf66cd0",
+    "name": "Mira Costa",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "done",
+     "4": "not-started"
+    }
+   },
+   {
+    "participantId": "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+    "name": "Dov Ellison",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "done",
+     "4": "not-started"
+    }
+   },
+   {
+    "participantId": "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+    "name": "Pia Lund",
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "not-started",
+     "4": "na"
+    }
+   },
+   {
+    "participantId": "72200e48-1611-40b4-a704-7045f300532c",
+    "name": null,
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "done",
+     "3": "not-started",
+     "4": "na"
+    }
+   },
+   {
+    "participantId": "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc",
+    "name": null,
+    "role": null,
+    "managingOnly": false,
+    "cells": {
+     "1": "done",
+     "2": "not-started",
+     "3": "na",
+     "4": "na"
+    }
+   }
+  ]
+ },
+ "whoOwnsWhat": [
+  {
+   "participantId": "8460ea42-a64b-4120-90c8-a960bbf66cd0",
+   "name": "You",
+   "role": null,
+   "items": [
+    {
+     "id": "c04f71e3-356f-40af-a583-1551c30b0be5",
+     "type": "PROGRESS",
+     "text": "You have reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "6583ef8d-ce9f-4c31-96a7-d846ddd48b7d",
+     "type": "COMMITMENT",
+     "text": "You have made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "1c070749-e220-484d-888d-952a60ba7d7a",
+     "type": "PROGRESS",
+     "text": "You have reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "8ac49b31-1824-4d05-b04b-828ed7e43513",
+     "type": "COMMITMENT",
+     "text": "You have made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "81657901-7c18-4176-a9d4-5ae78025f110",
+     "type": "PROGRESS",
+     "text": "You have reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 3,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "1c68e358-1184-413d-a124-4706d4beddcc",
+     "type": "COMMITMENT",
+     "text": "You have made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 3,
+     "settled": false,
+     "itsKindIsSaid": true
+    }
+   ]
+  },
+  {
+   "participantId": "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+   "name": "Dov Ellison",
+   "role": null,
+   "items": [
+    {
+     "id": "0d1d5451-f044-4d08-8b82-93f53dbc9a2d",
+     "type": "PROGRESS",
+     "text": "Dov Ellison has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "f471db6c-5a28-44f4-b9a4-07d016cdb7d6",
+     "type": "COMMITMENT",
+     "text": "Dov Ellison has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "1f4264e4-be23-40dd-9cd4-b1e645d5694a",
+     "type": "PROGRESS",
+     "text": "Dov Ellison has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "257f1b9d-fa99-4264-9e9b-3a6aed9f7781",
+     "type": "COMMITMENT",
+     "text": "Dov Ellison has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "f399db1a-5148-4830-8517-8c4d20ec8bc1",
+     "type": "PROGRESS",
+     "text": "Dov Ellison has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 3,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "25ef53fc-9f1b-437a-a36e-591d03d7aec4",
+     "type": "COMMITMENT",
+     "text": "Dov Ellison has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 3,
+     "settled": false,
+     "itsKindIsSaid": true
+    }
+   ]
+  },
+  {
+   "participantId": "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+   "name": "Pia Lund",
+   "role": null,
+   "items": [
+    {
+     "id": "da800ff4-e959-4ebf-8fa2-00594f42f525",
+     "type": "PROGRESS",
+     "text": "Pia Lund has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "d948aa8b-d4dc-4c1e-b98c-1e7c590be57b",
+     "type": "COMMITMENT",
+     "text": "Pia Lund has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "4ab85a4e-58d3-441e-ac8d-c7a8a1c046ed",
+     "type": "PROGRESS",
+     "text": "Pia Lund has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "c8d07232-39b9-4a2d-8360-c81061e8f020",
+     "type": "COMMITMENT",
+     "text": "Pia Lund has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    }
+   ]
+  },
+  {
+   "participantId": "72200e48-1611-40b4-a704-7045f300532c",
+   "name": null,
+   "role": null,
+   "items": [
+    {
+     "id": "04cdf5d4-f287-4df9-8c04-970ed03daa58",
+     "type": "PROGRESS",
+     "text": "A colleague has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "e3969afe-cee2-4a79-9d7f-c2612be22854",
+     "type": "COMMITMENT",
+     "text": "A colleague has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "1fe7e66f-d21d-4cd7-ba4a-f36b81122821",
+     "type": "PROGRESS",
+     "text": "A colleague has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "67f66f03-60ca-41ee-968a-854274f06bb1",
+     "type": "COMMITMENT",
+     "text": "A colleague has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 2,
+     "settled": false,
+     "itsKindIsSaid": true
+    }
+   ]
+  },
+  {
+   "participantId": "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc",
+   "name": null,
+   "role": null,
+   "items": [
+    {
+     "id": "4c5f7641-4a03-4bcf-8648-63ab69f6c6be",
+     "type": "PROGRESS",
+     "text": "A colleague has reported progress.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    },
+    {
+     "id": "105b7574-d02f-4712-ac0c-fddfa1c8b198",
+     "type": "COMMITMENT",
+     "text": "A colleague has made a commitment here.",
+     "mark": "said",
+     "markSays": "Only someone\u2019s word",
+     "sessionNumber": 1,
+     "settled": false,
+     "itsKindIsSaid": true
+    }
+   ]
+  }
+ ],
+ "dependencies": [],
+ "decisions": [],
+ "objectivesPrompt": "No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this check-in is aiming for.",
+ "whatTheRoomIsAbout": null,
+ "whatTheRoomIsAboutNote": "This is read when a round closes. Nothing has closed yet, so there is nothing to add up.",
+ "quickRead": [
+  {
+   "label": "Differences",
+   "value": "Nothing to compare yet",
+   "sub": "1 person has still to answer.",
+   "tone": "flat"
+  },
+  {
+   "label": "Movement",
+   "value": "No target set",
+   "sub": "Nobody has set anything to measure this against.",
+   "tone": "flat"
+  },
+  {
+   "label": "Blockers",
+   "value": "4 worries",
+   "sub": "4 worries are on record. None was kept in the words it was said, so none is quoted here. No wait has been recorded against a named person.",
+   "tone": "warn"
+  },
+  {
+   "label": "How much was said",
+   "value": "All from memory",
+   "sub": "Nothing said this check-in has a document behind it.",
+   "tone": "warn"
+  }
+ ],
+ "contribution": [
+  {
+   "participantId": "8460ea42-a64b-4120-90c8-a960bbf66cd0",
+   "name": "Mira Costa",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "reason": null,
+   "note": null,
+   "shown": false,
+   "basis": "No role was defined, so there is nothing to read against.",
+   "saidOnceAbove": true
+  },
+  {
+   "participantId": "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+   "name": "Dov Ellison",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  },
+  {
+   "participantId": "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+   "name": "Pia Lund",
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  },
+  {
+   "participantId": "72200e48-1611-40b4-a704-7045f300532c",
+   "name": null,
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  },
+  {
+   "participantId": "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc",
+   "name": null,
+   "remit": null,
+   "remitDefined": false,
+   "position": null,
+   "positionLabel": null,
+   "note": null,
+   "reason": null,
+   "nothingCheckable": false,
+   "ownVoice": null,
+   "shown": true,
+   "saidOnceAbove": true
+  }
+ ],
+ "coverage": {
+  "scope": "role",
+  "reads": [
+   {
+    "participantId": "8460ea42-a64b-4120-90c8-a960bbf66cd0",
+    "name": "Mira Costa",
+    "scope": "role",
+    "remitDefined": false,
+    "shown": false
+   },
+   {
+    "participantId": "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+    "name": "Dov Ellison",
+    "scope": "role",
+    "remitDefined": false,
+    "shown": false
+   },
+   {
+    "participantId": "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+    "name": "Pia Lund",
+    "scope": "role",
+    "kind": "STABLE",
+    "trend": "stable",
+    "what": null,
+    "reason": "CANNOT_DETERMINE",
+    "reasonText": null,
+    "ownVoice": null,
+    "coupledToBlocker": false,
+    "remitDefined": false,
+    "shown": true,
+    "saidOnceAbove": true
+   },
+   {
+    "participantId": "72200e48-1611-40b4-a704-7045f300532c",
+    "name": null,
+    "scope": "role",
+    "kind": "STABLE",
+    "trend": "stable",
+    "what": null,
+    "reason": "CANNOT_DETERMINE",
+    "reasonText": null,
+    "ownVoice": null,
+    "coupledToBlocker": false,
+    "remitDefined": false,
+    "shown": true,
+    "saidOnceAbove": true
+   },
+   {
+    "participantId": "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc",
+    "name": null,
+    "scope": "role",
+    "kind": "STABLE",
+    "trend": "stable",
+    "what": null,
+    "reason": "CANNOT_DETERMINE",
+    "reasonText": null,
+    "ownVoice": null,
+    "coupledToBlocker": false,
+    "remitDefined": false,
+    "shown": true,
+    "saidOnceAbove": true
+   }
+  ],
+  "saysOnce": [
+   "The role was never defined, so there is no boundary to measure against. This is true of Pia Lund, a colleague and a colleague.",
+   "The role was never clearly defined, so there is no boundary to measure work against. Define what this role owns before reading anything into where work is landing."
+  ]
+ },
+ "cascade": {
+  "isCascade": false,
+  "basis": [
+   "DECLARED"
+  ],
+  "parentNamed": null,
+  "teamsNamed": [],
+  "why": "Nothing above this has been named yet. These objectives stand on their own, and there is nothing to check them against. Say what they serve, if it is something wider, and they can be checked."
+ },
+ "coaching": {
+  "yours": {
+   "aboutYou": [
+    "Everything in your check-in came from memory, so there is nothing here that anybody else could open and check."
+   ],
+   "showingUp": null,
+   "whyItMatters": "This is check-in 3 of 12 of this work. Nothing has come up often enough yet to be called a pattern.",
+   "beforeNextTime": [
+    "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+   ],
+   "general": true,
+   "role": {
+    "label": "What you said",
+    "onTrack": "What you said can be checked later, because it has a date, a number or a name on it. You also say what you did about anything that stalled.",
+    "goingWrong": "What you said is hard to check later: it has no dates, numbers or names, or things were named and not carried through.",
+    "protectAgainst": "You said little, and little may have happened yet, or nobody may have asked the right question.",
+    "noticed": null,
+    "lookingLike": null
+   },
+   "whyNoRoleMap": "No role was given, so this is about where you are in the check-in rather than about a kind of work."
+  },
+  "eachPerson": [
+   {
+    "who": "Dov Ellison",
+    "participantId": "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+    "probe": [],
+    "encourage": [],
+    "triedToUnblock": "Nothing in the record says Dov Ellison's work is waiting on a named person."
+   },
+   {
+    "who": "Pia Lund",
+    "participantId": "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+    "probe": [],
+    "encourage": [],
+    "triedToUnblock": "Nothing in the record says Pia Lund's work is waiting on a named person."
+   },
+   {
+    "who": "Another colleague",
+    "participantId": "72200e48-1611-40b4-a704-7045f300532c",
+    "probe": [],
+    "encourage": [],
+    "triedToUnblock": "Nothing in the record says another colleague's work is waiting on a named person."
+   },
+   {
+    "who": "One colleague",
+    "participantId": "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc",
+    "probe": [],
+    "encourage": [],
+    "triedToUnblock": "Nothing in the record says one colleague's work is waiting on a named person."
+   }
+  ]
+ },
+ "patterns": [],
+ "poll": null,
+ "eachPersonToday": [
+  {
+   "participantId": "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc",
+   "who": "One colleague",
+   "line": "One colleague has not checked in yet."
+  },
+  {
+   "participantId": "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+   "who": "Dov Ellison",
+   "line": "Dov Ellison has checked in, and nothing here needs you this week.",
+   "nudge": {
+    "participantId": "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+    "firstName": "Dov",
+    "nudgedAt": null,
+    "says": "Nudge Dov"
+   }
+  },
+  {
+   "participantId": "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+   "who": "Pia Lund",
+   "line": "Pia Lund has checked in, and nothing here needs you this week.",
+   "nudge": {
+    "participantId": "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+    "firstName": "Pia",
+    "nudgedAt": null,
+    "says": "Nudge Pia"
+   }
+  },
+  {
+   "participantId": "72200e48-1611-40b4-a704-7045f300532c",
+   "who": "Another colleague",
+   "line": "Another colleague has checked in, and nothing here needs you this week."
+  }
+ ],
+ "workRecords": [
+  {
+   "section": "Deal grid",
+   "holds": "deals",
+   "state": "none-yet",
+   "stages": [
+    "Contacted",
+    "Need established",
+    "Pitched",
+    "Qualified",
+    "Quoted",
+    "Won"
+   ],
+   "rows": []
+  },
+  {
+   "section": "Forecast",
+   "holds": "where the sales numbers are likely to end up",
+   "state": "not-known",
+   "why": ""
+  }
+ ],
+ "timeline": [
+  {
+   "on": "2026-10-25",
+   "says": "On 25 October, the first answers for check-in 1 came in."
+  },
+  {
+   "on": "2026-11-01",
+   "says": "On 1 November, the first answers for check-in 2 came in."
+  },
+  {
+   "on": "2026-11-08",
+   "says": "On 8 November, the first answers for check-in 3 came in."
+  }
+ ],
+ "personHistory": [
+  {
+   "participantId": "8460ea42-a64b-4120-90c8-a960bbf66cd0",
+   "who": "You",
+   "says": "You have answered 3 check-ins, and have made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-10-25",
+     "says": "In check-in 1, you answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 2,
+     "on": "2026-11-01",
+     "says": "In check-in 2, you answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 3,
+     "on": "2026-11-08",
+     "says": "In check-in 3, you answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  },
+  {
+   "participantId": "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+   "who": "Dov Ellison",
+   "says": "Dov Ellison has answered 3 check-ins, and has made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-10-25",
+     "says": "In check-in 1, Dov Ellison answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 2,
+     "on": "2026-11-01",
+     "says": "In check-in 2, Dov Ellison answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 3,
+     "on": "2026-11-08",
+     "says": "In check-in 3, Dov Ellison answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  },
+  {
+   "participantId": "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+   "who": "Pia Lund",
+   "says": "Pia Lund has answered 2 check-ins, and has made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-10-25",
+     "says": "In check-in 1, Pia Lund answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 2,
+     "on": "2026-11-01",
+     "says": "In check-in 2, Pia Lund answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  },
+  {
+   "participantId": "72200e48-1611-40b4-a704-7045f300532c",
+   "who": "Another colleague",
+   "says": "Another colleague has answered 2 check-ins, and has made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-10-25",
+     "says": "In check-in 1, another colleague answered, and the record holds no new commitment or wait from it."
+    },
+    {
+     "n": 2,
+     "on": "2026-11-01",
+     "says": "In check-in 2, another colleague answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  },
+  {
+   "participantId": "4914dc59-3fb3-4648-947d-bbcf4bd9f6fc",
+   "who": "One colleague",
+   "says": "One colleague has answered 1 check-in, and has made no commitment on record yet.",
+   "sessions": [
+    {
+     "n": 1,
+     "on": "2026-10-25",
+     "says": "In check-in 1, one colleague answered, and the record holds no new commitment or wait from it."
+    }
+   ]
+  }
+ ],
+ "whereThisIsHeading": {
+  "heading": "Where this is heading",
+  "about": "Set goals and keep the team on track",
+  "outcomes": [
+   {
+    "value": "ALIGNED",
+    "says": "The team is on course.",
+    "more": null
+   },
+   {
+    "value": "REACH_WITH_A_CHANGE",
+    "says": "The team can reach it, with a change in how the work is done.",
+    "more": null
+   },
+   {
+    "value": "GAPS_IDENTIFIED",
+    "says": "The target needs to change.",
+    "more": null
+   },
+   {
+    "value": "NOT_YET",
+    "says": "It is not settled yet, and more check-ins are needed.",
+    "more": null
+   }
+  ],
+  "outcomesSays": null,
+  "signals": [],
+  "signalsSays": "Nothing on record points towards one outcome or another yet.",
+  "whatWouldSettleIt": [],
+  "whatWouldSettleItSays": "Nothing on record says yet what would settle it.",
+  "whoDecides": "You decide.",
+  "recordTheDecision": "Record the decision",
+  "decided": null
+ },
+ "byArea": {
+  "state": "not-known",
+  "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+ },
+ "reportedAgainstCriteria": {
+  "state": "not-known",
+  "why": "Nothing on record says what a deal must show at each stage. The board counts what people reported, and how much of it has a document behind it. It cannot count how many meet the rules.",
+  "stages": [],
+  "says": "Nobody has reported a deal at any stage yet."
+ },
+ "openIssues": {
+  "state": "not-known",
+  "why": ""
+ },
+ "contributionSaysOnce": "No position is shown for you, Dov Ellison, Pia Lund, a colleague or a colleague, because nobody's role was clearly defined. Define what each role is responsible for before assessing anyone against it. An undefined role is often the real problem, not the person.",
+ "atAGlance": {
+  "lines": {
+   "whereHeading": "4 possible outcomes. You decide.",
+   "sitsUnder": "Nothing above this has been named yet",
+   "likelyEnd": "Groundwork does not keep this yet",
+   "byArea": "Nothing on record says where each piece of work belongs yet",
+   "landing": "Nothing is leaking out or piling in",
+   "whatToAsk": "Something worth recognising, and what\u2019s in the way, for each of 4 people",
+   "teamToday": "3 nothing to do; 1 has not answered",
+   "whoCheckedIn": "4 of 5 have checked in; One person hasn\u2019t started yet.",
+   "yourNextStep": "Only you. Written for you, not part of the shared report",
+   "openIssues": "Nothing on record follows an issue yet",
+   "reports": "1 check-in so far, each with its reports"
+  },
+  "boxes": {
+   "work": [],
+   "team": [
+    "3 nothing to do; 1 has not answered",
+    "4 of 5 have checked in; One person hasn\u2019t started yet."
+   ],
+   "plan": [
+    "Only you. Written for you, not part of the shared report"
+   ],
+   "risk": [
+    "Nothing on record follows an issue yet"
+   ],
+   "rest": [
+    "1 check-in so far, each with its reports"
+   ]
+  },
+  "needsTheLead": null,
+  "assumesEach": {}
+ },
+ "theMorning": {
+  "groundId": "967d0977-7607-4307-8749-9db17ba0520c",
+  "kind": "sales",
+  "parts": [
+   {
+    "key": "target",
+    "heading": "Will we reach the target?",
+    "lines": [
+     "No team target is on record yet, so set one in your check-in."
+    ]
+   },
+   {
+    "key": "closing",
+    "heading": "About to close",
+    "lines": [
+     "Nothing is booked to close in the next seven days."
+    ]
+   },
+   {
+    "key": "team",
+    "heading": "Your team today",
+    "lines": [
+     "Dov hasn't checked in the last 4 times the check-in opened, on Sunday 25 October, Sunday 1 November, Sunday 8 November and Sunday 15 November, so call Dov.",
+     "Pia hasn't checked in the last 3 times the check-in opened, on Sunday 25 October, Sunday 1 November and Sunday 8 November, so call Pia."
+    ],
+    "about": [
+     {
+      "participantId": "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0"
+     },
+     {
+      "participantId": "4dbc7bab-7bad-4028-8ef5-91dd4b86f308"
+     }
+    ]
+   }
+  ],
+  "nudges": [
+   {
+    "participantId": "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+    "firstName": "Dov",
+    "nudgedAt": null,
+    "says": "Nudge Dov"
+   },
+   {
+    "participantId": "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+    "firstName": "Pia",
+    "nudgedAt": null,
+    "says": "Nudge Pia"
+   }
+  ]
+ },
+ "yourTeam": {
+  "heading": "Your team, person by person",
+  "note": "",
+  "people": [
+   {
+    "participantId": "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+    "name": "Dov Ellison",
+    "role": null,
+    "delivered": {
+     "heading": "What Dov won, with proof",
+     "proven": [],
+     "onlySaid": [],
+     "empty": "Dov has no deal won on record yet."
+    },
+    "record": null,
+    "whereTheyStand": null,
+    "fromYou": [],
+    "actions": [
+     {
+      "kind": "praise",
+      "label": "Praise Dov",
+      "does": "Keeps your words in Dov\u2019s record, where Dov reads them on My work and in Dov\u2019s own report. No message is sent."
+     },
+     {
+      "kind": "plan",
+      "label": "Start a plan",
+      "does": "Keeps what you want to help Dov with, here and under People on References and resources. Only you read it. Nothing is sent to Dov."
+     },
+     {
+      "kind": "deadline",
+      "label": "Set a deadline",
+      "does": "Puts a due day on one of Dov\u2019s records. It shows on that record on your board, and nothing is sent to Dov.",
+      "items": []
+     },
+     {
+      "kind": "reassign",
+      "label": "Reassign leads",
+      "does": "Gives one of Dov\u2019s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.",
+      "items": [],
+      "to": [
+       {
+        "participantId": "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+        "name": "Pia"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "participantId": "4dbc7bab-7bad-4028-8ef5-91dd4b86f308",
+    "name": "Pia Lund",
+    "role": null,
+    "delivered": {
+     "heading": "What Pia won, with proof",
+     "proven": [],
+     "onlySaid": [],
+     "empty": "Pia has no deal won on record yet."
+    },
+    "record": null,
+    "whereTheyStand": null,
+    "fromYou": [],
+    "actions": [
+     {
+      "kind": "praise",
+      "label": "Praise Pia",
+      "does": "Keeps your words in Pia\u2019s record, where Pia reads them on My work and in Pia\u2019s own report. No message is sent."
+     },
+     {
+      "kind": "plan",
+      "label": "Start a plan",
+      "does": "Keeps what you want to help Pia with, here and under People on References and resources. Only you read it. Nothing is sent to Pia."
+     },
+     {
+      "kind": "deadline",
+      "label": "Set a deadline",
+      "does": "Puts a due day on one of Pia\u2019s records. It shows on that record on your board, and nothing is sent to Pia.",
+      "items": []
+     },
+     {
+      "kind": "reassign",
+      "label": "Reassign leads",
+      "does": "Gives one of Pia\u2019s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.",
+      "items": [],
+      "to": [
+       {
+        "participantId": "fd4bfee8-1c36-4285-bd7c-a5cb67d366c0",
+        "name": "Dov"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

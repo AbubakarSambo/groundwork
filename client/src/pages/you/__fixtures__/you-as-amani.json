@@ -1,0 +1,24 @@
+{
+ "checkIns": [
+  {
+   "id": "f114832a-7de0-43ea-b0ba-84f8b9716458",
+   "label": "Sales team, Q4",
+   "youRunIt": false,
+   "line": "You have finished three check-ins.",
+   "to": "/grounds/f114832a-7de0-43ea-b0ba-84f8b9716458"
+  }
+ ],
+ "turns": [],
+ "goals": [],
+ "saidYoudDo": [],
+ "todos": [],
+ "coaching": null,
+ "ownReports": [
+  {
+   "checkIn": "Sales team, Q4",
+   "at": "2026-11-21T17:30:05.906Z",
+   "to": "/checkin/725e70f5-f09c-41dc-99e8-230c52489f54/report"
+  }
+ ],
+ "keptLately": null
+}

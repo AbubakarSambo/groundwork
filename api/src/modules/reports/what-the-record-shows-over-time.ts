@@ -313,7 +313,9 @@ export function aCommitmentSaid(
 
   /* What they said they would do, said about them ("ask Amina to provide them with ...") where it is not in their own marks. */
   const clause = inOurVoice(c.what, who === 'You' ? 'you' : 'them');
-  const whenAlreadySaidIn = (when: string, what: string) => { const f = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim(); return !!f(when) && ` ${f(what)} `.includes(` ${f(when)} `); };
+  /* The time is already said when every word of it is in their words, in any order (live copy, 21 November: "Monday morning... Wednesday"
+     beside "call her monday morning, if nothing ill go to their westlands office wednesday" was said a second time on the end). */
+  const whenAlreadySaidIn = (when: string, what: string) => { const f = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim(); const said = new Set(f(what).split(' ')); return !!f(when) && f(when).split(' ').every((w) => said.has(w)); };
   /* A piece that is not a sentence: it has no stop, starts in lower case and holds no "I" or "my". */
   const aFragmentOfTheirs = c.theySaidIt && quoteWhat && !!clause && !/[.!?]["\u201d]?\s*$/.test(String(c.what ?? '').trim()) && /^[a-z]/.test(String(c.what ?? '').trim()) && !FIRST_PERSON_WORD.test(String(c.what ?? ''));
   let whenIsInTheSentence = false;
@@ -353,8 +355,7 @@ export function aCommitmentSaid(
   else out.push(`${who} made a commitment, which is in the record.`);
   /* The time once: "In session 1, you said, "I will deliver the Tuskys cookers on 9 October." The time you gave
      for it was "on 9 October"." said it twice (request 111 e). Where the words already say it, it is not repeated. */
-  const flat = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
-  const whenAlreadySaid = !!c.when && !!flat(c.when) && ` ${flat(c.what ?? '')} `.includes(` ${flat(c.when)} `) && (quoteWhat || !!clause);
+  const whenAlreadySaid = !!c.when && whenAlreadySaidIn(c.when, c.what ?? '') && (quoteWhat || !!clause);
   if (whenAlreadySaid || whenIsInTheSentence) { /* said in the words above */ }
   /* Quoted or not, only words that read as a time are said as the time (messages test, 19 October, finding 11): "given their histories",
      kept word for word as the time Wanjiru gave, is a reason and is left out. */

@@ -4,7 +4,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { queueApi, leaveBoardApi, spendApi, decisionsApi, type AQueueItem, type ADecisionResult } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tabs, FieldLabel, TextArea, Skeleton } from '@/components/gw/ui'
-import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
+import { maySeeSuites, SuiteOffMessage, theToneForARefusal } from '@/lib/suite-is-off'
 import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { TheAttachedFile } from './TheAttachedFile'
@@ -17,7 +17,7 @@ import { TheAttachedFile } from './TheAttachedFile'
  * already handles (a 403/404 here is silently nothing, never an error on a page that is not about
  * the queue).
  */
-export function QueueLink({ userId }: { userId?: string }) {
+export function QueueLink({ userId, inline }: { userId?: string; /** Just the link, for a line of links (RequestLinks). */ inline?: boolean }) {
   /* SCREEN FAULT 11: same session-remembered guard as AppShell's sidebar read
      (stores/suites-known-off.ts) - once this session has already been told both suites are off,
      Today and Suites stop asking again. */
@@ -37,7 +37,23 @@ export function QueueLink({ userId }: { userId?: string }) {
     if (isError && (error as any)?.response?.status === 404) setSuitesKnownOff()
   }, [isError, error, setSuitesKnownOff])
   if (!data?.counts?.all) return null
+  if (inline) return <Link className="gwui-plain-link" to="/suite/queue">See everything waiting for you to decide</Link>
   return <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/queue">See everything waiting for you to decide</Link></p>
+}
+
+/**
+ * YOUR OWN REQUESTS, AND EVERYTHING WAITING FOR YOU TO DECIDE, AS ONE LINE (the design pass, 21 November 2026). Today and Suites
+ * each drew the two as lone bold links at the foot of the page, far from anything they belong to. This is the one part both use:
+ * the two links side by side in the normal link style, put where they mean something (beside "What needs you" on Today, on the
+ * title's line on Suites). Each page still decides whether "Your own requests" shows, from the suites that are on for the reader.
+ */
+export function RequestLinks({ userId, requests }: { userId?: string; requests: { show: boolean; label: string } }) {
+  return (
+    <span className="dp-links dp-links-quiet">
+      {requests.show && <Link className="gwui-plain-link" to="/suite/mine">{requests.label}</Link>}
+      <QueueLink userId={userId} inline />
+    </span>
+  )
 }
 
 /**
@@ -230,7 +246,7 @@ export function QueuePage() {
       {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only people in this organisation can read what waits for them.'} role={user?.role} /></Note>
+          <Note tone={theToneForARefusal(refused.data?.message ?? 'Only people in this organisation can read what waits for them.')}><SuiteOffMessage message={refused.data?.message ?? 'Only people in this organisation can read what waits for them.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The queue did not load.</Note>

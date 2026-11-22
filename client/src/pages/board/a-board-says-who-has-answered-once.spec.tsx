@@ -31,7 +31,9 @@ describe('the lead’s board, who has answered', () => {
   it('shows three people In and three Waiting, the same three the count names', () => {
     const t = text()
     expect(t.match(/Hasn’t answered yet\./g)).toHaveLength(3)
-    expect(t.match(/Answered, with no view of the decision on record\./g)).toHaveLength(3)
+    /* Changed 22 November 2026: the section is drawn on boards with no decision too, so its empty line no longer speaks of a decision. */
+    expect(t.match(/Answered, and has not given a view of their own yet\./g)).toHaveLength(3)
+    expect(t).not.toMatch(/decision|to decide/)
     expect(t.match(/Waiting/g)).toHaveLength(3)
     /* Those who answered come first, then the three still to answer. */
     expect(t.indexOf('Sam')).toBeGreaterThan(t.indexOf('Joel'))

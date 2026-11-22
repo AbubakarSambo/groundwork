@@ -34,6 +34,7 @@ import { aCountThatMovedSaid, theMoneyItCountsIn } from './a-count-that-moved-is
 import { inOurVoice } from './what-the-record-shows-over-time';
 import { theWeekOf } from './the-weekly-sentence-about-each-person';
 import type { TheSalesWeek, ATargetFromTheDeals } from './the-sales-week-in-numbers';
+import { inASentence } from '../board/a-phrase-inside-a-sentence';
 
 /* ------------------------------------------------------------------------------------------------
  * WHAT IS KEPT WHEN A CHECK-IN COMES IN. Report labels, never names.
@@ -411,10 +412,6 @@ export function aCommitmentThatSettled(c: AWeeksCommitment, who: string): string
   return null;
 }
 
-const inASentence = (phrase: string): string => {
-  const t = (phrase ?? '').trim().replace(/[.!?]+$/, '');
-  return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
-};
 
 /**
  * "Participant A is no longer waiting on Participant B for the price list." where the wait was on a thing outside the

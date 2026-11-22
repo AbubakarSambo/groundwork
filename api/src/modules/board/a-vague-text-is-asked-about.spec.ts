@@ -1,4 +1,8 @@
-import { THE_KIND_OF_WORK_PROMPT, oneOfTheKinds } from './the-kind-of-work';
+import { oneOfTheKinds } from './the-kind-of-work';
+import { theClassifierPrompt } from '../entry/which-situation-this-is';
+/* Changed 22 November 2026: the kind of work is read by the one reading (which-situation-this-is.ts), so these words are checked in its prompt; THE_KIND_OF_WORK_PROMPT is gone. */
+const THE_KIND_OF_WORK_PROMPT = theClassifierPrompt('');
+
 
 /**
  * A VAGUE TEXT IS ASKED ABOUT, AND MONEY OWED FOR WORK DONE IS NOT A PROJECT (fix plan 16 November, group 10; boards pass 4, defects 2 and 3).

@@ -66,7 +66,8 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { aKindMayBeGiven, theBoardKindsOffered, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
 import { askNameOf } from '../assistant/ask-name';
-import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, isASalesKind, theSetupWords } from '../board/the-kind-of-work';
+import { readTheSituationAndTheKind, THE_SCENARIOS_IN_WORDS } from '../entry/which-situation-this-is';
+import { KINDS_OF_WORK, oneOfTheKinds, isASalesKind, theSetupWords } from '../board/the-kind-of-work';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf, theDaysItRunsOn } from './which-days-this-team-works';
 import { targetsFor } from '../board/whose-number-is-whose-business';
@@ -718,6 +719,10 @@ export class GroundsService {
   async create(organizationId: string, initiatorId: string, dto: CreateGroundDto, creatorRole?: string) {
     /* Collect what's owed only where the organisation's Release 2 switch is on; refused before anything is spent (release-2-collections.ts). */
     await this.aNewCheckInMayBeThisSituation(organizationId, dto.scenario);
+    /* The kind of work the setup read with the situation, kept where it is one of the kinds and this organisation may have it. It is
+       the only reading of the kind at the save (typed situations, 22 November 2026): the second read here disagreed with the first. */
+    const theKindRead = oneOfTheKinds(dto.kindOfWork);
+    const kindOfWork = theKindRead && ((await aKindMayBeGiven(this.prisma, theKindRead, null, organizationId)) || (await aKindTheSwitchboardNeeds(this.prisma, theKindRead, organizationId))) ? theKindRead : null;
     /* A daily check-in nobody gave days for runs Monday to Friday (Hafsah, 15 October). */
     dto = { ...dto, workingDays: theDaysItRunsOn(dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario], dto.workingDays) };
     /* What this organisation already calls its check-ins, so a new one is not the fourth thing in
@@ -783,6 +788,7 @@ export class GroundsService {
          */
         label: aLabelTheyCanTellApart(dto.label, labelsAlreadyHere),
         scenario: dto.scenario,
+        ...(kindOfWork ? { kindOfWork, kindOfWorkSetBy: 'read' } : {}),
         // Immutable after this point. Omitting it takes the family default so a
         // sensing-family ground is never accidentally created shared.
         mode: dto.mode ?? defaultModeFor(dto.scenario),
@@ -920,8 +926,6 @@ export class GroundsService {
       return ground;
     });
     await this.tellParticipantsAboutThis(ground.id, dto.brief, (dto as { scenario?: string }).scenario);
-    /* The kind of work, read from what the lead said at setup (request 76). Not awaited: setup is saved either way. */
-    void this.readTheKindOfWork(ground.id);
 
     // GW-19: no-verdict expectation contract - set at creation so the initiator
     // sees this before they invite anyone or pay. "Evidence both of you can stand
@@ -1127,7 +1131,7 @@ export class GroundsService {
 
     this.usage.emit(UsageEventType.GROUND_CREATED, { organizationId, groundId: ground.id, userId: leadUser.id }).catch(() => undefined);
     await this.tellParticipantsAboutThis(ground.id, dto.brief, (dto as { scenario?: string }).scenario);
-    /* The kind of work, read from what the lead said at setup (request 76). Not awaited: setup is saved either way. */
+    /* The kind of work, read once from what the admin wrote, with the one reading the door uses. Not awaited: the check-in is made either way. */
     void this.readTheKindOfWork(ground.id);
 
     return ground;
@@ -4985,8 +4989,21 @@ export class GroundsService {
     const lines = (items: any[] | undefined, field: string) => (items ?? []).map((i) => said(i, field)).filter(Boolean).map((t) => t.slice(0, 300));
     const people = await this.prisma.groundParticipant.findMany({
       where: { groundId },
-      select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } },
+      select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, partyType: true, user: { select: { firstName: true, lastName: true } } },
     }).catch(() => [] as any[]);
+    /*
+     * A CHECK-IN ABOUT ONE PERSON (the onboarding family: a new hire, a new manager, an advisor): WHAT SUCCESS LOOKS LIKE IS WHAT IS EXPECTED OF THEM (release test, 21 November 2026). "By day 30 he
+     * runs the morning stock count alone" was read in setup and kept only as the first line of what success looks like, so the new
+     * hire's board read "Nothing was agreed at the start yet". Where one person checks in beside the lead, each success line is that
+     * person's goal, kept as the lead's expectation set at setup (what-setup-agreed.ts), as a paste's goals for a person are.
+     */
+    const ground = await Promise.resolve(this.prisma.ground?.findUnique?.({ where: { id: groundId }, select: { scenario: true } })).catch(() => null);
+    const aboutOnePerson = !!ground?.scenario && familyFor(ground.scenario as GroundScenario) === BoardFamily.ONBOARDING;
+    const theOnePerson = ((people as any[]).filter((p) => !p.managingOnly && p.partyType !== PartyType.INITIATOR));
+    const successLines = lines(a.setup?.success, 'success');
+    const forPeople: WhatAPasteGives['forPeople'] = aboutOnePerson && theOnePerson.length === 1
+      ? successLines.map((expectation) => ({ who: theNameWeUseFor(theOnePerson[0] as any), participantId: theOnePerson[0].id, expectation, targets: [] }))
+      : [];
     const aboutPeople: WhatAPasteGives['aboutPeople'] = [];
     for (const n of a.setup?.privateNotes ?? []) {
       const who = n?.about ? whoThisNameIs(String(n.about), (people as any[]).filter((p) => !p.managingOnly) as any) : null;
@@ -4999,8 +5016,8 @@ export class GroundsService {
      * dates and what is still to decide are kept on References and resources for her alone (keptForTheLead), where she can share them.
      */
     return {
-      success: lines(a.setup?.success, 'success')[0] ?? null,
-      teamTargets: [], forPeople: [], commitments: [], questionsForPeople: [], toldToParticipants: null,
+      success: successLines[0] ?? null,
+      teamTargets: [], forPeople, commitments: [], questionsForPeople: [], toldToParticipants: null,
       dates: (a.dates ?? []).map((d: any) => ({ what: said(d, 'what'), when: String(d?.when ?? '').trim() })).filter((d) => d.what && d.when),
       unmatched: [],
       waysOfWorking: lines(a.setup?.rules, 'rule'),
@@ -5713,8 +5730,9 @@ export class GroundsService {
 
   /** Whether people on this check-in see each other's numbers, or only their own. */
   /**
-   * THE KIND OF WORK, READ FROM SETUP (request 76). One of the twelve kinds in
-   * board/the-kind-of-work.ts, read from the lead's own words and the brief with the model, and kept
+   * THE KIND OF WORK, READ FROM WHAT THE LEAD OR THE ADMIN WROTE (request 76): for a check-in an admin sets up for a lead, and when a
+   * lead changes the brief. A setup the lead made herself carries the door's reading to the save instead. One of the kinds in
+   * board/the-kind-of-work.ts, read with the model, and kept
    * only when the answer is exactly one of the eleven. Never over a lead's own choice: once the lead
    * has set it, only the lead changes it. Best effort: a failed read leaves it as it was.
    */
@@ -5724,21 +5742,20 @@ export class GroundsService {
         where: { id: groundId },
         select: {
           label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true, kindOfWork: true, organizationId: true,
-          /* The people's job titles, so a sales team is told by its reps and its sales manager as well as by its words (Release 1). */
-          participants: { select: { roleAsDescribed: true, user: { select: { jobTitle: true } } } },
+          /* The check-in's purpose (what it is for), never the people's job titles (Hafsah, 21 November 2026; theSetupWords). */
+          scenario: true,
         },
       });
       if (!g || theReadingMustLeaveIt(g.kindOfWorkSetBy)) return;
       /* A check-in that already has a kind keeps it, offered or not (docs/deploy.md, "Hidden at release"). */
       const hasOne = oneOfTheKinds(g.kindOfWork);
-      const words = theSetupWords(g, ((g.participants ?? []) as any[]).flatMap((p) => [p.user?.jobTitle, p.roleAsDescribed]));
+      /*
+       * THE ONE READING (which-situation-this-is.ts readTheSituationAndTheKind), the same call and prompt as the door's, on what the
+       * check-in is for and the words the lead or the admin wrote. A sales team runs in any situation, so the kind read is kept as read.
+       */
+      const words = theSetupWords(g, THE_SCENARIOS_IN_WORDS[(g as any).scenario as keyof typeof THE_SCENARIOS_IN_WORDS] ?? null);
       if (!words.trim()) return;
-      const answer = await this.anthropic.extract<{ kind?: string }>(
-        THE_KIND_OF_WORK_PROMPT,
-        [{ role: 'user', content: words }],
-        THE_KIND_OF_WORK_SCHEMA,
-      );
-      const read = oneOfTheKinds(answer?.kind);
+      const read = (await readTheSituationAndTheKind(this.anthropic, words))?.kind ?? null;
       /*
        * A SALES CHECK-IN KEEPS THE SALES KIND IT HOLDS (Release 1). "sales team" came in beside "sales org"; a check-in read as a
        * sales org before keeps that, and one read as a sales team keeps that, when a later read of its words says the other. Only

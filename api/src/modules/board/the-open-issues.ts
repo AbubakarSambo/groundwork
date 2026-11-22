@@ -17,7 +17,7 @@
  * Nothing is inferred beyond those rows, and nothing here names a judgement about a person: every
  * sentence says what is on record and what would move it. Served to whoever runs the check-in only.
  */
-import { isAWholeSentence } from '../reports/what-people-said-differently-about';
+import { isAWholeSentence, peopleSaidDifferentThingsAbout } from '../reports/what-people-said-differently-about';
 import { REFERENCES_AND_RESOURCES } from '../../common/the-tab-names';
 
 export const ISSUE_STEPS = ['Unclear', 'Understood', 'Options', 'Decided', 'Being done', 'Checked'] as const;
@@ -103,10 +103,11 @@ export function theOpenIssues(from: WhatTheIssuesAreReadFrom): AnOpenIssue[] {
      * short thing ("Mama Fresh", "what counts as money ready") reads inside the sentence as before; a sentence is said on its own.
      */
     const aSentence = isAWholeSentence(topic);
-    const what = aSentence ? 'this' : topic;
+    /* A question asked as a thing ("how progress ... is described") goes after "differently", as the one sentence for a difference says it. */
+    const seeIt = (who: string) => (aSentence ? `${who} see this differently` : peopleSaidDifferentThingsAbout(topic, who).replace(/\.$/, ''));
     out.push({
       id: `difference-${d.key}`,
-      title: `${d.withFirstName} and you see ${what} differently`,
+      title: seeIt(`${d.withFirstName} and you`),
       step: 'Unclear',
       next: `have the conversation with ${d.withFirstName}.`,
       says: null,
@@ -114,7 +115,7 @@ export function theOpenIssues(from: WhatTheIssuesAreReadFrom): AnOpenIssue[] {
         heading: 'This needs a conversation',
         says: `${aSentence ? `${capital(topic)}. ` : ''}You and ${d.withFirstName} have seen this differently${forHowLong}, and it has not been talked about.`,
         /* The lead's own words to the person, in her voice: no "we" standing in for Groundwork (staging check S15). */
-        wayToStart: `“${d.withFirstName}, you and I see ${what} differently. Can you talk it through with me?”`,
+        wayToStart: `“${d.withFirstName}, ${seeIt('you and I')}. Can you talk it through with me?”`,
       },
       action: { label: 'Prepare the conversation', says: 'Your check-in helps you prepare what to say, and what to ask.', goesTo: 'check-in' },
       quiet: { label: 'Not now', says: 'It stays here, at Unclear, until one of you says something new about it.' },

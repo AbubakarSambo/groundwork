@@ -15,6 +15,7 @@ import { InvitePeople } from './InvitePeople'
 import { WhoCanOpenACheckIn } from './WhoCanOpenACheckIn'
 import { TheTeamsHere } from './ATeamPicker'
 import { Page, PageTitle, EdgeList, EdgeRow, Button, Section, Panel, Stack, Folded } from '@/components/gw/ui'
+import { useTheDesignPass } from '@/lib/the-design-pass'
 
 /**
  * THE PEOPLE PAGE (U.4, A4 people.txt), as an admin reads it, in the prototype's order:
@@ -97,6 +98,7 @@ export function OrgMembersPage() {
   const { user } = useAuthStore()
   const qc = useQueryClient()
   const isAdmin = user?.role === 'ADMIN'
+  const designPass = useTheDesignPass()
   const orgName = user?.organization?.name ?? user?.organizationName ?? 'your organisation'
 
   const ownerQuery = useQuery({
@@ -151,7 +153,7 @@ export function OrgMembersPage() {
     return (
       <Page>
         <PageTitle eyebrow={orgName} title="People" />
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div className={designPass ? 'dp-page-action' : undefined} style={designPass ? undefined : { display: 'flex', justifyContent: 'flex-end' }}>
           <Button kind="primary" onClick={() => setInviting(true)}>Invite a colleague</Button>
         </div>
         {inviting && <div id="invite-people"><InvitePeople /></div>}
@@ -173,9 +175,22 @@ export function OrgMembersPage() {
       ? `${people.count} seats are taken. Your plan includes ${people.cap}, and ${people.count - people.cap} ${people.count - people.cap === 1 ? 'is an extra seat' : 'are extra seats'}.`
       : `${people.count} of ${people.cap} seats are taken.`
 
+  const openTheInvitation = () => {
+    setInviting(true)
+    /* The form is not on the page until the state has changed, so the focus waits for it. */
+    setTimeout(() => {
+      scrollToId('invite-list')
+      document.getElementById('invite-list')?.focus()
+    }, 0)
+  }
+
   return (
     <Page>
-      <PageTitle eyebrow={orgName} title="People" />
+      {/* THE DESIGN PASS: inviting is what an admin comes here for, so it is the page's one navy button, on the title's line, and
+          the form opens right under it. Everything else on the page stays, quieter and in order. */}
+      <PageTitle eyebrow={orgName} title="People" action={designPass ? <Button kind="primary" onClick={openTheInvitation}>Invite a colleague</Button> : undefined} />
+
+      {designPass && inviting && <div id="invite-people"><InvitePeople /></div>}
 
       {(seatQueue.data?.length ?? 0) > 0 && (
         <EdgeList label={noSeatHeading}>
@@ -239,6 +254,34 @@ export function OrgMembersPage() {
 
       <TheTeamsHere />
 
+      {designPass && (
+        <>
+          {/* "More about how people join" was the fold these two sat in: now their heading, with both shown. */}
+          <h2 className="t-h2">More about how people join</h2>
+          <WhoCanJoin orgName={orgName} />
+          <WhoCanOpenACheckIn orgName={orgName} />
+          <Section heading="Help your team get started">
+            <ul className="dp-rows" aria-label="Help your team get started">
+              <li className="dp-row">
+                <span className="dp-row-main">
+                  <span className="dp-row-title">Send your team the guide</span>
+                  <span className="dp-row-line">How a check-in works, what happens to what people write, and what you can see as their admin.</span>
+                </span>
+                <span className="dp-row-acts"><Link className="gwui-plain-link" to="/org/guide">Send the guide</Link></span>
+              </li>
+              <li className="dp-row">
+                <span className="dp-row-main">
+                  <span className="dp-row-title">Put your whole team on</span>
+                  <span className="dp-row-line">{`Everyone at ${orgName} on one plan, so nobody waits for a seat.`}</span>
+                </span>
+                <span className="dp-row-acts"><Link className="gwui-plain-link" to="/billing">See the plans</Link></span>
+              </li>
+            </ul>
+          </Section>
+        </>
+      )}
+
+      {!designPass && <>
       {/* ONE WAY TO INVITE (design playbook, rule 3): the button is the page's one main action, and it opens the form. The form used to sit
           open under the button as a second way in. It is still on the page for anyone who arrives at "#invite-list". */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -284,6 +327,7 @@ export function OrgMembersPage() {
           </Panel>
         </div>
       </Section>
+      </>}
     </Page>
   )
 }

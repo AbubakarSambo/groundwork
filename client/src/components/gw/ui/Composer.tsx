@@ -1,3 +1,4 @@
+import { useTheDesignPass } from '@/lib/the-design-pass'
 import { useCallback, useEffect, useRef } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 
@@ -61,6 +62,8 @@ export function Composer({
   variant?: 'checkin' | 'ask'
 }) {
   const plusWide = plusGlyph.length > 1
+  /* The design pass: the box is one line tall until somebody writes more, so +, the box and send line up. */
+  const designPass = useTheDesignPass()
   const ask = variant === 'ask'
   /*
    * A BOX THAT SHOWS ITS WHOLE PLACEHOLDER (Fatima round 2, D3; the same fault as fault 7 above, fixed at its cause). The field is one row high, so a placeholder
@@ -127,6 +130,7 @@ export function Composer({
         maxLength={maxLength}
         autoFocus={autoFocus}
         className="input"
+        rows={designPass ? 1 : undefined}
       />
       <button
         type="button"

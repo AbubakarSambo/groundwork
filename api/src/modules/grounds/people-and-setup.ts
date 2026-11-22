@@ -11,7 +11,8 @@ import { leaveOfThePeopleOn } from '../suites/who-is-away';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { theBoardKindsOffered } from '../admin/what-is-hidden-at-release';
-import { TYPES_A_SCENARIO_OFFERS, CHECK_IN_TYPE_LABEL, theTypeToOffer } from '../board/the-switchboard';
+import { TYPES_A_SCENARIO_OFFERS, CHECK_IN_TYPE_LABEL, theTypeToOffer, whatTheSwitchboardServes } from '../board/the-switchboard';
+import { oneOfTheKinds } from '../board/the-kind-of-work';
 
 /**
  * PEOPLE AND SETUP, AS EACH READER IS SERVED IT (Release 1B, pull request 1 of 3; Hafsah's people-and-setup.md, 17 October
@@ -64,6 +65,8 @@ export type PeopleAndSetup =
       howItRuns: string;
       problems: ASetupProblem[];
       sessions: string;
+      /** The sessions the team has finished, the number "sessions" says, so the lead's own count can be read beside it. */
+      teamSessionsDone: number;
       yourSessionsDone: number;
       sessionsPlanned: number | null;
       joinedWithTheLink: string;
@@ -284,8 +287,12 @@ export async function readPeopleAndSetup(
     ? 'Nobody has answered with it yet.'
     : throughTheLink === 1 ? '1 person has answered with it.' : `${throughTheLink} people have answered with it.`;
 
+  /* The kind the board draws, the one the board's own sentence names (board.service: the switchboard's, then the kind on record), so
+     "Kind of work" here never says "Not known yet" beside a board about a sales team (release test, 21 November 2026, bug 18). */
+  const drawnAs = await Promise.resolve(whatTheSwitchboardServes(prisma, ground as any)).catch(() => null);
+  const theKind = oneOfTheKinds(drawnAs?.drawnAs) ?? oneOfTheKinds(ground.kindOfWork);
   const offered = await theBoardKindsOffered(prisma, (ground as any).organizationId ?? null).catch(() => [] as string[]);
-  const kindsOffered = ground.kindOfWork && !offered.includes(ground.kindOfWork) ? [...offered, ground.kindOfWork] : [...offered];
+  const kindsOffered = theKind && !offered.includes(theKind) ? [...offered, theKind] : [...offered];
 
   const orgName = ground.organization?.name ?? 'your organisation';
   const othersWithAccess = isEvaluationCheckIn(ground.scenario)
@@ -300,10 +307,11 @@ export async function readPeopleAndSetup(
     howItRuns,
     problems,
     sessions,
+    teamSessionsDone: planned != null ? Math.min(rounds, planned) : rounds,
     yourSessionsDone: planned != null ? Math.min(yourSessionsDone, planned) : yourSessionsDone,
     sessionsPlanned: planned,
     joinedWithTheLink,
-    kindOfWork: ground.kindOfWork ?? null,
+    kindOfWork: theKind,
     kindsOffered,
     othersWithAccess,
     runsIt: leadName,

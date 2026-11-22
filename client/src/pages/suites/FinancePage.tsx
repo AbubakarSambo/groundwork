@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { financeApi, type ATotal, type FinanceRequest, type FinanceView, type TheMonthsTotals } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, TextField, Select, Skeleton } from '@/components/gw/ui'
-import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
+import { maySeeSuites, SuiteOffMessage, theToneForARefusal } from '@/lib/suite-is-off'
 import { midSentence } from '@/lib/a-colleague'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { TheAttachedFile } from './TheAttachedFile'
@@ -98,7 +98,7 @@ export function FinancePage() {
       {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only whoever looks after finance, or an admin, can open this.'} role={user?.role} /></Note>
+          <Note tone={theToneForARefusal(refused.data?.message ?? 'Only whoever looks after finance, or an admin, can open this.')}><SuiteOffMessage message={refused.data?.message ?? 'Only whoever looks after finance, or an admin, can open this.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The requests did not load.</Note>

@@ -9,6 +9,8 @@ import { type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, statusWo
 import { useSaveTheirNumber } from './their-number'
 import { AskFirst, RemoveFromTheOrganisation } from './ask-first-in-the-page'
 import { Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, ChoiceCards, Tag, Button, TextField, Select, Note, Skeleton } from '@/components/gw/ui'
+import { FlatWithThePass } from '@/components/gw/ui/FlatWithThePass'
+import { useTheDesignPass } from '@/lib/the-design-pass'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-cannot-read-without-access'
 import { APersonsDetails } from './APersonsDetails'
@@ -108,6 +110,7 @@ export function OnePersonPage() {
   const qc = useQueryClient()
   const { user } = useAuthStore()
   const whatsappOn = useWhatsAppIsOn()
+  const designPass = useTheDesignPass()
   const orgName = user?.organization?.name ?? user?.organizationName ?? 'your organisation'
   const { data, isLoading, isError } = useQuery({ queryKey: ['org-members'], queryFn: fetchMembers })
   const owner = useQuery({
@@ -171,9 +174,12 @@ export function OnePersonPage() {
   const managers = everybody.filter((p) => p.id !== m.id && p.role !== 'GUEST').map((p) => ({ value: p.id, label: nameOf(p) }))
   const checkIns = m.checkIns ?? []
   const status = statusWord(m)
+  /* Who reports to them, from the same list: said on their page with the switch on, beside who they report to. */
+  const directReports = everybody.filter((p) => p.reportsTo?.id === m.id).map(nameOf)
 
   return (
     <Page>
+      <FlatWithThePass>
       <PageTitle eyebrow={orgName} title="People" />
       <PageTitle
         crumbs={[{ label: 'People', to: '/org/members' }, { label: name }]}
@@ -182,10 +188,12 @@ export function OnePersonPage() {
         subtitle={name !== m.email ? m.email : undefined}
       />
 
-      <Section heading="Where they sit" foot={`This describes the organisation. What ${first} can do still comes only from their role and their access to each check-in.`}>
+      <Section heading="Where they sit" foot={designPass ? undefined : `This describes the organisation. What ${first} can do still comes only from their role and their access to each check-in.`}>
         <FieldRows flush>
           <EditableField label="Level" value={m.level ?? ''} empty="Not set" saving={sit.isPending} onSave={(v) => sit.mutate({ level: v })} />
           <EditableField label="Reports to" value={m.reportsTo?.id ?? ''} empty="Nobody" choices={managers} saving={sit.isPending} onSave={(v) => sit.mutate({ reportsToUserId: v })} />
+          {designPass && <FieldRow label="Their direct reports" value={directReports.length ? `${directReports.slice(0, -1).join(', ')}${directReports.length > 1 ? ' and ' : ''}${directReports[directReports.length - 1]}.` : 'Nobody reports to them.'} />}
+          {/* More of a person's details (a CV, an emergency contact) go here, as rows like these. */}
         </FieldRows>
       </Section>
 
@@ -197,9 +205,21 @@ export function OnePersonPage() {
         </Stack>
       </Panel>
 
-      <Section heading={`Role at ${orgName}`} note="Changes apply straight away.">
+      <Section heading={`Role at ${orgName}`} note={designPass ? undefined : 'Changes apply straight away.'}>
         {isOwner && <Note>{isMe ? 'You own this organisation, so your role cannot be changed here.' : `${first} owns this organisation, so their role cannot be changed here.`}</Note>}
-        <ChoiceCards
+        {designPass ? (
+          /* The design pass: the four roles as plain radio rows; the chosen one is marked by its radio, never a frame. */
+          <fieldset className="dp-fieldset" aria-label={`Role at ${orgName}`}>
+            <legend className="gwui-sr-only">{`Role at ${orgName}`}</legend>
+            {ROLE_CHOICES.map((c) => (
+              <label key={c.value} className="dp-choice dp-choice-row">
+                <input type="radio" name="role" checked={m.role === c.value} disabled={isOwner || isMe || role.isPending}
+                  onChange={() => { if (c.value === 'ADMIN') { setAsking('admin'); return } role.mutate({ what: c.value as RoleWrite, first }) }} />
+                <span><span className="dp-choice-title">{c.title}</span><span className="dp-choice-says">{c.says}</span></span>
+              </label>
+            ))}
+          </fieldset>
+        ) : <ChoiceCards
           label={`Role at ${orgName}`}
           value={m.role}
           disabled={isOwner || isMe || role.isPending}
@@ -220,7 +240,7 @@ export function OnePersonPage() {
             role.mutate({ what: next as RoleWrite, first })
           }}
           options={ROLE_CHOICES.map((c) => ({ key: c.value, title: c.title, description: c.says }))}
-        />
+        />}
         {ownerId === user?.id && !isMe && m.role === 'ADMIN' && (
           <Button
             kind="quiet"
@@ -229,13 +249,18 @@ export function OnePersonPage() {
         )}
       </Section>
 
-      <Section heading="Team" note="Used to add whole teams to a check-in">
-        <Panel>
+      <Section heading="Team" note={designPass ? undefined : 'Used to add whole teams to a check-in'}>
+        {designPass ? (
+          <div className="dp-inline-form">
+            <TextField className="gwui-narrow-field" aria-label="Team" value={team ?? m.team ?? ''} onChange={(e) => setTeam(e.target.value)} maxLength={120} />
+            <Button kind="quiet" size="small" disabled={team === null || sit.isPending} onClick={() => { sit.mutate({ team: team ?? '' }); setTeam(null) }}>Save</Button>
+          </div>
+        ) : <Panel>
           <div className="gwui-invite-actions">
             <ATeamPicker value={team ?? m.team ?? ''} onChange={setTeam} />
             <Button kind="secondary" disabled={team === null || sit.isPending} onClick={() => { sit.mutate({ team: team ?? '' }); setTeam(null) }}>Save</Button>
           </div>
-        </Panel>
+        </Panel>}
       </Section>
 
       <Section heading="Status">
@@ -336,6 +361,7 @@ export function OnePersonPage() {
       {asking === 'remove' && (
         <RemoveFromTheOrganisation id={id ?? m.id} name={name} orgName={orgName} alsoIn={m.alsoIn} onClose={() => setAsking(null)} onRemoved={() => navigate('/org/members')} />
       )}
+      </FlatWithThePass>
     </Page>
   )
 }

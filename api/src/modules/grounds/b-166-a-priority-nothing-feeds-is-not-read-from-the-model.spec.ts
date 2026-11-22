@@ -15,7 +15,8 @@ describe('a priority no check-in feeds', () => {
   const picture = buildPicture(input, model);
   const says = (n: number) => picture.readings.find((r) => r.number === n)!.says;
   it('is read from the counts, not from the model', () => {
-    expect(says(1)).toBe('No check-in feeds this priority yet, so nothing on the record can show it moving. Once a check-in reports against it, the record can show how it is going.');
+    /* Shortened to one line, as the prototype's priority card reads (Hafsah, 21 November 2026): still from the counts, never the model. */
+    expect(says(1)).toBe('No check-in reports against it yet.');
   });
   it('a priority a check-in feeds keeps the model sentence the record supports', () => {
     expect(says(2)).toMatch(/feeds this priority/);

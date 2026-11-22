@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, Select, TextField, TextArea, Tag, ExampleExchange, Skeleton } from '@/components/gw/ui'
 import { AskAQuestion } from './AskAQuestion'
 import { ApprovalStepsByAmount } from './ApprovalStepsByAmount'
-import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
+import { maySeeSuites, SuiteOffMessage, theToneForARefusal } from '@/lib/suite-is-off'
 
 /**
  * SPENDING AND BUDGETS (E7, #/suite/spend, group 2 piece 4). What each reader is given is the server's
@@ -79,7 +79,7 @@ export function SpendingPage() {
       {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>
+          <Note tone={theToneForARefusal(refused.data?.message ?? 'Only an admin or a lead can open this board.')}><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The board did not load.</Note>

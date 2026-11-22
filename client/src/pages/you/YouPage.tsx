@@ -7,6 +7,8 @@ import { youApi, type YourBoard, type YourCheckIn } from '@/api/you'
 import { myDataApi } from '@/api/my-data'
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
+import { useTheDesignPass } from '@/lib/the-design-pass'
+import { FlatWithThePass } from '@/components/gw/ui/FlatWithThePass'
 import {
   Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, Skeleton
 } from '@/components/gw/ui'
@@ -14,6 +16,10 @@ import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
 import { WhereYouStandFromSuggestions } from '@/components/gw/Suggestions'
 import { EdgeList, EdgeRow } from '@/components/gw/ui'
 import { EverythingThatIsYours } from './EverythingThatIsYours'
+import { TheYouBoardAsPictured } from './TheYouBoardAsPictured'
+import { YourPerformanceHistory } from './YourPerformanceHistory'
+import { YourLeave } from './YourLeave'
+import { YourRequests } from './YourRequests'
 
 /**
  * THE YOU BOARD (C2, #/you, group 2 piece 2). The wording is copied from
@@ -85,9 +91,32 @@ export function YouPage() {
   const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: !!user })
 
   const direct = isTheDirectMorningOn(data)
+  /* With the design switch on, You is the prototype's own board (TheYouBoardAsPictured), with the parts it has no place for after it. */
+  const designPass = useTheDesignPass()
+  if (designPass && data) {
+    return (
+      <Page>
+        <TheYouBoardAsPictured
+          b={data}
+          yourData={<YourData asPictured />}
+          more={(
+            <>
+              <YourPerformanceHistory b={data} />
+              <YourLeave />
+              <YourRequests />
+              {(data as any).runningRecord && <YourRunningRecord r={(data as any).runningRecord} />}
+              {user?.id && <APersonsDetails userId={user.id} own />}
+            </>
+          )}
+        />
+      </Page>
+    )
+  }
   return (
     <TheDirectMorning on={direct}>
     <Page>
+      {/* The design pass: the page's cards become hairline sections (dp-flat, the-design-pass.css). Nothing on it changes. */}
+      <FlatWithThePass>
       <PageTitle title="You" subtitle={data ? theYouSubtitle(data.checkIns ?? []) : 'What’s yours, across your check-ins.'} />
 
       {isLoading && <Skeleton what="Getting your page" shape="rows" />}
@@ -100,6 +129,7 @@ export function YouPage() {
       {data && <TheBoard b={data} grounds={grounds.data} />}
       {/* Your CV and who to call in an emergency (Hafsah, 21 November 2026): yours to add and change. */}
       {user?.id && <APersonsDetails userId={user.id} own />}
+      </FlatWithThePass>
     </Page>
     </TheDirectMorning>
   )
@@ -274,7 +304,7 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
  * it" in your settings: what the product holds about you, read from the server as you, saved to
  * your computer. Nothing else is sent anywhere.
  */
-function YourData() {
+export function YourData({ asPictured = false }: { asPictured?: boolean } = {}) {
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   async function download() {
@@ -295,6 +325,14 @@ function YourData() {
       setBusy(false)
     }
   }
+  /* The ported You (TheYouBoardAsPictured): the prototype's own panel, the sentence and "Download it" on one line. */
+  if (asPictured) return (
+    <section className="panel pad dp-your-data" aria-label="Your data">
+      <p className="t-body">Everything you’ve written, in every check-in, as one file.</p>
+      <button type="button" className="btn sec" onClick={download} disabled={busy}>Download it</button>
+      {failed && <p role="alert" className="t-small mut">Your file did not download. Try again.</p>}
+    </section>
+  )
   return (
     <Panel as="section" aria-label="Your data">
       {/* THE PROTOTYPE'S OWN LINE (you-board-miriam.jpg): the sentence and "Download it" sit on one
@@ -312,6 +350,19 @@ function YourData() {
 /** RELEASE 7: what you said you would do in every check-in, what became of it, and what shows it; and how you adapted. */
 export function YourRunningRecord({ r }: { r: { heading: string; inShort: string; rows: { id: string; title: string; said: string; became: string; shows: string; tone: string }[]; more: number; adapted: string[] } }) {
   const EDGE: Record<string, 'ready' | 'look' | 'concern' | 'decide'> = { rec: 'ready', att: 'look', con: 'concern', act: 'decide' }
+  /* The design pass: no fold line. Every row is shown; what the server did not send ("more") is said as a sentence. */
+  const designPass = useTheDesignPass()
+  if (designPass) {
+    return (
+      <Section heading={r.heading} note={r.inShort}>
+        <EdgeList label={r.heading}>
+          {r.rows.map((x) => <EdgeRow key={x.id} kind={EDGE[x.tone] ?? 'look'} reason={null} title={x.title} detail={`${x.became} ${x.shows}`} />)}
+        </EdgeList>
+        {r.more > 0 && <p className="t-small">{`There ${r.more === 1 ? 'is 1 more' : `are ${r.more} more`} in your check-ins.`}</p>}
+        {r.adapted.map((a) => <p key={a} className="t-small">{a}</p>)}
+      </Section>
+    )
+  }
   return (
     <Section heading={r.heading} note={r.inShort}>
       <EdgeList label={r.heading}>

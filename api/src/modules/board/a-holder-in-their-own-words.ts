@@ -126,11 +126,14 @@ export function aThingInTheirOwnWords(what: string | null | undefined, readerIsT
  * holder. The person's own words, kept in quotation marks elsewhere, are never changed.
  */
 const theWordsWithoutThe = (t: string): string => t.trim().toLowerCase().replace(/[.,;:!?]+$/, '').replace(/^(?:the|a|an)\s+/, '');
+/* The same people in any order (live copy, 21 November): "the Quickmart buyer" and "the buyer at Quickmart" are one holder, so
+   "waiting on the Quickmart buyer for a reply from the buyer at Quickmart" said them twice. Compared as the words that name them. */
+const theSameWords = (t: string): string => theWordsWithoutThe(t).split(/\s+/).filter((w) => w && !/^(?:the|a|an|at|of|in)$/.test(w)).sort().join(' ');
 export function aThingWithoutItsHolder(what: string, holder: string | null | undefined): string {
-  const h = theWordsWithoutThe(holder ?? '');
+  const h = theSameWords(holder ?? '');
   if (!h) return what;
   const m = what.match(/^(.*\S)\s+from\s+(.+?)[.\s]*$/i);
-  if (!m || !m[1].trim() || theWordsWithoutThe(m[2]) !== h) return what;
+  if (!m || !m[1].trim() || theSameWords(m[2]) !== h) return what;
   return m[1];
 }
 

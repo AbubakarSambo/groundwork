@@ -3,7 +3,8 @@ import { theShapeOfTheRecords } from './the-shape-of-a-list'
 import { theZoneDatesAreIn } from '@/lib/a-date-reads-the-same-everywhere'
 import { howOftenTheTeamChecksIn } from '@/lib/the-closing-after-your-first-check-in'
 import { ItsEvidence } from '@/components/gw/ItsEvidence'
-import { useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useMemo, useState, type ReactNode } from 'react'
+import { useTheDesignPass } from '@/lib/the-design-pass'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
@@ -242,8 +243,15 @@ export function stillChasing(deals: Any[]): { participantId: string; first: stri
   return [...by.entries()].map(([participantId, v]) => ({ participantId, ...v }))
 }
 
-export function WhatNeedsYou({ b, renderActions, groundId, deals, sessionRows, manyInTeams = false, heading = 'What needs you in this check-in', readOnly = false }: { b: Any; renderActions: (a: Any) => ReactNode; groundId: string; deals: Any; sessionRows: Any[]; manyInTeams?: boolean; heading?: string; readOnly?: boolean }) {
-  const items: { key: string; kind: 'decide' | 'look'; title: string; detail?: string; action?: Any; node?: ReactNode }[] = []
+/** One thing that needs the lead: a title, a sentence under it, and what she can press (the engine's action, or a button of its own). */
+export interface ANeed { key: string; kind: 'decide' | 'look'; title: string; detail?: string; action?: Any; node?: ReactNode }
+
+/**
+ * WHAT NEEDS YOU, GATHERED ONCE (the board as pictured and the board ported from the prototype's markup both read it, so the two can
+ * never list different things). Sorted as pictured: the lead's own decisions first, then the report, then what the work shows.
+ */
+export function useWhatNeedsYou({ b, groundId, deals, sessionRows, manyInTeams = false, readOnly = false }: { b: Any; groundId: string; deals: Any; sessionRows: Any[]; manyInTeams?: boolean; readOnly?: boolean }): ANeed[] {
+  const items: ANeed[] = []
   const qc = useQueryClient()
   const { data: sharing } = useQuery({ queryKey: ['report-sharing', groundId], queryFn: () => reportsApi.sharing(groundId), enabled: !readOnly && !!groundId, retry: false, staleTime: 30_000 })
   const afterSharing = () => { qc.invalidateQueries({ queryKey: ['report-sharing', groundId] }); qc.invalidateQueries({ queryKey: ['board', groundId] }); qc.invalidateQueries({ queryKey: ['report', groundId] }) }
@@ -363,9 +371,14 @@ export function WhatNeedsYou({ b, renderActions, groundId, deals, sessionRows, m
   /* "Nothing needs you today." only where nothing here needs her, never beside a real item. */
   const none = nothingNeedsYou(b)
   if (!items.length && none) items.push({ key: 'nothing', kind: 'look', title: none })
-  if (!items.length) return null
   /* The lead's own decisions first, as pictured; then the report, then what the work shows. */
   items.sort((a, c) => Number(!a.key.startsWith('d-')) - Number(!c.key.startsWith('d-')))
+  return items
+}
+
+export function WhatNeedsYou({ b, renderActions, groundId, deals, sessionRows, manyInTeams = false, heading = 'What needs you in this check-in', readOnly = false }: { b: Any; renderActions: (a: Any) => ReactNode; groundId: string; deals: Any; sessionRows: Any[]; manyInTeams?: boolean; heading?: string; readOnly?: boolean }) {
+  const items = useWhatNeedsYou({ b, groundId, deals, sessionRows, manyInTeams, readOnly })
+  if (!items.length) return null
   return (
     <Section heading={heading}>
       <EdgeList label={heading}>
@@ -382,7 +395,7 @@ export function WhatNeedsYou({ b, renderActions, groundId, deals, sessionRows, m
 const DAY = 86_400_000
 export const isoDay = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: theZoneDatesAreIn(), year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
 
-function lastContactIn(r: Any, today: string): string {
+export function lastContactIn(r: Any, today: string): string {
   /* A customer gone quiet reads "no reply since", from the last day somebody heard from them (standing decision 4, 18 October). */
   if (r.notAnsweringSince && (r.group === 'cold' || r.noReplySince)) return `no reply since ${aShortDay(r.noReplySince ?? r.notAnsweringSince)}`
   const on = r.lastSaidOn
@@ -569,7 +582,7 @@ export function theBuyingDay(day: string, today: string): string {
   return String(day).slice(0, 10) >= today ? `Buys on ${said}.` : `Was to buy on ${said}.`
 }
 
-const PROOF_TAG: Record<string, string> = { proven: 'Proven', confirmed: 'Confirmed', said: 'In their words', memory: 'From memory', none: 'Added here' }
+export const PROOF_TAG: Record<string, string> = { proven: 'Proven', confirmed: 'Confirmed', said: 'In their words', memory: 'From memory', none: 'Added here' }
 
 export function TheOpenDeal({ r, groupNote, today, groundId, onChange, ownTag = null }: { r: Any; groupNote: Any; today: string; groundId: string; onChange: (() => void) | null; ownTag?: string | null }) {
   return (
@@ -652,7 +665,7 @@ const TEAM_TAG: Record<string, { word: string; tone: 'proven' | 'attention' | 'p
   'not let in': { word: 'Not let in', tone: 'plain' },
 }
 
-function lastTen(b: Any, participantId: string): ('done' | 'miss' | 'up')[] {
+export function lastTen(b: Any, participantId: string): ('done' | 'miss' | 'up')[] {
   const grid = b.checkInGrid
   if (!grid) return []
   const row = (grid.rows ?? []).find((r: Any) => r.participantId === participantId)
@@ -678,6 +691,9 @@ export function aTagForTheWork(reason: string, deals: Any[], today: string, work
 }
 
 export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: Any; deals: Any; today: string; groundId: string }) {
+  /* The design pass: one compact row each, as board-as-lead.txt has it (the name, one line, a tag, ten squares, what keeps coming
+     up). The rest of what is said about them is on their own page, one click away, as the prototype's footer says. */
+  const designPass = useTheDesignPass()
   const rows: Any[] = b.eachPersonToday ?? []
   const dealsOf = (pid: string) => (dealSection?.rows ?? []).filter((d: Any) => d.kind === 'deal' && d.ownerParticipantId === pid)
   /* Tickets, incidents and tasks: each person's own records on the board, counted, with how many a document backs (the one bar). */
@@ -702,9 +718,9 @@ export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: An
     return [done, `${first}’s target is ${Number(o.target).toLocaleString('en-GB')}.`].filter(Boolean).join(' ')
   }
   return (
-    <Section heading="The team today">
+    <Section heading="The team today" note={designPass ? "Each person’s line, their last 10 check-ins, and what keeps coming up" : undefined}>
       {/* Who has answered this session, the one count Today, the check-in's page and Ask say (api this-sessions-count.ts). */}
-      {theClocksSessionSaid(b)?.says && <p className="pb-foot" data-testid="the-team-today-count">{theClocksSessionSaid(b)!.says}</p>}
+      {!designPass && theClocksSessionSaid(b)?.says && <p className="pb-foot" data-testid="the-team-today-count">{theClocksSessionSaid(b)!.says}</p>}
       {/* One open table, a row for every person (Hafsah, 13 November 2026), in the prototype's order: the person, their line, the tag, the last ten check-ins, and what keeps coming up. */}
       <Table
         caption="The team today, one row for each person"
@@ -718,11 +734,12 @@ export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: An
           { key: 'squares', header: 'Their last 10 check-ins', width: '15%' },
           { key: 'keeps', header: 'What keeps coming up', width: '29%' },
         ] : [
-          { key: 'who', header: 'Person', rowHeader: true, width: '14%' },
-          { key: 'line', header: 'Their line this week', width: '15%' },
-          { key: 'tag', header: 'What their work shows', width: '19%' },
-          { key: 'squares', header: 'Their last 10 check-ins', width: '17%' },
-          { key: 'keeps', header: 'What keeps coming up', width: '35%' },
+          /* With the design pass on, the line has the room board-as-lead.jpg gives it, so each row stays one line high. */
+          { key: 'who', header: 'Person', rowHeader: true, width: designPass ? '10%' : '14%' },
+          { key: 'line', header: 'Their line this week', width: designPass ? '38%' : '15%' },
+          { key: 'tag', header: 'What their work shows', width: designPass ? '14%' : '19%' },
+          { key: 'squares', header: 'Their last 10 check-ins', width: designPass ? '14%' : '17%' },
+          { key: 'keeps', header: 'What keeps coming up', width: designPass ? '24%' : '35%' },
         ]}
         rows={rows.map((r) => {
           /*
@@ -739,7 +756,7 @@ export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: An
           const more = [...new Set([theirTarget(r.participantId, firstName(r.who)), says, ...morning.filter((l) => l.participantId === r.participantId).map((l) => l.text)].filter(Boolean) as string[])].filter((x) => x !== r.line)
           return {
             who: <Link className="pb-name-link" to={`/grounds/${groundId}/person/${r.participantId}`}>{firstName(r.who)}</Link>,
-            line: <>{r.line}{more.map((x) => <span className="pb-row-more" key={x}>{x}</span>)}{/* "Nudge Peter": served to the lead alone, with the direct morning on (TheNudgeButton.tsx). */}{r.nudge && <span className="pb-row-more"><TheNudgeButton groundId={groundId} nudge={r.nudge} /></span>}</>,
+            line: designPass ? <>{r.line}</> : <>{r.line}{more.map((x) => <span className="pb-row-more" key={x}>{x}</span>)}{/* "Nudge Peter": served to the lead alone, with the direct morning on (TheNudgeButton.tsx). */}{r.nudge && <span className="pb-row-more"><TheNudgeButton groundId={groundId} nudge={r.nudge} /></span>}</>,
             ...(theWork ? { work: (() => {
               const mine = workOf(r.participantId)
               const proven = mine.filter((w) => w.mark === 'proven').length
@@ -754,10 +771,11 @@ export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: An
               </span>
             ),
             /* What keeps coming up, then what to coach this week, about the work (quality pass, 18 October, Q6). */
-            keeps: <span className="pb-sub">{[r.keepsComingUp ?? theirWorkPattern(r.participantId), r.thisWeek].filter(Boolean).join(' ')}</span>,
+            keeps: <><span className="pb-sub">{[r.keepsComingUp ?? theirWorkPattern(r.participantId), r.thisWeek].filter(Boolean).join(' ')}</span>{/* The lead's nudge stays on the row, at its end, so the line stays one line (design pass). */}{designPass && r.nudge && <TheNudgeButton groundId={groundId} nudge={r.nudge} />}</>,
           }
         })}
       />
+      {designPass && <p className="pb-foot">These are about the work. Open anyone to see what they said and what the proof shows.</p>}
     </Section>
   )
 }
@@ -924,7 +942,7 @@ export function WhoCheckedIn({ b }: { b: Any }) {
 const sameDay = (a: string | Date, b: string | Date) => isoDay(new Date(a)) === isoDay(new Date(b))
 
 /** ISO week number, as "Week 39". */
-function weekNumberOf(d: Date): number {
+export function weekNumberOf(d: Date): number {
   const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
   const day = (t.getUTCDay() + 6) % 7
   t.setUTCDate(t.getUTCDate() - day + 3)
@@ -937,7 +955,7 @@ function weekNumberOf(d: Date): number {
  * schedule ahead is not drawn yet, the day last week's last session fell on (a weekday check-in's
  * week ends on Friday).
  */
-function theLastSessionThisWeek(b: Any, now: Date): string | null {
+export function theLastSessionThisWeek(b: Any, now: Date): string | null {
   const monday = new Date(`${isoDay(now)}T12:00:00Z`)
   monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7))
   const opens: Date[] = (b.phaseSpine?.sessions ?? []).map((s: Any) => s.opensOn ?? s.date).filter(Boolean).map((d: string) => new Date(d))
@@ -948,9 +966,11 @@ function theLastSessionThisWeek(b: Any, now: Date): string | null {
   return pick ? new Intl.DateTimeFormat('en-GB', { weekday: 'long' }).format(pick) : null
 }
 
-export function Reports({ b, groundId, sessionRows, navigate, now }: { b: Any; groundId: string; sessionRows: Any[]; navigate: (to: string) => void; now: Date }) {
+export function Reports({ b, groundId, sessionRows, navigate, now, readOnly = false }: { b: Any; groundId: string; sessionRows: Any[]; navigate: (to: string) => void; now: Date; readOnly?: boolean }) {
   /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
   const direct = useTheDirectMorning()
+  /* An admin who only reads is not the one who shares (A4 read-only-view.txt: "Not shared" with "Open"). Behind the design pass. */
+  const aReader = useTheDesignPass() && readOnly
   if (!sessionRows.length) return null
   const yesterday = new Date(now.getTime() - DAY)
   const titleOf = (r: Any) => {
@@ -978,7 +998,9 @@ export function Reports({ b, groundId, sessionRows, navigate, now }: { b: Any; g
     <Tag tone={r.shared ? 'proven' : 'attention'}>{r.shared ? 'Shared' : 'Not shared'}</Tag>,
     r.shared
       ? <Button kind="secondary" size="small" onClick={() => navigate(`/grounds/${groundId}/session/${r.sessionNumber}`)}>Open</Button>
-      : <Button kind="primary" size="small" onClick={() => navigate(`/grounds/${groundId}?tab=report`)}>Share it</Button>,
+      : aReader
+        ? <Button kind="secondary" size="small" onClick={() => navigate(`/grounds/${groundId}?tab=report`)}>Open</Button>
+        : <Button kind="primary" size="small" onClick={() => navigate(`/grounds/${groundId}?tab=report`)}>Share it</Button>,
   )
   const written = theLastSessionThisWeek(b, now)
   const week = weekNumberOf(now)
@@ -986,7 +1008,7 @@ export function Reports({ b, groundId, sessionRows, navigate, now }: { b: Any; g
   lastMonday.setUTCDate(lastMonday.getUTCDate() - ((lastMonday.getUTCDay() + 6) % 7) - 7)
   const [first, second] = sessionRows
   return (
-    <Section heading="Reports" note={direct ? undefined : 'Every check-in has two: each person’s own, and the team’s once you share it'}>
+    <Section heading="Reports" note={direct ? undefined : aReader ? 'The team’s report once it is shared, and a weekly one.' : 'Every check-in has two: each person’s own, and the team’s once you share it'}>
       <div className="pb-rows">
         {sessionRow(first)}
         {row('this-week', 'This week', `Week ${week} so far.${written ? ` Written ${written}.` : ''}`,
@@ -1038,7 +1060,7 @@ export function WaitingOnOtherTeams({ groundId }: { groundId: string }) {
 
 /* ------------------------------------------------------------------ open issues */
 
-const ISSUE_STEPS = ['Unclear', 'Understood', 'Options', 'Decided', 'Being done', 'Checked']
+export const ISSUE_STEPS = ['Unclear', 'Understood', 'Options', 'Decided', 'Being done', 'Checked']
 
 function TheQuietOne({ quiet }: { quiet: { label: string; says: string } }) {
   const [said, setSaid] = useState(false)
@@ -1096,7 +1118,7 @@ export function OpenIssues({ b, renderActions }: { b: Any; renderActions: (a: An
 /* ------------------------------------------------------------------ where this is heading */
 
 /* The picture's short name for each ending the engine offers (board-as-lead.txt, kwame-board.txt), in the picture's order. */
-const OUTCOME_WORDS: Record<string, string> = {
+export const OUTCOME_WORDS: Record<string, string> = {
   ALIGNED: 'On course',
   REACH_WITH_A_CHANGE: 'Reach it with a change',
   GAPS_IDENTIFIED: 'Change the target',
@@ -1105,9 +1127,10 @@ const OUTCOME_WORDS: Record<string, string> = {
   RESTRUCTURE: 'Change the role',
   EXIT: 'Part ways',
 }
-const OUTCOME_ORDER = ['ALIGNED', 'REACH_WITH_A_CHANGE', 'GAPS_IDENTIFIED', 'KEEP', 'EXTEND', 'RESTRUCTURE', 'EXIT']
+export const OUTCOME_ORDER = ['ALIGNED', 'REACH_WITH_A_CHANGE', 'GAPS_IDENTIFIED', 'KEEP', 'EXTEND', 'RESTRUCTURE', 'EXIT']
 
 export function WhereThisIsHeading({ b, onRecordTheDecision, readOnly = false }: { b: Any; onRecordTheDecision: () => void; readOnly?: boolean }) {
+  const designPass = useTheDesignPass()
   const d = b.whereThisIsHeading
   if (!d) return null
   /* A board with nothing on it draws no outcomes and no 'Record the decision': nobody has answered, no piece of work and no figure is on record, so there is nothing to decide. */
@@ -1118,7 +1141,7 @@ export function WhereThisIsHeading({ b, onRecordTheDecision, readOnly = false }:
   const rank = (v: string) => (OUTCOME_ORDER.includes(v) ? OUTCOME_ORDER.indexOf(v) : 99)
   const outcomes: Any[] = (d.outcomes ?? []).filter((o: Any) => o.value !== 'NOT_YET').sort((a: Any, c: Any) => rank(a.value) - rank(c.value))
   return (
-    <Section heading={d.heading ?? 'Where this is heading'}>
+    <Section heading={d.heading ?? 'Where this is heading'} note={designPass && d.about ? d.about : undefined}>
       <div className="pb-heading">
         <div>
           <h3 className="pb-small-h">The possible outcomes</h3>
@@ -1185,41 +1208,103 @@ export function GroundworkRecommends({ offers, onAnswer, busy }: { offers: Pictu
 export function ThePicturedSalesBoard(p: PicturedBoardProps) {
   const { b } = p
   const now = useMemo(() => new Date(), [])
+  const designPass = useTheDesignPass()
   const deals = (b.workRecords ?? []).find((s: Any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: Any) => r.kind === 'deal')) ?? null
   const groups = dealsByGroup(deals)
+  /* Each part once. The order below says where it goes. */
+  const part: Record<string, ReactNode> = {
+    headline: <HeadlineAndGap b={b} deals={deals} groups={groups} />,
+    /* An admin who only reads is never told "What needs you": it is not hers to do (the light board's rule, kept). */
+    needsYou: !p.readOnly ? <WhatNeedsYou b={b} renderActions={p.renderActions} groundId={p.groundId} deals={deals} sessionRows={p.sessionRows} /> : null,
+    accounts: <EachAccountSideBySide b={b} />,
+    knownBelievedUnknown: <KnownBelievedUnknown b={b} unknown={[]} />,
+    closing: <WhatIsClosing b={b} heading="What’s closing" />,
+    teamToday: <TheTeamToday b={b} deals={deals} today={isoDay(now)} groundId={p.groundId} />,
+    assumes: <WhatTheTargetAssumes b={b} />,
+    deals: deals ? <EveryDealDayByDay b={b} section={deals} now={now} groundId={p.groundId} /> : null,
+    otherRecords: p.otherRecords,
+    yourTeam: p.yourTeam,
+    blockers: <Blockers b={b} groundId={p.groundId} />,
+    openIssues: <OpenIssues b={b} renderActions={p.readOnly ? () => null : p.renderActions} />,
+    keepsComingUp: <WhatKeepsComingUp b={b} />,
+    reported: <ReportedAgainstCriteria b={b} />,
+    whoCheckedIn: <WhoCheckedIn b={b} />,
+    overTime: p.overTime,
+    help: <HelpNobodyMentioned b={b} />,
+    otherTeams: <WaitingOnOtherTeams groundId={p.groundId} />,
+    heading: <WhereThisIsHeading b={b} onRecordTheDecision={p.onRecordTheDecision} readOnly={p.readOnly} />,
+    reports: <Reports b={b} groundId={p.groundId} sessionRows={p.sessionRows} navigate={p.navigate} now={now} readOnly={!!p.readOnly} />,
+    recommends: <GroundworkRecommends offers={p.recommendations} onAnswer={p.onAnswerRecommendation} busy={p.recommendationBusy} />,
+    kindOfWork: p.kindOfWork,
+  }
+  /*
+   * THE ORDER. Off: the first screen as Hafsah set it on 24 October (the headline with what is closing the gap, What needs you,
+   * where people differ, what is closing and the team), then everything else. On (the design pass, 21 November: "match the
+   * prototype 100%"): board-as-lead.txt's own order, section by section; what the prototype has no place for follows "Where this is
+   * heading", so nothing is lost and none of it leads.
+   */
+  /*
+   * With the design pass on, a section the prototype always shows says so in a sentence when the record has nothing for it yet,
+   * rather than being left out. And what board-as-lead.txt does not have moves to where it has a home: each person's record, Praise
+   * and Start a plan to their own page (linked from "The team today"); who has answered to "Who checked in"; what each person said
+   * to the check-in's session page ("See what each person said"); what is closing to "To close the gap" and the deals.
+   */
+  if (designPass) {
+    const waitsOnCustomers = (deals?.rows ?? []).filter((r: Any) => (r.waitingOnTheCustomer ?? []).length > 0).length
+    const openBlockers = (b.blockers ?? []).filter((x: Any) => x.state !== 'cleared').length
+    const anythingComesUp = (b.patterns ?? []).length > 0 || (b.keepsComingUp ?? []).length > 0
+    if (!openBlockers) part.blockers = (
+      <Section heading="Blockers" note="Each with its history and the one thing that would clear it">
+        <Panel><p className="gwui-panel-text">{`Nobody has raised anything that blocks the team.${waitsOnCustomers ? ` ${waitsOnCustomers === 1 ? 'The one wait on a customer is on its deal' : `The ${inWords(waitsOnCustomers)} waits on customers are on their deals`}, above.` : ''}`}</p></Panel>
+      </Section>
+    )
+    if (!anythingComesUp) part.keepsComingUp = (
+      <Section heading="What keeps coming up" note="Named after three check-ins in a row, never after one. Each describes the work">
+        <Panel><p className="gwui-panel-text">Nothing has come up in three check-ins in a row yet.</p></Panel>
+      </Section>
+    )
+    if (!b.helpNobodyMentioned) part.help = (
+      <Section heading="Help nobody mentioned" note="You see the help, not who said it">
+        <Panel><p className="gwui-panel-text">Groundwork has not found any help that nobody mentioned yet.</p></Panel>
+      </Section>
+    )
+  }
+  const order = designPass
+    ? ['headline', 'assumes', 'needsYou', 'deals', 'otherRecords', 'teamToday', 'blockers', 'keepsComingUp', 'reported', 'whoCheckedIn', 'overTime', 'reports',
+      'help', 'otherTeams', 'openIssues', 'heading', 'recommends', 'kindOfWork']
+    : null
+  if (order) return <div className="pb">{order.map((k) => <Fragment key={k}>{part[k]}</Fragment>)}</div>
   return (
     <div className="pb">
-      {/* THE FIRST SCREEN, AS THE PROTOTYPE HAS IT (Hafsah, 24 October): the headline with what is closing the gap, What needs you, and the team. */}
-      <HeadlineAndGap b={b} deals={deals} groups={groups} />
-      {/* An admin who only reads is never told "What needs you": it is not hers to do (the light board's rule, kept). */}
-      {!p.readOnly && <WhatNeedsYou b={b} renderActions={p.renderActions} groundId={p.groundId} deals={deals} sessionRows={p.sessionRows} />}
+      {part.headline}
+      {part.needsYou}
       {/* Where people differ, and what nobody knows yet (the approved journey, stage 10): the situation boards' own two sections. */}
-      <EachAccountSideBySide b={b} />
-      <KnownBelievedUnknown b={b} unknown={[]} leadFirstName={null} />
+      {part.accounts}
+      {part.knownBelievedUnknown}
       {/* What's closing, on the first screen as Hafsah's 24 October decision keeps it: the morning's lines, served to the lead alone. */}
-      <WhatIsClosing b={b} heading="What’s closing" />
-      <TheTeamToday b={b} deals={deals} today={isoDay(now)} groundId={p.groundId} />
+      {part.closing}
+      {part.teamToday}
       {/* Everything else, open under its own heading: lists of people and deals are tables to read, not folded lines (Hafsah, 13 November 2026). */}
       <div>
         {/* What the target assumes is the lead's own setup words, so it no longer opens the board (Hafsah's change 4 to the
             approved journey, 1 November 2026); it is kept here, with the rest. */}
-        <WhatTheTargetAssumes b={b} />
-        {deals && <EveryDealDayByDay b={b} section={deals} now={now} groundId={p.groundId} />}
-        {p.otherRecords}
-        {p.yourTeam}
-        <Blockers b={b} groundId={p.groundId} />
-        <OpenIssues b={b} renderActions={p.readOnly ? () => null : p.renderActions} />
-        <WhatKeepsComingUp b={b} />
-        <ReportedAgainstCriteria b={b} />
-        <WhoCheckedIn b={b} />
-        {p.overTime}
-        <HelpNobodyMentioned b={b} />
-        <WaitingOnOtherTeams groundId={p.groundId} />
-        <WhereThisIsHeading b={b} onRecordTheDecision={p.onRecordTheDecision} readOnly={p.readOnly} />
+        {part.assumes}
+        {part.deals}
+        {part.otherRecords}
+        {part.yourTeam}
+        {part.blockers}
+        {part.openIssues}
+        {part.keepsComingUp}
+        {part.reported}
+        {part.whoCheckedIn}
+        {part.overTime}
+        {part.help}
+        {part.otherTeams}
+        {part.heading}
       </div>
-      <Reports b={b} groundId={p.groundId} sessionRows={p.sessionRows} navigate={p.navigate} now={now} />
-      <GroundworkRecommends offers={p.recommendations} onAnswer={p.onAnswerRecommendation} busy={p.recommendationBusy} />
-      {p.kindOfWork}
+      {part.reports}
+      {part.recommends}
+      {part.kindOfWork}
     </div>
   )
 }

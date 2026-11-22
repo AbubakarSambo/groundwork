@@ -124,7 +124,7 @@ export function theHeading(gap: number, likely: number[], possible: (number | nu
   const n = possible.length;
   /* Short, as the prototype's "two of these three" (Hafsah, 25 October): every one of them, and more. Off, as before. */
   if (sum < left && short) return n === 1 ? 'To close the gap, this one and more' : `To close the gap, all ${inWords(n)} and more`;
-  if (sum < left) return `To close the gap, more than these ${inWords(n)} ${n === 1 ? 'deal is' : 'deals are'} needed`;
+  if (sum < left) return n === 1 ? 'To close the gap, more than this one deal is needed' : `To close the gap, more than these ${inWords(n)} deals are needed`;
   return k === n ? (n === 1 ? 'To close the gap, this one' : n === 2 ? 'To close the gap, both of these' : `To close the gap, all ${inWords(n)} of these`) : `To close the gap, ${inWords(k)} of these ${inWords(n)}`;
 }
 

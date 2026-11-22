@@ -181,7 +181,7 @@ describe('Grace, an admin, reads the whole picture', () => {
   it('reads how each priority is moving', async () => {
     const page = await (await theWorld()).read('grace');
     expect(page.priorities.map((p) => [p.title, p.reading])).toEqual([
-      ['Grow revenue 50%, enterprise first', { tag: 'Moving, but not enough of it', says: '1 check-in feeds this priority, and 2 were finished in the last 30 days. 1 handoff is waiting on other work.' }],
+      ['Grow revenue 50%, enterprise first', { tag: 'Moving, but not enough of it', says: '1 check-in feeds this priority, and 2 were finished in the last 30 days. People are waiting on 1 thing for it.' }],
       ['Improve delivery', { tag: 'At risk', says: 'One handoff is stopping work on this priority, so delivery is not moving yet.' }],
       ['Build a stronger organisation', { tag: 'Nobody owns it yet', says: 'Nobody owns this priority yet and no check-in feeds it.' }],
     ]);
@@ -220,7 +220,7 @@ describe('Grace, an admin, reads the whole picture', () => {
       title: 'No way for customers to order in bulk',
       touches: 'Touches priorities 1 and 2. Nobody owns it.',
       teams: [
-        { team: 'Customers', says: 'Customers raised this in 1 check-in, with 1 open handoff.', checkIns: [{ id: 'g-cust', name: 'Accounts, Q3' }] },
+        { team: 'Customers', says: 'Customers raised this in 1 check-in, with 1 thing people are still waiting on.', checkIns: [{ id: 'g-cust', name: 'Accounts, Q3' }] },
         { team: 'Operations', says: 'Bulk orders are typed in a second time by hand, which holds up delivery.', checkIns: [{ id: 'g-ops', name: 'Operations, Q3' }] },
         { team: 'Sales', says: 'Customers who want to buy many items at once cannot do it, which slows the bigger deals.', checkIns: [{ id: 'g-sales', name: 'Sales team, Q3' }] },
       ],
@@ -230,8 +230,8 @@ describe('Grace, an admin, reads the whole picture', () => {
   it('reads what leadership says next to what the check-ins show', async () => {
     const page = await (await theWorld()).read('grace');
     expect(page.saidAndShown.map((s) => [s.area, s.youSaid, s.checkInsShow])).toEqual([
-      ['Priority 1', 'Grow revenue 50%, enterprise first', '2 of the 3 check-ins finished in the last 30 days that belong to a priority were about this one. 1 handoff is open in them.'],
-      ['Priority 2', 'Improve delivery', '1 of the 3 check-ins finished in the last 30 days that belong to a priority was about this one. 1 handoff is open in them.'],
+      ['Priority 1', 'Grow revenue 50%, enterprise first', '2 of the 3 check-ins finished in the last 30 days that belong to a priority were about this one. People are waiting on 1 thing in them.'],
+      ['Priority 2', 'Improve delivery', '1 of the 3 check-ins finished in the last 30 days that belong to a priority was about this one. People are waiting on 1 thing in them.'],
     ]);
   });
 });
@@ -329,14 +329,14 @@ const PIP = {
   checkIns: [done(1), done(3), done(4)],
   dependencies: [{ id: 'h9', what: 'the handover notes for the Gigiri account', status: 'BLOCKING', onParticipantId: null, onLabel: null, waitingOnGroundId: null }],
 };
-const BEFORE = '1 check-in feeds this priority, and 2 were finished in the last 30 days. 1 handoff is waiting on other work.';
+const BEFORE = '1 check-in feeds this priority, and 2 were finished in the last 30 days. People are waiting on 1 thing for it.';
 
 describe('decision 93, row 23: a performance plan on the company page', () => {
   it('Grace, an admin given access to the plan, reads a reading of priority 1 that counts it in', async () => {
     const page = await (await theWorld({ extraGrounds: [PIP], adminMayOpen: ['g-pip'] })).read('grace');
     expect(page.priorities[0].reading).toEqual({
       tag: 'At risk',
-      says: '2 check-ins feed this priority, and 5 were finished in the last 30 days. 1 handoff is stopping work on it.',
+      says: '2 check-ins feed this priority, and 5 were finished in the last 30 days. 1 thing people are waiting on is stopping work on it.',
     });
     /* Its name is read where she may open it, as it was before. */
     expect(page.priorities[0].fedBy).toBe('Fed by Sales team, Q3 and Tobi, the next six weeks');
@@ -344,7 +344,7 @@ describe('decision 93, row 23: a performance plan on the company page', () => {
 
   it('Wairimu, who runs the plan, reads the same', async () => {
     const page = await (await theWorld({ extraGrounds: [PIP], adminMayOpen: ['g-pip'] })).read('wairimu');
-    expect(page.priorities[0].reading?.says).toBe('2 check-ins feed this priority, and 5 were finished in the last 30 days. 1 handoff is stopping work on it.');
+    expect(page.priorities[0].reading?.says).toBe('2 check-ins feed this priority, and 5 were finished in the last 30 days. 1 thing people are waiting on is stopping work on it.');
   });
 
   it('Grace, an admin with no access to the plan, reads what she read before, and no word of the plan', async () => {

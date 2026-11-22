@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import './gw-ui.css'
+import { useTheDesignPass } from '../../../lib/the-design-pass'
 
 /**
  * FOLDED PANEL (design-audit.md section 3, People item 6: "Who reports to whom").
@@ -27,6 +28,18 @@ export function Folded({ summary, note, children, open, onToggle, id, defaultOpe
   defaultOpen?: boolean
 }) {
   const isControlled = onToggle !== undefined
+  /* The design pass (Hafsah, 21 November: "remove the fold line"): no toggle line. Its words are a plain heading and what it held is
+     shown, always, with its note under the heading. */
+  const designPass = useTheDesignPass()
+  if (designPass) {
+    return (
+      <section id={id} className="dp-unfolded" aria-label={summary}>
+        <h3 className="dp-unfolded-h">{summary}</h3>
+        {note && <p className="dp-row-line">{note}</p>}
+        <div className="dp-unfolded-body">{children}</div>
+      </section>
+    )
+  }
   return (
     <details id={id} className="gwui-folded" open={isControlled ? open : defaultOpen || undefined}>
       {/*

@@ -418,3 +418,14 @@ describe('who may be seen is decided by the server, not by the page', () => {
     expect(code('./GroundAdminPage.tsx')).toMatch(/const whoIsInThisNotOpenYet = !myOpenCheckInId && !!myNextOpensAt/)
   })
 })
+
+describe('the kind of work is the one the board draws (release test, 21 November 2026, bug 18)', () => {
+  it('Grace reads the kind the page is served, even where the check-in she opened carries none', async () => {
+    ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_GRACE)
+    renderPage(props({ ground: theSalesCheckIn({ kindOfWork: null }) }))
+    await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
+    const field = await screen.findByRole('combobox', { name: 'Kind of work' }) as HTMLSelectElement
+    await waitFor(() => expect(field.value).toBe('sales team'))
+    expect(field.selectedOptions[0].textContent).not.toBe('Not known yet')
+  })
+})

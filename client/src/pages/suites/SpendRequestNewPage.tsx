@@ -1,3 +1,4 @@
+import { ChooseAFile } from '@/components/gw/ChooseAFile'
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -109,7 +110,7 @@ export function SpendRequestNewPage() {
             )}
             <div className="gwui-suite-q">
               <FieldLabel htmlFor="spend-file">A receipt or proforma, if you have one</FieldLabel>
-              <input id="spend-file" type="file" accept="application/pdf,image/*,text/plain" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+              <ChooseAFile id="spend-file" accept="application/pdf,image/*,text/plain" file={file} onChoose={setFile} />
               {file && (
                 <Select id="spend-file-kind" aria-label="Which is it" value={fileKind} onChange={e => setFileKind(e.target.value as 'receipt' | 'quote')}>
                   <option value="quote">A proforma or quote</option>

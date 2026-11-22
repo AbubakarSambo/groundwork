@@ -14,6 +14,11 @@ export class CreateGroundDto {
   @IsEnum(GroundScenario)
   scenario: GroundScenario;
 
+  /** The kind of work the setup read with the situation (entry's one reading). Kept only when it is one of the kinds this organisation may have. */
+  @IsOptional()
+  @IsString()
+  kindOfWork?: string;
+
   @ApiProperty({ enum: GroundMoment })
   @IsEnum(GroundMoment)
   moment: GroundMoment;
