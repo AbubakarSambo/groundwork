@@ -128,12 +128,17 @@ export function soldAndProven(c: { counts: string; sold: number; proven: number 
  * THE TEAM'S GOAL AS IT STANDS, AND WHAT STOPS THE WORK, AT THE TOP OF THE LEAD'S SALES BOARD (Drop Access, final run of 22 November, bug N1).
  * Wairimu changed the goal to a waitlist of shops because the freezers are out of stock. Amani's board said the new goal and when and why
  * it changed, and Wairimu's own board said none of it: the sales board drew only the headline question and a bar, and no headline question is
- * made of a waitlist. The goal's name (where no question says it), the board's sentence of what stops the work (glance.inTheWay.stopped)
- * and the goal's own `changed` are drawn here, as the engine serves them to this reader, each sentence once.
+ * made of a waitlist. The goal's name (where no question says it) and what changed it are drawn here, as the engine serves them to this reader.
+ *
+ * ONE OWNER FOR THE CHANGE (re-test, 22 November evening, R-6). This drew both the glance's sentence of what stops the work and the goal's own
+ * `changed`, and the lead read "On 22 November the goal changed, because ..." twice: the two are one change from one log, and the glance's
+ * copy loses its quotation marks at the read, so no set of strings could hold them as one. A goal's change is the goal's (`changed`); the
+ * glance's sentence is said here only for a goal with no change of its own, the stock-out that changed some other goal.
  */
 export function TheGoalAsItStands({ b, aim, cls }: { b: Any; aim: Any; cls: { label: string; goal: string; said: string } }) {
   const name = !b.headline?.question && aim?.name ? String(aim.name).trim().replace(/[.!?\s]*$/, '.') : null
-  const said = [...new Set([b.howItIsGoing?.glance?.inTheWay?.stopped, aim?.changed].filter((x): x is string => typeof x === 'string' && !!x.trim()))]
+  const change: unknown = aim?.changed ?? b.howItIsGoing?.glance?.inTheWay?.stopped
+  const said = typeof change === 'string' && change.trim() ? [change] : []
   if (!name && !said.length) return null
   return (
     <>
