@@ -218,7 +218,8 @@ export function FillsInAsYouTalk(k: WhatSetupKnows) {
   const panel = (
     <aside aria-label={FILLS_IN.label}>
       <Stack gap={12}>
-        <Panel>
+        {/* Nothing is drawn before the conversation has given something: an empty card says nothing. */}
+        {(name || k.situation || known.length > 0 || (fromTheChat && k.people!.length > 0) || (!isAnchor && k.added.length > 0)) && <Panel>
           <Stack gap={10}>
             {name && <SubHeading>{name}</SubHeading>}
             {k.situation && (
@@ -251,7 +252,7 @@ export function FillsInAsYouTalk(k: WhatSetupKnows) {
             {addedNotYet.length > 0 && <span className="gwui-setrow-value gwui-setrow-more">{`${addedNotYet.length} more you mentioned: ${andList(addedNotYet)}.`}</span>}
             {fromTheChat && (k.noEmailYet ?? []).length > 0 && <Note>{FILLS_IN.noEmailYet(k.noEmailYet!, k.people!.length)}</Note>}
           </Stack>
-        </Panel>
+        </Panel>}
         {k.save && !k.asOneLine && <Panel>{k.save}</Panel>}
       </Stack>
     </aside>
