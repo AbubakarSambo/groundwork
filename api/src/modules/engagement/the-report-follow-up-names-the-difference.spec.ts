@@ -1,3 +1,4 @@
+/* Changed 22 November 2026 (release test): "handoffs" in what a lead reads is work jargon, so the mails say "people are still waiting on two things" and the like; the expectations below follow the new words. */
 import { sendTheReportFollowUps, theFollowUpWords } from './the-report-follow-up';
 import { theFirstOpenDifference } from './the-first-insight';
 import { ENGAGEMENT_MOMENT_KEY as RELEASE_MOMENT_KEY } from './the-engagement-release-moment';
@@ -41,8 +42,8 @@ describe('the follow-up names what the people differ on', () => {
     expect(w.sent[0].lines).toEqual([
       expect.stringMatching(/^Hello Wairimu\. The report for "Sales team, Q4" went out on /),
       'The report found this. The people differ on "Who owns the next step with the distributor". No check-in has been held since, so that has not been looked at again.',
-      'Since then, two things people said they would do were done and one handoff was cleared.',
-      'Three handoffs are still waiting and four things people said they would do are still open.',
+      'Since then, two things people said they would do were done and people stopped waiting on one thing.',
+      'People are still waiting on three things and four things people said they would do are still open.',
       expect.stringMatching(/^Groundwork suggests /),
     ]);
     const read = [w.sent[0].subject, ...w.sent[0].lines].join(' ');
@@ -52,7 +53,7 @@ describe('the follow-up names what the people differ on', () => {
   it('is what it was where the report cannot be read for her, or names nothing open', async () => {
     for (const w of [world(async () => null), world(async () => { throw new Error('not let in'); }), world()]) {
       await w.run();
-      expect(w.sent[0].subject).toBe('Three things on "Sales team, Q4" moved after the report, and three handoffs still wait');
+      expect(w.sent[0].subject).toBe('Three things on "Sales team, Q4" moved after the report, and people wait on three things');
       expect(w.sent[0].lines.join(' ')).not.toContain('differ on');
     }
   });

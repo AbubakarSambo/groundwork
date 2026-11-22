@@ -1,3 +1,4 @@
+/* Changed 22 November 2026 (release test): "handoffs" in what a lead reads is work jargon, so the mails say "people are still waiting on two things" and the like; the expectations below follow the new words. */
 import { GroundsCron } from '../grounds/grounds.cron';
 import { EmailService } from './email.service';
 import { sendTheLeadsWeeklyLetters, theLeadsLetter, theWeekInSentences, type AWeekInOneCheckIn } from './the-leads-weekly-letter';
@@ -47,10 +48,10 @@ describe('the lead\'s weekly letter, as the lead reads it', () => {
     expect(out).toEqual({ tried: 1 });
     expect(w.sent).toEqual([{
       to: 'wairimu@baridi.test',
-      subject: 'Two things people said they would do were done; three handoffs are still waiting',
+      subject: 'Two things people said they would do were done; people are still waiting on three things',
       lines: [
         'Your team is starting to move.',
-        'This week, eight of ten people checked in. Four people said what they will do next. Two things people said they would do were done. Three handoffs are still waiting. Omar and Juma did not check in.',
+        'This week, eight of ten people checked in. Four people said what they will do next. Two things people said they would do were done. People are still waiting on three things. Omar and Juma did not check in.',
       ],
       linkLabel: "See this week's picture",
       linkUrl: 'https://app.test/grounds/g-anchor/board',
@@ -94,7 +95,7 @@ describe('the words, in other weeks', () => {
   });
   it('everyone in, and single counts, read as a person would say them', () => {
     expect(theWeekInSentences(week({ ofHowMany: 3, checkedIn: 3, saidWhatNext: 1, done: 1, waiting: 1 })).join(' ')).toBe(
-      'This week, all three people checked in. One person said what they will do next. One thing people said they would do was done. One handoff is still waiting.');
+      'This week, all three people checked in. One person said what they will do next. One thing people said they would do was done. People are still waiting on one thing.');
   });
   it('names up to three who did not check in, then counts the rest, and the lead is "you"', () => {
     expect(theWeekInSentences(week({ checkedIn: 1, notYet: ['you', 'Omar', 'Juma'] })).slice(-1)[0]).toBe('You, Omar and Juma did not check in.');
@@ -168,14 +169,14 @@ describe('a wait on a colleague only the speaker claims, in the letter', () => {
   it('is Kennedy\'s account with the note, and the subject does not name Femi', async () => {
     const w = withWaits([kevinOnFatuma]);
     await sendTheLeadsWeeklyLetters({ prisma: w.prisma, email: w.email, frontendUrl: 'https://app.test/' }, NOW);
-    expect(w.sent[0].subject).toBe('Two things people said they would do were done; one handoff is still waiting');
+    expect(w.sent[0].subject).toBe('Two things people said they would do were done; people are still waiting on one thing');
     expect(w.sent[0].lines).toContain('Kennedy says the work is waiting on Femi for the final prices.');
   });
 
   it('once Femi has promised it, the handoff is counted on Femi, as before', async () => {
     const w = withWaits([kevinOnFatuma], [{ groundId: 'g-anchor', participantId: 'p2', text: 'I will send the final prices on Monday.' }]);
     await sendTheLeadsWeeklyLetters({ prisma: w.prisma, email: w.email, frontendUrl: 'https://app.test/' }, NOW);
-    expect(w.sent[0].subject).toBe('Two things people said they would do were done; one handoff is still waiting, on Femi');
+    expect(w.sent[0].subject).toBe('Two things people said they would do were done; people are still waiting on Femi for one thing');
     expect(w.sent[0].lines.join(' ')).not.toMatch(/Not backed/);
   });
 });

@@ -1,3 +1,4 @@
+/* Changed 22 November 2026 (release test): "handoffs" in what a lead reads is work jargon, so the mails say "people are still waiting on two things" and the like; the expectations below follow the new words. */
 import { theLeadsLetter, theWeekOf, type AWeekInOneCheckIn } from './the-leads-weekly-letter';
 
 /**
@@ -15,20 +16,20 @@ const COMPARISON = /ahead|behind|best|worst|strong|weak|carrying|struggl|falling
 describe('the subject Wairimu reads', () => {
   it('names a person when one person closed all of them, and when all the handoffs wait on one person, and says the same in the body', () => {
     const l = theLeadsLetter([week()])!;
-    expect(l.subject).toBe('Four things people said they would do were done, all by Abigail; two handoffs are still waiting, both on James');
-    expect(l.lines.join(' ')).toContain('Four things people said they would do were done, all by Abigail. Two handoffs are still waiting, both on James.');
+    expect(l.subject).toBe('Four things people said they would do were done, all by Abigail; people are still waiting on James for two things');
+    expect(l.lines.join(' ')).toContain('Four things people said they would do were done, all by Abigail. People are still waiting on James for two things.');
     expect(l.subject + l.lines.join(' ')).not.toMatch(COMPARISON);
     expect(l.subject + l.lines.join(' ')).not.toMatch(/commitment/);
   });
 
   it('says "you" when the lead is the one, and one by one in the singular', () => {
     expect(theLeadsLetter([week({ closedBy: [{ name: 'you', count: 1 }], done: 1, waiting: 1, waitingOn: [{ name: 'James', count: 1 }] })])!.subject)
-      .toBe('One thing people said they would do was done, by you; one handoff is still waiting, on James');
+      .toBe('One thing people said they would do was done, by you; people are still waiting on James for one thing');
   });
 
   it('names nobody when the facts are about several people, or when one person closed only some of them', () => {
     const l = theLeadsLetter([week({ closedBy: [{ name: 'Abigail', count: 3 }, { name: 'Femi', count: 1 }], waitingOn: [{ name: 'James', count: 1 }, { name: 'Bisi', count: 1 }] })])!;
-    expect(l.subject).toBe('Four things people said they would do were done; two handoffs are still waiting');
+    expect(l.subject).toBe('Four things people said they would do were done; people are still waiting on two things');
     expect(l.subject).not.toMatch(/Abigail|Femi|James|Bisi/);
     const some = theLeadsLetter([week({ closedBy: [{ name: 'Abigail', count: 3 }], done: 4, waitingOn: [{ name: 'James', count: 1 }], waiting: 2 })])!;
     expect(some.subject + some.lines.join(' ')).not.toMatch(/Abigail|James/);
