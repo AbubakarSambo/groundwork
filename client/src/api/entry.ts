@@ -308,6 +308,7 @@ export const entryApi = {
     setupKey?: string
     orgName?: string
     scenario?: string
+    kindOfWork?: string
     /* The four-field card sends these directly rather than through an interview - see
        ask-your-team-one-thing. Every other caller still lets the conversation settle them. */
     cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME' | 'SEQUENTIAL'

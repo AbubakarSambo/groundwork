@@ -20,8 +20,8 @@ const HER_WORDS = 'A team member is not delivering and I need to address it. I w
 describe('the classifier and a situation the lead picked', () => {
   it('serves back the situation she picked, even when the model would say another', async () => {
     const s = aService({ scenario: 'DRIFT', confidence: 'high', kind: 'none' });
+    /* Changed 22 November 2026: the call is still made, for the kind of work, which is now read only here; her situation is not changed by it. */
     await expect(s.classifyIntent(HER_WORDS, 'look_back', 'PIP')).resolves.toEqual({ scenario: 'PIP', confidence: 'high' });
-    expect(s.anthropic.extract).not.toHaveBeenCalled();
   });
 
   it('still classifies when nothing was picked, or "It\'s something else" was', async () => {

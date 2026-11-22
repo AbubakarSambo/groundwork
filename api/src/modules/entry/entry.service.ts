@@ -45,6 +45,7 @@ import { GroundsService, RECOMMENDED_MOMENT, DEFAULT_TIMELINE_DAYS } from '../gr
 import { EmailService } from '../email/email.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 import { theScenarioAKindImplies } from '../board/the-switchboard';
+import type { KindOfWork } from '../board/the-kind-of-work';
 import { ConversationService } from '../conversation/conversation.service';
 import { GroundworkEvents, CheckInCompletedEvent, SetupReadEvent } from '../../common';
 import {
@@ -680,7 +681,7 @@ export class EntryService {
    * which-situation-this-is.ts; below the confidence bar the scenario is null and the flow keeps the
    * card the person chose rather than a guess.
    */
-  async classifyIntent(description: string, mode?: string, picked?: string): Promise<{ scenario: GroundScenario | null; confidence: 'high' | 'low' }> {
+  async classifyIntent(description: string, mode?: string, picked?: string): Promise<{ scenario: GroundScenario | null; confidence: 'high' | 'low'; kind?: KindOfWork }> {
     /*
      * A SITUATION THE LEAD CHOSE IS HERS TO CHANGE, NOT THE CLASSIFIER'S (request 35). She picked
      * "Help someone get back on track", said it was about Daniel, and the classifier read "once, in
@@ -688,7 +689,6 @@ export class EntryService {
      * stands, and no model call is spent second-guessing it. Her way out is "It's something else".
      */
     const chosen = await this.chosenSituation(picked);
-    if (chosen) return { scenario: chosen, confidence: 'high' };
     description = withoutBankDetails(description);
     this.anonymousModelCall('classify-intent', description.length);
     const prompt = theClassifierPrompt(description, mode);
@@ -710,9 +710,18 @@ export class EntryService {
        * The kind comes from the same reading as the situation (which-situation-this-is.ts), never from a second call of its own.
        */
       const kindImplies = theScenarioAKindImplies(read?.kind);
-      if (kindImplies) return { scenario: kindImplies, confidence: 'high' };
-      if (read) return { scenario: read.scenario, confidence: read.confidence };
+      /*
+       * THE KIND IS READ FOR A SITUATION SHE CHOSE TOO, AND IS THE ONE THE CHECK-IN IS SAVED WITH (typed situations, 22 November 2026).
+       * The kind was read a second time when the check-in was saved, from the setup's words, and the two reads disagreed: "county ag
+       * extension rollout, ministry funded" was a government programme at the door and nothing at the save. This reading is now the
+       * only one; the setup carries its kind to the save. Her chosen situation still stands, so a kind is kept with it only where the
+       * kind runs as that situation, or as none in particular.
+       */
+      if (chosen) return { scenario: chosen, confidence: 'high', ...(read?.kind && (!kindImplies || kindImplies === chosen) ? { kind: read.kind } : {}) };
+      if (kindImplies) return { scenario: kindImplies, confidence: 'high', kind: read!.kind };
+      if (read) return { scenario: read.scenario, confidence: read.confidence, ...(read.kind ? { kind: read.kind } : {}) };
     } catch { /* fall through */ }
+    if (chosen) return { scenario: chosen, confidence: 'high' };
     /* No answer at all: the broad category the person picked, said with the confidence it deserves. */
     return { scenario: resolveScenario(mode), confidence: 'low' };
   }
@@ -1137,11 +1146,13 @@ Rules:
      * category, instead of the decision it is. Each turn without a situation reads everything the person has said so far; once one is
      * read, the screen sends it back as the situation and this is not called again.
      */
-    const scenarioForTheQuestion = scenarioInput
-      ? scenarioInput
-      : theirWords.trim().length > 12
-        ? (await this.classifyIntent(theirWords).catch(() => null))?.scenario ?? undefined
-        : undefined;
+    /* And the kind of work, read in the same call, on every turn until one is read: "need to set quarterly goals for my 3 teams" names
+       no kind, and the answer "each team hits its own revenue target, 12m in total" does. The situation already read is kept. */
+    const reading = (!scenarioInput || !soFar?.kindOfWork) && theirWords.trim().length > 12
+      ? await this.classifyIntent(theirWords, undefined, scenarioInput).catch(() => null)
+      : null;
+    const scenarioForTheQuestion = scenarioInput ? scenarioInput : reading?.scenario ?? undefined;
+    const kindReadHere = reading?.kind;
     if (!scenarioInput && scenarioForTheQuestion) {
       this.logger.log(`Setup: read "${theirWords.slice(0, 60)}" as ${scenarioForTheQuestion}, asking that situation's own first question.`);
     }
@@ -1395,7 +1406,7 @@ from finishing at all.`;
      * WHAT SETUP KNOWS NOW, THE ONE READING (what-setup-knows): what it knew before this turn with what this turn read, including the
      * kind of check-in it read from their first message. The panel shows it as it is and the screen hands it back with the next message.
      */
-    const known = whatSetupKnowsNow(soFar, { ...(extracted as Partial<WhatSetupKnows>), ...(forThisSituation ? { classifiedScenario: forThisSituation } : {}) });
+    const known = whatSetupKnowsNow(soFar, { ...(extracted as Partial<WhatSetupKnows>), ...(forThisSituation ? { classifiedScenario: forThisSituation } : {}), ...(kindReadHere ? { kindOfWork: kindReadHere } : {}) });
     return { reply: out, extracted: known, ready, needsPeople: !known.peopleNamed?.length };
   }
 
@@ -1828,6 +1839,8 @@ from finishing at all.`;
       setupKey?: string;
       orgName?: string;
       scenario?: string;
+      /** The kind of work the setup read with the situation. */
+      kindOfWork?: string;
       cadence?: string;
       cadenceChosen?: boolean;
       /** Runs until the lead ends it (request 37). */
@@ -2305,6 +2318,8 @@ from finishing at all.`;
     const ground = await this.grounds.create(organizationId, initiatorId, {
       label,
       scenario,
+      /* The kind of work the setup read with the situation, the one reading of it (which-situation-this-is.ts). */
+      kindOfWork: dto.kindOfWork,
       /**
          * WAS HARDCODED STARTING, at both creation paths in this file.
          *

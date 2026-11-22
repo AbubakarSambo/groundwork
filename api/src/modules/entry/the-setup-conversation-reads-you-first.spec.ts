@@ -76,7 +76,9 @@ describe('the first question fits the situation, and the context tab exists', ()
      new project. It now reads on every turn until a situation is known, and not once the screen sends one back. */
   it('and on every turn until a situation is known, never once one is', () => {
     expect(SRC).not.toMatch(/const firstTurn =/);
-    expect(SRC).toMatch(/const scenarioForTheQuestion = scenarioInput\s*\?\s*scenarioInput\s*:\s*theirWords\.trim\(\)\.length > 12/);
+    /* And while the kind of work is not read yet, with the situation already read kept (22 November 2026, the kind's one reading). */
+    expect(SRC).toMatch(/const reading = \(!scenarioInput \|\| !soFar\?\.kindOfWork\) && theirWords\.trim\(\)\.length > 12/);
+    expect(SRC).toMatch(/const scenarioForTheQuestion = scenarioInput \? scenarioInput : reading\?\.scenario/);
   });
 
   /*

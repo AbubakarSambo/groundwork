@@ -717,6 +717,10 @@ export class GroundsService {
   async create(organizationId: string, initiatorId: string, dto: CreateGroundDto, creatorRole?: string) {
     /* Collect what's owed only where the organisation's Release 2 switch is on; refused before anything is spent (release-2-collections.ts). */
     await this.aNewCheckInMayBeThisSituation(organizationId, dto.scenario);
+    /* The kind of work the setup read with the situation, kept where it is one of the kinds and this organisation may have it. It is
+       the only reading of the kind at the save (typed situations, 22 November 2026): the second read here disagreed with the first. */
+    const theKindRead = oneOfTheKinds(dto.kindOfWork);
+    const kindOfWork = theKindRead && ((await aKindMayBeGiven(this.prisma, theKindRead, null, organizationId)) || (await aKindTheSwitchboardNeeds(this.prisma, theKindRead, organizationId))) ? theKindRead : null;
     /* A daily check-in nobody gave days for runs Monday to Friday (Hafsah, 15 October). */
     dto = { ...dto, workingDays: theDaysItRunsOn(dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario], dto.workingDays) };
     /* What this organisation already calls its check-ins, so a new one is not the fourth thing in
@@ -782,6 +786,7 @@ export class GroundsService {
          */
         label: aLabelTheyCanTellApart(dto.label, labelsAlreadyHere),
         scenario: dto.scenario,
+        ...(kindOfWork ? { kindOfWork, kindOfWorkSetBy: 'read' } : {}),
         // Immutable after this point. Omitting it takes the family default so a
         // sensing-family ground is never accidentally created shared.
         mode: dto.mode ?? defaultModeFor(dto.scenario),
@@ -919,8 +924,6 @@ export class GroundsService {
       return ground;
     });
     await this.tellParticipantsAboutThis(ground.id, dto.brief, (dto as { scenario?: string }).scenario);
-    /* The kind of work, read from what the lead said at setup (request 76). Not awaited: setup is saved either way. */
-    void this.readTheKindOfWork(ground.id);
 
     // GW-19: no-verdict expectation contract - set at creation so the initiator
     // sees this before they invite anyone or pay. "Evidence both of you can stand
@@ -1126,8 +1129,6 @@ export class GroundsService {
 
     this.usage.emit(UsageEventType.GROUND_CREATED, { organizationId, groundId: ground.id, userId: leadUser.id }).catch(() => undefined);
     await this.tellParticipantsAboutThis(ground.id, dto.brief, (dto as { scenario?: string }).scenario);
-    /* The kind of work, read from what the lead said at setup (request 76). Not awaited: setup is saved either way. */
-    void this.readTheKindOfWork(ground.id);
 
     return ground;
   }

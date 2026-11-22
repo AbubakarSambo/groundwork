@@ -276,6 +276,8 @@ export class EntryCommitDto {
   @IsOptional() @IsString() @MaxLength(100) setupKey?: string;
   @IsOptional() @IsString() orgName?: string;
   @IsOptional() @IsString() scenario?: string;
+  /** The kind of work the setup read with the situation. Checked against the kinds at the save; anything else is none. */
+  @IsOptional() @IsString() @MaxLength(60) kindOfWork?: string;
   @IsOptional() @IsString() cadence?: string;
   /**
    * WHETHER THE CADENCE WAS CHOSEN OR IS THE PAGE'S DEFAULT. The client's `cadence` state starts at

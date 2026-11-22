@@ -86,13 +86,13 @@ describe('the door makes one call, and the lead reads the situation it settled',
 
   it('a kind the same reading names still decides the situation, so the board and the report agree', async () => {
     const r = await aService({ scenario: 'CRISIS_ALIGNMENT', confidence: 'low', kind: 'support desk' }).classifyIntent('support tickets are piling up and I can\'t see who is on what');
-    expect(r).toEqual({ scenario: 'OKR_ALIGNMENT', confidence: 'high' });
+    expect(r).toEqual({ scenario: 'OKR_ALIGNMENT', confidence: 'high', kind: 'support desk' });
     expect(whatTheLeadReads(r.scenario)).toBe('Set goals and keep the team on track');
   });
 
   it('an engineering release is a new project, as the prototype draws it (Hafsah, 22 November 2026)', async () => {
     const r = await aService({ scenario: 'NEW_PROJECT', confidence: 'high', kind: 'engineering release' }).classifyIntent('new project kicking off - mobile app release v2');
-    expect(r).toEqual({ scenario: 'NEW_PROJECT', confidence: 'high' });
+    expect(r).toEqual({ scenario: 'NEW_PROJECT', confidence: 'high', kind: 'engineering release' });
     expect(whatTheLeadReads(r.scenario)).toBe('Get a new project off to a good start');
   });
 });
@@ -109,7 +109,7 @@ describe('a kind is kept when the situation is not one of ours', () => {
 
   it('so "founder here" runs as its kind\'s situation, and the lead reads "Keep a read on live work"', async () => {
     const r = await aService({ scenario: 'FOUNDER_OWN_CHECKIN', confidence: 'high', kind: "founder's own check-in" }).classifyIntent('founder here, want to keep a read on everything');
-    expect(r).toEqual({ scenario: 'PULSE_CHECK', confidence: 'high' });
+    expect(r).toEqual({ scenario: 'PULSE_CHECK', confidence: 'high', kind: "founder's own check-in" });
     expect(whatTheLeadReads(r.scenario)).toBe('Keep a read on live work');
   });
 
@@ -124,5 +124,36 @@ describe('a kind is kept when the situation is not one of ours', () => {
     expect(s.anthropic.extract.mock.calls[0][2]).toBe(THE_CLASSIFICATION_SCHEMA);
     expect(s.anthropic.extract.mock.calls[0][3]).toEqual({ fast: true });
     expect(whatTheLeadReads(r.scenario)).toBe('Help a new hire get started');
+  });
+});
+
+/*
+ * THE DOOR'S KIND IS THE ONE THE CHECK-IN IS SAVED WITH (typed situations, 22 November 2026). The kind was read again at the save and the
+ * two reads disagreed ("county ag extension rollout, ministry funded" lost its government programme). The setup carries this reading's
+ * kind to the save, and the second read is gone.
+ */
+describe('the kind travels from the door to the save', () => {
+  it('a kind read with a situation she chose is kept where it runs as that situation, and dropped where it does not', async () => {
+    const goals = await aService({ scenario: 'OKR_ALIGNMENT', confidence: 'high', kind: 'sales org' }).classifyIntent('need to set quarterly goals for my 3 teams. each team hits its own revenue target, 12m in total', undefined, 'OKR_ALIGNMENT');
+    expect(goals).toEqual({ scenario: 'OKR_ALIGNMENT', confidence: 'high', kind: 'sales org' });
+    const hire = await aService({ scenario: 'NEW_HIRE', confidence: 'high', kind: 'distribution operations' }).classifyIntent('we have a new guy starting monday in the depot', undefined, 'NEW_HIRE');
+    expect(hire).toEqual({ scenario: 'NEW_HIRE', confidence: 'high' });
+  });
+
+  it('what setup knows keeps the kind once read, as it keeps the situation', () => {
+    const first = whatSetupKnowsNow({}, { classifiedScenario: 'PULSE_CHECK', kindOfWork: 'a government programme' } as any);
+    expect(whatSetupKnowsNow(first, {} as any).kindOfWork).toBe('a government programme');
+  });
+
+  it('the save is given that kind, and nothing reads the kind a second time when the check-in is made', () => {
+    const { readFileSync } = require('fs');
+    const { join } = require('path');
+    const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const entry = strip(readFileSync(join(__dirname, 'entry.service.ts'), 'utf8'));
+    expect(entry).toMatch(/kindOfWork: dto\.kindOfWork/);
+    const grounds = strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.service.ts'), 'utf8'));
+    const create = grounds.slice(grounds.indexOf('  async create('), grounds.indexOf('  async createForLead('));
+    expect(create).not.toMatch(/readTheKindOfWork/);
+    expect(create).toMatch(/oneOfTheKinds\(dto\.kindOfWork\)/);
   });
 });
