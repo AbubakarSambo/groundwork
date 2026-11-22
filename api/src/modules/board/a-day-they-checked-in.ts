@@ -47,11 +47,18 @@ const at = (d: Date | string | null | undefined): Date | null => {
 export const theDayIn = (d: Date | string, zone: string): string =>
   new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(d));
 
-/** They answered in it. Where the answers were not read, a finished session the clock did not close counts as answered. */
+/**
+ * They answered in it, by the one rule the session's count reads (reports/how-many-have-answered.ts): finished or declined, and not a
+ * session the clock closed with nothing from them. This counted their typed answers instead, so a check-in finished without a typed turn
+ * (a document sent in, a record made before the conversation was kept) was "not done" here while the board counted it done: Baraka's
+ * morning read "Kito hasn't checked in the last 5 times" while his board said Kito had (release test, 21 November 2026).
+ */
 export function theyAnsweredIn(s: ASessionAsItHappened): boolean {
-  if (typeof s.answers === 'number') return s.answers > 0;
-  if (at(s.firstAnsweredAt)) return true;
-  return String(s.status ?? '').toUpperCase() === 'COMPLETED' && s.closedReason !== CLOSED_BY_THE_CLOCK;
+  const status = String(s.status ?? '').toUpperCase();
+  if (status !== 'COMPLETED' && status !== 'DECLINED') return false;
+  if (s.closedReason !== CLOSED_BY_THE_CLOCK) return true;
+  /* Closed by the clock: an answer only where something of theirs is in it. */
+  return typeof s.answers === 'number' ? s.answers > 0 : !!at(s.firstAnsweredAt);
 }
 
 /** When the session opened for them. */
@@ -171,4 +178,34 @@ export function theCheckInsCounted(
     out.push({ checkInId: openThen?.id ?? null, sessionNumber: openThen?.sessionNumber ?? null, day: k, done: false, onTime: false, specific: false });
   }
   return out;
+}
+
+/* ------------------------------------------------------------------------------------------------------------------------- */
+/* How a person's check-ins are said: one writer for My work, their record in words, the lead's line about them and Ask        */
+/* ------------------------------------------------------------------------------------------------------------------------- */
+
+export interface TheCheckInsCounted { done: number; due: number; onTime: number; specific: number }
+const checkInsOf = (n: number, say: (n: number) => string) => `${say(n)} ${n === 1 ? 'check-in' : 'check-ins'}`;
+
+/** "Amani did 2 of 3 check-ins": the count alone, for a sentence that lists several things. `who` is "You", "you" or a name. */
+export function theCheckInsDone(who: string, c: Pick<TheCheckInsCounted, 'done' | 'due'>, say: (n: number) => string = String): string {
+  return `${who} did ${say(c.done)} of ${checkInsOf(c.due, say)}`;
+}
+
+/**
+ * ONE SENTENCE FOR A PERSON'S CHECK-INS (release test, 21 November 2026). My work said "You did 1 of 3 check-ins on time", which reads as
+ * two late; the person's record said "You did one of three check-ins, all on time."; the lead's line "Amani did 1 of 3 check-ins, 1 of
+ * them on time, and 0 named the item...". Three writers of one fact. This is the one: "Amani did 2 of 3 check-ins, all on time. One of
+ * them named the item, what changed and the day." Where on time and specific are not read (`judged: false`), only the count is said.
+ */
+export function theCheckInsSaid(who: string, c: TheCheckInsCounted, o: { say?: (n: number) => string; judged?: boolean } = {}): string {
+  const say = o.say ?? String;
+  const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+  const count = theCheckInsDone(who, c, say);
+  if (o.judged === false || !c.done) return `${count}.`;
+  const timing = c.onTime === c.done ? (c.done === 1 ? 'and it was on time' : 'all on time') : c.onTime === 0 ? 'none of them on time' : `${say(c.onTime)} of them on time`;
+  const specific = c.done === 1
+    ? (c.specific ? 'It named the item, what changed and the day.' : 'It did not name the item, what changed and the day.')
+    : `${cap(c.specific === 0 ? 'none' : say(c.specific))} of them named the item, what changed and the day.`;
+  return `${count}, ${timing}. ${specific}`;
 }
