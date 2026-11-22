@@ -3,7 +3,7 @@ import { join } from 'path';
 import { AssistantService } from './assistant.service';
 import { route } from './the-router-is-deterministic';
 import { safeToUse } from './the-model-words-it-and-nothing-more';
-import { nameMatches, theNameAsked, whenTheyAsked, I_CANNOT_SHOW_YOU_THAT } from './what-they-said-that-you-may-read';
+import { nameMatches, theNameAsked, whenTheyAsked, theRoundAsTheyMayRead, I_CANNOT_SHOW_YOU_THAT } from './what-they-said-that-you-may-read';
 import { theOneToDoFirst, NOTHING_TO_PUT_FIRST } from './what-to-do-next';
 import { whichQuestion, answerAGuest, fromTheServedReport } from '../ask/a-guest-asks-only-about-their-own-check-in';
 
@@ -52,6 +52,9 @@ const FEMI_LINES = ['Shipped the price list to Harbor Foods.', 'Still waiting on
 const MIRIAM_LINES = ['Called Westgate Deli and they want January.'];
 const PIP_LINES = ['PIP-FEMI-LINE: I missed the July target.'];
 const YEMI_LINES = ['YEMI-OPEN-LINE: the Kilimani shop is not ready.'];
+/* Groundwork's own sentence for Miriam's round, as fillWhatEachPersonSaid writes it: a paraphrase, never a quote. */
+const FEMI_IN_OUR_WORDS = 'Femi sent the price list to Harbor Foods and is waiting for finance on the Green Mart terms.';
+const MIRIAM_IN_OUR_WORDS = 'Miriam spoke to Westgate Deli, and they would like to start in January.';
 const WALL = 'This person has answered, and what they said opens to you when the team\'s report is shared.';
 
 /** Who each reader is called for, so a test can say the report was only ever read AS the asker. */
@@ -67,8 +70,8 @@ const report = {
     const isAdmin = userId === 'u-grace' || userId === 'u-lola';
     if (!inIt && !runsIt && !isAdmin) throw new Error('That check-in could not be found, so go back to your check-ins and open it from the list.');
     const released = groundId !== 'g-open';
-    const rows: Record<string, { name: string; lines: string[] }[]> = {
-      'g-sales': [{ name: 'Femi', lines: FEMI_LINES }, { name: 'Miriam', lines: MIRIAM_LINES }],
+    const rows: Record<string, { name: string; lines: string[]; saying?: string }[]> = {
+      'g-sales': [{ name: 'Femi', lines: FEMI_LINES, saying: FEMI_IN_OUR_WORDS }, { name: 'Miriam', lines: MIRIAM_LINES, saying: MIRIAM_IN_OUR_WORDS }],
       'g-pip': [{ name: 'Femi', lines: PIP_LINES }],
       'g-open': [{ name: 'Yemi', lines: YEMI_LINES }],
     };
@@ -78,7 +81,7 @@ const report = {
         const isYou = theirs[userId] === r.name;
         const reads = runsIt || isAdmin || isYou || released;
         return reads
-          ? { who: r.name, isYou, lines: r.lines }
+          ? { who: r.name, isYou, lines: r.lines, ...(r.saying ? { saying: r.saying } : {}) }
           : { who: r.name, isYou, lines: [], saying: WALL };
       }),
     };
@@ -105,6 +108,8 @@ function harness(as: Who, opts: { commitments?: any[]; toDos?: any[]; waiting?: 
     ground: { findMany: jest.fn(async () => GROUNDS) },
     checkIn: { findMany: jest.fn(async ({ where }: any) => ROUNDS[where.groundId] ?? []) },
     assistantProposal: { findFirst: jest.fn(async () => null) },
+    /* Added 22 November 2026: Ask now looks for a goal draft still asking before any lane (continueTheDraft); none is open here. */
+    objectiveDraft: { findFirst: jest.fn(async () => null) },
     assistantTurn: { createMany: jest.fn(async ({ data }: any) => { turns.push(...data); return { count: data.length }; }) },
     commitment: { findMany: jest.fn(async ({ where }: any) => (where.personExternalId === me.externalId ? opts.commitments ?? [] : [{ text: 'SOMEBODY-ELSES-COMMITMENT', state: 'OPEN', dueAt: null, dueSaid: null, statedAt: new Date(0), lastFollowedUpAt: null }])) },
     /* Added (request 180 item 2): "what did I say I would do" also reads the asker's own promises written down in a check-in, found only through the asker's own sign-in. */
@@ -243,10 +248,22 @@ describe('as a colleague who is in no check-in with Femi (Tom)', () => {
 });
 
 describe('as an admin', () => {
-  it('reads an ordinary check-in, as the report serves an admin', async () => {
+  /*
+   * Changed on 22 November 2026, by Hafsah's decision ("great do you recommendation"): exact words go only to the people in that
+   * check-in. This test used to expect Grace, an admin in none of these check-ins, to read Miriam's exact line, which is the leak
+   * the release test of 21 November found (case #45, Grace given three of Amani's exact quotes). She now reads Groundwork's words.
+   */
+  it('reads an ordinary check-in she is not in only in Groundwork\'s own words, never Miriam\'s exact words', async () => {
     const { ask } = harness('grace');
     const r = await ask('What did Miriam say?');
-    expect(bodyOf(r)).toContain('"Called Westgate Deli and they want January."');
+    expect(bodyOf(r)).not.toContain('Called Westgate Deli and they want January.');
+    expect(bodyOf(r)).toContain(`Here is what Miriam said in their check-in of 24 September on ${SALES}, in my own words.\n${MIRIAM_IN_OUR_WORDS}`);
+  });
+
+  it('never reads Femi\'s exact words either, from any check-in she is not in', async () => {
+    const { ask } = harness('grace');
+    const r = await ask('What did Femi say last week?');
+    for (const l of [...FEMI_LINES, ...PIP_LINES]) expect(JSON.stringify(r)).not.toContain(l);
   });
 
   it('gets nothing at all from an evaluation check-in she was not given access to, and the report is never even asked', async () => {
@@ -429,5 +446,24 @@ describe('the older lanes that read a record now say where it came from too', ()
     const needed = await h.ask('where am I needed');
     expect(bodyOf(needed)).toMatch(/This is from what needs you on Today\.$/);
     expect(sourceOf(needed)).toMatchObject({ kind: 'today', href: '/today' });
+  });
+});
+
+describe('exact words go only to the people in that check-in (Hafsah, 22 November 2026)', () => {
+  const served = { whatEachPersonSaid: [{ who: 'Amani', isYou: false, lines: ['AMANI-EXACT: Kilele paid on Monday.'], lineMarks: ['x'], saying: 'Amani says Kilele paid on Monday.' }] };
+  const reports = { sessionReport: jest.fn(async () => served) };
+  const sales = { id: 'g-q4', initiatorId: 'u-wairimu', participants: [{ userId: 'u-wairimu' }, { userId: 'u-amani' }, { userId: 'u-chidi' }] };
+  const read = (userId: string, role: string) => theRoundAsTheyMayRead(reports, sales, 1, { userId, organizationId: ORG, role });
+  it.each([['an admin in none of it', 'u-grace', 'ADMIN'], ['a manager who does not run it', 'u-baraka', 'LEAD']])('%s reads Groundwork\'s words and never the lines', async (_, userId, role) => {
+    const r = await read(userId, role);
+    expect(JSON.stringify(r)).not.toContain('AMANI-EXACT');
+    expect(r.whatEachPersonSaid[0]).toEqual({ who: 'Amani', isYou: false, saying: 'Amani says Kilele paid on Monday.' });
+  });
+  it.each([['the lead who runs it', 'u-wairimu', 'LEAD'], ['a colleague on it', 'u-chidi', 'MEMBER']])('%s reads the lines as the report serves them', async (_, userId, role) => {
+    expect((await read(userId, role)).whatEachPersonSaid[0].lines).toEqual(['AMANI-EXACT: Kilele paid on Monday.']);
+  });
+  it('every Ask lane that reads check-in words reads them through this one place', () => {
+    const src = readFileSync(join(__dirname, 'assistant.service.ts'), 'utf8') + readFileSync(join(__dirname, 'what-they-said-that-you-may-read.ts'), 'utf8');
+    expect(src.match(/\.sessionReport\(g\.id/g) ?? []).toHaveLength(0);
   });
 });

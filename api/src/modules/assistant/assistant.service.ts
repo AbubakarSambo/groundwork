@@ -53,7 +53,8 @@ import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-the
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { whatThisReaderCallsEachLabel, noStandInLabelAnywhereIn } from '../reports/a-stand-in-label-never-reaches-a-reader';
 import { howManyAnsweredInWords } from '../reports/the-picture-in-plain-sentences';
-import { whatSomeoneSaid, checkInsTheyMayRead, latestRounds, I_CANNOT_SHOW_YOU_THAT } from './what-they-said-that-you-may-read';
+import { WHAT_THEY_SAID_OPENS_WHEN_SHARED } from '../reports/the-session-report';
+import { whatSomeoneSaid, checkInsTheyMayRead, latestRounds, theRoundAsTheyMayRead, I_CANNOT_SHOW_YOU_THAT } from './what-they-said-that-you-may-read';
 import {
   aDelegateGranted, aDelegateLeftAlone, aDelegateRevoked, aDelegateSaidBack, aRevokeLeftAlone, aRevokeSaidBack,
   grantADelegate, hasAStandingOfTheirOwn, myDelegates, noOneActsForYouCalled, noOneOnYourListIsCalled, NO_ONE_TO_ACT_IS_NAMED, NOT_YOURS_TO_GIVE,
@@ -1196,11 +1197,13 @@ export class AssistantService {
           const [round] = await latestRounds(this.prisma as any, g.id);
           if (!round) continue;
           let served: any;
-          try { served = await this.reports.sessionReport(g.id, round.sessionNumber, userId, organizationId); } catch { continue; }
+          try { served = await theRoundAsTheyMayRead(this.reports, g, round.sessionNumber, asker); } catch { continue; }
           for (const row of (Array.isArray(served?.whatEachPersonSaid) ? served.whatEachPersonSaid : []).slice(0, 6)) {
             const said = (Array.isArray(row?.lines) ? row.lines : []).filter((l: unknown) => typeof l === 'string' && l.trim()).slice(0, 3);
-            if (!said.length || typeof row?.who !== 'string') continue;
-            lines.push(`In the check-in ${g.label}, ${row.isYou ? 'you' : row.who} said ${said.map((l: string) => `"${l.trim()}"`).join(' and ')}.`);
+            if (typeof row?.who !== 'string') continue;
+            const inOurWords = typeof row?.saying === 'string' && row.saying !== WHAT_THEY_SAID_OPENS_WHEN_SHARED ? row.saying.trim() : '';
+            if (said.length) lines.push(`In the check-in ${g.label}, ${row.isYou ? 'you' : row.who} said ${said.map((l: string) => `"${l.trim()}"`).join(' and ')}.`);
+            else if (inOurWords) lines.push(`In the check-in ${g.label}, this is what ${row.who} said, in Groundwork's own words. ${inOurWords}`);
           }
         }
       } catch (err: any) {
@@ -4108,12 +4111,10 @@ export class AssistantService {
    */
   private async continueTheDraft(organizationId: string, who: string, message: string, placedOnALane: () => Promise<boolean> = async () => false): Promise<Reply | null> {
     /* A draft that cannot be read is no draft: this must never be the reason a plain message gets no answer. */
-    const open = await Promise.resolve(
-      this.prisma.objectiveDraft?.findFirst({
-        where: { organizationId, initiatorExternalId: who, state: { in: ['DRAFTING', 'CONTESTED'] } },
-        orderBy: { updatedAt: 'desc' },
-      }) ?? null,
-    ).catch(() => null);
+    const open = await (async () => this.prisma.objectiveDraft?.findFirst?.({
+      where: { organizationId, initiatorExternalId: who, state: { in: ['DRAFTING', 'CONTESTED'] } },
+      orderBy: { updatedAt: 'desc' },
+    }) ?? null)().catch(() => null);
     if (!open) return null;
     const next = whatToAskForNext(open);
     if (!next) return null;
