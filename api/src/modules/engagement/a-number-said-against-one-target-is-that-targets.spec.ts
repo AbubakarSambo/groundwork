@@ -22,11 +22,11 @@ const now = new Date('2026-11-27T14:30:00Z');
 describe('the team target line reads only what was said against the team target', () => {
   it('Wairimu reads the team target with nothing counted, and never Olu\'s three trial shops beside it', () => {
     const text = theTargetLines(board(), now, 'Africa/Nairobi').lines[0].text;
-    expect(text).toBe('The team target is 40, and nothing is counted against it yet.');
+    expect(text).toBe('The team’s goal is “The team is aiming for 40 shops to order every week”, and nothing is counted against it yet.');
     expect(text).not.toContain('Olu');
   });
   it('a number said against the team target is still said beside it', () => {
     const text = theTargetLines(board([{ participantId: 'p-chidi', name: 'Chidi Okeke', count: 2, said: 'I got 2 shops ordering this week.', atSession: 3 }]), now, 'Africa/Nairobi').lines[0].text;
-    expect(text).toBe('The team target is 40. Chidi said 2, and none of it is on a deal yet, so none of it is proven.');
+    expect(text).toBe('The team’s goal is “The team is aiming for 40 shops to order every week”. Chidi said 2, and none of it is on a deal yet, so none of it is proven.');
   });
 });

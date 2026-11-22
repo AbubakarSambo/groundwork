@@ -5,7 +5,7 @@ describe('the target line of a team nobody has counted a sale for', () => {
   const board = { objectives: [{ name: 'The team sells 30', target: 30, count: 0, ownerParticipantId: null }], workRecords: [] };
   it('says the target and that nothing is counted, never "0 of 30 sold"', () => {
     const t = theTargetLines(board, new Date('2026-10-20T07:00:00Z'), 'Africa/Nairobi');
-    expect(t.lines[0].text).toBe('The team target is 30, and nothing is counted against it yet.');
+    expect(t.lines[0].text).toBe('The team’s goal is “The team sells 30”, and nothing is counted against it yet.');
     expect(t.gap).toBeNull();
   });
 
@@ -26,7 +26,7 @@ describe('the target line of a team nobody has counted a sale for', () => {
   };
   it('says what people said and that none of it is proven, when the board counts nothing from deals', () => {
     const t = theTargetLines(taaSolar, new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi');
-    expect(t.lines[0].text).toBe('The team target is 30. Asha said 25, Joel said 27 and Sam said 29, which is 81 between them, and none of it is on a deal yet, so none of it is proven.');
+    expect(t.lines[0].text).toBe('The team’s goal is “The team sells 30 lanterns”. Asha said 25, Joel said 27 and Sam said 29, which is 81 between them, and none of it is on a deal yet, so none of it is proven.');
     expect(t.gap).toBeNull();
     expect(t.lines[0].text).not.toMatch(/0 of 30|short|no open deal/);
   });
@@ -34,10 +34,10 @@ describe('the target line of a team nobody has counted a sale for', () => {
   it('is the same line when the board holds a deal that carries no number of units', () => {
     const real = { ...taaSolar, workRecords: [{ section: 'Deal grid', rows: [{ name: 'Mama Njeri stores', kind: 'deal', group: 'possible', stage: null, fields: { 'Decision maker': 'the owner' } }] }] };
     const t = theTargetLines(real, new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi');
-    expect(t.lines[0].text).toBe('The team target is 30. Asha said 25, Joel said 27 and Sam said 29, which is 81 between them, and none of it is on a deal yet, so none of it is proven.');
+    expect(t.lines[0].text).toBe('The team’s goal is “The team sells 30 lanterns”. Asha said 25, Joel said 27 and Sam said 29, which is 81 between them, and none of it is on a deal yet, so none of it is proven.');
     expect(t.gap).toBeNull();
     const bare = theTargetLines({ objectives: [{ name: 'The team sells 30', target: 30, count: 0, ownerParticipantId: null }], workRecords: real.workRecords }, new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi');
-    expect(bare.lines[0].text).toBe('The team target is 30, and nothing is counted against it yet.');
+    expect(bare.lines[0].text).toBe('The team’s goal is “The team sells 30”, and nothing is counted against it yet.');
   });
   it('names only those who said a number in the newest round, and never reads a stored count as something said', () => {
     const board = {
@@ -50,7 +50,7 @@ describe('the target line of a team nobody has counted a sale for', () => {
       }, { name: 'Sell 30 lanterns a week', target: 30, count: 25, ownerParticipantId: 'p-sam', owner: 'Sam Kimani' }],
       workRecords: [],
     };
-    expect(theTargetLines(board, new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi').lines[0].text).toBe('The team target is 30. Joel said 27, and none of it is on a deal yet, so none of it is proven.');
+    expect(theTargetLines(board, new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi').lines[0].text).toBe('The team’s goal is “The team sells 30 lanterns”. Joel said 27, and none of it is on a deal yet, so none of it is proven.');
   });
   it('does not put "30 short of 30" in the letter subject', () => {
     const letter = theSalesDirectMorning({
@@ -88,7 +88,7 @@ describe('a morning that only says nothing needs the lead', () => {
       workRecords: [{ section: 'Deal grid', rows: [{ name: 'Mama Njeri stores', kind: 'deal', group: 'possible', stage: null, fields: { Units: '8' } }] }],
     };
     const t = theTargetLines(board, new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi');
-    expect(t.lines[0].text).toBe('The team target is 30. Sam said 11 and Asha said 10, which is 21 between them, and none of it is counted as sold yet, so none of it is proven.');
+    expect(t.lines[0].text).toBe('The team’s goal is “The team sells 30 lanterns”. Sam said 11 and Asha said 10, which is 21 between them, and none of it is counted as sold yet, so none of it is proven.');
     expect(t.lines[0].text).not.toMatch(/0 of 30|short|no open deal/);
   });
   it('still says the count, with what people said after it, when something is counted as sold', () => {
@@ -109,7 +109,15 @@ describe('a morning that only says nothing needs the lead', () => {
   it('reads no deal against a target the deals do not count, such as a waitlist that took the place of freezers', () => {
     const deals = [{ section: 'Deal grid', rows: [{ name: 'Kilele Hotel', kind: 'deal', group: 'likely', stage: null, fields: { Units: '40' } }] }];
     const waitlist = (count: number) => ({ objectives: [{ name: 'The team is building a waitlist of 50 shops', target: 50, count, ownerParticipantId: null }], workRecords: deals });
-    expect(theTargetLines(waitlist(0), new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi').lines[0].text).toBe('The team target is 50, and nothing is counted against it yet.');
-    expect(theTargetLines(waitlist(12), new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi').lines[0].text).toBe('12 of 50 so far, with 38 to go.');
+    expect(theTargetLines(waitlist(0), new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi').lines[0].text).toBe('The team’s goal is “The team is building a waitlist of 50 shops”, and nothing is counted against it yet.');
+    expect(theTargetLines(waitlist(12), new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi').lines[0].text).toBe('The team’s goal is “The team is building a waitlist of 50 shops”. 12 of 50 so far, with 38 to go.');
+  });
+  /* Bug N4 (release test, 22 November, final run): "The team target is 15" of a goal of 15 shops each, and the waitlist never named. */
+  it('names the goal Wairimu changed to, so "each person" and the waitlist are said, and says when and why it changed as the board does', () => {
+    const changed = 'On 22 November the goal changed, because the freezers we sell are out of stock until January. Before that, the goal was the team’s “Freezers sold by the team this quarter”.';
+    const board = { objectives: [{ name: 'Each person builds a waitlist of 15 shops by 31 December', target: 15, count: 0, ownerParticipantId: null, changed }], workRecords: [{ section: 'Deal grid', rows: [{ name: 'Kilele Hotel', kind: 'deal', group: 'likely', stage: null, fields: { Units: '40' } }] }] };
+    const text = theTargetLines(board, new Date('2026-11-23T07:00:00Z'), 'Africa/Nairobi').lines[0].text;
+    expect(text).toBe(`The team’s goal is “Each person builds a waitlist of 15 shops by 31 December”, and nothing is counted against it yet. ${changed}`);
+    expect(text).not.toMatch(/The team target is 15/);
   });
 });

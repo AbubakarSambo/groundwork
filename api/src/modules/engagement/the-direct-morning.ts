@@ -290,16 +290,27 @@ export function theTargetLines(board: any, now: Date, zone: string, readIsStillT
   /* Beside the target, what they said between them (run 7: the lead read each name and had to add it up herself). One person's number is the total. */
   const whatTheySaid = saidLines.length ? `${listedNames(saidLines)}${saidLines.length > 1 ? `, which is ${commas(saidTotal)} between them` : ''}` : null;
   const nothingCounted = sold === 0 && !(paid && paid > 0);
+  /*
+   * THE GOAL BY ITS OWN NAME, AND WHEN AND WHY IT CHANGED (Drop Access, 22 November 2026, bug N4). The letter read "The team target is 15"
+   * of "Each person builds a waitlist of 15 shops by 31 December": a number with nothing to say what it counts, or that it is each person's.
+   * The goal row's name says both, so the line names it, and the sentence the board serves of its change (objective `changed`, from
+   * a-goal-changed-by-its-lead) follows the line, so the letter says the same as the board.
+   */
+  const name = String(aim.name ?? '').trim().replace(/[.!?\s]+$/, '');
+  const theGoal = name
+    ? `The team’s goal is “${name}”${name.replace(/,/g, '').includes(String(target)) ? '' : `, with a target of ${commas(target)}`}`
+    : `The team target is ${commas(target)}`;
+  const changed = typeof aim.changed === 'string' && aim.changed.trim() ? ` ${aim.changed.trim()}` : '';
   if (!counted && sold > 0) {
-    const text = `${commas(sold)} of ${commas(target)} so far${sold >= target ? ', and you have reached the target.' : `, with ${commas(target - sold)} to go.`}${whatTheySaid ? ` ${whatTheySaid}.` : ''}`;
+    const text = `${theGoal}. ${commas(sold)} of ${commas(target)} so far${sold >= target ? ', and you have reached the target.' : `, with ${commas(target - sold)} to go.`}${whatTheySaid ? ` ${whatTheySaid}.` : ''}${changed}`;
     return { lines: [{ text, rank: 0 }], gap: Math.max(0, target - sold), target, heading };
   }
   /* Run 8: 21 of 43 letters said "0 of 30 sold, 30 short, and no open deal covers any of it" while people said 9 to 17 a week, because a deal that held units sent the line down the count's path. Where people said a number and nothing is counted, the line says what they said, and that none of it is counted. */
   if (nothingCounted && (whatTheySaid || !rows.some((r) => (theUnitsOf(r.fields) ?? 0) > 0))) {
     const text = whatTheySaid
-      ? `The team target is ${commas(target)}. ${whatTheySaid}, and none of it is ${rows.some((r) => (theUnitsOf(r.fields) ?? 0) > 0) ? 'counted as sold' : 'on a deal'} yet, so none of it is proven.`
-      : `The team target is ${commas(target)}, and nothing is counted against it yet.`;
-    return { lines: [{ text, rank: 0 }], gap: null, target, heading };
+      ? `${theGoal}. ${whatTheySaid}, and none of it is ${rows.some((r) => (theUnitsOf(r.fields) ?? 0) > 0) ? 'counted as sold' : 'on a deal'} yet, so none of it is proven.`
+      : `${theGoal}, and nothing is counted against it yet.`;
+    return { lines: [{ text: `${text}${changed}`, rank: 0 }], gap: null, target, heading };
   }
   const likely = rows.filter((r) => r.group === 'likely' && !isWon(r));
   const likelyUnits = likely.reduce((n, r) => n + (theUnitsOf(r.fields) ?? 0), 0);
@@ -309,7 +320,7 @@ export function theTargetLines(board: any, now: Date, zone: string, readIsStillT
   const gap = target - sold - likelyUnits;
   const andWhatTheySaid = whatTheySaid ? ` ${whatTheySaid}.` : '';
   if (gap <= 0) {
-    return { lines: [{ text: `${sold >= target ? `${said}, and you have reached the target.` : `${said}, and with the likely deals you reach the target.`}${andWhatTheySaid}`, rank: 0 }], gap: Math.max(0, gap), target, heading };
+    return { lines: [{ text: `${sold >= target ? `${said}, and you have reached the target.` : `${said}, and with the likely deals you reach the target.`}${andWhatTheySaid}${changed}`, rank: 0 }], gap: Math.max(0, gap), target, heading };
   }
   /* What the open deals hold: the deals the board lists to close the gap, else every open deal not already counted as likely. */
   const listed = new Set(((board?.toCloseTheGap?.deals ?? []) as any[]).map((d) => String(d?.name ?? '').trim().toLowerCase()).filter(Boolean));
@@ -321,7 +332,7 @@ export function theTargetLines(board: any, now: Date, zone: string, readIsStillT
     : cover > 0
       ? `${said}, ${commas(gap)} short, and the open deals cover ${commas(cover)}.`
       : `${said}, ${commas(gap)} short, and no open deal covers any of it.`;
-  return { lines: [{ text: `${text}${andWhatTheySaid}`, rank: 0 }], gap, target, heading };
+  return { lines: [{ text: `${text}${andWhatTheySaid}${changed}`, rank: 0 }], gap, target, heading };
 }
 
 const A_DECISION = /\b(?:decision|decide|approv\w*|yes or no|go-ahead|sign[- ]off on the price|price)\b/i;
