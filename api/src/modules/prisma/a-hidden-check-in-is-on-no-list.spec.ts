@@ -28,4 +28,20 @@ describe('a hidden check-in is on no list', () => {
       { model: 'User', action: 'findMany', args: { where: {} } },
     ]) expect(aHiddenCheckInIsOnNoList(p)).toBe(p);
   });
+
+  /* Bug N6 (release test, 22 November 2026): lists read through the people on check-ins, and the first of a list, are lists too. */
+  it('people across check-ins, and the first of a list, skip hidden check-ins; a read of one known one is left whole', () => {
+    expect(aHiddenCheckInIsOnNoList({ model: 'GroundParticipant', action: 'findMany', args: { where: { userId: 'u1' } } }).args.where)
+      .toEqual({ AND: [{ userId: 'u1' }, { ground: { hiddenAt: null } }] });
+    expect(aHiddenCheckInIsOnNoList({ model: 'CheckIn', action: 'findFirst', args: { where: { status: 'PENDING' } } }).args.where)
+      .toEqual({ AND: [{ status: 'PENDING' }, { ground: { hiddenAt: null } }] });
+    expect(aHiddenCheckInIsOnNoList({ model: 'Ground', action: 'findFirst', args: { where: { initiatorId: 'u1' } } }).args.where)
+      .toEqual({ AND: [{ initiatorId: 'u1' }, { hiddenAt: null }] });
+    for (const p of [
+      { model: 'Ground', action: 'findFirst', args: { where: { id: 'g1' } } },
+      { model: 'GroundParticipant', action: 'findFirst', args: { where: { groundId: 'g1', userId: 'u1' } } },
+      { model: 'GroundParticipant', action: 'findFirst', args: { where: { inviteToken: 't' } } },
+      { model: 'CheckIn', action: 'findFirst', args: { where: { participantId: 'p1', sessionNumber: 2 } } },
+    ]) expect(aHiddenCheckInIsOnNoList(p)).toBe(p);
+  });
 });
