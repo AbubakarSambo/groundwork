@@ -11,6 +11,7 @@ import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
 import { theBuyingDateTheySaid, BUYING_DATE } from './a-deals-value-and-buying-date';
 import { withTheCriteriaSaid, thePriceRangeAnswer, theLeadsRangeAnswerIn, THE_RANGE_QUESTION } from './a-deals-four-criteria';
 import { theAnswerAsALine } from './what-needs-you-and-what-to-do';
+import { theBackingDocuments, theDocumentBehind } from './a-deals-proof-is-about-that-deal';
 import { oneOfTheKinds, isASalesKind, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, type AnOfferedRecord, type APersonALineMayName , KINDS_THAT_ARE_NOT_WORK } from './the-kind-of-work';
 import { theRoomsLabelFor } from './the-room-is-stored-with-labels';
 import { fileTheBillsSaid } from './the-collections-record';
@@ -155,9 +156,15 @@ export class BoardListener {
         where: { checkInId: e.checkInId, disputedAt: null },
         /* In the order they were said, so a line can go on from the one before it (onlyRecordsTheLinesSay). */
         orderBy: { createdAt: 'asc' },
-        select: { id: true, text: true, participantId: true, createdAt: true },
+        select: { id: true, text: true, participantId: true, createdAt: true, anchoredDocumentId: true },
       });
-      const lines = said.map((l: any) => ({ id: l.id, text: cleanText(l.text), participantId: l.participantId, createdAt: l.createdAt ? new Date(l.createdAt) : new Date() })).filter((l: any) => l.text);
+      const lines = said.map((l: any) => ({ id: l.id, text: cleanText(l.text), participantId: l.participantId, createdAt: l.createdAt ? new Date(l.createdAt) : new Date(), anchoredDocumentId: l.anchoredDocumentId ?? null })).filter((l: any) => l.text);
+      /* The document each line was added with, as words, so the model reads what it shows beside what was said (release test, 21 November 2026). */
+      const docsHere = await theBackingDocuments(this.prisma, lines).catch(() => new Map());
+      const withItsDocument = (l: any) => {
+        const words = theDocumentBehind(l.anchoredDocumentId, docsHere as any).documentWords;
+        return words ? ` (added with a document that reads: ${words.replace(/\s+/g, ' ').slice(0, 400)})` : '';
+      };
       if (!lines.length) return;
       const people: APersonALineMayName[] = ((ground?.participants ?? []) as any[]).map((p) => ({
         id: p.id, firstName: p.user?.firstName ?? null, lastName: p.user?.lastName ?? null, nameGiven: p.nameGiven ?? null,
@@ -180,7 +187,7 @@ export class BoardListener {
           content: [
             ...(everybody.length ? [`People in this check-in: ${everybody.join(', ')}.`, ''] : []),
             ...(onRecord.length ? ['Items on record:', ...onRecord.map((d) => `[${d.id}] ${d.kind}: ${d.name}${d.ownerParticipantId ? `, ${nameOf(d.ownerParticipantId)}'s` : ''}${String((d.fields as any)?.Contact ?? '').trim() ? `, through ${String((d.fields as any).Contact).trim()}` : ''}`), ''] : []),
-            ...lines.map((l: any) => `[${l.id}] ${nameOf(l.participantId)} said: ${l.text}`),
+            ...lines.map((l: any) => `[${l.id}] ${nameOf(l.participantId)} said: ${l.text}${withItsDocument(l)}`),
           ].join('\n'),
         }],
         THE_RECORDS_SCHEMA,
