@@ -118,7 +118,9 @@ describe('with the direct morning on, every email says what happened and nothing
   beforeAll(async () => { m = await everyEmail(true); });
 
   it('Grace, the report is ready: the finding and what to do, and the link', () => {
-    expect(m.leadReport!.subject).toBe(`In "Sales team, Q4", the standard for what counts as a 'sold' unit is not being applied consistently`);
+    /* Changed 22 November 2026 (release test, bug 38): the report's sentence leads, as written, and the check-in follows it. The old
+       "In "X", clause" shape lowered the first word by a word list, and "In "Sales team, Q4", One participant's..." got through. */
+    expect(m.leadReport!.subject).toBe(`The standard for what counts as a 'sold' unit is not being applied consistently, in "Sales team, Q4"`);
     expect(m.leadReport!.text).toBe([
       "The standard for what counts as a 'sold' unit is not being applied consistently.",
       "Here is what I would do first. Agree on the single, specific point at which a deal is counted as 'sold' in the team's official tally.",
