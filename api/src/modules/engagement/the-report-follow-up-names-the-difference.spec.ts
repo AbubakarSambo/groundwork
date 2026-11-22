@@ -36,10 +36,11 @@ describe('the follow-up names what the people differ on', () => {
     const w = world(async () => 'the people differ on "Who owns the next step with the distributor"');
     expect(await w.run()).toEqual({ tried: 1 });
     expect(w.asked).toEqual([{ groundId: 'g1', organizationId: 'org1', leadUserId: 'u-w', lastReleasedSession: 2 }]);
-    expect(w.sent[0].subject).toBe('In "Sales team, Q4", the people differ on "Who owns the next step with the distributor", and it has not been looked at again');
+/* Changed 22 November 2026 (release test, bug 38): the report's sentence is never put after a comma any more ("In \"X\", One participant's..."); it leads, as written, and the check-in follows it. */
+    expect(w.sent[0].subject).toBe('The people differ on "Who owns the next step with the distributor", in "Sales team, Q4", and it has not been looked at again');
     expect(w.sent[0].lines).toEqual([
       expect.stringMatching(/^Hello Wairimu\. The report for "Sales team, Q4" went out on /),
-      'The report found that the people differ on "Who owns the next step with the distributor". No check-in has been held since, so that has not been looked at again.',
+      'The report found this. The people differ on "Who owns the next step with the distributor". No check-in has been held since, so that has not been looked at again.',
       'Since then, two things people said they would do were done and one handoff was cleared.',
       'Three handoffs are still waiting and four things people said they would do are still open.',
       expect.stringMatching(/^Groundwork suggests /),
@@ -58,17 +59,17 @@ describe('the follow-up names what the people differ on', () => {
 });
 
 describe('the difference is read from the served report', () => {
-  it('a phrase is "the people differ on ...", with no full stop at its end', () => {
-    expect(theFirstOpenDifference({ whereThingsStand: { open: ['', 'The unit of measurement for success.', 'Pricing'] } })).toBe('the people differ on "The unit of measurement for success"');
+  it('a phrase is "The people differ on ...", as a whole sentence', () => {
+    expect(theFirstOpenDifference({ whereThingsStand: { open: ['', 'The unit of measurement for success.', 'Pricing'] } })).toBe('The people differ on "The unit of measurement for success".');
   });
   it('a whole sentence is the sentence itself, so it does not read "differ on" a sentence', () => {
-    expect(theFirstOpenDifference({ whereThingsStand: { open: ['Who owns the next step with the distributor is not agreed upon by the team.'] } })).toBe('who owns the next step with the distributor is not agreed upon by the team');
+    expect(theFirstOpenDifference({ whereThingsStand: { open: ['Who owns the next step with the distributor is not agreed upon by the team.'] } })).toBe('Who owns the next step with the distributor is not agreed upon by the team.');
   });
   it('a long one is said whole in the body and not in the subject', () => {
     const long = 'the team\'s progress toward the 120,000,000 objective cannot be calculated because team members are measuring their contributions in different units';
     const w = theFollowUpWords('W', 'Q4 priorities', WENT_OUT, { done: 0, cleared: 0, waiting: 0, open: 0, difference: long });
     expect(w.subject).toBe('In "Q4 priorities", a difference the report found has not been looked at again');
-    expect(w.lines[1]).toBe(`The report found that ${long}. No check-in has been held since, so that has not been looked at again.`);
+    expect(w.lines[1]).toBe(`The report found this. T${long.slice(1)}. No check-in has been held since, so that has not been looked at again.`);
   });
   it('nothing for a report with nothing open, or one withheld until the person answers', () => {
     expect(theFirstOpenDifference({ whereThingsStand: { open: [] } })).toBeNull();
@@ -77,8 +78,8 @@ describe('the difference is read from the served report', () => {
   });
   it('and the words alone carry it only when it is given', () => {
     const w = theFollowUpWords('W', 'X', WENT_OUT, { done: 0, cleared: 0, waiting: 0, open: 0, difference: 'who signs off is not agreed' });
-    expect(w.lines[1]).toBe('The report found that who signs off is not agreed. No check-in has been held since, so that has not been looked at again.');
-    expect(w.subject).toBe('In "X", who signs off is not agreed, and it has not been looked at again');
-    expect(theFollowUpWords('W', 'X', WENT_OUT, { done: 0, cleared: 0, waiting: 0, open: 0 }).lines.join(' ')).not.toContain('found that');
+    expect(w.lines[1]).toBe('The report found this. Who signs off is not agreed. No check-in has been held since, so that has not been looked at again.');
+    expect(w.subject).toBe('Who signs off is not agreed, in "X", and it has not been looked at again');
+    expect(theFollowUpWords('W', 'X', WENT_OUT, { done: 0, cleared: 0, waiting: 0, open: 0 }).lines.join(' ')).not.toContain('found this');
   });
 });

@@ -150,7 +150,8 @@ describe('the words themselves', () => {
       openWithReasons: [{ settledBy: 'Agree on a single owner for the distributor relationship and communicate this to the entire team.' }],
     } });
     const i = theFirstInsight(real, 'Q4 priorities', { isTheLead: true })!;
-    expect(i.subjectForTheLead).toBe('In "Q4 priorities", who owns the next step with the distributor is not agreed upon by the team, and one more difference is still open');
+    /* Changed 22 November 2026 (release test, bug 38): the sentence leads, as the report wrote it, and the check-in follows it. */
+    expect(i.subjectForTheLead).toBe('Who owns the next step with the distributor is not agreed upon by the team, in "Q4 priorities", and one more difference is still open');
     expect(i.lines[0]).toBe('Who owns the next step with the distributor is not agreed upon by the team, and one more difference is still open.');
     expect(i.lines.join(' ')).not.toContain('settled');
     expect(i.lines).toContain('Here is what I would do first. Agree on a single owner for the distributor relationship and communicate this to the entire team.');

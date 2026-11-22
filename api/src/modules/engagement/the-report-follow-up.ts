@@ -63,7 +63,7 @@ export function theFollowUpWords(firstName: string | null | undefined, label: st
   /* THE FINDING, WHERE THERE IS ONE (engagement spec section 11). The message goes only when no next session has been opened, so no picture has been made since
      and the difference the report found has not been looked at again: that is said as what it is, and not as "still unresolved". */
   const looked = c.difference
-    ? [`The report found that ${c.difference}. No check-in has been held since, so that has not been looked at again.`]
+    ? [`The report found this. ${capital(c.difference.trim().replace(/[.!?]+$/, ''))}. No check-in has been held since, so that has not been looked at again.`]
     : [];
   const lines = [
     `Hello ${firstName?.trim() || 'there'}. The report for "${label}" went out on ${whenItWas(wentOut, 'day')}.`,
@@ -72,7 +72,7 @@ export function theFollowUpWords(firstName: string | null | undefined, label: st
     ...(stillThere.length ? [`${capital(stillThere.join(' and '))}.`] : []),
     theSuggestionSaid(theNextCheckInFor(c)),
   ];
-  return { subject: c.difference ? aSubjectThatFits(`In "${name}", ${c.difference}, and it has not been looked at again`, `In "${name}", a difference the report found has not been looked at again`) : subject, lines, linkLabel: 'See where it stands' };
+  return { subject: c.difference ? aSubjectThatFits(`${capital(c.difference.trim().replace(/[.!?]+$/, ''))}, in "${name}", and it has not been looked at again`, `In "${name}", a difference the report found has not been looked at again`) : subject, lines, linkLabel: 'See where it stands' };
 }
 
 const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
