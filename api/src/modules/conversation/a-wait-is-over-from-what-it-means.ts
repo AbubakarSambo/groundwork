@@ -10,7 +10,7 @@ import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
  * saying it needed a new rule, and the next way of saying it was always missed.
  *
  * Now the model reads each open wait against the record, the way a good manager would: the lines said about it in any of the
- * organisation's check-ins (never one about a single person), by anybody, before or after it was raised, the work items it names, and
+ * organisation's check-ins (never one about a single person), by anybody, before or after it was raised (never the conversation that raised it), and
  * any correction that was backed. It decides whether the wait is over, and which line or item shows it. The product writes only that the
  * wait is over, on the day of that line; nobody's words move between check-ins. Nothing here approves or writes money or leave: those
  * keep their fixed rules. A wait the model does not end stays open, and when the model cannot be reached the old word rules run instead,
@@ -25,18 +25,22 @@ export interface AWaitToJudge {
   onLabel: string | null;
   what: string;
   createdAt: Date | string;
+  /** The conversation it was read from. */
+  sourceCheckInId?: string | null;
 }
 export interface AWitness {
-  /** A line on record, a work item, or a correction that was backed. */
+  /** A line on record, or a correction that was backed. */
   id: string;
   who: string;
-  /** Kind of line ("what happened", "a worry", "a promise"), or "work item", or "correction". */
+  /** Kind of line ("what happened", "a worry", "a promise"), or "correction". */
   kind: string;
   where: string;
   on: Date | string;
   text: string;
   /** People this is by, as user ids (one person in several check-ins is one person). */
   byUserId?: string | null;
+  /** The conversation a line was said in; none for a correction. */
+  checkInId?: string | null;
 }
 export interface AWaitOver { id: string; clearedAt: Date; witnessId: string }
 
@@ -114,9 +118,16 @@ export const theNamingWords = (t: string): string[] => {
 export function theWitnessesFor(waits: { w: AWaitToJudge; names: string[]; userIds: string[] }[], all: AWitness[], perWait = 30): AWitness[] {
   const chosen = new Map<string, AWitness>();
   for (const { w, names, userIds } of waits) {
+    /*
+     * NOTHING FROM THE CONVERSATION THAT RAISED IT (release test, 21 November 2026, bugs 35 and 40). That conversation was read whole,
+     * and its reading is that the wait is open: that is why the row exists. Handed back its own lines, the model ended Wairimu's wait
+     * for delivery slots at the very moment it was raised, from "a second Kilimani run is possible from 1 December", her own words
+     * beside it. A wait is ended only by something said somewhere else, or later.
+     */
+    const elsewhere = all.filter((x) => !(w.sourceCheckInId && x.checkInId && x.checkInId === w.sourceCheckInId));
     const thing = theNamingWords(w.what);
     const people = names.flatMap((n) => theNamingWords(n));
-    const scored = all
+    const scored = elsewhere
       .map((x) => {
         const said = new Set(theNamingWords(x.text));
         const thingHits = thing.filter((t) => said.has(t)).length;
@@ -168,7 +179,7 @@ export async function clearTheWaitsTheRecordEnds(
   const labelOf = new Map(shared.map((g) => [g.id, String(g.label ?? 'a check-in')]));
   const waits: AWaitToJudge[] = (await prisma.groundDependency.findMany({
     where: { groundId: { in: ids }, status: { in: ['WAITING', 'BLOCKING'] }, clearedAt: null },
-    select: { id: true, groundId: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, createdAt: true },
+    select: { id: true, groundId: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, createdAt: true, sourceCheckInId: true },
   })) ?? [];
   const people: any[] = (await prisma.groundParticipant.findMany({
     where: { groundId: { in: ids } },
@@ -190,18 +201,19 @@ export async function clearTheWaitsTheRecordEnds(
   };
   const lines: any[] = (await prisma.recordEntry.findMany({
     where: { disputedAt: null, participant: { groundId: { in: ids } } },
-    select: { id: true, participantId: true, type: true, text: true, createdAt: true, participant: { select: { groundId: true, userId: true } } },
+    select: { id: true, participantId: true, checkInId: true, type: true, text: true, createdAt: true, participant: { select: { groundId: true, userId: true } } },
   })) ?? [];
-  const items: any[] = (await Promise.resolve(prisma.workItem?.findMany?.({
-    where: { groundId: { in: ids }, stage: { not: null } },
-    select: { id: true, groundId: true, kind: true, name: true, stage: true, updatedAt: true },
-  })).catch(() => [])) ?? [];
+  /*
+   * NO WORK ITEMS (release test, 22 November 2026, bug 19). A work item's stage is built from the very lines read here, so it said the same
+   * thing twice, and a deal's stage was read as the end of a wait about that deal: "Naivas is at the stage Quoted" ended Chidi's wait for
+   * Fatuma's pricing approval two minutes after he said it was still with her, and Today told Wairimu he was no longer waiting. The lines
+   * people said are the one source.
+   */
   const all: AWitness[] = [
     ...lines.map((l) => ({
       id: l.id, who: nameOf(l.participantId), kind: KIND[String(l.type)] ?? 'a line', where: labelOf.get(l.participant?.groundId) ?? 'a check-in',
-      on: l.createdAt, text: String(l.text ?? '').replace(/\[INFERRED:[^\]]*\]/g, '').trim(), byUserId: l.participant?.userId ?? null,
+      on: l.createdAt, text: String(l.text ?? '').replace(/\[INFERRED:[^\]]*\]/g, '').trim(), byUserId: l.participant?.userId ?? null, checkInId: l.checkInId ?? null,
     })),
-    ...items.map((i) => ({ id: i.id, who: 'the record', kind: 'work item', where: labelOf.get(i.groundId) ?? 'a check-in', on: i.updatedAt, text: `${i.kind} ${i.name} is at the stage "${i.stage}"` })),
     ...extra,
   ];
   const version = await Promise.resolve(prompts?.getActive(WAIT_OVER_PROMPT_KEY)).catch(() => null);

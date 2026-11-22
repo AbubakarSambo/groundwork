@@ -166,11 +166,13 @@ describe('the check-in opens on that line (web, and the first message after STAR
     expect((await service.open(ci.id, userId)).reply).toBe(withTheOpeningLine(`${JOSEPH_LATE_LINE} What moved on your deals since yesterday?`));
   });
 
-  it('Peter with nothing specific on record: "nothing is open from last time", then the model\'s question', async () => {
+  /* Changed 22 November 2026 (release test, bugs 6 and 11): "nothing is open from last time" was untrue whenever what was open was not
+     on the short list. With nothing on it, the model opens from the whole record. */
+  it('Peter with nothing specific on record: the model opens from the record, and nothing says "nothing is open"', async () => {
     const { service, anthropic, ci, userId } = aCheckInOver('drop', 'Peter', true);
     const r: any = await service.open(ci.id, userId);
     expect(anthropic.respond).toHaveBeenCalledTimes(1);
-    expect(r.reply).toBe(withTheOpeningLine('Peter, nothing is open from last time. What moved on your deals since yesterday?'));
+    expect(r.reply).toBe(withTheOpeningLine('What moved on your deals since yesterday?'));
   });
 
   it('switch on, the lead: her opening is the model\'s, as before', async () => {

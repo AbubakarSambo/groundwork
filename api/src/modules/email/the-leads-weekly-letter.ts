@@ -138,12 +138,15 @@ function theDoneSentence(w: AWeekInOneCheckIn, said: (n: number) => string = aNu
   return one ? `${base}, ${w.done === 1 ? 'by' : w.done === 2 ? 'both by' : 'all by'} ${one}` : base;
 }
 
-/** "Two handoffs are still waiting, both on James." Named only when ALL of them wait on one person. */
+/**
+ * "People are still waiting on James for two things." Named only when ALL of them wait on one person. In plain words, never "handoffs"
+ * (release test, 22 November 2026: "Four handoffs are still waiting" in a subject is work jargon).
+ */
 function theWaitingSentence(w: AWeekInOneCheckIn, said: (n: number) => string = aNumber): string | null {
   if (w.waiting <= 0) return null;
-  const base = `${capital(said(w.waiting))} ${w.waiting === 1 ? 'handoff is' : 'handoffs are'} still waiting`;
   const one = w.waitingOn?.length === 1 && w.waitingOn[0].count === w.waiting ? w.waitingOn[0].name : null;
-  return one ? `${base}, ${w.waiting === 1 ? 'on' : w.waiting === 2 ? 'both on' : 'all on'} ${one}` : base;
+  const what = `${said(w.waiting)} ${w.waiting === 1 ? 'thing' : 'things'}`;
+  return one ? `People are still waiting on ${one} for ${what}` : `People are still waiting on ${what}`;
 }
 
 const lowerFirst = (s: string) => `${s.charAt(0).toLowerCase()}${s.slice(1)}`;

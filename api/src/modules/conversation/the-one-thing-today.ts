@@ -37,7 +37,7 @@ import { theDraftNothingHasChangedSince, theOpeningAsRead } from './the-opening-
  * where the check-in names people to each other (peers-are-named.ts), else "a colleague". What a colleague said in the check-in is
  * theirs to read (they are in it); the lead's judgement is never read here, only what she is waiting for.
  *
- * NOTHING SPECIFIC ON RECORD: null; the prepared opener then says "nothing is open from last time". Never for the lead, someone who only
+ * NOTHING SPECIFIC ON RECORD: null; then nothing is prepared and the model opens from the whole record. Never for the lead, someone who only
  * manages, someone who left, or an evaluation check-in.
  */
 

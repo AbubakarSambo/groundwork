@@ -116,7 +116,7 @@ describe('what each page says while the read is still to come', () => {
     const now = whereASessionsReportStands({ report: null, finishedAt: new Date(), readIsStillToCome: true });
     expect(now.state).toBe('being-read');
     expect(now.says).toBe('Groundwork is still working out the report for this check-in. What you said is below, and the report will appear here when it is ready.');
-    expect(whereASessionsReportStands({ report: null, finishedAt: new Date() }).says).toBe('No report was kept for this check-in. What you said is below.');
+    expect(whereASessionsReportStands({ report: null, finishedAt: new Date() }).says).toBe('There is no report for this check-in yet. What you said is below.');
   });
 
   it('the lead\'s morning says the team target is being worked out, and only says there is none when it is true', () => {

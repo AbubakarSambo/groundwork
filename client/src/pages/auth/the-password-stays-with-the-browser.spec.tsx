@@ -47,7 +47,7 @@ describe('the browser that signs up with a password', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'With a password' }))
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'harbour7lamp' } })
     fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'harbour7lamp' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }))
     await screen.findByRole('heading', { name: 'Check your email' })
     expect(localStorage.getItem('gw_password_key')).toBe('k'.repeat(64))
     expect(document.body.textContent).not.toMatch(/key/i)

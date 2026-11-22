@@ -1,3 +1,4 @@
+/* Changed 22 November 2026 (release test): "handoffs" in what a lead reads is work jargon, so the mails say "people are still waiting on two things" and the like; the expectations below follow the new words. */
 import { sendTheLeadsWeeklyLetters } from './the-leads-weekly-letter';
 import { theRunRebuiltEachEvening, theRunAsADatabase, aPersonRecordTable, R2, THE_END_OF_THE_RUN } from '../board/the-persons-record-bed';
 import { rebuildThePersonsRecords } from '../board/the-persons-record-store';
@@ -34,7 +35,7 @@ describe('Grace’s letter, Drop Access (test)', () => {
        (Savannah Cafe's Friday balance in round 15), so Mercy's Friday sale gives way to her Monday line about it. */
     expect(lines).toEqual([
       'Your team is starting to move.',
-      'This week, all five people checked in. Five people said what they will do next. Two things people said they would do were done. 16 handoffs are still waiting.',
+      'This week, all five people checked in. Five people said what they will do next. Two things people said they would do were done. People are still waiting on 16 things.',
       'Here is where the target stands. 75 of 120 sold, 47 paid, 45 short, and the open deals cover 40.',
       'Here is what moved this week, with what shows it. On Monday 19 October Kevin said “Jane paid the remaining KES 15,000 balance for the 6 Savannah Cafe units. The M-Pesa confirmation code is RCD8M1LS4W.” The M-Pesa code RCD8M1LS4W shows it. On Monday 19 October Mercy said “We have the signed purchase order.” A document Mercy added shows it. On Monday 19 October Mercy said “It confirms the order for 25 units from Greenfield Supermarket at KES 125,000, and it\'s signed.” A document Mercy added shows it. On Monday 19 October Mercy said “Mama Rose\'s Kiosk already paid for her unit last Friday.” A document Mercy added shows it.',
       'Here is who needs you. Joseph said 3 times that something was sold or paid with nothing on file, and took 2 back later. Groundwork asked for the proof and has coached Joseph since Monday 12 October, and nothing has changed, so call Joseph. On Wednesday 14 October Joseph said “Mama Pima paid a deposit.” On Friday 16 October Joseph said “The Mama Pima deposit hasn\'t actually come through yet, she\'s still choosing.” On Monday 12 October Joseph said “That 10-unit deal for Mama Pima is definitely part of my 30-unit target. It\'s basically closed.” On Monday 12 October Joseph said 10 units for Mama Pima Stores, and on Tuesday 13 October Joseph said “Mama Pima is 15 units now, she\'s expanding.”',

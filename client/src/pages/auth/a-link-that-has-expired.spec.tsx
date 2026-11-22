@@ -169,7 +169,7 @@ describe('an old reset link (/reset-password)', () => {
     await screen.findByRole('heading', { name: 'Check your email' })
     expect(authApi.forgotPassword).toHaveBeenCalledWith('wairimu@baridi.test')
     expect(authApi.entrySave).not.toHaveBeenCalled()
-    expect(screen.getByText(/If there is an account for/)).toBeTruthy()
+    expect(screen.getByText(/has a Groundwork sign-in, I sent it a link/)).toBeTruthy()
   })
 })
 

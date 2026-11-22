@@ -33,6 +33,8 @@ export interface WhatSetupKnows {
   cadence?: string;
   cadenceDays?: number[];
   timelineDays?: number;
+  /** The day the whole period ends, YYYY-MM-DD, where they named when it ends ("by March"). */
+  endsOn?: string;
   /** They said it runs until they end it (request 37). */
   runsUntilEnded?: boolean;
   yourRole?: string;
@@ -79,7 +81,7 @@ export function whatSetupKnowsNow(before: WhatSetupKnows | null | undefined, rea
   const now = read ?? {};
   const out: WhatSetupKnows = {};
   const scalars: (keyof WhatSetupKnows)[] = [
-    'mode', 'noAimAndTheySaidSo', 'initial', 'whoInvolved', 'decision', 'goals', 'brief', 'cadence', 'cadenceDays', 'timelineDays',
+    'mode', 'noAimAndTheySaidSo', 'initial', 'whoInvolved', 'decision', 'goals', 'brief', 'cadence', 'cadenceDays', 'timelineDays', 'endsOn',
     'runsUntilEnded', 'yourRole', 'name',
   ];
   for (const key of scalars) {
@@ -116,6 +118,7 @@ const WHAT_EACH_ONE_IS: { key: keyof WhatSetupKnows; said: string }[] = [
   { key: 'goals', said: 'What they want out of it' },
   { key: 'cadence', said: 'How often they check in' },
   { key: 'timelineDays', said: 'How long it runs, in days' },
+  { key: 'endsOn', said: 'The day it ends' },
   { key: 'runsUntilEnded', said: 'It runs until they end it, with no set length' },
   { key: 'brief', said: 'What they want the questions to focus on' },
   { key: 'name', said: 'What they called it' },

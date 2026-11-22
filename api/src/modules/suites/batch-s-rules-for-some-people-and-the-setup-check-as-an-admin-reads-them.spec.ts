@@ -124,7 +124,8 @@ describe('S4: a review says what it is drawn from, who reads it and what happens
   it('as the person reads it, before it is decided', () => {
     expect(whatThisReviewIs({ ...base, person: { first: 'Amina', reads: true }, writer: { first: 'Joseph', reads: false } })).toEqual([
       'This review is drawn from your check-ins between 3 May 2026 and 3 November 2026, the goals and work you own, what you committed to and how each went, your own view of your work and Joseph’s own words. Hours and leave are never part of it.',
-      'You, Joseph, who writes it, Njeri, who looks after HR and an admin who set up or approved one of your check-ins can read it. Nobody else can.',
+      /* Changed 22 November 2026 (release test, bug 43): nobody is described inside the list, which read "Amina, you, as the one who writes it". */
+      'You, Joseph, Njeri, who looks after HR and an admin who set up or approved one of your check-ins can read it. Nobody else can.',
       'Next, Joseph writes their view and you write your own. Then Joseph decides, with reasons, and you read both.',
     ]);
   });
@@ -135,7 +136,7 @@ describe('S4: a review says what it is drawn from, who reads it and what happens
       decided: { byFirst: 'Joseph', byReader: true, on: new Date('2026-11-10T09:00:00Z'), nextSteps: 'Amina leads the Kisumu visits, and I join the first two', lookAgainOn: new Date('2027-02-10T00:00:00Z') },
     })).toEqual([
       'This review is drawn from Amina’s check-ins between 3 May 2026 and 3 November 2026, the goals and work Amina owns, what Amina committed to and how each went, Amina’s own view of the work and your own words. Hours and leave are never part of it.',
-      'Amina, you, as the one who writes it and every admin can read it. Nobody else can.',
+      'You, Amina and every admin can read it. Nobody else can.',
       'You decided it on 10 November 2026.',
       'The next steps are these. Amina leads the Kisumu visits, and I join the first two.',
       'You will look at it again with Amina on 10 February 2027.',

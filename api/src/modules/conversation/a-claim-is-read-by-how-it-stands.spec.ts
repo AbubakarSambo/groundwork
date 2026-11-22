@@ -89,7 +89,7 @@ describe('A claim is read by how it stands, from the one source (round 51)', () 
   });
 
   it('the opener\'s question is told to speak as "I", never "we"', () => {
-    const told = writeOnlyTheQuestion('Brian, nothing is open from last time.');
+    const told = writeOnlyTheQuestion('Brian, Juja Hardware is waiting on the KES 4,500 price for 5 units.');
     expect(told).toContain('ONE VOICE: "I".');
     expect(told).toContain('Never call yourself "we" or "us"');
   });

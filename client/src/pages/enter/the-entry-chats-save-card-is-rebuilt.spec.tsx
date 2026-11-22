@@ -354,9 +354,11 @@ describe('changing how many sessions a check-in runs (fault 2, live walk, 6 Octo
     fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'End check-in' }))
 
-    expect(await screen.findByText('This will be check-in 1. It will be your private report.')).toBeTruthy()
+    /* Changed 22 November 2026: the eyebrow carried a privacy note ("It will be your private report."), which no screen says. */
+    expect(await screen.findByText('This will be check-in 1.')).toBeTruthy()
     expect(screen.getByText('Nothing is on record yet.')).toBeTruthy()
-    expect(screen.queryByText('This is check-in 1. It is your private report.')).toBeNull()
+    expect(screen.queryByText('This is check-in 1.')).toBeNull()
+    expect(screen.queryByText(/your private report|private to you/)).toBeNull()
     expect(screen.queryByText('What you said is on record.')).toBeNull()
   })
 })

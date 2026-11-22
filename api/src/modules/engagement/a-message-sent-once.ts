@@ -4,7 +4,7 @@
  * told only while it is still waiting or once it was sent: a held message that was refused when its time came (they had stopped these emails, or had
  * had their one for the day) is not told, and is tried again another day.
  */
-const KEY = (what: string) => `engagement.once.${what}`;
+export const KEY = (what: string) => `engagement.once.${what}`;
 
 export type WhatBecameOfIt = 'sent' | 'held' | 'suppressed' | unknown;
 

@@ -49,9 +49,10 @@ export type HandoverBrief = {
  * what turns the brief from a substitute for a conversation into a reason to have one.
  */
 export const WHAT_IS_NOT_HERE =
-  'This is what is outstanding, not what your predecessor knew. Nothing they said in a check-in is '
-  + 'here - their account of their own work stays theirs. For why any of this is where it is, ask '
-  + 'the people named on the handoffs.';
+  /* Read by the successor: in plain words, with no "handoffs", "predecessor" or "account", and no privacy note (release test, 22 November
+     2026; Hafsah's standards). That nothing the leaver said reaches the brief is enforced by its shape, tested in what-the-leaver-knew.spec.ts. */
+  'This is what is still open, not what the person before you knew. To learn why any of this is where it is, '
+  + 'ask the people named beside each item.';
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
 

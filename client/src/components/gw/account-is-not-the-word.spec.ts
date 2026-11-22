@@ -153,12 +153,18 @@ describe('the word account, in the sense of what somebody said', () => {
     })
   }
 
-  it('and the login sense is untouched, because it is the right word there', () => {
-    /* The check that stops this file turning into a hunt for a string. Signing in, plans and seats
-       all mean the thing you log into, and every one of them should say so. */
-    const AUTH = readFileSync(path.join(__dirname, '../../pages/auth/AuthPage.tsx'), 'utf8')
-    expect(AUTH).toContain('Create your account')
-    expect(AUTH).toContain('Already have an account')
+  /*
+   * Changed 22 November 2026 (Hafsah's standing rule, restated in the release test of 22 November, bug 37): "account" is not said in the
+   * login sense either. Sign-up says "Sign up to Groundwork" and "Already signed up?", and the reset says "If <address> has a Groundwork
+   * sign-in". The comments, which nobody reads on screen, are left as they are.
+   */
+  it('and not in the login sense either: sign-up and the reset say signing up and a Groundwork sign-in', () => {
+    const AUTH = strip(readFileSync(path.join(__dirname, '../../pages/auth/AuthPage.tsx'), 'utf8'))
+    expect(AUTH).toContain('Sign up to Groundwork')
+    expect(AUTH).toContain('Already signed up?')
+    expect(AUTH).not.toMatch(/Create your account|Create account|have an account|creates? (?:an|your) account/)
+    const SENT = strip(readFileSync(path.join(__dirname, '../../pages/auth/LinkSentPanel.tsx'), 'utf8'))
+    expect(SENT).not.toMatch(/an account for/)
     /* Changed 16 November (fix plan group 11, issue N17): the pricing page no longer says "account" at all; a seat is a person on the team. */
     const BILLING = readFileSync(path.join(__dirname, '../../pages/billing/PricingPage.tsx'), 'utf8')
     expect(BILLING).toContain('Every person on your team counts toward your plan.')

@@ -30,3 +30,18 @@ describe('what Chidi reads on his phone when his report arrives', () => {
     expect(reportAsText({ atAGlance: [{ label: 'Scope', value: 'clear' }] }, 'New project')).toBe('Your report for New project is ready.\n\nScope is clear.');
   });
 });
+
+/* Release test, 21 November 2026, bug 38: the lead's report on WhatsApp said the same sentence three times. */
+describe('the one finding is said once on the phone', () => {
+  const { reportAsText } = require('../public-api/a-whatsapp-message-is-routed');
+  it('where things stand, a glance note and the conversation worth having that say the same are said once', () => {
+    const same = 'Amani counts Kilimani Fresh as a signed shop while her own words say it is only a verbal agreement.';
+    const text: string = reportAsText({
+      whereThingsStand: { saying: same },
+      atAGlance: [{ label: 'Signed shops', value: 'disputed', sub: 'Amani counts Kilimani Fresh as a signed shop, while her own words say it is only verbal agreement.' }],
+      theConversationWorthHaving: 'Amani counts Kilimani Fresh as signed shop, while her own words say it is only a verbal agreement.',
+    }, 'Sales team, Q4');
+    expect(text.split(/Kilimani Fresh/).length - 1).toBe(1);
+    expect(text.startsWith('Your report for Sales team, Q4 is ready.')).toBe(true);
+  });
+});

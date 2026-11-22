@@ -1,3 +1,4 @@
+/* Changed 22 November 2026 (release test): "handoffs" in what a lead reads is work jargon, so the mails say "people are still waiting on two things" and the like; the expectations below follow the new words. */
 import { theNextCheckInFor, theSuggestionSaid } from './the-next-check-in-from-what-happened';
 import { theFollowUpWords } from './the-report-follow-up';
 
@@ -13,17 +14,17 @@ const said = (r: any) => theSuggestionSaid(theNextCheckInFor(r));
 describe('what Wairimu is pointed to', () => {
   it('handoffs waiting and nothing moved a while after the report: the check-in for work that has gone off track, with a real why now', () => {
     expect(said({ scenario: 'REALIGN_TEAM', done: 0, cleared: 0, waiting: 3, open: 2, daysSinceTheReport: 9 })).toBe(
-      'Groundwork suggests a check-in for work that has gone off track, because three handoffs are still waiting and nothing has been marked done or cleared since the report. It is worth doing now because nine days have passed since the report went out and nothing has moved in that time.',
+      'Groundwork suggests a check-in for work that has gone off track, because people are still waiting on three things and nothing has been marked done or cleared since the report. It is worth doing now because nine days have passed since the report went out and nothing has moved in that time.',
     );
   });
   it('with no real why now, none is made up', () => {
     const s = said({ scenario: 'REALIGN_TEAM', done: 0, cleared: 0, waiting: 3, open: 2, daysSinceTheReport: 3 });
-    expect(s).toBe('Groundwork suggests a check-in for work that has gone off track, because three handoffs are still waiting and nothing has been marked done or cleared since the report.');
+    expect(s).toBe('Groundwork suggests a check-in for work that has gone off track, because people are still waiting on three things and nothing has been marked done or cleared since the report.');
     expect(s).not.toMatch(/worth doing now/);
   });
   it('things moved and nothing waits: a regular read on live work, and no invented urgency', () => {
     expect(said({ scenario: 'REALIGN_TEAM', done: 2, cleared: 1, waiting: 0, open: 1 })).toBe(
-      'Groundwork suggests a check-in for a regular read on live work, because three things have moved since the report and no handoff is waiting.',
+      'Groundwork suggests a check-in for a regular read on live work, because three things have moved since the report and nobody is waiting on anything.',
     );
   });
   it('mixed or nothing in the record: the same check-in again, never an invented other', () => {

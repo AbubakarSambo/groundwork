@@ -1,4 +1,4 @@
-import { whatIsOpenFor, theOpeningFrom, type WhatIsOpen } from './the-one-thing-today';
+import { whatIsOpenFor, theOpeningFrom } from './the-one-thing-today';
 import { ONE_VOICE } from './prompt-library';
 
 /**
@@ -13,8 +13,12 @@ import { ONE_VOICE } from './prompt-library';
  *   here starts a session, writes a turn or counts as a round.
  * - When the person opens the check-in and nothing has changed since the draft, the opener and first question are shown straight away,
  *   with no model call. If something has, a plain fact line from the record is shown straight away and the question is prepared fresh.
- * - The opener is one plain fact from the record, by name ("Joseph, Juja Hardware said they would pay the deposit today."), or, with
- *   nothing open, "Joseph, nothing is open from last time.". It is always followed by the first question, and never stands alone.
+ * - The opener is one plain fact from the record, by name ("Joseph, Juja Hardware said they would pay the deposit today."). It is always
+ *   followed by the first question, and never stands alone.
+ * - With nothing of that kind on record there is no prepared opener: the model writes the opening from the whole record, what they said
+ *   last time and what they promised included. The product used to say "Joseph, nothing is open from last time." here, which was untrue
+ *   whenever the open thing was one this short list does not read (a promise for Friday, a wait of their own on another team), and the
+ *   question after it then contradicted it (release test, 21 November 2026, bugs 6 and 11).
  *
  * Only a team member's sessions are prepared: the lead checks in when she chooses, so there is no next session of hers to prepare.
  */
@@ -49,23 +53,6 @@ export interface APreparedOpening {
 /** The key it is kept under inside the next session's plan. */
 export const KEPT_IN_THE_PLAN_AS = 'preparedOpening';
 
-const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
-
-/**
- * One plain fact by name, the most important thing on record for them today (two, for somebody late), read from the same opening the
- * notices carry (theOpeningFrom), so there is one fact line; "nothing is open from last time" when there is none.
- */
-export function theFactLine(open: Pick<WhatIsOpen, 'firstName' | 'things'> & Partial<Pick<WhatIsOpen, 'late' | 'label'>>): string {
-  const opening = theOpeningFrom(open.firstName, open.things, !!open.late, open.label ?? 'your check-in');
-  if (opening) return opening.line;
-  const fact = 'nothing is open from last time.';
-  return open.firstName ? `${open.firstName}, ${fact}` : capital(fact);
-}
-
-/** The record's own question after the fact line, or null where nothing is open. The model is shown it, and it is the fallback. */
-export function theRecordsOwnQuestion(open: Pick<WhatIsOpen, 'firstName' | 'things'> & Partial<Pick<WhatIsOpen, 'late' | 'label'>>): string | null {
-  return theOpeningFrom(open.firstName, open.things, !!open.late, open.label ?? 'your check-in')?.question ?? null;
-}
 
 /** The opener as the person reads it: the fact line, then the first question. Never the line alone. */
 export function theOpeningAsRead(line: string, question: string): string {
@@ -77,13 +64,17 @@ const latest = (rows: { at?: Date | string | null }[]): string | null => {
   return times.length ? new Date(Math.max(...times)).toISOString() : null;
 };
 
-/** What a draft for this person would rest on, read from the record now. Null where no draft is made (see whatIsOpenFor). */
+/**
+ * What a draft for this person would rest on, read from the record now. Null where no draft is made (see whatIsOpenFor), and null where
+ * nothing on the record's short list is open: then the model writes the opening from the whole record.
+ */
 export async function whatItWouldRestOn(
   prisma: any,
   who: { groundId: string; participantId: string; sessionNumber?: number | null; now?: Date },
 ): Promise<WhatItRestsOn | null> {
   const open = await whatIsOpenFor(prisma, who);
-  if (!open) return null;
+  const opening = open ? theOpeningFrom(open.firstName, open.things, !!open.late, open.label ?? 'your check-in') : null;
+  if (!open || !opening) return null;
   const [own, decisions, waits] = await Promise.all([
     Promise.resolve(prisma?.recordEntry?.findFirst?.({ where: { participantId: who.participantId }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } })).catch(() => null),
     Promise.resolve(prisma?.personLeadAction?.findFirst?.({ where: { participantId: who.participantId }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } })).catch(() => null),
@@ -93,8 +84,8 @@ export async function whatItWouldRestOn(
     })).catch(() => null),
   ]);
   return {
-    line: theFactLine(open),
-    asks: theRecordsOwnQuestion(open),
+    line: opening.line,
+    asks: opening.question,
     things: open.things.map((t) => t.key),
     lastOwnUpdateAt: latest([{ at: (own as any)?.createdAt }]),
     lastLeadDecisionAt: latest([{ at: (decisions as any)?.createdAt }]),
