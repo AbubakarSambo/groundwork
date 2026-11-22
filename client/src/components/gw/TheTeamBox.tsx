@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { entryApi } from '@/api/entry'
 import { Button, TextArea, Note } from '@/components/gw/ui'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
+import { roleAndTeam, type APerson } from '@/components/gw/PeoplePicker'
 
 /**
  * ADDING A TEAM, ONE WAY, EVERYWHERE (Hafsah, 31 October 2026: "Make adding a team the top pattern for the next round ... make it
@@ -80,6 +81,32 @@ export function withTheNamedAdded(now: string, prefilled: string[]): string {
   return [...kept, ...prefilled.filter((p) => !have.some((h) => sameName(h, words(p))))].join('\n')
 }
 
+/**
+ * THE LINE THE LEAD IS TYPING ON, AND WHO IN THE ORGANISATION IT COULD BE (release test 22 November, bug 36: Wairimu typed "Ol" and
+ * nobody was suggested). Two letters or more of a name, with no email, comma or number on the line yet, finds the colleagues whose
+ * name, or any word of it, starts with what was typed. A line that is already somebody's whole name is that person, so it suggests
+ * nothing more.
+ */
+export function theLineBeingTyped(text: string, caret: number): { start: number; end: number; typed: string } {
+  const start = text.lastIndexOf('\n', Math.max(0, caret - 1)) + 1
+  const nl = text.indexOf('\n', caret)
+  const end = nl === -1 ? text.length : nl
+  return { start, end, typed: text.slice(start, end) }
+}
+
+export function whoItCouldBe(typed: string, people: APerson[], most = 8): APerson[] {
+  const q = typed.trim().toLowerCase().replace(/\s+/g, ' ')
+  if (q.length < 2 || /[@,\d]/.test(q)) return []
+  const fits = people.filter((p) => {
+    const name = p.name.trim().toLowerCase().replace(/\s+/g, ' ')
+    if (name === q) return false
+    return name.startsWith(q) || name.split(' ').some((w) => w.startsWith(q))
+  })
+  /* The one typed exactly is already chosen, so nobody else is offered for it. */
+  if (people.some((p) => p.name.trim().toLowerCase().replace(/\s+/g, ' ') === q)) return []
+  return fits.slice(0, most)
+}
+
 /** How many people the box holds now: one per line with something on it. */
 export function linesInTheBox(text: string): number {
   return text.split('\n').filter((l) => l.trim()).length
@@ -96,7 +123,7 @@ export function notOnTheCheckInYet(names: string[]): string {
   return `${andList(who)} ${who.length === 1 ? 'is' : 'are'} not on the check-in yet, because there is no email for them. Add them under People when you have their emails.`
 }
 
-export function TheTeamBox({ prefilled, onAdd, adding, heading, text: textGiven, onText, said, disabled }: {
+export function TheTeamBox({ prefilled, onAdd, adding, heading, text: textGiven, onText, said, disabled, colleagues, onPick }: {
   /** One line per person already named, with what is known of them. */
   prefilled: string[]
   /** Adds everyone it can; gives back the people it could not add because they need an email. Without it the box has no button. */
@@ -110,6 +137,10 @@ export function TheTeamBox({ prefilled, onAdd, adding, heading, text: textGiven,
   said?: string
   /** While the check-in is being saved, nothing more can be typed into a list that is already on its way. */
   disabled?: boolean
+  /** People in the organisation who could be added, suggested as their name is typed. */
+  colleagues?: APerson[]
+  /** Adds the colleague picked from the suggestions. */
+  onPick?: (person: APerson) => Promise<void> | void
 }) {
   const [textHeld, setTextHeld] = useState(prefilled.join('\n'))
   const text = textGiven ?? textHeld
@@ -140,6 +171,31 @@ export function TheTeamBox({ prefilled, onAdd, adding, heading, text: textGiven,
   }, [])
   const [reading, setReading] = useState(false)
   const whatsappOn = useWhatsAppIsOn()
+  /* Who the line being typed could be. Shown only once the lead has typed, never over a line the box came filled with. */
+  const [caret, setCaret] = useState<number | null>(null)
+  const [active, setActive] = useState(-1)
+  const line = caret === null ? null : theLineBeingTyped(text, caret)
+  const offered = line && colleagues?.length && onPick ? whoItCouldBe(line.typed, colleagues) : []
+  const open = offered.length > 0
+  const listId = 'the-team-box-suggestions'
+  const noteTheCaret = (el: HTMLTextAreaElement) => { setCaret(el.selectionStart ?? el.value.length); setActive(-1) }
+  async function pick(person: APerson) {
+    if (!line || !onPick) return
+    /* The line typed goes, and so does the line the box came filled with for the same person: they are on the check-in now. */
+    const same = (l: string) => l.split(',')[0].trim().toLowerCase() === person.name.trim().toLowerCase()
+    const rest = (text.slice(0, line.start) + text.slice(line.end + (text[line.end] === '\n' ? 1 : 0))).split('\n').filter((l) => !same(l)).join('\n').replace(/\n+$/, '')
+    setText(rest)
+    setCaret(null)
+    setActive(-1)
+    await onPick(person)
+  }
+  function onKeyDown(e: import('react').KeyboardEvent<HTMLTextAreaElement>) {
+    if (!open) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => (i + 1) % offered.length) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => (i <= 0 ? offered.length - 1 : i - 1)) }
+    else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); void pick(offered[active]) }
+    else if (e.key === 'Escape') { e.preventDefault(); setCaret(null); setActive(-1) }
+  }
   /* Somebody named later (a new name in the setup, a colleague invited meanwhile) is added to the box, never over what was typed. */
   const prefilledKey = prefilled.join('\n')
   useEffect(() => {
@@ -178,10 +234,38 @@ export function TheTeamBox({ prefilled, onAdd, adding, heading, text: textGiven,
         aria-label="Your team, one per line"
         placeholder={'Sarah Chebet, sarah@company.com, +254 712 345 678\nDavid Kariuki, david@company.com, +254 722 111 222'}
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => { setText(e.target.value); noteTheCaret(e.target) }}
+        onKeyDown={onKeyDown}
+        onBlur={() => { setCaret(null); setActive(-1) }}
         disabled={disabled || busy}
         rows={Math.max(3, text.split('\n').length + 1)}
+        {...(onPick ? {
+          role: 'combobox',
+          'aria-autocomplete': 'list' as const,
+          'aria-expanded': open,
+          'aria-controls': listId,
+          'aria-activedescendant': open && active >= 0 ? `${listId}-${active}` : undefined,
+        } : {})}
       />
+      {open && (
+        <ul id={listId} role="listbox" aria-label="People in your organisation" className="gwui-team-box-suggestions"
+          style={{ listStyle: 'none', margin: 0, padding: 0, border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', maxHeight: 260, overflowY: 'auto' }}>
+          {offered.map((p, i) => (
+            <li
+              key={p.id}
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={i === active}
+              /* Down on the option, so the box keeps its focus and the pick is not lost to the box closing. */
+              onMouseDown={(e) => { e.preventDefault(); void pick(p) }}
+              style={{ padding: '8px 12px', cursor: 'pointer', borderTop: i ? '1px solid var(--gw-border)' : 'none', background: i === active ? 'var(--gw-bg)' : 'white' }}
+            >
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>{p.name}</span>
+              {roleAndTeam(p) && <span style={{ display: 'block', fontSize: 12, color: 'var(--gw-muted)' }}>{roleAndTeam(p)}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
       {needEmail.length > 0 && (
         <Note tone="muted">{`Add an email for ${andList(needEmail)}, then press Add everyone again.`}</Note>
       )}
