@@ -273,7 +273,12 @@ export function theTargetLines(board: any, now: Date, zone: string, readIsStillT
   /* Sold on a deposit only is said as such, never as paid (final real-model check, item 10). */
   const onADeposit = counted && typeof counted.deposit === 'number' && counted.deposit > 0 ? Number(counted.deposit) : 0;
   const by = theAimsDay(aim.name) ?? null;
-  const rows = theDealRows(board);
+  /*
+   * A DEAL COUNTS ONLY TOWARD THE TARGET WHOSE THING IT SELLS (Drop Access, 22 November 2026). Wairimu changed the team's goal from freezers
+   * to a waitlist of shops; the freezer deals still on the board were read against the waitlist, "0 of 50 sold, 50 short, and the open deals
+   * cover 40". A target the deals do not count (no fromTheDeals) reads no deal, and is said with its own count.
+   */
+  const rows = counted ? theDealRows(board) : [];
   /*
    * NOTHING ON A DEAL IS NOT "0 SOLD" (fix plan 17 November, group 5; run 4, 18 November). Taa Solar's people gave their numbers every
    * week and no deal was ever written, so every morning opened "0 of 30 sold, 30 short, and no open deal covers any of it", which says
@@ -285,6 +290,10 @@ export function theTargetLines(board: any, now: Date, zone: string, readIsStillT
   /* Beside the target, what they said between them (run 7: the lead read each name and had to add it up herself). One person's number is the total. */
   const whatTheySaid = saidLines.length ? `${listedNames(saidLines)}${saidLines.length > 1 ? `, which is ${commas(saidTotal)} between them` : ''}` : null;
   const nothingCounted = sold === 0 && !(paid && paid > 0);
+  if (!counted && sold > 0) {
+    const text = `${commas(sold)} of ${commas(target)} so far${sold >= target ? ', and you have reached the target.' : `, with ${commas(target - sold)} to go.`}${whatTheySaid ? ` ${whatTheySaid}.` : ''}`;
+    return { lines: [{ text, rank: 0 }], gap: Math.max(0, target - sold), target, heading };
+  }
   /* Run 8: 21 of 43 letters said "0 of 30 sold, 30 short, and no open deal covers any of it" while people said 9 to 17 a week, because a deal that held units sent the line down the count's path. Where people said a number and nothing is counted, the line says what they said, and that none of it is counted. */
   if (nothingCounted && (whatTheySaid || !rows.some((r) => (theUnitsOf(r.fields) ?? 0) > 0))) {
     const text = whatTheySaid

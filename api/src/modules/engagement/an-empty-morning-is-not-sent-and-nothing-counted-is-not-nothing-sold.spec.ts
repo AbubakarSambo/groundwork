@@ -105,4 +105,11 @@ describe('a morning that only says nothing needs the lead', () => {
     const t = theTargetLines(board, new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi');
     expect(t.lines[0].text).toMatch(/^5 of 30 sold, 5 paid, 25 short, and no open deal covers any of it\. Sam said 11 and Asha said 10, which is 21 between them\.$/);
   });
+  /* Drop Access, 22 November: the goal changed from freezers to a waitlist, and the freezer deals were read against the waitlist. */
+  it('reads no deal against a target the deals do not count, such as a waitlist that took the place of freezers', () => {
+    const deals = [{ section: 'Deal grid', rows: [{ name: 'Kilele Hotel', kind: 'deal', group: 'likely', stage: null, fields: { Units: '40' } }] }];
+    const waitlist = (count: number) => ({ objectives: [{ name: 'The team is building a waitlist of 50 shops', target: 50, count, ownerParticipantId: null }], workRecords: deals });
+    expect(theTargetLines(waitlist(0), new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi').lines[0].text).toBe('The team target is 50, and nothing is counted against it yet.');
+    expect(theTargetLines(waitlist(12), new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi').lines[0].text).toBe('12 of 50 so far, with 38 to go.');
+  });
 });
