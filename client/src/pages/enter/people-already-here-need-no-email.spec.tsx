@@ -3,6 +3,7 @@ import { render, screen, waitFor, fireEvent, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
+import { pressTheSave } from './a-team-read-in-a-spec'
 
 /**
  * PEOPLE ALREADY IN THE ORGANISATION NEED NO EMAIL, AND THE BOX IS THE ONE LIST (round 6: the family business and clinic admins added
@@ -69,7 +70,6 @@ describe('a lead who added her team on People first', () => {
   it('finds them in the box by name, and the save takes them as those colleagues with nothing typed again', async () => {
     seedHerSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
     /* Changed in F5 (stage 5): both are colleagues, so nobody needs an email and setup ends on one button. */
     expect(await screen.findByText('Ben Juma')).toBeTruthy()
     fireEvent.click(await screen.findByRole('button', { name: 'Send 2 invitations' }))
@@ -84,7 +84,6 @@ describe('a lead who added her team on People first', () => {
   it('a colleague picked from the list goes into the same box, kept with the setup, and is saved with the rest', async () => {
     seedHerSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
     /* Changed in F5 (stage 5): the full setup, with the picker, opens from Change beside the name. */
     fireEvent.click((await screen.findAllByRole('button', { name: 'Change' }))[0])
     /* Waits for exactly one: while the setup panel swaps in, a slow runner briefly has two boxes with this name, and
@@ -97,7 +96,7 @@ describe('a lead who added her team on People first', () => {
 
     await waitFor(() => expect(box.value.split('\n')).toEqual(['Ben Juma', 'Diana Omondi', 'Karanja Mumbi']))
     expect(JSON.parse(localStorage.getItem('gw_entry_session')!).teamText.split('\n')).toContain('Karanja Mumbi')
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await pressTheSave()
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0] as any
     expect(payload.contributors.filter((c: any) => c.colleagueId).map((c: any) => c.colleagueId).sort()).toEqual(['c-ben', 'c-diana', 'c-karanja'])

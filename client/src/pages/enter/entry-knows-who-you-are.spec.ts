@@ -22,29 +22,23 @@ const SRC = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('somebody who is already signed in', () => {
-  it('is not asked for an email', () => {
-    expect(CODE).toMatch(/\{user && !emailSent \? \(/)
+  it('is not asked for an email: the panel ends with the send for her, the email only for somebody signed out', () => {
+    /* Changed 22 November 2026: the save card is gone; the panel's one save is chosen by whether she is signed in. */
+    expect(CODE).toMatch(/const theSaveBlock = user \? \(/)
   })
 
   it('gets a save that commits straight to their account', () => {
     expect(CODE).toMatch(/function saveAsSignedInUser/)
     /* UPDATED (Hafsah's blocker, 31 October 2026): the save reads the team box first and commits with it. */
     /* Changed 3 November 2026: the same commit also says when the lead holds the invitations until later. */
-    expect(CODE).toMatch(/entryApi\.commit\(\{ \.\.\.buildCommitPayload\(box\), history, \.\.\.\(how\.inviteLater \? \{ inviteLater: true \} : \{\}\) \}\)/)
+    /* Changed 22 November 2026: what is saved is the setup conversation itself (theRecord), the first session's record. */
+    expect(CODE).toMatch(/entryApi\.commit\(\{ \.\.\.buildCommitPayload\(box\), history: record, \.\.\.\(how\.inviteLater \? \{ inviteLater: true \} : \{\}\) \}\)/)
   })
 
-  it('and is told it is saved for them, by their own first name, not an address', () => {
-    /* FAULT E (reviewer, third round): "Saving to {user.email}. No confirmation needed, you are
-       already signed in." read like a log line. Reworded to "We save this to your account,
-       {user.email}." - still named by email, no "signed in" talk needed to say it.
-
-       SCREEN FAULT (engine workspace, 9 October night, test bed copy a): Ruth Kamara read "We
-       save this to your account, admin@fieldnote.test." - her own address, and the word
-       "account". Updated: no "account", and her first name in place of the address, with a plain
-       fallback when no name is known. This test is changed because it pinned the old, faulty
-       wording. */
-    expect(CODE).toMatch(/We save this for you, \$\{user\.firstName\}/)
+  it('is never shown her own address or the word account where she saves', () => {
+    /* Changed 22 November 2026: "We save this for you, {name}." went with the save card; the panel says what sending does (new.txt). */
     expect(CODE).not.toMatch(/We save this to your account/)
+    expect(CODE).not.toMatch(/Saving to \$\{user\.email\}/)
   })
 
   /* Changed 3 November 2026 (plan round 32): after "Send N invitations" the lead lands on the check-in's board, as the approved journey says. */
@@ -69,9 +63,8 @@ describe('somebody who is already signed in', () => {
 
 describe('and somebody without an account still gets the email path', () => {
   it('the email box is still there for them', () => {
-    expect(CODE).toMatch(/: !emailSent \? \(/)
-    /* 4d-3: the arrow is gone (CLAUDE.md's wording rule), so this checks the words it actually
-       reads now. */
-    expect(CODE).toMatch(/Save my check-in/)
+    expect(CODE).toMatch(/\) : emailSent \? \(/)
+    /* 22 November 2026: start-chat.txt's own words, "Save it", on the one block somebody signed out reads. */
+    expect(CODE).toMatch(/KEEP_THIS_CONVERSATION\.save/)
   })
 })

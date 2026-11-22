@@ -65,8 +65,9 @@ describe('there is exactly one copy of the rule', () => {
   })
 
   it('both flows call the shared one', () => {
-    /** Two call sites plus the definition. Fewer means a flow stopped closing at all. */
-    expect((CODE.match(/sessionHasClosed\(/g) ?? []).length).toBeGreaterThanOrEqual(3)
+    /** The check-in's call site plus the definition. Fewer means the flow stopped closing at all. Changed 22 November 2026: the
+        report's correction exchange, the second caller, went with the save card. */
+    expect((CODE.match(/sessionHasClosed\(/g) ?? []).length).toBeGreaterThanOrEqual(2)
   })
 
   it('the patterns list is still consulted, not quietly dropped', () => {

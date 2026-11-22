@@ -3,7 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
-import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
+import { addThroughTheTeamBox, pressTheSave } from './a-team-read-in-a-spec'
 
 /**
  * THE TEAM BOX AND SAVE DO NOT WAIT FOR THE REPORT (Hafsah's blocker, 31 October 2026: "nothing anyone says in setup is ever lost").
@@ -66,7 +66,6 @@ describe('the field lead presses End session while the setup is still talking', 
   it('opens the save card with his four people in the team box and Save ready, while the report is still being written', async () => {
     seedTheFieldLeadsSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
 
     const box = (await screen.findByLabelText('Your team, one per line')) as HTMLTextAreaElement
     expect(box.value.split('\n')).toEqual(NAMED.map((n) => `${n}, ${PHONES[n]}`))
@@ -78,8 +77,6 @@ describe('the field lead presses End session while the setup is still talking', 
   it('keeps the ended setup at once, so leaving before the report comes back to it', async () => {
     seedTheFieldLeadsSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
-    await screen.findByLabelText('Your team, one per line')
 
     const kept = JSON.parse(localStorage.getItem('gw_entry_session')!)
     expect(kept.closed).toBe(true)
@@ -89,10 +86,8 @@ describe('the field lead presses End session while the setup is still talking', 
   it('saves at once with the team and their numbers, without waiting for the report', async () => {
     seedTheFieldLeadsSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
-    await screen.findByLabelText('Your team, one per line')
-    addThroughTheTeamBox(NAMED.map((n) => `${n}, ${emailOf(n)}, ${PHONES[n]}`).join('\n'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await addThroughTheTeamBox(NAMED.map((n) => `${n}, ${emailOf(n)}, ${PHONES[n]}`).join('\n'))
+    await pressTheSave()
 
     const { entryApi } = await import('@/api/entry')
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))

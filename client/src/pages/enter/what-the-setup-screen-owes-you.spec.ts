@@ -18,7 +18,9 @@ describe('what the setup screen owes you', () => {
        and its meaning, with It’s something else (Hafsah: no cards in the conversation). */
     const SUMMARY = readFileSync(join(__dirname, 'FillsInAsYouTalk.tsx'), 'utf8')
     expect(SUMMARY).toContain('{IT_IS_SOMETHING_ELSE}')
-    expect(PAGE).toContain('meaning={isAnchorDraft() ? null : theKindOfCheckIn(onboardingSelections.classifiedScenario || pickedScenario || scenario, onboardingSelections.brief)?.meaning ?? null}')
+    /* 22 November 2026: the kind is read one way everywhere (theKind), the panel and the save alike. */
+    expect(PAGE).toContain('meaning={isAnchorDraft() ? null : theKindOfCheckIn(theKind(), onboardingSelections.brief)?.meaning ?? null}')
+    expect(PAGE).toContain('scenario: theKind(),')
   })
 
   it('does not say nobody is named while it is showing their names', () => {

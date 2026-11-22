@@ -178,7 +178,10 @@ describe('a name, the topic in plain words, never the lead\'s words (U.6 review)
     const { readFileSync } = await import('fs')
     const { join } = await import('path')
     const src = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
-    expect(src.match(/groundLabel: isAnchorDraft\(\)\s*\n\s*\? anchorGroundLabel\s*\n(?:\s*\/\*.*\*\/\s*\n)?\s*: \(groundName\.trim\(\) \|\| theDefaultGroundName\(\)\),/g)).toHaveLength(2)
+    /* Changed 22 November 2026: one name for the save and the draft (theName): the anchor's label, else the name said (typed, or read
+       from the conversation), else the default. */
+    expect(src.match(/groundLabel: theName\(\),/g)).toHaveLength(2)
+    expect(src).toMatch(/return isAnchorDraft\(\) \? anchorGroundLabel : \(theNameSaid\(\) \|\| theDefaultGroundName\(\)\)/)
     /* Changed 22 November 2026: the people added under "Who's in it" now name a new hire's check-in too, read on the line before. */
     expect(src).toMatch(/function theDefaultGroundName\(\): string \{[\s\S]{0,600}?return effectiveFallbackGroundName\(\s*\n\s*theSituationTheLeadPicked\(\) \?\? onboardingSelections\.classifiedScenario,/)
     expect(src).not.toMatch(/fallbackGroundName\([^)]*onboardingSelections\.initial/)

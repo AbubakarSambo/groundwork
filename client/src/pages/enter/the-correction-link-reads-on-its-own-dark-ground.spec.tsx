@@ -35,19 +35,10 @@ describe('the correction link inside the dark summary card is readable on it', (
     expect(closeSheetSrc).not.toMatch(/^\.gwui-plain-link\s*\{/m)
   })
 
-  it('and EntryChatPage.tsx reaches it with the plain shared class alone - no inline colour, no new one-off class', () => {
-    const start = entryChatSrc.indexOf('correctionSlot={')
-    expect(start).toBeGreaterThan(-1)
-    const end = entryChatSrc.indexOf('renderAdd=', start)
-    const block = entryChatSrc.slice(start, end)
-
-    const buttonStart = block.indexOf("This isn't right, correct it")
-    expect(buttonStart).toBeGreaterThan(-1)
-    const buttonBlock = block.slice(Math.max(0, buttonStart - 400), buttonStart)
-    expect(buttonBlock).toMatch(/className="gwui-plain-link"/)
-    expect(buttonBlock).not.toMatch(/style=/)
-
-    expect(block).not.toMatch(/<style/)
-    expect(block).not.toMatch(/gwui-ink-white/)
+  /* Changed 22 November 2026: the first report is no longer drawn inside setup (Hafsah: one giant setup page), so the entry chat
+     carries no correction slot of its own; the report is read, and corrected, on the check-in. */
+  it('and setup draws no report of its own, so it carries no correction link to colour', () => {
+    expect(entryChatSrc).not.toContain('correctionSlot={')
+    expect(entryChatSrc).not.toContain('<TheReportYouSawAtTheEnd')
   })
 })

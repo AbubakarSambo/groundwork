@@ -31,16 +31,12 @@ vi.mock('@/api/entry', () => ({
 vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn() } }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: null, isAuthenticated: false }) }))
 
-/** Lead path, closed, save card open - reached via leadReturnsToSaveCard. */
+/* Changed 22 November 2026: setup ends in the panel, not on a save card; this is a setup somebody signed out has talked through. */
 function seedLeadClosed(extra: Record<string, unknown> = {}) {
   localStorage.setItem('gw_entry_session', JSON.stringify({
-    scenario: 'NEW_PROJECT',
-    closed: true,
-    flowPath: 'lead',
-    onboardingStep: 7,
-    history: [],
-    lead: { email: 'lead@x.test', name: 'Lead' },
+    scenario: 'NEW_PROJECT', closed: false, onboardingStep: 2, history: [],
     onboardingSelections: { mode: 'new', initial: 'New project' },
+    onboardingHistory: [{ role: 'user', content: 'A new project starts next week.' }, { role: 'assistant', content: 'Who is on it?' }],
     ...extra,
   }))
 }
@@ -64,18 +60,17 @@ describe('CLOSE-LABEL: the save card\'s terminal action', () => {
     // primary-styled dismiss beside it is what made leaving look like finishing.
     seedLeadClosed()
     renderPage()
-    await waitFor(() => expect(screen.getByText(/Save my check-in/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save it' })).toBeTruthy())
     expect(screen.queryByRole('button', { name: 'Done' })).toBeNull()
-    // The unsaved path keeps exactly one way out, and it is not styled as the
-    // finishing action.
-    expect(screen.getByText('Not now')).toBeTruthy()
+    /* Nothing to dismiss either: the save sits in the panel, so there is no card to leave. */
+    expect(screen.queryByText('Not now')).toBeNull()
   })
 
   it('never brings back the old "Close (you can reopen" dismiss label', async () => {
     // The original guard, which still holds in both states.
     seedLeadClosed()
     renderPage()
-    await waitFor(() => expect(screen.getByText(/Save my check-in/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save it' })).toBeTruthy())
     expect(screen.queryByText(/Close \(you can reopen/i)).toBeNull()
   })
 })

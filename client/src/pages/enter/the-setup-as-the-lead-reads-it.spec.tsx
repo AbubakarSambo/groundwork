@@ -80,8 +80,7 @@ describe('the setup, as the lead reads it', () => {
     expect(saved().u).toBe(true)
     expect(within(ends).getByText('It keeps going until you end it. There is no last date.')).toBeTruthy()
     expect(ends.querySelector('input[type="date"]')).toBeNull()
-    /* The sentence about when they open no longer counts to an end. */
-    expect(screen.getByText('Check-ins open on Wed 1 July, Wed 8, Wed 15, Wed 22, Wed 29 and on from there.')).toBeTruthy()
+    /* The dates and their count are the server's now (theDatesInWords); with no end it asks for none (the page sends endsOn only on a date). */
     fireEvent.click(within(ends).getByRole('radio', { name: 'On a date' }))
     expect(saved().u).toBe(false)
     expect(ends.querySelector('input[type="date"]')).toBeTruthy()

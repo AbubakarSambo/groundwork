@@ -19,12 +19,22 @@ export function readLikeTheServer(pasted: string): { name: string | null; email:
 }
 
 /**
- * Types the team into the setup's box, in place of what it was filled with. There is nothing more to press: the lines in the box are
+ * Types the team into the setup page's box, in place of what it was filled with. There is nothing more to press: the lines in the box are
  * the team, and the press that saves the check-in takes them (Hafsah's blocker of 31 October 2026, "nothing anyone says in setup is
- * ever lost"). People and setup's own box still has its "Add everyone"; its specs press it themselves.
+ * ever lost"). People and setup's own box still has its "Add"; its specs press it themselves.
  */
-export function addThroughTheTeamBox(lines: string) {
-  fireEvent.change(screen.getByLabelText('Your team, one per line'), { target: { value: lines } })
+export async function addThroughTheTeamBox(lines: string) {
+  /* The box is on the setup page now (setup.txt), opened by Change in the panel (22 November 2026). */
+  if (!screen.queryByLabelText('Your team, one per line')) fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
+  const box = await screen.findByLabelText('Your team, one per line')
+  /* Opening the page puts whoever the conversation named on the list first; the lines typed then are the lead's own. */
+  await new Promise((r) => setTimeout(r, 0))
+  fireEvent.change(box, { target: { value: lines } })
+}
+
+/** The one save the panel ends with, for a signed-in lead: "Send N invitations" or "Start it", or the setup page's own start. */
+export async function pressTheSave() {
+  fireEvent.click(await screen.findByRole('button', { name: /^(Send \d+ invitations?|Start it( and invite \d+ (people|person))?)$/ }))
 }
 
 /** Gives the save step a name and an address and presses its button, as a lead who is not signed in does. */

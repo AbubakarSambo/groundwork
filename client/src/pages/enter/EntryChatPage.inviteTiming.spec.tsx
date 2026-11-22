@@ -22,23 +22,17 @@ const src = readFileSync(
   'utf8',
 )
 
-describe('INVITE-TIMING: add-participants step states invites are deferred until email confirmation', () => {
-  /* U.6 review: reworded so it never promises a send that can wait or fail. The rule it holds is
-     unchanged: nobody is invited before the check-in is saved and the email confirmed. */
-  it('contains the deferred-send timing copy, consistent with the save card', () => {
-    expect(src).toMatch(/Nobody is invited before you save this check-in and confirm your email\./)
+/*
+ * CHANGED 22 NOVEMBER 2026: the save card and its invite step are gone. The rule is unchanged and is said where saving happens now:
+ * somebody not signed in is told, after giving their email, that opening the link is what saves it and what invites (never that
+ * anybody is invited already); a signed-in lead reads what sending does beside the one button.
+ */
+describe('INVITE-TIMING: nobody is told people are invited before they are', () => {
+  it('somebody not signed in is told the link saves it, with what opening it does', () => {
+    expect(src).toMatch(/Open it to save this check-in\. \$\{whatOpeningTheLinkDoes\(peopleOnTheList, startsLater \? checkInBy : null\)\}/)
   })
 
-  it('places the timing copy inside the invite-contributors step (not elsewhere)', () => {
-    const heading = src.indexOf('const inviteHeading =')
-    /* The email field is gone (one team box above the report, Hafsah, 31 October 2026); the list the step keeps is the anchor now. */
-    const input = src.indexOf('{inviteAdded.length > 0 && (')
-    const timing = src.indexOf('Nobody is invited before you save this check-in')
-    expect(heading).toBeGreaterThan(-1)
-    expect(input).toBeGreaterThan(-1)
-    // the timing note sits after the invite heading logic and before the
-    // contributor email input -> it is part of the add-contributors step.
-    expect(timing).toBeGreaterThan(heading)
-    expect(timing).toBeLessThan(input)
+  it('a signed-in lead reads when their first check-in opens, beside the send', () => {
+    expect(src).toMatch(/<ReadyToSend people=\{peopleNow\} opens=\{whenTheirFirstCheckInOpens\(\)\}/)
   })
 })

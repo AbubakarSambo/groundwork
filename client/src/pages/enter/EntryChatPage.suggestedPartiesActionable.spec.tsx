@@ -27,7 +27,8 @@ describe('#1a, the suggested parties and the people named, beside the one team b
     expect(src).not.toMatch(/queueSuggestedContributor|addingContributorFor|renderAdd=\{/)
   })
 
-  it('and the box on the save card is filled with everybody named, so nobody is typed twice', () => {
-    expect(src).toMatch(/<TheTeamBox prefilled=\{theTeamNamedInTheSetup\(\)\}/)
+  it('and the team’s lines are filled with everybody named, so nobody is typed twice', () => {
+    /* Changed 22 November 2026: the box is on the setup page now, and the lines it holds are filled from the conversation. */
+    expect(src).toMatch(/withTheNamedAdded\(teamTextNow\.current, theTeamNamedInTheSetup\(\)\)/)
   })
 })

@@ -75,7 +75,7 @@ describe('saving without being signed in', () => {
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
-    addThroughTheTeamBox('Musa Bello, musa@anchor.test, +254 712 345 678\nAda Obi, ada@anchor.test')
+    await addThroughTheTeamBox('Musa Bello, musa@anchor.test, +254 712 345 678\nAda Obi, ada@anchor.test')
     saveWithMyEmail()
     const { authApi } = await import('@/api/auth')
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())

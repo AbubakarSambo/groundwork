@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { FillsInAsYouTalk, type WhatSetupKnows } from './FillsInAsYouTalk'
+import { FillsInAsYouTalk, ReadyToSend, type WhatSetupKnows } from './FillsInAsYouTalk'
 import { EntryChatPage } from './EntryChatPage'
 
 /*
@@ -49,15 +49,17 @@ describe('the panel, as the lead reads it', () => {
       mentioned={['Aisha', 'Brian', 'David', 'Miriam', 'Samuel', 'Omar']}
       added={['Aisha Otieno', 'Brian Mwangi', 'David Kariuki', 'Miriam Wanjiku']}
     />)
-    expect(screen.getAllByText('Sales team, Q3')).toHaveLength(1)
+    /* new.txt: the name heads the panel and is its first line too, "A name". */
+    expect(screen.getAllByText('Sales team, Q3')).toHaveLength(2)
     expect(screen.getByText('Set goals and keep the team on track')).toBeTruthy()
-    const [often, when, who] = screen.getAllByRole('listitem')
+    const [name, often, when, who] = screen.getAllByRole('listitem')
+    expect(name.textContent).toBe('A nameSales team, Q3')
     /* S18 (7 November): one wording for how often, the same as every other page. Was 'Every day, weekdays'. */
     expect(often.textContent).toBe('How oftenEvery weekday, Monday to Friday')
     expect(when.textContent).toBe('When it runs1 July to 30 September')
     expect(within(who).getByText('4 of 6 added')).toBeTruthy()
-    expect(within(who).getByText('Miriam Wanjiku')).toBeTruthy()
-    expect(within(who).getByText('2 more you mentioned: Samuel and Omar.')).toBeTruthy()
+    expect(screen.getByText('Miriam Wanjiku')).toBeTruthy()
+    expect(screen.getByText('2 more you mentioned: Samuel and Omar.')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/of 4 set|[✓○]/)
   })
 
@@ -75,7 +77,7 @@ describe('the panel, as the lead reads it', () => {
   /* Was "reads the name before the chip": there is no chip now. The name, when given, is the summary's first line. */
   it('reads the name first, in document order, with no chip after it', () => {
     const { container } = render(<FillsInAsYouTalk {...nothingYet} name="Sales team, Q3" />)
-    expect(container.querySelector('aside')?.textContent).toBe('Sales team, Q3')
+    expect(container.querySelector('aside')?.textContent).toBe('Sales team, Q3A nameSales team, Q3')
   })
 })
 
@@ -106,31 +108,38 @@ describe('on the setup conversation itself', () => {
     expect(within(panel).getByText('Help a new hire get started')).toBeTruthy()
     expect(within(panel).queryByText(/of 4 set/)).toBeNull()
     expect(within(panel).getByText('Every week')).toBeTruthy()
-    expect(within(panel).getByText('You mentioned Kwame.')).toBeTruthy()
+    /* Named with no email: one line, and the email is given in the chat (new.txt, 22 November 2026). */
+    expect(within(panel).getByText('You mentioned Kwame. Add their email in the chat.')).toBeTruthy()
   })
 })
 
 /* F5, stage 3: the team given in the conversation, as the panel shows it, and the end of setup in the panel (stage 5). */
 describe('the team from the conversation, and ready to send', () => {
   const four = ['John Kamau, john@deals.test, 0722 124 856', 'Jane Wanjiku, jane@deals.test', 'Peter Mbugua, peter@deals.test', 'Mary Mwangi, mary@deals.test']
-  it('lists each person under “Who’s in it, 4 people”, with Change, and says who still needs an email', () => {
+  it('lists each person under “Invited so far”, with Change beside every line, and says in one line who still needs an email', () => {
     let changed = 0
-    render(<FillsInAsYouTalk {...nothingYet} people={four} noEmailYet={['Samuel', 'Omar']} onChangeTeam={() => { changed++ }} />)
+    render(<FillsInAsYouTalk {...nothingYet} people={four} noEmailYet={['Samuel', 'Omar']} onChange={() => { changed++ }} />)
     const who = screen.getAllByRole('listitem').find((li) => li.textContent?.startsWith('Who’s in it'))!
     expect(within(who).getByText('4 people')).toBeTruthy()
-    expect(within(who).getByText('John Kamau, john@deals.test, 0722 124 856')).toBeTruthy()
-    expect(within(who).getByText('2 more you mentioned: Samuel and Omar. Add their emails here when you have them.')).toBeTruthy()
-    within(who).getByRole('button', { name: 'Change' }).click()
+    expect(screen.getByText('Invited so far')).toBeTruthy()
+    expect(screen.getByText('John Kamau, john@deals.test, 0722 124 856')).toBeTruthy()
+    expect(screen.getByText('2 more you mentioned: Samuel and Omar. Add their emails in the chat.')).toBeTruthy()
+    within(who).getByRole('button', { name: 'Change who’s in it' }).click()
     expect(changed).toBe(1)
     expect(screen.queryByLabelText('Your team, one per line')).toBeNull()
   })
   it('ends with what sending does and one button', () => {
     let sent = 0
-    render(<FillsInAsYouTalk {...nothingYet} people={four} noEmailYet={[]} ready={{ opens: 'Their first check-in opens on Tuesday 4 November.', onSend: () => { sent++ }, sending: false }} />)
-    expect(screen.queryByText('Ready to send when you are')).toBeNull()
+    render(<FillsInAsYouTalk {...nothingYet} people={four} noEmailYet={[]} save={<ReadyToSend people={4} opens="Their first check-in opens on Tuesday 4 November." onSend={() => { sent++ }} sending={false} />} />)
+    expect(screen.getByText('Ready to send when you are')).toBeTruthy()
     expect(screen.getByText('4 people get an invitation now. Their first check-in opens on Tuesday 4 November.')).toBeTruthy()
     screen.getByRole('button', { name: 'Send 4 invitations' }).click()
     expect(sent).toBe(1)
+  })
+  it('with nobody else on it, the one button is Start it', () => {
+    render(<ReadyToSend people={0} opens="" onSend={() => {}} sending={false} />)
+    expect(screen.getByRole('button', { name: 'Start it' })).toBeTruthy()
+    expect(screen.getByText('Nobody else is on it yet. You can add people any time.')).toBeTruthy()
   })
   it('on a phone, is one line that opens it', () => {
     render(<FillsInAsYouTalk {...nothingYet} name="Deal progress" cadence="DAILY" cadenceChosen workingDays={[1, 2, 3, 4, 5]} people={four} noEmailYet={[]} asOneLine />)

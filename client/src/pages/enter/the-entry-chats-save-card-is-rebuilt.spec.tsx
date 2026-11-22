@@ -5,7 +5,7 @@ import { render, screen, waitFor, fireEvent, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
-import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
+import { addThroughTheTeamBox, pressTheSave } from './a-team-read-in-a-spec'
 import { visiblePrimaryButtons } from './the-entry-chats-own-test-helpers'
 import {
   stripComments, oldClassesUsed, bannedInlineStyleProps, bannedStyleReferenceProps, tooSmallFontSizes,
@@ -233,7 +233,7 @@ describe('the save card, already signed in', () => {
     fireEvent.click(within(picker).getByRole('button', { name: /^Add/ }))
 
     await waitFor(() => expect(screen.getByText(/Daniel Park/)).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await pressTheSave()
 
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0]
@@ -258,9 +258,9 @@ describe('the save card, already signed in', () => {
     seedClosedSession()
     renderPage()
     fireEvent.click(await screen.findByText(/Invite and finish/))
-    addThroughTheTeamBox('Priya Shah, priya@suites.test\nTomas Berg, tomas@suites.test')
+    await addThroughTheTeamBox('Priya Shah, priya@suites.test\nTomas Berg, tomas@suites.test')
     expect(screen.queryByText('What do you want them to focus on or cover?')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await pressTheSave()
 
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0]
@@ -298,7 +298,7 @@ describe('which day it lands on, end to end (nothing-removed-screens.md item 2)'
     /* Setup page review: "On which day" is the shared Choices now, one radio per day. */
     const mon = await screen.findByRole('radio', { name: 'Mon' })
     fireEvent.click(mon)
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await pressTheSave()
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0]
     expect(payload.cadenceAnchorDay).toBe(1)
@@ -312,7 +312,7 @@ describe('which day it lands on, end to end (nothing-removed-screens.md item 2)'
     fireEvent.click(await screen.findByText(/Invite and finish/))
     const select = await screen.findByRole('combobox')
     fireEvent.change(select, { target: { value: '15' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await pressTheSave()
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0]
     expect(payload.cadenceAnchorDay).toBe(15)
@@ -324,7 +324,7 @@ describe('which day it lands on, end to end (nothing-removed-screens.md item 2)'
     seedClosedSession({ cadence: 'WEEKLY', cadenceChosen: true })
     renderPage()
     fireEvent.click(await screen.findByText(/Invite and finish/))
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await pressTheSave()
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0]
     expect(payload.cadenceAnchorDay).toBeUndefined()
@@ -351,7 +351,6 @@ describe('changing how many sessions a check-in runs (fault 2, live walk, 6 Octo
     }))
     renderPage()
     /* Opened now from End session, the only way to the card before any answer (the header's count that opened it is gone). */
-    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'End check-in' }))
 
     /* Changed 22 November 2026: the eyebrow carried a privacy note ("It will be your private report."), which no screen says. */
@@ -394,7 +393,7 @@ describe('a mentioned person keeps her name when added after the email is given 
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
 
     expect(screen.queryByText('Add them')).toBeNull()
-    addThroughTheTeamBox('Wanjiru Kamau, wanjiru@suites.test')
+    await addThroughTheTeamBox('Wanjiru Kamau, wanjiru@suites.test')
 
     await waitFor(() => {
       const calls = vi.mocked(entryApi.patchDraft).mock.calls

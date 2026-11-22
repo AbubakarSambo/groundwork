@@ -52,7 +52,7 @@ describe('GROUND-NAME: setup-screen rename reaches the commit body', () => {
   it('mirrors the renamed ground label into gw_commit_payload after email is sent', async () => {
     renderPage()
     // send the email -> emailSent + draftToken
-    const emailInput = await screen.findByPlaceholderText('your@email.com')
+    const emailInput = await screen.findByPlaceholderText('you@company.com')
     /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailInput, { target: { value: 'me@example-test.invalid' } })

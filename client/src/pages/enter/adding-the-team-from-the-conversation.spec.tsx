@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
 import { toast } from 'sonner'
-import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
+import { addThroughTheTeamBox, pressTheSave } from './a-team-read-in-a-spec'
 
 /**
  * NOTHING ANYONE SAYS IN SETUP IS EVER LOST (Hafsah's blocker, 31 October 2026: "Treat that as a blocker, ahead of everything else ...
@@ -81,8 +81,8 @@ describe('a lead who named four people in the setup conversation presses Save', 
   it('with two emails in the box and two prefilled without, one press saves the two and says the other two are not on it yet', async () => {
     seedTheLawFirmsSetup()
     const box = await openTheSaveCard()
-    addThroughTheTeamBox([lineFor(NAMED[0], true), lineFor(NAMED[1], true), lineFor(NAMED[2], false), lineFor(NAMED[3], false)].join('\n'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await addThroughTheTeamBox([lineFor(NAMED[0], true), lineFor(NAMED[1], true), lineFor(NAMED[2], false), lineFor(NAMED[3], false)].join('\n'))
+    await pressTheSave()
 
     const { entryApi } = await import('@/api/entry')
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
@@ -96,8 +96,8 @@ describe('a lead who named four people in the setup conversation presses Save', 
   it('with every email given, all four reach the save with their names and phone numbers', async () => {
     seedTheLawFirmsSetup()
     await openTheSaveCard()
-    addThroughTheTeamBox(NAMED.map((n) => lineFor(n, true)).join('\n'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await addThroughTheTeamBox(NAMED.map((n) => lineFor(n, true)).join('\n'))
+    await pressTheSave()
 
     const { entryApi } = await import('@/api/entry')
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
@@ -117,8 +117,8 @@ describe('a lead who named four people in the setup conversation presses Save', 
     let finish: (v: any) => void = () => {}
     vi.mocked(entryApi.commit).mockImplementationOnce(() => new Promise((r) => { finish = r }) as any)
     const box = await openTheSaveCard()
-    addThroughTheTeamBox(NAMED.map((n) => lineFor(n, true)).join('\n'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await addThroughTheTeamBox(NAMED.map((n) => lineFor(n, true)).join('\n'))
+    await pressTheSave()
 
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
     expect(box.disabled).toBe(true)

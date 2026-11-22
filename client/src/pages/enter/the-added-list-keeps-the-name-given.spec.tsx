@@ -62,7 +62,7 @@ describe('the added list and the waiting sentence keep the name given', () => {
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
-    addThroughTheTeamBox('Musa Bello, musa@anchor.test')
+    await addThroughTheTeamBox('Musa Bello, musa@anchor.test')
     saveWithMyEmail()
     const { authApi } = await import('@/api/auth')
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
@@ -75,7 +75,7 @@ describe('the added list and the waiting sentence keep the name given', () => {
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
-    addThroughTheTeamBox('Musa Bello, musa@anchor.test')
+    await addThroughTheTeamBox('Musa Bello, musa@anchor.test')
     saveWithMyEmail()
 
     await screen.findByText('Check your email')
@@ -86,7 +86,7 @@ describe('the added list and the waiting sentence keep the name given', () => {
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
-    addThroughTheTeamBox('bello@example.test')
+    await addThroughTheTeamBox('bello@example.test')
     saveWithMyEmail()
     await screen.findByText('Check your email')
     expect(screen.getByText(/^bello@example\.test is waiting to be invited\./)).toBeTruthy()
@@ -124,7 +124,7 @@ describe('the added list and the waiting sentence keep the name given', () => {
     /* The team box is filled with Imani, named in the conversation; the lead adds her email on her line. */
     expect((screen.getByLabelText('Your team, one per line') as HTMLTextAreaElement).value).toBe('Imani')
     /* UPDATED again (Hafsah's blocker, 31 October 2026): after the email is sent, "Done" takes the box's lines onto the list. */
-    addThroughTheTeamBox('Imani Wekesa, imani@walk2.test')
+    await addThroughTheTeamBox('Imani Wekesa, imani@walk2.test')
     fireEvent.click(screen.getByText('Done'))
 
     await waitFor(() => expect(screen.getByText('✓ Imani Wekesa (imani@walk2.test).')).toBeTruthy())

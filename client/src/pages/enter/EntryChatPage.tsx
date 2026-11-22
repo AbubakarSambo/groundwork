@@ -2617,7 +2617,8 @@ export function EntryChatPage() {
     if (phase !== 'onboarding' || !anchorSetUp) return
     /* `groundName` defaults to 'Entry session' (the store's own default, never a name anybody
        chose), so the check is against that default rather than emptiness. */
-    if (anchorSetUp.aim && (!groundName || groundName === 'Entry session')) setGroundName(anchorSetUp.aim)
+    /* Read from the store now, not this render: the page clears the store's own placeholder ('Entry check-in') on mounting, a moment before. */
+    if (anchorSetUp.aim && !useEntryStore.getState().groundName.trim()) setGroundName(anchorSetUp.aim)
     if (anchorSetUp.people?.length) {
       setInviteAdded(prev => (prev.length ? prev : anchorSetUp.people!.map(c => c.email)))
       /* And the name each one came with, which the list and the save read by address (Hafsah's blocker of 31 October 2026: the
@@ -3152,7 +3153,11 @@ export function EntryChatPage() {
   }
   /** The name the lead typed, else the one the conversation read (what she called it, or a short name from what she said). */
   function theNameSaid(): string {
-    return groundName.trim() || (onboardingSelections.name ?? '').trim()
+    /* FAULT 4 (live walk, 6 October 2026): a new hire's check-in is named after the person as soon as they are named. */
+    const aNewHire = theKind() === 'NEW_HIRE'
+      ? newHireGroundNameFallback(onboardingSelections.peopleNamed, newHireDays(`${onboardingSelections.initial ?? ''} ${onboardingSelections.brief ?? ''}`)) ?? ''
+      : ''
+    return groundName.trim() || (onboardingSelections.name ?? '').trim() || aNewHire
   }
   /** The check-in's name as it is saved and sent in invitations: the name said, else the fallback for a blank one. */
   function theName(): string {
@@ -3374,13 +3379,16 @@ export function EntryChatPage() {
     })
   }
   /** Once a save has taken the box, its people are on the list the page shows and keeps in step, and the box is empty for anybody more. */
-  function takeTheBoxIntoTheList(box: TheBoxRead) {
+  function takeTheBoxIntoTheList(box: TheBoxRead, readFrom: string = teamTextNow.current) {
     if (!box.entries.length) return
     /* Whoever was left off stays in the box, so nothing typed is lost and they can be given an email. */
     setInviteAdded((prev) => [...prev, ...box.entries.filter((e) => !prev.some((x) => x === e || x.startsWith(`${e} - `)))])
     setDisplayNames((prev) => ({ ...prev, ...box.names }))
     setPhones((prev) => ({ ...prev, ...box.numbers }))
-    setTeamText(box.leftOut.map(aLineFor).join('\n'))
+    /* And whatever was typed while the box was being read stays too: only the lines that were read leave it. */
+    const read = new Set(readFrom.split('\n').map((l) => l.trim()))
+    const typedSince = teamTextNow.current.split('\n').map((l) => l.trim()).filter((l) => l && !read.has(l))
+    writeTheTeam([...box.leftOut.map(aLineFor), ...typedSince].join('\n'))
   }
 
   /*
@@ -3399,14 +3407,15 @@ export function EntryChatPage() {
   /** Opens the setup page, with whoever is written in the team's lines put on the list first, so each is a row of their own. */
   async function openTheSetup() {
     setSettingUp(true)
-    if (!teamText.trim()) return
-    const box = await readTheTeamBox()
-    if (box) takeTheBoxIntoTheList(box)
+    const readFrom = teamText
+    if (!readFrom.trim()) return
+    /* Nothing is being saved here, so a read that fails says nothing: the lines stay in the box, and the save reads them again. */
+    try { takeTheBoxIntoTheList(theBoxAsRead(await readTheLines(readFrom)), readFrom) } catch { /* kept in the box */ }
   }
 
   /* The one way to save, said where the panel ends (new.txt, start-chat.txt). */
   const theSaveBlock = user ? (
-    <ReadyToSend people={peopleNow} opens={whenTheirFirstCheckInOpens()} onSend={() => saveAsSignedInUser()} onLater={() => saveAsSignedInUser({ inviteLater: true })} sending={savingAsUser} why={whyItWasNotSaved || undefined} />
+    <ReadyToSend people={peopleNow} opens={whenTheirFirstCheckInOpens()} later={startsLater} onSend={() => saveAsSignedInUser()} onLater={() => saveAsSignedInUser({ inviteLater: true })} sending={savingAsUser} why={whyItWasNotSaved || undefined} />
   ) : emailSent ? (
     <section aria-label="Check your email">
       <Stack gap={6}>
@@ -3444,6 +3453,9 @@ export function EntryChatPage() {
    */
   const thePeopleOnTheSetup = (
     <Stack gap={10}>
+      {/* The anchor's own served heading and intro (thePeopleStepRules), in place of the ordinary sentence. */}
+      {isAnchorDraft() && <SubHeading>{thePeopleStepRules.heading}</SubHeading>}
+      {isAnchorDraft() && <Note>{thePeopleStepRules.intro}</Note>}
       <TheTeamBox
         prefilled={[]}
         text={teamText}
@@ -3451,7 +3463,11 @@ export function EntryChatPage() {
         said={teamSaid}
         disabled={savingAsUser || saving}
         colleagues={colleagues.filter((c) => c.id !== user?.id)}
-        onPick={(c) => setInviteAdded((prev) => (prev.includes(`${A_COLLEAGUE}${c.id}`) ? prev : [...prev, `${A_COLLEAGUE}${c.id}`]))}
+        onPick={(c) => {
+          /* The anchor's limit counts the room actually left, the box's lines included. */
+          if (isAnchorDraft() && peopleOnTheList >= thePeopleStepRules.mayAdd) { toast.error(thePeopleStepRules.limitSentence); return }
+          setInviteAdded((prev) => (prev.includes(`${A_COLLEAGUE}${c.id}`) ? prev : [...prev, `${A_COLLEAGUE}${c.id}`]))
+        }}
         onAdd={(people) => { const box = theBoxAsRead(people); takeTheBoxIntoTheList(box); return box.leftOut }}
       />
       {isAnchorDraft() && peopleOnTheList >= thePeopleStepRules.mayAdd && <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>}
@@ -3539,6 +3555,7 @@ export function EntryChatPage() {
       })()}
       cadence={cadence}
       cadenceChosen={cadenceChosen}
+      anchorDay={cadenceAnchorDay}
       workingDays={workingDays}
       startsOn={checkInBy}
       endsOn={lastCheckInBy}
@@ -3852,13 +3869,13 @@ export function EntryChatPage() {
                 </div>
               </div>
             )}
+            {/* On a phone the panel is one line at the top; the one way to save is under the conversation, never folded away. */}
+            {!thePanelFitsBeside && !atTheDoor && saidSomething && <div className="gwui-ec-save-under"><Panel>{theSaveBlock}</Panel></div>}
           </div>
           {/* U.6: the panel that fills in as you talk (new.txt), beside the conversation on a wide
               screen. Built only from what this page already holds from the conversation. */}
           {/* Beside the conversation where it fits; on a narrower screen it is at the top of the conversation instead (below). */}
           {thePanelFitsBeside && thePanel && <div className="gw-fills-in gwui-ec-fills-in">{thePanel}</div>}
-          {/* On a phone the panel is one line at the top; the one way to save is under the conversation, never folded away. */}
-          {!thePanelFitsBeside && !atTheDoor && saidSomething && <div className="gwui-ec-save-under"><Panel>{theSaveBlock}</Panel></div>}
           </div>
         )}
 

@@ -27,46 +27,21 @@ import { join } from 'path'
  */
 const SRC = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-/**
- * THE "DONE" BUTTON THAT CLOSES THE SAVE PANEL, FROM ITS ONCLICK TO ITS LABEL.
- *
- * Anchored on the nearest preceding `<Button` (the shared, capitalised component the Done button
- * itself is), not `<button`. Fault 3 pulled the people step's own markup (several lowercase
- * `<button>` tags: "Paste multiple emails" and the rest) out of this file's body and into
- * `renderPeopleStep()`, a function defined far above - so the nearest preceding lowercase
- * `<button>` before "Done" is no longer anything to do with it (it is "Not now", on the email
- * form), and slicing from there pulled in an unrelated `setShowSave(false)` ahead of the real one.
- * `<Button` is unique to the Done control in this neighbourhood and was always the better anchor.
+/*
+ * CHANGED 22 NOVEMBER 2026: THE NOTE BOX AND ITS "DONE" ARE GONE WITH THE SAVE CARD. The person at risk was the one typed into the
+ * per-person note box and not yet added when "Done" closed the card. There is no note box and no card now: the one team box is read
+ * by every press that saves (readTheTeamBox), so whoever is typed there is on the check-in. Checked as the lead does it in
+ * setup-is-the-chat-and-the-panel.spec.tsx ("whatever is typed in the box on the setup page goes with the start").
  */
-const DONE = (() => {
-  const at = SRC.indexOf('>\n                  Done\n')
-  if (at === -1) throw new Error('The save panel\'s "Done" button is gone from EntryChatPage.tsx.')
-  return SRC.slice(SRC.lastIndexOf('<Button', at), at)
-})()
-
-describe('closing the save panel', () => {
-  it('commits the person still sitting in the note box', () => {
-    // THE FIX. Without the submitInviteContext() call, the typed-in person is
-    // dropped on the floor.
-    expect(DONE).toMatch(/if \(inviteContextFor\) submitInviteContext\(\)/)
+describe('nobody typed in is dropped', () => {
+  it('has no half-added state left to drop: no note box, no queue', () => {
+    expect(SRC).not.toMatch(/inviteContextFor|bulkQueue|submitInviteContext/)
   })
 
-  it('and still closes the panel, which is what the button is for', () => {
-    expect(DONE).toMatch(/setShowSave\(false\)/)
-  })
-
-  it('commits BEFORE closing, since the panel unmounts the pending state', () => {
-    expect(DONE.indexOf('submitInviteContext')).toBeLessThan(DONE.indexOf('setShowSave(false)'))
-  })
-})
-
-describe('the closing line that promises the sends', () => {
-  it('counts the pending person too, so the number is not wrong by one', () => {
-    // It read inviteAdded.length alone, so it promised to send 1 invite while two
-    // people had been named - and the one it left out was the one at risk.
-    const line = SRC.slice(SRC.indexOf('Nothing else to do here'), SRC.indexOf('You can reopen this any time'))
-    expect(line).toMatch(/inviteContextFor/)
-    /* peopleOnTheList is inviteAdded.length and the lines in the team box (94f2fff6a), so the box's people are counted too. */
-    expect(line).toMatch(/peopleOnTheList \+ pending/)
+  it('every save reads the box first, signed in or not', () => {
+    for (const fn of ['async function saveAsSignedInUser', 'async function handleSaveInner']) {
+      const body = SRC.slice(SRC.indexOf(fn), SRC.indexOf('\n  }\n', SRC.indexOf(fn)))
+      expect(body).toMatch(/await readTheTeamBox\(\)/)
+    }
   })
 })

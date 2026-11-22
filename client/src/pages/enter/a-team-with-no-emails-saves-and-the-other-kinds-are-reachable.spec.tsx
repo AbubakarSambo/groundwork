@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { EntryChatPage, THE_OPENING_QUESTION } from './EntryChatPage'
-import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
+import { addThroughTheTeamBox, pressTheSave } from './a-team-read-in-a-spec'
 
 /*
  * HOTFIX, LIVE PILOT (RHEA onboarding). Two blockers in team check-in setup, as the admin read them.
@@ -71,8 +71,8 @@ describe('a name with no email never stops the save', () => {
     seed({ closed: false, names: ['Leah', 'Speranzer'] })
     open()
     await toTheSaveCard()
-    addThroughTheTeamBox('Leah\nSperanzer')
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await addThroughTheTeamBox('Leah\nSperanzer')
+    await pressTheSave()
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     expect((vi.mocked(entryApi.commit).mock.calls[0][0] as any).contributors).toEqual([])
     expect(toast.info).toHaveBeenCalledWith(NOT_ON_IT('Leah and Speranzer'), expect.anything())
@@ -83,8 +83,8 @@ describe('a name with no email never stops the save', () => {
     seed({ closed: false, names: ['Leah', 'Speranzer', 'Brian'] })
     open()
     await toTheSaveCard()
-    addThroughTheTeamBox('Leah, leah@rhea.test\nSperanzer, +254 712 345 678\nBrian')
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await addThroughTheTeamBox('Leah, leah@rhea.test\nSperanzer, +254 712 345 678\nBrian')
+    await pressTheSave()
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     const sent = (vi.mocked(entryApi.commit).mock.calls[0][0] as any).contributors
     expect(sent.map((c: any) => c.email)).toEqual(['leah@rhea.test'])
@@ -95,8 +95,8 @@ describe('a name with no email never stops the save', () => {
     seed({ closed: false, names: ['Leah', 'Speranzer'] })
     open()
     await toTheSaveCard()
-    addThroughTheTeamBox('Leah, leah@rhea.test')
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await addThroughTheTeamBox('Leah, leah@rhea.test')
+    await pressTheSave()
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     expect(toast.info).toHaveBeenCalledWith(NOT_ON_IT('Speranzer', false), expect.anything())
   })

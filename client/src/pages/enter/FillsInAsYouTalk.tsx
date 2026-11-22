@@ -62,8 +62,12 @@ export const FILLS_IN = {
   /* new.txt's line for somebody named with no email yet, in one line: they are given in the chat, where changes are made. */
   noEmailYet: (names: string[], listed: number) => `${listed ? `${names.length} more you mentioned: ${andList(names)}` : `You mentioned ${andList(names)}`}. ${names.length === 1 ? 'Add their email in the chat.' : 'Add their emails in the chat.'}`,
   invitedSoFar: 'Invited so far',
+  suits: (often: string) => (often ? `${often} suits this. You can change it.` : null),
   ready: 'Ready to send when you are',
-  sends: (n: number, opens: string) => (n === 0 ? 'Nobody else is on it yet. You can add people any time.' : `${n === 1 ? '1 person gets an invitation now' : `${n} people get an invitation now`}. ${opens}`),
+  /* "Now" only when it starts now: a later start holds the invitations until that day (the 6am job), and the sentence says so. */
+  sends: (n: number, opens: string, later = false) => (n === 0 ? 'Nobody else is on it yet. You can add people any time.'
+    : later ? `${n === 1 ? '1 person is' : `${n} people are`} invited on the day it starts. ${opens}`
+    : `${n === 1 ? '1 person gets an invitation now' : `${n} people get an invitation now`}. ${opens}`),
   send: (n: number) => (n === 0 ? 'Start it' : n === 1 ? 'Send 1 invitation' : `Send ${n} invitations`),
   /* The approved journey, stage 5 (Hafsah, 3 November 2026): the invitations stay ready until "Send N invitations" on Today. */
   later: 'Check in on your own first, invite later',
@@ -117,6 +121,8 @@ export type WhatSetupKnows = {
   situation: string
   cadence: Cadence
   cadenceChosen: boolean
+  /** The day it lands on, when one was said or chosen ("every Monday"). */
+  anchorDay?: number | null
   workingDays: number[]
   startsOn: string
   endsOn: string
@@ -164,8 +170,9 @@ export function theRows(k: WhatSetupKnows): { label: string; set: boolean; value
   /* How often, in the one wording every page uses (theRhythmInFull, staging check S18): "Every weekday, Monday to Friday", never
      the picker's "Every day" with ", weekdays" after it. */
   const often = k.cadenceChosen
-    ? (k.cadence === 'SEQUENTIAL' ? (HOW_OFTEN.find(([c]) => c === k.cadence)?.[1] ?? null) : theRhythmInFull({ cadence: k.cadence, workingDays: k.workingDays, startsAt: k.startsOn || null }, { stop: false }))
-    : null
+    ? (k.cadence === 'SEQUENTIAL' ? (HOW_OFTEN.find(([c]) => c === k.cadence)?.[1] ?? null) : theRhythmInFull({ cadence: k.cadence, cadenceAnchorDay: k.anchorDay ?? null, workingDays: k.workingDays, startsAt: k.startsOn || null }, { stop: false }))
+    /* start-chat.txt: "Weekly suits this. You can change it." Once the kind is known, the rhythm it will run at is proposed, not hidden. */
+    : k.situation ? FILLS_IN.suits(HOW_OFTEN.find(([c]) => c === k.cadence)?.[1] ?? '') : null
   /* Setup page, piece 3a: an end she said ("until 30 December") or "when I end it" fills this row
      too, with no start date said; a start said with no end still reads "From". */
   const when = k.runsUntilEnded
@@ -198,14 +205,15 @@ export function theRows(k: WhatSetupKnows): { label: string; set: boolean; value
  */
 export function FillsInAsYouTalk(k: WhatSetupKnows) {
   const isAnchor = !!k.anchorItems
-  const rows = isAnchor ? theAnchorRows(k.anchorItems!) : theRows(k)
+  /* An anchor draft reads its seven items, and then who is in it, with the Change that opens the setup page. */
+  const rows = isAnchor ? [...theAnchorRows(k.anchorItems!), { label: FILLS_IN.whoIsIn, set: k.added.length > 0, value: k.added.length ? FILLS_IN.people(k.added.length) : null }] : theRows(k)
   /* A line is there once the conversation has given it; who is in it is there too while someone still needs an email. */
-  const known = rows.filter((r) => r.value || (r.label === FILLS_IN.whoIsIn && (k.noEmailYet ?? []).length > 0))
+  const known = rows.filter((r) => r.value || (r.label === FILLS_IN.whoIsIn && ((k.noEmailYet ?? []).length > 0 || (isAnchor && !!k.onChange))))
   const fromTheChat = !isAnchor && !!k.people
   const addedNotYet = !isAnchor && !fromTheChat && k.added.length ? notYetAdded(k) : []
   const name = k.name.trim()
-  const change = (label: string) => (k.onChange && !isAnchor ? (
-    <button type="button" className="gwui-plain-link" onClick={k.onChange} aria-label={`Change ${label.toLowerCase()}`}>{FILLS_IN.change}</button>
+  const change = (label: string) => (k.onChange && (!isAnchor || label === FILLS_IN.whoIsIn) ? (
+    <button type="button" className="gwui-plain-link" onClick={k.onChange} aria-label={`Change ${label === FILLS_IN.name ? "the name" : label.toLowerCase()}`}>{FILLS_IN.change}</button>
   ) : null)
   const panel = (
     <aside aria-label={FILLS_IN.label}>
@@ -259,7 +267,7 @@ export function FillsInAsYouTalk(k: WhatSetupKnows) {
   )
 }
 
-export function ReadyToSend({ people, opens, onSend, onLater, sending, why, lines, onChange }: { people: number; opens: string; onSend: () => void; onLater?: () => void; sending: boolean; why?: string; lines?: string[]; onChange?: () => void }) {
+export function ReadyToSend({ people, opens, later, onSend, onLater, sending, why, lines, onChange }: { people: number; opens: string; later?: boolean; onSend: () => void; onLater?: () => void; sending: boolean; why?: string; lines?: string[]; onChange?: () => void }) {
   return (
     <section aria-label={FILLS_IN.ready}>
       <Stack gap={6}>
@@ -270,7 +278,7 @@ export function ReadyToSend({ people, opens, onSend, onLater, sending, why, line
             {onChange && <button type="button" className="gwui-plain-link" onClick={onChange}>{FILLS_IN.change}</button>}
           </div>
         )}
-        <Note>{FILLS_IN.sends(people, opens)}</Note>
+        <Note>{FILLS_IN.sends(people, opens, later)}</Note>
         <Button kind="primary" wide onClick={onSend} disabled={sending}>
           {sending ? 'Sending…' : FILLS_IN.send(people)}
         </Button>

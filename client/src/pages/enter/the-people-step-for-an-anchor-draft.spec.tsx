@@ -161,14 +161,14 @@ describe('the people step, for an anchor draft', () => {
   it('saves up to the shrunk mayAdd of 2, and stops a save of three with the engine’s own sentence', async () => {
     await openInviteBlock(true)
     await screen.findByLabelText('Your team, one per line')
-    addThroughTheTeamBox('person0@example.test\nperson1@example.test\nperson2@example.test')
+    await addThroughTheTeamBox('person0@example.test\nperson1@example.test\nperson2@example.test')
     expect(screen.getByText('This one-month Groundwork holds up to 20 people besides you.')).toBeTruthy()
     saveWithMyEmail()
     await waitFor(() => expect(screen.getByText('This one-month Groundwork holds up to 20 people besides you.')).toBeTruthy())
     expect(authApi.entrySave).not.toHaveBeenCalled()
     /* Said on the page, where it stays, not in a passing toast. */
     expect(toast.error).not.toHaveBeenCalled()
-    addThroughTheTeamBox('person0@example.test\nperson1@example.test')
+    await addThroughTheTeamBox('person0@example.test\nperson1@example.test')
     saveWithMyEmail()
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
     const [, body] = vi.mocked(authApi.entrySave).mock.calls[0] as any[]

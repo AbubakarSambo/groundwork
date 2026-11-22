@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
 import { toast } from 'sonner'
-import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
+import { addThroughTheTeamBox, pressTheSave } from './a-team-read-in-a-spec'
 
 /**
  * ROUND 7, THE CLINIC ADMIN (1 November 2026). She added three clinic managers on People, then in setup named them and Emeka Nnamdi,
@@ -76,10 +76,8 @@ describe('the clinic admin saves her setup', () => {
   it('with Emeka written over, one press saves the three and says he is not on the check-in yet', async () => {
     seedHerSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
-    await screen.findByLabelText('Your team, one per line')
-    addThroughTheTeamBox(['Aisha Musa, aisha@clinic.test', 'Chinedu Obi, chinedu@clinic.test', 'Fatima Bello, fatima@clinic.test'].join('\n'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await addThroughTheTeamBox(['Aisha Musa, aisha@clinic.test', 'Chinedu Obi, chinedu@clinic.test', 'Fatima Bello, fatima@clinic.test'].join('\n'))
+    await pressTheSave()
 
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     expect(toast.info).toHaveBeenCalledWith('Emeka Nnamdi is not on the check-in yet, because there is no email for them. Add them under People when you have their emails.', expect.anything())
@@ -89,10 +87,8 @@ describe('the clinic admin saves her setup', () => {
   it('what she said each person does goes with them into the check-in', async () => {
     seedHerSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
-    await screen.findByLabelText('Your team, one per line')
-    addThroughTheTeamBox(['Aisha Musa', 'Chinedu Obi', 'Fatima Bello', 'Emeka Nnamdi, emeka@clinic.test'].join('\n'))
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await addThroughTheTeamBox(['Aisha Musa', 'Chinedu Obi', 'Fatima Bello', 'Emeka Nnamdi, emeka@clinic.test'].join('\n'))
+    await pressTheSave()
 
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0] as any

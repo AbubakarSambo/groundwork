@@ -68,12 +68,16 @@ describe('and it is offered whenever the conversation has begun', () => {
      no longer on the setup screen: "Start a check-in" in the sidebar asks to carry on or start a new one, and the save card keeps
      its own Start over. The two tests that pinned the header's Start over are replaced by the one that proves where it went. */
   it('offers It’s something else in the summary, during setup only, never for an anchor draft', () => {
-    expect(SRC).toContain("onSomethingElse={phase === 'onboarding' && !isAnchorDraft() && (onboardingSelections.classifiedScenario || pickedScenario || scenario) ? itIsSomethingElse : undefined}")
+    /* 22 November 2026: the kind is read one way (theKind), and the panel is drawn only during setup. */
+    expect(SRC).toContain("onSomethingElse={!isAnchorDraft() && theKind() ? itIsSomethingElse : undefined}")
     expect(SRC).not.toContain("{phase === 'onboarding' && pickedSituation && (")
   })
 
-  it('Start over is not on the setup screen itself, and the save card still has it', () => {
+  /* Changed 22 November 2026: the save card is gone, and its Start over with it. Starting again is "Start a check-in" in the
+     sidebar, which asks to carry on or start a new one (the conflict modal's "Start a new one"). */
+  it('Start over is not on the setup screen, and starting a new one is still offered', () => {
     expect(SRC).not.toMatch(/'Clear check-in'/)
-    expect(SRC).toContain('onClick={handleClearSession}>Start over</button>')
+    expect(SRC).not.toContain('Start over instead')
+    expect(SRC).toContain('Start a new one')
   })
 })

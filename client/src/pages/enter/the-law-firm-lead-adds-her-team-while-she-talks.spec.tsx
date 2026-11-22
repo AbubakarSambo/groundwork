@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { EntryChatPage } from './EntryChatPage'
+import { pressTheSave } from './a-team-read-in-a-spec'
 
 /**
  * ROUND 6, THE LAW FIRM LEAD (1 November 2026, rated it 1).
@@ -105,9 +106,7 @@ describe('the law firm lead on the save card', () => {
   it('saves in one press when none of her four has an email, and says they are not on the check-in yet', async () => {
     seedHerSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
-    await screen.findByLabelText('Your team, one per line')
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await pressTheSave()
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     expect(toast.info).toHaveBeenCalledWith('David Ochieng, Fatima Kariuki, Joseph Muthama and Esther Wanjiru are not on the check-in yet, because there is no email for them. Add them under People when you have their emails.', expect.anything())
     expect(screen.queryByText(/This was not saved/)).toBeNull()
@@ -116,14 +115,13 @@ describe('the law firm lead on the save card', () => {
   it('a correction she makes is saved with the setup, and the report made before it is not sent', async () => {
     seedHerSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
     fireEvent.click(await screen.findByText('This isn’t right, correct it'.replace('’', "'")))
     fireEvent.change(screen.getByPlaceholderText('e.g. The deadline is not May - it is March 1.'), { target: { value: 'Esther is my finance officer in charge of billing.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
     await waitFor(() => expect(entryApi.chat).toHaveBeenCalled())
 
     fireEvent.change(screen.getByLabelText('Your team, one per line'), { target: { value: '' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await pressTheSave()
     /* Her four are named and the box is empty: one press saves without them and says so (changed in the team-skip hotfix; it used to need a second press). */
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0] as any

@@ -33,6 +33,7 @@ vi.mock('@/stores/auth', () => {
 })
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn(), addTheirWhatsAppNumber: vi.fn() } }))
 import { entryApi } from '@/api/entry'
+import { pressTheSave } from './a-team-read-in-a-spec'
 
 const HER_SETUP = [
   { role: 'assistant', content: THE_OPENING_QUESTION },
@@ -73,9 +74,7 @@ describe('the field lead saves her setup', () => {
         <MemoryRouter initialEntries={['/start']}><EntryChatPage /></MemoryRouter>
       </QueryClientProvider>,
     )
-    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
-    await screen.findByLabelText('Your team, one per line')
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    await pressTheSave()
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0] as any
     expect(JSON.stringify(payload.history)).not.toMatch(/organic chickens|Describe it in your own words/)

@@ -27,7 +27,7 @@ import { EntryChatPage } from './EntryChatPage'
  */
 
 vi.mock('@/api/entry', () => ({
-  entryApi: { opener: vi.fn().mockResolvedValue({ reply: '' }), chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn() },
+  entryApi: { opener: vi.fn().mockResolvedValue({ reply: '' }), chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn(), theDates: vi.fn().mockResolvedValue({ days: [], count: null }), peopleOnLines: vi.fn(async (t: string) => (await import('./a-team-read-in-a-spec')).readLikeTheServer(t)) },
 }))
 vi.mock('@/api/auth', () => ({
   authApi: { entrySave: vi.fn().mockResolvedValue({ draftToken: 'draft-1' }) },
@@ -40,24 +40,21 @@ vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: null, 
  * the save card directly. The rhythms are named as the prototype names them ("Every week", not
  * "Weekly"); what the spec holds - that an unchosen rhythm says so - is unchanged.
  */
+/* Changed 22 November 2026: the schedule is on the setup page, opened by Change in the panel, not on a save card at the end. */
 function seedSaved() {
   localStorage.setItem('gw_entry_session', JSON.stringify({
-    scenario: 'NEW_PROJECT',
-    closed: true,
-    flowPath: 'lead',
-    onboardingStep: 7,
-    /* With words in it: since 10 Sep 2026 a closed lead session with an empty history goes to its
-       first check-in rather than to a save card that cannot save. The cadence panel is what this
-       spec is about, and it sits behind a save that has something to save. */
-    history: [{ role: 'user', content: 'The launch is in six weeks and two of us disagree on scope.' }, { role: 'assistant', content: 'Noted.' }],
-    lead: { email: 'lead@x.test', name: 'Lead' },
-    onboardingSelections: { mode: 'new', initial: 'New project' },
+    scenario: 'NEW_PROJECT', closed: false, onboardingStep: 2, history: [],
+    onboardingSelections: { mode: 'new', initial: 'New project', peopleNamed: ['Ama'] },
+    onboardingHistory: [
+      { role: 'user', content: 'The launch is in six weeks and two of us disagree on scope.' },
+      { role: 'assistant', content: 'So the launch is six weeks out and the scope is not agreed. Is that right?' },
+    ],
   }))
 }
 
 async function saveTheGround() {
-  /* Nothing to press any more: the save card itself carries the schedule. */
-  await screen.findByPlaceholderText(/your@email/i, {}, { timeout: 4000 })
+  fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }, { timeout: 4000 }))[0])
+  await screen.findByText(/Set up from your conversation/)
 }
 
 function renderPage() {

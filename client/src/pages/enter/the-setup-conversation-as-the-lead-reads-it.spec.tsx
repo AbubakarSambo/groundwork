@@ -10,7 +10,7 @@ import { EntryChatPage } from './EntryChatPage'
  * "Getting started", the arrow steps, "Pick a different situation" or the chickens example.
  */
 vi.mock('@/api/entry', () => ({
-  entryApi: { opener: vi.fn().mockResolvedValue({ reply: '' }), chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn() },
+  entryApi: { opener: vi.fn().mockResolvedValue({ reply: '' }), chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn(), theDates: vi.fn().mockResolvedValue({ days: ['2026-11-23'], count: 12 }), peopleOnLines: vi.fn().mockResolvedValue([]) },
 }))
 vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn() } }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: null, isAuthenticated: false }) }))
@@ -51,7 +51,8 @@ describe('the setup conversation', () => {
     expect(summary.textContent).toContain('Both sides on the concern, before the conversation.')
     expect(screen.queryByRole('button', { name: 'Confirmed' })).toBeNull()
     expect(screen.getByRole('button', { name: 'It’s something else' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'End check-in' })).toBeTruthy()
+    /* Changed 22 November 2026: setup has no End check-in; it ends with the one save in the panel. */
+    expect(screen.queryByRole('button', { name: 'End check-in' })).toBeNull()
     const page = document.body.textContent ?? ''
     for (const old of ['Give this a name', 'Getting started', 'check-in is about 10 minutes', 'What is going on', 'Save & invite', 'Pick a different situation', 'Set up as', 'organic chickens', 'Fills in as you talk', 'about ten minutes']) {
       expect(page, old).not.toContain(old)
@@ -124,18 +125,21 @@ describe('the setup conversation', () => {
 
 describe('the setup shows what will be saved (U.6 review)', () => {
   /* Read live: "This will run every 2 weeks" and fortnightly dates, saved as weekly for 90 days. */
+  /* Changed 22 November 2026: the schedule is on the setup page (Change), and the dates and their count are the server's. */
   it('an unpicked rhythm is the situation’s own, and its dates run to its usual end', async () => {
     localStorage.clear()
     localStorage.setItem('gw_entry_session', JSON.stringify({
-      scenario: '', closed: true, flowPath: 'self', onboardingStep: 7,
-      history: [{ role: 'user', content: 'He has missed three deadlines.' }, { role: 'assistant', content: 'Noted.' }],
+      scenario: '', closed: false, onboardingStep: 2, history: [],
+      onboardingHistory: [{ role: 'user', content: 'He has missed three deadlines.' }, { role: 'assistant', content: 'What was agreed with him?' }],
       onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
     }))
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/start']}><EntryChatPage /></MemoryRouter></QueryClientProvider>)
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
     expect(await screen.findByText('Not set yet. This will run every week unless you pick one.')).toBeTruthy()
-    /* 90 days, weekly: 12 check-ins, as the server keeps them, and the end date goes with the save.
-       Screen fault 10 (final walk): a comma, not a colon, and "sessions" said plainly. */
+    /* The server is asked for the situation's own rhythm, to its usual end, and its count is what the page says. */
+    const { entryApi } = await import('@/api/entry')
+    await waitFor(() => expect(vi.mocked(entryApi.theDates)).toHaveBeenCalledWith(expect.objectContaining({ cadence: 'WEEKLY', endsOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) })))
     await waitFor(() => expect(document.body.textContent).toMatch(/, 12 check-ins in all\./))
     expect(document.body.textContent).not.toContain('every 2 weeks unless')
   })

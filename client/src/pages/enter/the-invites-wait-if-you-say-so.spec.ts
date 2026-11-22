@@ -48,8 +48,11 @@ describe('the invites wait if you say so', () => {
   /* U.6 review: "Your invites go out straight away." was not always true (no seat, an admin to
      accept it, an address that cannot be invited). It says what is certain now. */
   it('and says which one is happening, rather than one line for both', () => {
-    expect(page).toMatch(/Save this\. Nobody is invited before \$\{theDay\(/)
-    expect(page).toContain('Save this. You then see who was invited and who has to wait.')
+    /* Changed 22 November 2026: said beside the one send in the panel (new.txt), from whether the start is later. */
+    const panel = readFileSync(join(__dirname, 'FillsInAsYouTalk.tsx'), 'utf8')
+    expect(panel).toContain("people are`} invited on the day it starts.")
+    expect(panel).toContain("people get an invitation now`}.")
+    expect(page).toContain('later={startsLater}')
     expect(page).not.toContain('Your invites go out straight away')
   })
 

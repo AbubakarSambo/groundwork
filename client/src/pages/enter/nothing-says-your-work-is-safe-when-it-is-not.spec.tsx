@@ -34,10 +34,10 @@ describe('a failed send puts the words back', () => {
     expect(around).toMatch(/back in the box/)
   })
 
-  it('the correction goes back in its textarea', () => {
-    const at = ENTRY.indexOf("setCorrectionText(text)")
-    expect(at).toBeGreaterThan(-1)
-    expect(ENTRY.slice(at, at + 200)).toMatch(/back in the box/)
+  /* Changed 22 November 2026: the report's correction box went with the save card (the report is not part of setup), so there is no
+     textarea left there to lose words from. */
+  it('the correction box that could lose words is gone from setup', () => {
+    expect(ENTRY).not.toContain('setCorrectionText(')
   })
 
   it('the chat message goes back, and its bubble comes off the screen', () => {
@@ -65,15 +65,10 @@ describe('nothing claims the work is safe when it is not', () => {
     expect(fn).not.toMatch(/setEditing\(false\)[\s\S]*?await/)
   })
 
-  it('and the Google hand-off stops rather than walking away with it', () => {
-    const at = ENTRY.indexOf('function continueWithGoogle')
-    const around = ENTRY.slice(at, ENTRY.indexOf('\n  function ', at + 10))
-    /* The navigation must not be reachable from the catch. */
-    const catchAt = around.indexOf('} catch {')
-    const navAt = around.indexOf('window.location.href')
-    expect(catchAt).toBeGreaterThan(-1)
-    expect(navAt).toBeGreaterThan(catchAt)
-    expect(around.slice(catchAt, navAt)).toContain('return')
-    expect(around.slice(catchAt, navAt)).toMatch(/nothing has been lost/i)
+  /* Changed 22 November 2026: setup has no Google hand-off of its own now (start-chat.txt: an email and Save it), so nothing can walk
+     away with the conversation from here. */
+  it('and setup has no hand-off that leaves the page with the conversation', () => {
+    expect(ENTRY).not.toContain('function continueWithGoogle')
+    expect(ENTRY).not.toContain('window.location.href')
   })
 })

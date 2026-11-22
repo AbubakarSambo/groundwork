@@ -61,6 +61,7 @@ describe('a question already answered is not asked again', () => {
     expect(PAGE).not.toContain('I set this up and check in myself')
     expect(PAGE).not.toContain('I check in once to set the context, then only they check in')
     expect(PAGE).not.toContain('managingOnly: true')
-    expect(PAGE).toContain('startTheLeadsFirstCheckIn()')
+    /* Changed 22 November 2026: setup is the lead's first check-in (26 October), so nothing opens a second conversation after it. */
+    expect(PAGE).not.toContain('startTheLeadsFirstCheckIn()')
   })
 })

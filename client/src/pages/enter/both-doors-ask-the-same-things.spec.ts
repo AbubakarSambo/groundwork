@@ -18,24 +18,19 @@ import { join } from 'path'
 const PAGE = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
 const code = PAGE.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
 
-describe('the organisation name', () => {
-  it('is asked once, not twice', () => {
-    expect(code.match(/Organisation name \(optional\)/g) ?? []).toHaveLength(1)
+/*
+ * CHANGED 22 NOVEMBER 2026 (Hafsah, the setup flow): somebody not signed in reads start-chat.txt's one block where the panel ends, an
+ * email and "Save it", and nothing else. The Google button and the organisation's name went with the save card, so there is one door
+ * from setup and nothing is asked twice; the organisation is named when the link is opened, as for any new sign-up.
+ */
+describe('one door out of setup, asking each thing once', () => {
+  it('asks for the email once, on the one form that saves', () => {
+    expect(code.match(/placeholder="you@company\.com"/g) ?? []).toHaveLength(1)
+    expect(code).toMatch(/<form noValidate onSubmit=\{\(e\) => \{ e\.preventDefault\(\); handleSave\(\) \}\}>/)
   })
 
-  it('is asked before the email is sent, which is the step Google also passes', () => {
-    const where = code.indexOf('Organisation name (optional)')
-    const emailField = code.indexOf('placeholder="your@email.com"')
-    expect(where).toBeGreaterThan(-1)
-    /* Above the email field, and both inside the not-yet-sent branch. */
-    expect(where).toBeLessThan(emailField)
-    const branch = code.lastIndexOf('!emailSent ?', where)
-    expect(branch).toBeGreaterThan(-1)
-  })
-
-  it('and reaches the server on both paths, through one payload', () => {
-    /* `buildCommitPayload` is shared by the emailed link and by Google for this reason. */
-    const payload = code.slice(code.indexOf('function buildCommitPayload'), code.indexOf('function buildCommitPayload') + 900)
-    expect(payload).toContain('orgName: orgName.trim() || undefined')
+  it('asks no organisation name and offers no second door', () => {
+    expect(code).not.toMatch(/Organisation name \(optional\)/)
+    expect(code).not.toMatch(/Continue with Google/)
   })
 })
