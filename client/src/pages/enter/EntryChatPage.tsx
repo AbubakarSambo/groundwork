@@ -4106,7 +4106,9 @@ export function EntryChatPage() {
 
         {/* PHASE: ONBOARDING (AI-driven) */}
         {phase === 'onboarding' && (
-          <div className="gwui-ec-onboarding">
+          /* Once the conversation has begun (not at the door, which draws its own card), it sits in one card with the reply row at its
+             foot, and the side panel is a card beside it (start-chat.jpg; Hafsah, 22 November). */
+          <div className={atTheDoor ? 'gwui-ec-onboarding' : 'gwui-ec-onboarding gwui-ec-onboarding-talk'}>
           <div className="gwui-ec-onboarding-col">
             {/*
               * SAID BEFORE THE SETUP WORK, NOT AFTER IT.
@@ -4334,7 +4336,8 @@ export function EntryChatPage() {
                       disabled={onboardingLoading}
                       sendDisabled={!input.trim()}
                       sendLabel="Send message"
-                      /* The check-in's own box (Hafsah, 3 November evening): "+" and send inside it, one row that grows as she types. */
+                      /* The reply row at the foot of the conversation's card (start-chat.jpg): the paperclip, the field, then "Send". */
+                      variant="ask"
                       placeholder="Type your answer"
                       autoFocus
                     />
