@@ -27,6 +27,8 @@ import { aDepositSaid } from '../board/a-deals-proof-is-about-that-deal';
 import { aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
 import { herYearEndRecordForAsk } from '../year-end/her-year-end-record';
 import { isOneOfThem, thePeopleTheAskerIsResponsibleFor } from './the-people-the-asker-is-responsible-for';
+import { theGoalChangesOn, theChangeThatMadeThisGoal, theChangeAsASentence } from '../grounds/a-goal-changed-by-its-lead';
+import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
 
 /** Whether a message asks something, rather than tells something. Read by its shape, never by a model. */
 const STARTS_A_QUESTION = /^\s*(?:(?:and|so|but|also|please|ok|okay)[\s,]+)?(?:what|what's|whats|when|where|which|who|whom|whose|why|how|is|are|was|were|does|do|did|can|could|will|would|should|has|have|according to|tell me|do you know)\b/i;
@@ -172,8 +174,8 @@ export async function theRecordTheyMayRead(
       ...(input.groundId ? { id: input.groundId } : {}),
       OR: [{ initiatorId: input.userId }, { participants: { some: { userId: input.userId } } }],
     },
-    select: { id: true, label: true, initiatorId: true, kindOfWork: true, workStages: true, cadence: true, cadenceDays: true, cadenceAnchorDay: true, workingDays: true },
-  })).catch(() => [])) ?? []) as { id: string; label: string; initiatorId: string | null; kindOfWork?: unknown; workStages?: unknown; cadence?: string | null; cadenceDays?: number[] | null; cadenceAnchorDay?: number | null; workingDays?: number[] | null }[];
+    select: { id: true, label: true, initiatorId: true, kindOfWork: true, workStages: true, cadence: true, cadenceDays: true, cadenceAnchorDay: true, workingDays: true, groundAuditLog: true },
+  })).catch(() => [])) ?? []) as { id: string; label: string; initiatorId: string | null; kindOfWork?: unknown; workStages?: unknown; cadence?: string | null; cadenceDays?: number[] | null; cadenceAnchorDay?: number | null; workingDays?: number[] | null; groundAuditLog?: unknown }[];
   const out: ADocumentToAnswerFrom[] = [];
   const judgements = await thePersonJudgementsAreOn(prisma, input.organizationId);
   for (const g of grounds) {
@@ -256,11 +258,51 @@ export async function theRecordTheyMayRead(
     }
     /* The sales, counted as the board counts them, first: a long record must never push them out (polish round 15, U3 and U4). */
     const sales = isASalesKind(g.kindOfWork) ? await theSalesOnRecord(prisma, g, people, nameOf, isLead, now).catch(() => [] as string[]) : [];
-    const content = [...sales, ...lines].join('\n');
+    const goals = await theGoalsOnRecord(prisma, g, people, nameOf, isLead).catch(() => [] as string[]);
+    const content = [...sales, ...goals, ...lines].join('\n');
     out.push({ fileName: `the record of ${g.label}`, content: content.slice(0, MOST_WE_READ_FROM_ONE), mayBeQuoted: facts.filter((f) => f.saidWordForWord).map((f) => f.words) });
   }
   /* A SENIOR PERSON'S OWN YEAR (Batch D, R2): the record her year-end draft is built from, for her and for whoever acts for her, and for nobody else. */
   out.push(...(await herYearEndRecordForAsk(prisma, { organizationId: input.organizationId, userId: input.userId, now, question: input.question }).catch(() => [])));
+  return out;
+}
+
+/**
+ * THE GOALS AS THEY STAND NOW, FROM THE STORED GOAL ROWS (Drop Access, final run of 22 November, bug N2). Wairimu changed the team's goal
+ * in Ask from freezers to a waitlist of shops, and Amani asked "whats the team goal now?". The record Ask reads held no goal row at all,
+ * only the sales counted against a goal and what the lead said in setup, so the answer was made from the check-in's description. The goal
+ * rows are the one owner of what the team is aiming for (a-goal-changed-by-its-lead), so Ask reads them, with the sentence the board serves
+ * of a change: whoever runs the check-in reads what the goal was, anybody else reads when and why it changed. A person reads the team's goals
+ * and their own, as on their board, and never a goal the lead has not told them about yet.
+ */
+async function theGoalsOnRecord(
+  prisma: any,
+  g: { id: string; groundAuditLog?: unknown },
+  people: any[],
+  nameOf: (p: any) => string,
+  isLead: boolean,
+): Promise<string[]> {
+  const theirs = new Set(people.map((p) => p.id));
+  const rows = (((await Promise.resolve(prisma.groundObjective?.findMany?.({
+    where: { groundId: g.id },
+    select: { id: true, name: true, target: true, count: true, ownerParticipantId: true, setByParticipantId: true },
+  })).catch(() => [])) ?? []) as any[]).filter((o) => isLead || !o.ownerParticipantId || theirs.has(o.ownerParticipantId));
+  const untold = isLead ? [] : (((await Promise.resolve(prisma.personObjective?.findMany?.({
+    where: { groundId: g.id, awareness: 'NOT_TOLD' },
+    select: { participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
+  })).catch(() => [])) ?? []) as any[]);
+  const { kept } = withoutWhatTheLeadHasNotToldThemAbout(rows, untold, people, isLead);
+  if (!kept.length) return [];
+  const changes = theGoalChangesOn(g.groundAuditLog);
+  const names = people.map((p) => String(p.user?.firstName ?? p.nameGiven ?? '').trim()).filter(Boolean);
+  const out: string[] = ['THE GOALS ON RECORD NOW. This is what the team is aiming for today. A goal its lead changed takes the place of any aim said in setup:'];
+  for (const o of kept) {
+    const owner = o.ownerParticipantId ? people.find((p) => p.id === o.ownerParticipantId) : null;
+    const whose = !o.ownerParticipantId ? 'The team’s goal' : !isLead ? 'Your own goal' : `${owner ? nameOf(owner) : 'One person'}’s own goal`;
+    const target = typeof o.target === 'number' ? ` Its target is ${aNumberPeopleCanRead(o.target)}, and ${aNumberPeopleCanRead(Number(o.count ?? 0))} is counted against it so far.` : '';
+    const c = theChangeThatMadeThisGoal(changes, o.id);
+    out.push(`- ${whose} is “${String(o.name ?? '').trim().replace(/[.!?\s]+$/, '')}”.${target}${c ? ` ${theChangeAsASentence(c, names, isLead)}` : ''}`);
+  }
   return out;
 }
 
