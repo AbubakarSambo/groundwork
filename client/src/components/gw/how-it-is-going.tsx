@@ -132,6 +132,7 @@ export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingTo
   readerIsTheOnlyPerson?: boolean
 }) {
   const late = (glance?.inTheWay?.count ?? 0) > 0
+  const stopped = glance?.inTheWay?.stopped ?? null
   const vars = tone === 'dark'
     ? {
         ['--gwui-how-story' as any]: BOARD_BODY_INK,
@@ -198,9 +199,9 @@ export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingTo
                   .
                 </span>
               )
-              : !glance!.inTheWay.stopped && <span className="gwui-how-strong">Nothing is in the way.</span>}
+              : !stopped && <span className="gwui-how-strong">Nothing is in the way.</span>}
           </div>
-          {glance!.inTheWay.stopped && <div className="gwui-how-warn">{glance!.inTheWay.stopped}</div>}
+          {stopped && <div className="gwui-how-warn">{stopped}</div>}
         </div>
       )}
     </div>
