@@ -2034,7 +2034,28 @@ A DEADLINE MEANS IT IS NOT A GOAL. Something with a date is a piece of work, wha
 TWO PEOPLE AND A DATE IS A COMMITMENT, and whoever the work is owed TO goes in owedTo - that is the whole
 difference between a to-do and a commitment.
 Do not infer awareness. If they were not asked and did not volunteer it, that is NOT_ASKED.
-Be conservative. Empty lists are correct answers.`;
+Be conservative. Empty lists are correct answers.
+
+3. goalChanges: where the speaker changed one of the goals listed under THE GOALS ON RECORD, and said yes when
+   Groundwork said the change back to them.
+
+   "Freezers are out of stock, so this week the goal is a waitlist of 50 names" changes the goal of selling
+   freezers into a waitlist of 50 names. A new number for the same thing is a change too ("make it 60 a week").
+   A second goal beside the ones on record is not a change, and goes nowhere here.
+
+   - replaces: the ids, from THE GOALS ON RECORD, of every goal the new one takes the place of. Ten freezers a
+     week for each of two people is two ids, both replaced by the one waitlist.
+   - aim: the new goal as one plain, full sentence about whoever holds it, by first name, or "The team".
+     "The team is building a waitlist of 50 names".
+   - target: the number in it, only where they said one.
+   - whose: "The team", or the first name of the one person it belongs to.
+   - because: why it changed, in their words, as one plain sentence. "Freezers are out of stock." Empty when
+     they gave no reason.
+   - stopsTheWork: true where the reason is something that stops the work itself, such as a stock-out, a
+     closed road or a broken machine. False for a change of plan or of mind.
+
+   ONLY WITH THEIR YES. Leave a change out unless Groundwork said back what would change and the speaker
+   agreed to it in a later message. A change they were still thinking about, or did not answer, is not made.`;
 
 /**
  * WHAT THIS PERSON SAID THEY WOULD DO, from their own check-in.
@@ -2270,6 +2291,22 @@ export const EXPECTATION_SCHEMA = {
             },
           },
           required: ['personName', 'expectation', 'awareness', 'kind', 'check', 'dueKind'],
+        },
+      },
+      goalChanges: {
+        type: 'array',
+        description: 'Each goal on record the speaker changed, only where they said yes when Groundwork said the change back. Empty otherwise.',
+        items: {
+          type: 'object',
+          properties: {
+            replaces: { type: 'array', items: { type: 'string' }, description: 'The ids from THE GOALS ON RECORD that the new goal takes the place of.' },
+            aim: { type: 'string', description: 'The new goal as one plain, full sentence about whoever holds it, by first name, or "The team".' },
+            target: { type: 'number', description: 'The number in the new goal, only where they said one.' },
+            whose: { type: 'string', description: '"The team", or the first name of the one person it belongs to.' },
+            because: { type: 'string', description: 'Why it changed, in their words, as one plain sentence. Empty when they gave no reason.' },
+            stopsTheWork: { type: 'boolean', description: 'True where the reason stops the work itself (a stock-out, a closed road); false for a change of plan.' },
+          },
+          required: ['replaces', 'aim', 'whose'],
         },
       },
     },
@@ -3743,7 +3780,7 @@ export interface PromptContext {
    * against that, which is how a person could be pressed for specifics about the wrong thing - and
    * why a report could read somebody against a number nobody had shown either of them.
    */
-  objectives?: { name: string; target: number | null }[];
+  objectives?: { name: string; target: number | null; changed?: string | null }[];
   priorContext?: string | null;
   priorSession?: string | null;
   resolutionState?: string | null;
@@ -4398,12 +4435,21 @@ export function buildIntakeBlock(ctx: PromptContext): string {
           (ctx.objectives ?? [])
             .map((o) => {
               const name = (o.name ?? '').trim();
-              if (/[.!?]$/.test(name)) return o.target != null && !/\d/.test(name) ? `${name} The number is ${o.target.toLocaleString('en-US')}.` : name;
-              return o.target != null ? `${name} (target ${o.target.toLocaleString('en-US')})` : name;
+              const changed = o.changed ? ` ${o.changed}` : '';
+              if (/[.!?]$/.test(name)) return (o.target != null && !/\d/.test(name) ? `${name} The number is ${o.target.toLocaleString('en-US')}.` : name) + changed;
+              return (o.target != null ? `${name} (target ${o.target.toLocaleString('en-US')})` : name) + changed;
             })
             .join((ctx.objectives ?? []).some((o) => /[.!?]$/.test((o.name ?? '').trim())) ? ' ' : '; ')
         : 'none stated'
     }`,
+    /* A goal its lead changed (a-goal-changed-by-its-lead): the team is told and asked about it, in the conversation's own words. */
+    ...((ctx.objectives ?? []).some((o) => o.changed) && ctx.partyType !== PartyType.INITIATOR
+      ? ['A GOAL CHANGED: a goal above says when and why it changed. The person you are talking to may not know yet. Early on, tell them the new goal and why in one plain sentence, then ask how they are doing on it and how they are getting there. Their numbers against the old goal are not asked for any more.']
+      : []),
+    /* Only the lead changes a goal by saying so, and only with her yes (a-goal-changed-by-its-lead). */
+    ...(ctx.partyType === PartyType.INITIATOR && (ctx.objectives ?? []).length
+      ? ['CHANGING A GOAL: the person you are talking to runs this check-in and can change a goal above by saying so, for example because something stops the work. When they do, say back plainly what will change, from which goal to which goal and why, and ask them to say yes. Change nothing until they say yes. Once they do, tell them it is changed and that each person will be asked about the new goal in their next check-in.']
+      : []),
     /**
      * WHAT THIS PERSON IS WORKING TO, AND WHETHER THEY HAVE EVER SEEN IT.
      *

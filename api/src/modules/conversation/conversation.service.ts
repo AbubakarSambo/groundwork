@@ -343,6 +343,7 @@ import { keepThePromisesSaidDone } from './a-promise-said-done-is-kept';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
 import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collections';
 import { FROM_YOUR_CHECK_IN, theWordsItCameFrom, theTargetAsALine, type ATargetToHold } from '../grounds/the-leads-targets-wait-for-her-yes';
+import { theChangeToMake, theGoalChangesOn, theChangeThatMadeThisGoal, theChangeAsASentence, type AGoalChange, type AGoalChangeSaid, type AGoalOnRecord } from '../grounds/a-goal-changed-by-its-lead';
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
@@ -504,7 +505,9 @@ const WHAT_THE_BRIEF_IS_READ_FROM = {
   initiator: { select: { firstName: true, lastName: true } },
   whoSeesTargets: true,
   /* WHO SET EACH TARGET AND WHICH WAY IT GOES (decision 69), so it is said about them and not as the reader's own. */
-  objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true }, orderBy: { sortOrder: 'asc' as const } },
+  objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true }, orderBy: { sortOrder: 'asc' as const } },
+  /* When and why a goal changed (a-goal-changed-by-its-lead). */
+  groundAuditLog: true,
   /* And the people, by first name, under the same naming rule as everywhere else. */
   peersVisibleToEachOther: true,
   participants: { select: { id: true, partyType: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
@@ -752,10 +755,13 @@ export class ConversationService {
   }
 
   private theTargetsAsSentences(
-    rows: { name: string; target: number | null; ownerParticipantId?: string | null; setByParticipantId?: string | null; direction?: string | null }[],
-    ground: { participants?: any[]; scenario?: any; peersVisibleToEachOther?: boolean | null } | null,
+    rows: { id?: string; name: string; target: number | null; ownerParticipantId?: string | null; setByParticipantId?: string | null; direction?: string | null }[],
+    ground: { participants?: any[]; scenario?: any; peersVisibleToEachOther?: boolean | null; groundAuditLog?: unknown } | null,
     readerParticipantId: string | null,
-  ): { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null }[] {
+  ): { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null; changed?: string | null }[] {
+    /* When and why a goal its lead changed became what it is, from the one log of changes (a-goal-changed-by-its-lead). */
+    const changes = theGoalChangesOn(ground?.groundAuditLog);
+    const firstNames = ((ground?.participants ?? []) as any[]).map((p) => (p?.user?.firstName ?? p?.nameGiven ?? '').trim()).filter(Boolean);
     const people = (ground?.participants ?? []) as any[];
     const first = (p: any) => (p?.user?.firstName ?? p?.nameGiven ?? '').trim() || null;
     const reader = people.find((p) => p.id === readerParticipantId);
@@ -771,6 +777,8 @@ export class ConversationService {
       }),
       target: o.target ?? null,
       direction: asADirection(o.direction),
+      /* Only where its lead changed it: every other goal is served exactly as before. */
+      ...(() => { const c = o.id ? theChangeThatMadeThisGoal(changes, o.id) : null; return c ? { changed: theChangeAsASentence(c, firstNames) } : {}; })(),
     }));
   }
 
@@ -4273,7 +4281,7 @@ export class ConversationService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
       include: {
-        objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true }, orderBy: { sortOrder: 'asc' } },
         /* The product's finding per person, for the lead's side of the disagreement. */
         report: { select: { findings: true, sharedAs: true } },
         /**
@@ -10371,6 +10379,8 @@ ${told}` : '';
 
     /* The speaker's own targets, by id, so a new number for one of them edits it rather than making a second (Mercy, 29 October). */
     const theirTargetsOnRecord = ((await Promise.resolve(this.prisma.groundObjective.findMany({ where: { groundId, ownerParticipantId: participantId }, select: { id: true, name: true, target: true } })).catch(() => [])) ?? []) as { id: string; name: string; target: number | null }[];
+    /* Every goal on this check-in, which only its lead may change by saying so (a-goal-changed-by-its-lead). */
+    const theGoalsOnRecord = ((await Promise.resolve(this.prisma.groundObjective.findMany({ where: { groundId }, select: { id: true, name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } })).catch(() => [])) ?? []) as AGoalOnRecord[];
     const result = await this.anthropic.extract<{
       theirOwnTarget?: { name: string; target: number; corrects?: string | null } | null;
       expectations: {
@@ -10388,8 +10398,27 @@ ${told}` : '';
         /** REFERENCE only: where the work is tracked. Never its state. */
         trackedUrl?: string;
       }[];
-    }>(EXPECTATION_PROMPT, [{ role: 'user', content: `${theSpeakerLine(me)}\n\n${theirTargetsOnRecord.length ? `Their targets on record:\n${theirTargetsOnRecord.map((t) => `[${t.id}] ${t.name}${typeof t.target === 'number' ? `, ${t.target}` : ''}`).join('\n')}\n\n` : ''}${transcript}` }], EXPECTATION_SCHEMA as any);
+      goalChanges?: AGoalChangeSaid[];
+    }>(EXPECTATION_PROMPT, [{ role: 'user', content: `${theSpeakerLine(me)}\n\n${theirTargetsOnRecord.length ? `Their targets on record:\n${theirTargetsOnRecord.map((t) => `[${t.id}] ${t.name}${typeof t.target === 'number' ? `, ${t.target}` : ''}`).join('\n')}\n\n` : ''}${theGoalsOnRecord.length ? `THE GOALS ON RECORD:\n${theGoalsOnRecord.map((t) => `[${t.id}] ${t.name}${typeof t.target === 'number' ? `, ${t.target}` : ''}`).join('\n')}\n\n` : ''}${transcript}` }], EXPECTATION_SCHEMA as any);
     if (!result) return;
+
+    /* A goal she changed, and said yes to when Groundwork said it back, changes the one goal on record (a-goal-changed-by-its-lead). */
+    for (const said of result.goalChanges ?? []) {
+      const people = ground.participants.map((p) => ({ id: p.id, firstName: p.user?.firstName ?? null }));
+      const change = theChangeToMake(said, theGoalsOnRecord, people, (n) => numbersInTheirWords.has(n));
+      if (!change) continue;
+      const session = await this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { sessionNumber: true } }).catch(() => null);
+      await this.prisma.groundObjective.update({
+        where: { id: change.keep.id },
+        data: { name: change.name, target: change.target, ownerParticipantId: change.ownerParticipantId, count: 0, prevCount: 0, suggestedCount: null, suggestedSaid: null, suggestedAtSession: null, addedAtSession: session?.sessionNumber ?? null, setByParticipantId: participantId },
+      });
+      if (change.drop.length) await this.prisma.groundObjective.deleteMany({ where: { id: { in: change.drop.map((d) => d.id) }, groundId } });
+      await this.keepTheChangeOfATarget(groundId, {
+        objectiveId: change.keep.id, from: change.keep.target, to: change.target, byParticipantId: participantId, said: theirOwnTurns[theirOwnTurns.length - 1] ?? null,
+        fromNames: [change.keep, ...change.drop].map((o) => o.name), toName: change.name, because: change.because, stopsTheWork: change.stopsTheWork,
+      });
+      this.logger.log(`Ground ${groundId}: the lead changed a goal, with her yes (${[change.keep, ...change.drop].length} replaced).`);
+    }
 
     /** The same resolver as work mentions: a name that matches nobody is dropped, never guessed. */
     const others = ground.participants.filter((p) => p.id !== participantId && !p.managingOnly);
@@ -10824,7 +10853,7 @@ ${told}` : '';
   }
 
   /** A target's number changed in somebody's words: kept in the check-in's log, beside what was there, so its history stays. */
-  private async keepTheChangeOfATarget(groundId: string, change: { objectiveId: string; from: number | null; to: number; byParticipantId: string; said: string | null }): Promise<void> {
+  private async keepTheChangeOfATarget(groundId: string, change: Omit<AGoalChange, 'at'>): Promise<void> {
     const g: any = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { groundAuditLog: true } as any }).catch(() => null);
     const raw = g?.groundAuditLog;
     const log: any = raw && !Array.isArray(raw) && typeof raw === 'object' ? { ...raw } : { timeline: Array.isArray(raw) ? raw : [], contextNotes: [] };

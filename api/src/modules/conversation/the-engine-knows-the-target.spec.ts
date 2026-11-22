@@ -95,7 +95,7 @@ describe('and the service actually fetches them', () => {
     /* Gained isADecisionAboutAPerson (decision 46, 29 September 2026) alongside the rest, and who set it and
        which way it goes (decision 69, 1 October 2026). */
     expect(CODE).toMatch(
-      /const ground = await this\.prisma\.ground\.findUnique\(\{\s*where: \{ id: checkIn\.groundId \},\s*include: \{[\s\S]{0,400}?objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true \}/,
+      /const ground = await this\.prisma\.ground\.findUnique\(\{\s*where: \{ id: checkIn\.groundId \},\s*include: \{[\s\S]{0,400}?objectives: \{ select: \{ (?:id: true, )?name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true \}/,
     );
   });
 

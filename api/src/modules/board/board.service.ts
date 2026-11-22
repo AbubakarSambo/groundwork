@@ -1,4 +1,5 @@
 import { theQuietHoursNow } from '../../common/the-clock';
+import { theGoalChangesOn, theChangeThatMadeThisGoal, theChangeAsASentence } from '../grounds/a-goal-changed-by-its-lead';
 import { aRoundIsCounted, sessionsAPauseOpened } from '../grounds/a-round-that-could-be-answered';
 import { whenTheseOrganisationsPaused, thePausesThatAreOver } from '../billing/the-trial-grace';
 import { thePlannedSessionsOf } from '../grounds/this-sessions-count';
@@ -1542,6 +1543,8 @@ export class BoardService {
           .filter((x) => (theyRunIt || x.participantId === me?.id) && (ground.participants as any[]).some((p) => p.id === x.participantId))
           .map((x) => ({ participantId: x.participantId, name: nameOf(x.participantId), count: x.count, said: x.said, atSession: x.sessionNumber })),
         delta: theFirstCount(o) ? 0 : o.count - o.prevCount,
+        /* When and why its lead changed this goal, from the one log of changes, to whoever may read the goal (a-goal-changed-by-its-lead). */
+        changed: (() => { const c = theChangeThatMadeThisGoal(theGoalChangesOn((ground as any).groundAuditLog), o.id); return c ? theChangeAsASentence(c, (ground.participants as any[]).map((p) => String(p?.user?.firstName ?? p?.nameGiven ?? '').trim()).filter(Boolean)) : null; })(),
         isNew: o.addedAtSession != null && o.addedAtSession >= maxSession,
         /* The model's suggested count is not a source of a figure any more (batch 2, group 2; staging S1): none is served. A figure
            is the record's, and the line it came from is served only where it landed (suggestedSaid with no suggestedCount). */
