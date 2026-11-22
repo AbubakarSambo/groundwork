@@ -1951,6 +1951,16 @@ export const READ_THE_AIMS = `   One item per aim, keeping what they said it is 
    are genuinely different stay as two.
 
    Only what they actually said it is for. If they never said, return an empty list.
+
+   A GOAL THE LEAD CHANGED IS THAT GOAL, NOT A NEW ONE. Where THE GOALS ON RECORD are listed, the lead can
+   change them: "freezers are out of stock, so the goal this week is a waitlist of 50 names". When she
+   changes a goal and says yes once Groundwork has said the change back (or asks for it plainly and agrees
+   when it is put to her), the new aim carries:
+   - replaces: the ids of every goal on record it takes the place of. Ten freezers a week for each of two
+     people is two ids, both replaced by the one waitlist.
+   - because: why it changed, in her words, as one plain sentence ("Freezers are out of stock until next month.").
+   - stopsTheWork: true where that reason stops the work itself (a stock-out, a closed road, a broken machine).
+   Leave replaces out for an aim that sits beside the goals on record, and for a change she has not agreed to.
 `;
 
 export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING this check-in, capture two things. What the check-in as a whole is aiming at is read by the conversation's assessment, not here.
@@ -2034,28 +2044,7 @@ A DEADLINE MEANS IT IS NOT A GOAL. Something with a date is a piece of work, wha
 TWO PEOPLE AND A DATE IS A COMMITMENT, and whoever the work is owed TO goes in owedTo - that is the whole
 difference between a to-do and a commitment.
 Do not infer awareness. If they were not asked and did not volunteer it, that is NOT_ASKED.
-Be conservative. Empty lists are correct answers.
-
-3. goalChanges: where the speaker changed one of the goals listed under THE GOALS ON RECORD, and said yes when
-   Groundwork said the change back to them.
-
-   "Freezers are out of stock, so this week the goal is a waitlist of 50 names" changes the goal of selling
-   freezers into a waitlist of 50 names. A new number for the same thing is a change too ("make it 60 a week").
-   A second goal beside the ones on record is not a change, and goes nowhere here.
-
-   - replaces: the ids, from THE GOALS ON RECORD, of every goal the new one takes the place of. Ten freezers a
-     week for each of two people is two ids, both replaced by the one waitlist.
-   - aim: the new goal as one plain, full sentence about whoever holds it, by first name, or "The team".
-     "The team is building a waitlist of 50 names".
-   - target: the number in it, only where they said one.
-   - whose: "The team", or the first name of the one person it belongs to.
-   - because: why it changed, in their words, as one plain sentence. "Freezers are out of stock." Empty when
-     they gave no reason.
-   - stopsTheWork: true where the reason is something that stops the work itself, such as a stock-out, a
-     closed road or a broken machine. False for a change of plan or of mind.
-
-   ONLY WITH THEIR YES. Leave a change out unless Groundwork said back what would change and the speaker
-   agreed to it in a later message. A change they were still thinking about, or did not answer, is not made.`;
+Be conservative. Empty lists are correct answers.`;
 
 /**
  * WHAT THIS PERSON SAID THEY WOULD DO, from their own check-in.
@@ -2291,22 +2280,6 @@ export const EXPECTATION_SCHEMA = {
             },
           },
           required: ['personName', 'expectation', 'awareness', 'kind', 'check', 'dueKind'],
-        },
-      },
-      goalChanges: {
-        type: 'array',
-        description: 'Each goal on record the speaker changed, only where they said yes when Groundwork said the change back. Empty otherwise.',
-        items: {
-          type: 'object',
-          properties: {
-            replaces: { type: 'array', items: { type: 'string' }, description: 'The ids from THE GOALS ON RECORD that the new goal takes the place of.' },
-            aim: { type: 'string', description: 'The new goal as one plain, full sentence about whoever holds it, by first name, or "The team".' },
-            target: { type: 'number', description: 'The number in the new goal, only where they said one.' },
-            whose: { type: 'string', description: '"The team", or the first name of the one person it belongs to.' },
-            because: { type: 'string', description: 'Why it changed, in their words, as one plain sentence. Empty when they gave no reason.' },
-            stopsTheWork: { type: 'boolean', description: 'True where the reason stops the work itself (a stock-out, a closed road); false for a change of plan.' },
-          },
-          required: ['replaces', 'aim', 'whose'],
         },
       },
     },
@@ -4448,7 +4421,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
       : []),
     /* Only the lead changes a goal by saying so, and only with her yes (a-goal-changed-by-its-lead). */
     ...(ctx.partyType === PartyType.INITIATOR && (ctx.objectives ?? []).length
-      ? ['CHANGING A GOAL: the person you are talking to runs this check-in and can change a goal above by saying so, for example because something stops the work. When they do, say back plainly what will change, from which goal to which goal and why, and ask them to say yes. Change nothing until they say yes. Once they do, tell them it is changed and that each person will be asked about the new goal in their next check-in.']
+      ? ['CHANGING A GOAL: the person you are talking to runs this check-in and can change a goal above by saying so, for example because something stops the work. When they do, say back plainly what will change, from which goal to which goal and why, and end that message by asking whether that is right. Change nothing until they say yes. Once they do, tell them it is changed and that each person will be asked about the new goal in their next check-in.']
       : []),
     /**
      * WHAT THIS PERSON IS WORKING TO, AND WHETHER THEY HAVE EVER SEEN IT.

@@ -471,7 +471,7 @@ export const THE_ASSESSMENT_SCHEMA = {
           disagreements: anItem({ what: S('What they said.'), otherSays: S('What the record or someone else says.') }),
         },
       },
-      targets: anItem({ aim: S('The aim as one plain, full sentence about whoever holds it, by first name, or "The team".'), target: { type: ['number', 'null'], description: 'The number aimed at, only where they said one.' }, unit: S('What it counts.'), by: S('By when, in their words.'), whose: S('Whose aim: a first name, or "The team".'), reportsWhatIsDone: { type: 'boolean', description: 'True when the number is what they say they have already done or got ("I sold 24 last week"), reported against an aim, and not a number they are aiming at.' } }),
+      targets: anItem({ aim: S('The aim as one plain, full sentence about whoever holds it, by first name, or "The team".'), target: { type: ['number', 'null'], description: 'The number aimed at, only where they said one.' }, unit: S('What it counts.'), by: S('By when, in their words.'), whose: S('Whose aim: a first name, or "The team".'), reportsWhatIsDone: { type: 'boolean', description: 'True when the number is what they say they have already done or got ("I sold 24 last week"), reported against an aim, and not a number they are aiming at.' }, replaces: { type: 'array', items: { type: 'string' }, description: 'Only where the lead changed goals listed under THE GOALS ON RECORD and said yes to the change: the ids of the goals this aim takes the place of.' }, because: S('Why the goal changed, in their words, where it replaces goals on record.'), stopsTheWork: { type: 'boolean', description: 'True where the reason for the change stops the work itself (a stock-out, a closed road).' } }),
       stillOpen: anItem({ question: S('What to ask next time.') }),
       everythingElse: anItem({ what: S('What it is about.') }),
       aboutTheLead: anItem({ what: S('What they say against the person who leads this check-in, in plain words.') }),
@@ -521,6 +521,8 @@ export interface TheMaterial {
   on?: string | null;
   givenRole: string | null;
   priorities: string[];
+  /** For the lead only: every goal on record with its id, so a goal she changes is named by its id (a-goal-changed-by-its-lead). */
+  goalsOnRecord?: { id: string; name: string; target: number | null }[];
   /** Every turn in order; person turns carry their number. */
   turns: { role: 'person' | 'groundwork'; content: string; n?: number }[];
   /** Setup's words, numbered first, and what setup was given beside them (the lead's notes on each person, the timing). */
@@ -547,6 +549,7 @@ export function theMaterialAsText(m: TheMaterial): string {
   if (m.on) out.push(`The day of the conversation: ${m.on}.`);
   out.push(`The role they were given: ${m.givenRole ?? 'not known'}.`);
   if (m.priorities.length) out.push('', 'THE TEAM\'S PRIORITIES:', ...m.priorities.map((p) => `  - ${p}`));
+  if (m.goalsOnRecord?.length) out.push('', 'THE GOALS ON RECORD (only the lead can change these):', ...m.goalsOnRecord.map((g) => `  [${g.id}] ${g.name}${typeof g.target === 'number' ? `, ${g.target}` : ''}`));
   if (m.setup) {
     out.push('', 'SETUP MATERIAL (the lead setting this check-in up):');
     for (const w of m.setup.words) out.push(...(w.asked ? [`(Groundwork had asked: ${w.asked.slice(-300)})`] : []), `[${w.n}] THE LEAD, IN SETUP: ${w.content}`);

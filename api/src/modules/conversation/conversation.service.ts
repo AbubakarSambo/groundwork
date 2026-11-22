@@ -343,7 +343,7 @@ import { keepThePromisesSaidDone } from './a-promise-said-done-is-kept';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
 import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collections';
 import { FROM_YOUR_CHECK_IN, theWordsItCameFrom, theTargetAsALine, type ATargetToHold } from '../grounds/the-leads-targets-wait-for-her-yes';
-import { theChangeToMake, theGoalChangesOn, theChangeThatMadeThisGoal, theChangeAsASentence, type AGoalChange, type AGoalChangeSaid, type AGoalOnRecord } from '../grounds/a-goal-changed-by-its-lead';
+import { theChangeToMake, theGoalAsItWas, theGoalChangesOn, theChangeThatMadeThisGoal, theChangeAsASentence, type AGoalChange, type AGoalChangeSaid, type AGoalOnRecord } from '../grounds/a-goal-changed-by-its-lead';
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
@@ -10379,8 +10379,6 @@ ${told}` : '';
 
     /* The speaker's own targets, by id, so a new number for one of them edits it rather than making a second (Mercy, 29 October). */
     const theirTargetsOnRecord = ((await Promise.resolve(this.prisma.groundObjective.findMany({ where: { groundId, ownerParticipantId: participantId }, select: { id: true, name: true, target: true } })).catch(() => [])) ?? []) as { id: string; name: string; target: number | null }[];
-    /* Every goal on this check-in, which only its lead may change by saying so (a-goal-changed-by-its-lead). */
-    const theGoalsOnRecord = ((await Promise.resolve(this.prisma.groundObjective.findMany({ where: { groundId }, select: { id: true, name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } })).catch(() => [])) ?? []) as AGoalOnRecord[];
     const result = await this.anthropic.extract<{
       theirOwnTarget?: { name: string; target: number; corrects?: string | null } | null;
       expectations: {
@@ -10398,27 +10396,9 @@ ${told}` : '';
         /** REFERENCE only: where the work is tracked. Never its state. */
         trackedUrl?: string;
       }[];
-      goalChanges?: AGoalChangeSaid[];
-    }>(EXPECTATION_PROMPT, [{ role: 'user', content: `${theSpeakerLine(me)}\n\n${theirTargetsOnRecord.length ? `Their targets on record:\n${theirTargetsOnRecord.map((t) => `[${t.id}] ${t.name}${typeof t.target === 'number' ? `, ${t.target}` : ''}`).join('\n')}\n\n` : ''}${theGoalsOnRecord.length ? `THE GOALS ON RECORD:\n${theGoalsOnRecord.map((t) => `[${t.id}] ${t.name}${typeof t.target === 'number' ? `, ${t.target}` : ''}`).join('\n')}\n\n` : ''}${transcript}` }], EXPECTATION_SCHEMA as any);
+    }>(EXPECTATION_PROMPT, [{ role: 'user', content: `${theSpeakerLine(me)}\n\n${theirTargetsOnRecord.length ? `Their targets on record:\n${theirTargetsOnRecord.map((t) => `[${t.id}] ${t.name}${typeof t.target === 'number' ? `, ${t.target}` : ''}`).join('\n')}\n\n` : ''}${transcript}` }], EXPECTATION_SCHEMA as any);
     if (!result) return;
 
-    /* A goal she changed, and said yes to when Groundwork said it back, changes the one goal on record (a-goal-changed-by-its-lead). */
-    for (const said of result.goalChanges ?? []) {
-      const people = ground.participants.map((p) => ({ id: p.id, firstName: p.user?.firstName ?? null }));
-      const change = theChangeToMake(said, theGoalsOnRecord, people, (n) => numbersInTheirWords.has(n));
-      if (!change) continue;
-      const session = await this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { sessionNumber: true } }).catch(() => null);
-      await this.prisma.groundObjective.update({
-        where: { id: change.keep.id },
-        data: { name: change.name, target: change.target, ownerParticipantId: change.ownerParticipantId, count: 0, prevCount: 0, suggestedCount: null, suggestedSaid: null, suggestedAtSession: null, addedAtSession: session?.sessionNumber ?? null, setByParticipantId: participantId },
-      });
-      if (change.drop.length) await this.prisma.groundObjective.deleteMany({ where: { id: { in: change.drop.map((d) => d.id) }, groundId } });
-      await this.keepTheChangeOfATarget(groundId, {
-        objectiveId: change.keep.id, from: change.keep.target, to: change.target, byParticipantId: participantId, said: theirOwnTurns[theirOwnTurns.length - 1] ?? null,
-        fromNames: [change.keep, ...change.drop].map((o) => o.name), toName: change.name, because: change.because, stopsTheWork: change.stopsTheWork,
-      });
-      this.logger.log(`Ground ${groundId}: the lead changed a goal, with her yes (${[change.keep, ...change.drop].length} replaced).`);
-    }
 
     /** The same resolver as work mentions: a name that matches nobody is dropped, never guessed. */
     const others = ground.participants.filter((p) => p.id !== participantId && !p.managingOnly);
@@ -10780,9 +10760,40 @@ ${told}` : '';
       .filter((t) => !anAimHeldByAnotherPerson(t as any, a.about.who))
       .map((t) => ({ name: String(t.aim ?? t.words ?? '').trim(), target: typeof t.target === 'number' ? t.target : null }))
       .filter((t) => t.name);
-    if (!aims.length) return;
     const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } });
-    await this.keepTheTeamsAims(checkIn.groundId, checkIn.participantId, aims, [...(setup?.words ?? []), ...turns.map((t) => t.content ?? '')]);
+    const herWords = [...(setup?.words ?? []), ...turns.map((t) => t.content ?? '')];
+    /* A goal she changed, with her yes, changes the one goal on record; it is never kept as a new aim beside it (a-goal-changed-by-its-lead). */
+    const changes = (a.targets ?? []).filter((t: any) => Array.isArray(t.replaces) && t.replaces.length);
+    if (changes.length) await this.changeTheGoalsSheChanged(checkIn, changes as any[], herWords);
+    const kept = aims.filter((t) => !changes.some((c: any) => String(c.aim ?? c.words ?? '').trim() === t.name));
+    if (!kept.length) return;
+    await this.keepTheTeamsAims(checkIn.groundId, checkIn.participantId, kept, herWords);
+  }
+
+  /** Each goal the lead changed, with her yes: the one goal row changes, what it was and why are kept once (a-goal-changed-by-its-lead). */
+  private async changeTheGoalsSheChanged(checkIn: { id: string; participantId: string; groundId: string }, said: AGoalChangeSaid[], herWords: string[]): Promise<void> {
+    const groundId = checkIn.groundId;
+    const [onRecord, ground, session] = await Promise.all([
+      this.prisma.groundObjective.findMany({ where: { groundId }, select: { id: true, name: true, target: true, ownerParticipantId: true } }),
+      this.prisma.ground.findUnique({ where: { id: groundId }, select: { participants: { select: { id: true, user: { select: { firstName: true } } } } } }),
+      this.prisma.checkIn.findUnique({ where: { id: checkIn.id }, select: { sessionNumber: true } }),
+    ]);
+    const { numbersInTheirWords } = await this.whatTheySaidAndGave(groundId, checkIn.participantId, herWords, true);
+    const people = ((ground as any)?.participants ?? []).map((p: any) => ({ id: p.id, firstName: p.user?.firstName ?? null }));
+    for (const one of said) {
+      const change = theChangeToMake(one, onRecord as AGoalOnRecord[], people, (n) => numbersInTheirWords.has(n));
+      if (!change) continue;
+      await this.prisma.groundObjective.update({
+        where: { id: change.keep.id },
+        data: { name: change.name, target: change.target, ownerParticipantId: change.ownerParticipantId, count: 0, prevCount: 0, suggestedCount: null, suggestedSaid: null, suggestedAtSession: null, addedAtSession: session?.sessionNumber ?? null, setByParticipantId: checkIn.participantId },
+      });
+      if (change.drop.length) await this.prisma.groundObjective.deleteMany({ where: { id: { in: change.drop.map((d) => d.id) }, groundId } });
+      await this.keepTheChangeOfATarget(groundId, {
+        objectiveId: change.keep.id, from: change.keep.target, to: change.target, byParticipantId: checkIn.participantId, said: herWords[herWords.length - 1] ?? null,
+        fromNames: [change.keep, ...change.drop].map((o) => theGoalAsItWas(o, people)), toName: change.name, because: change.because, stopsTheWork: change.stopsTheWork,
+      });
+      this.logger.log(`Ground ${groundId}: the lead changed a goal, with her yes (${change.drop.length + 1} replaced).`);
+    }
   }
 
   /**

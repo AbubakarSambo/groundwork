@@ -57,6 +57,13 @@ export function theChangeToMake(
   return { keep, drop, name, target, ownerParticipantId: owner, because, stopsTheWork: said.stopsTheWork === true };
 }
 
+/** A goal as it was, said so a reader knows whose it was: Amani's "Sell 10 freezers a week", or the team's. */
+export function theGoalAsItWas(o: AGoalOnRecord, people: readonly { id: string; firstName: string | null }[]): string {
+  const name = `“${o.name.trim().replace(/[.!?\s]+$/, '')}”`;
+  const first = o.ownerParticipantId ? people.find((p) => p.id === o.ownerParticipantId)?.firstName?.trim() : null;
+  return first ? `${first}’s ${name}` : `the team’s ${name}`;
+}
+
 /** Every kept change of a goal on this check-in, oldest first, read from its log. */
 export function theGoalChangesOn(groundAuditLog: unknown): AGoalChange[] {
   const log = groundAuditLog && typeof groundAuditLog === 'object' && !Array.isArray(groundAuditLog) ? (groundAuditLog as any) : null;
@@ -88,6 +95,6 @@ export function theChangeAsASentence(c: AGoalChange, names: readonly string[] = 
   const low = (x: string) => lowerFirst(x, names);
   const why = c.because ? `, because ${low(c.because.replace(/[.!?\s]+$/, ''))}` : '';
   const before = (c.fromNames ?? []).map((n) => n.replace(/[.!?\s]+$/, '')).filter(Boolean);
-  const was = before.length === 1 ? ` Before that, the goal was that ${low(before[0])}.` : before.length > 1 ? ` Before that, the goals were that ${before.map(low).join(' and that ')}.` : '';
+  const was = before.length === 1 ? ` Before that, the goal was ${before[0]}.` : before.length > 1 ? ` Before that, the goals were ${before.slice(0, -1).join(', ')} and ${before[before.length - 1]}.` : '';
   return ended(`On ${theDay(c.at)} the goal changed${why}`) + was;
 }
