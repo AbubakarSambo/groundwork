@@ -92,6 +92,16 @@ export function WhereThisIsHeadingAsPictured({ b, lead, onRecordTheDecision }: {
   )
 }
 
+/**
+ * "All 38 sessions" (board-as-lead.txt), under the Reports rows: the session the one clock names, the number the header says ("Session 38
+ * of 65"), read from the served count and never counted from the rows on the page (release test, 21 November 2026, bug 32).
+ */
+export function AllTheSessions({ b, groundId }: { b: Any; groundId: string }) {
+  const n = Number(b.theCount?.session ?? 0)
+  if (!n) return null
+  return <Link className="btn quiet" to={`/grounds/${groundId}?tab=report`} style={css('align-self:flex-start')}>{n === 1 ? 'The first session' : `All ${n} sessions`}</Link>
+}
+
 /** "Every session", the prototype's full-width secondary button. */
 export function EverySession({ groundId, children }: { groundId: string; children?: ReactNode }) {
   return <div className="stack" style={css('gap:20px;margin-top:36px')}><Link className="btn sec" to={`/grounds/${groundId}?tab=report`}>Every session</Link>{children}</div>

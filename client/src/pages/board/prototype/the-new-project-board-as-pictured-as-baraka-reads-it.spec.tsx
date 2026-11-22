@@ -72,4 +72,16 @@ describe('a new project ported from the prototype, as Baraka reads it', { timeou
     expect(text).not.toMatch(/\bground\b/i)
     expect(container.querySelector('.askdock input[aria-label="Ask about this board"]')).not.toBeNull()
   })
+
+  /* Bug 42 (release test, 21 November 2026): "14 Nov, session 4: 2 of 3 checked in" against "4 of 5" on the check-ins page. The rows
+     counted for themselves; they read the count the server serves for each session now, as the check-ins page does. */
+  it('each report row reads the served count for its session, and "All N sessions" is the header\'s own session', async () => {
+    const { container } = renderIt(true)
+    await screen.findByText('Reports', undefined, { timeout: 30000 })
+    const text = container.textContent ?? ''
+    const served = (n: number) => (board as any).theCount.bySession[String(n)]
+    for (const n of [3, 4]) expect(text).toContain(`${served(n).answered.length} of ${served(n).onTheCheckIn.length} checked in.`)
+    expect(text).toContain(`All ${(board as any).theCount.session} sessions`)
+    expect(text).toContain(`Session ${(board as any).theCount.session} of 12.`)
+  })
 })

@@ -20,7 +20,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { checkInLinksApi } from '@/api/check-in-links'
 import { reportsApi } from '@/api/reports'
-import { theCountOf } from '@/lib/the-one-count'
+import { AllTheSessions } from './the-prototype-parts'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
 import { whenTheBoardLastChanged } from '../when-the-board-last-changed'
 import { TheNudgeButton } from '../pictured/TheNudgeButton'
@@ -204,13 +204,6 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
   }
   const gridRows: Any[] = (b.checkInGrid?.rows ?? []).filter((r: Any) => !r.managingOnly && r.participantId !== leadId)
 
-  /* ---------------------------------------------------------------- the reports, counted by the one count */
-  const countOf = (n: number) => {
-    const c = theCountOf(b, n)
-    const on = (c?.onTheCheckIn ?? []).filter((id: string) => id !== leadId)
-    const answered = new Set(c?.answered ?? [])
-    return { total: on.length, answered: on.filter((id: string) => answered.has(id)).length }
-  }
   const sameDayAs = (a: string, d: Date) => isoDay(new Date(a)) === isoDay(d)
   const reportTitle = (r: Any) => {
     if (!r.opened) return `Session ${r.sessionNumber}`
@@ -456,9 +449,8 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
                   <div className="sec-h"><h2 className="t-h2">The team today</h2><span className="t-small mut">Each person’s line, their last 10 check-ins, and what keeps coming up</span></div>
                   <div className="panel" style={css('overflow:hidden')}>
                     {team.map((r) => {
-                      const served = String(reasonOf.get(r.participantId) ?? '')
-                      /* "Not in yet" is about today, on a day the check-in runs; on any other day (lastIn is served) it is the served reason. */
-                      const reason = r.checkedInToday === false && !r.lastIn ? 'has not answered' : served
+                      /* The row's own reason, as served: the board says whether they have answered with the same rule as everywhere else. */
+                      const reason = String(reasonOf.get(r.participantId) ?? '')
                       /* What their work shows, never the day they were last in: that is what the squares beside it say. */
                       const tag = aTagForTheWork(reason, dealRows.filter((d) => d.ownerParticipantId === r.participantId), today, r.workTag)
                       const tone = tag?.tone === 'proven' ? 'rec' : tag?.tone === 'attention' ? 'att' : 'plain'
@@ -673,11 +665,11 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
                           <Link className="btn sec" to={`/grounds/${groundId}/report/week`} style={css('height:38px')}>Preview</Link>
                         </div>
                       )
-                      const c = countOf(r.sessionNumber)
+                      /* The one count, as served for this session (session-rows.ts, howManyCheckedIn), never counted here. */
                       return (
                         <div key={r.sessionNumber} style={css(line)}>
                           <b className="t-small">{reportTitle(r)}</b>
-                          <span className="t-small mut">{`${c.answered} of ${c.total} checked in.${movedOn(r)}`}</span>
+                          <span className="t-small mut">{`${r.answered} of ${r.total} checked in.${movedOn(r)}`}</span>
                           <span><span className={r.shared ? 'tag rec' : 'tag att'}>{r.shared ? 'Shared' : 'Not shared'}</span></span>
                           {r.shared
                             ? <Link className="btn sec" to={`/grounds/${groundId}/session/${r.sessionNumber}`} style={css('height:38px')}>Open</Link>
@@ -688,7 +680,7 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
                       )
                     })}
                   </div>
-                  <Link className="btn quiet" to={`/grounds/${groundId}?tab=report`} style={css('align-self:flex-start')}>{`All ${p.sessionRows.length} ${p.sessionRows.length === 1 ? 'session' : 'sessions'}`}</Link>
+                  <AllTheSessions b={b} groundId={groundId} />
                 </section>
               )}
             </div>

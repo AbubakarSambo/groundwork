@@ -258,9 +258,11 @@ describe('buildSessionRows: agrees with the board’s own grid about who joined 
     const session1 = rows.find((r) => r.sessionNumber === 1)
     const session2 = rows.find((r) => r.sessionNumber === 2)
     expect(session1?.waitingOn).not.toContain('Tendai Moyo')
-    expect(session1?.total).toBe(1)
     expect(session2?.waitingOn).toContain('Tendai Moyo')
-    expect(session2?.total).toBe(2)
+    /* Changed 22 November 2026 (release test, bug 42): "N of M checked in" is the count the server serves, as the check-ins page reads it,
+       never one the page works out again from the grid. Who a session counts is the server's to say. */
+    expect(session1?.total).toBe((ground.theCount as any).bySession[1].onTheCheckIn.length)
+    expect(session2?.total).toBe((ground.theCount as any).bySession[2].onTheCheckIn.length)
   })
 })
 

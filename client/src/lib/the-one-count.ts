@@ -29,6 +29,8 @@ export interface WhoHasAnswered {
  */
 export interface TheCountAsServed {
   session: number
+  /** The sessions the check-in plans, from the same clock; null while it runs until somebody ends it. */
+  planned?: number | null
   bySession: Record<string | number, WhoHasAnswered>
   said: {
     /** "Three of the five people have checked in for session 2.", then who, then who is not counted. */
@@ -48,6 +50,16 @@ const served = (ground: unknown): TheCountAsServed | null => (ground as { theCou
 /** The served count of one session, or null where the server served none. */
 export function theCountOf(ground: unknown, sessionNumber: number | null | undefined): WhoHasAnswered | null {
   return served(ground)?.bySession?.[sessionNumber ?? 1] ?? null
+}
+
+/**
+ * "3 of 4 checked in." FOR ONE SESSION, AS THE SERVER COUNTED IT (release test, 21 November 2026, bug 42): everybody the session counts and
+ * who of them has answered, exactly as served, the same count the check-ins page and Today read. A page never takes anybody out of it
+ * or puts anybody in. Null where the server served no count for that session.
+ */
+export function howManyCheckedIn(ground: unknown, sessionNumber: number | null | undefined): { answered: number; of: number } | null {
+  const c = theCountOf(ground, sessionNumber)
+  return c ? { answered: c.answered.length, of: c.onTheCheckIn.length } : null
 }
 
 /** The clock's session and its sentences, for a reader shown the others; null for anybody else, or where none was served. */

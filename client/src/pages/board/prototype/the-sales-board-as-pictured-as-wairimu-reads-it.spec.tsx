@@ -128,14 +128,18 @@ describe('the sales board ported from the prototype, as Wairimu reads it', { tim
     expect(section(container, 'The team today').textContent).not.toMatch(/Last in \d/)
   })
 
-  it('every report row counts the same people the team rows do, and two sessions on one day are told apart', async () => {
+  /* Changed 22 November 2026: each row counted the team itself, taking the lead out, and read "2 of 3" where the check-ins page read
+     "4 of 5" (release test, bug 42). Each row now reads the count the server serves for its session, as every other page does. */
+  it('every report row reads the served count for its session, and two sessions on one day are told apart', async () => {
     const { container } = renderIt(true)
     await screen.findByText('The team today', undefined, { timeout: 30000 })
     const reports = section(container, 'Reports').textContent ?? ''
-    for (const m of reports.matchAll(/(\d+) of (\d+) checked in\./g)) expect(Number(m[2])).toBe(5)
+    const served = (n: number) => (board as any).theCount.bySession[String(n)]
+    for (const n of [3, 4]) expect(reports).toContain(`${served(n).answered.length} of ${served(n).onTheCheckIn.length} checked in.`)
+    /* "All N sessions" is the one clock's session, the header's own number. */
+    expect(reports).toContain(`All ${(board as any).theCount.session} sessions`)
     expect(reports).toMatch(/session 4/)
     expect(reports).toMatch(/session 3/)
-    expect(reports).toMatch(/All \d+ sessions/)
     expect(reports).not.toContain('check-ins')
   })
 })

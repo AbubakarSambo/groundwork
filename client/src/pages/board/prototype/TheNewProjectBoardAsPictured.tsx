@@ -11,7 +11,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { css } from './the-prototype-markup'
-import { TheCheckInsHeader, WhereThisIsHeadingAsPictured, EverySession, TheAskBar, theHeaderLine } from './the-prototype-parts'
+import { TheCheckInsHeader, WhereThisIsHeadingAsPictured, EverySession, TheAskBar, theHeaderLine, AllTheSessions } from './the-prototype-parts'
 import { useWhatNeedsYou, lastTen, aTagForTheWork, isoDay, aShortDay } from '../pictured/ThePicturedSalesBoard'
 import { CORRECT_IT_HERE } from '../pictured/TheBar'
 import './the-prototype-boards.css'
@@ -219,7 +219,7 @@ export function TheNewProjectBoardAsPictured(p: TheNewProjectBoardAsPicturedProp
                   </div>
                 ))}
               </div>
-              <Link className="btn quiet" to={`/grounds/${groundId}?tab=report`} style={css('align-self:flex-start')}>{`All ${p.sessionRows.length} ${p.sessionRows.length === 1 ? 'session' : 'sessions'}`}</Link>
+              <AllTheSessions b={b} groundId={groundId} />
             </section>
           )}
           <EverySession groundId={groundId} />

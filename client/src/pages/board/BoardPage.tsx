@@ -2757,7 +2757,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           rather than the prototype's wide outlined white button with a border and bold text.
         */}
         <div className="gwui-mt-10 gwui-fs-13-5 gwui-ink-sub">
-          {sessionRows.length} check-in{sessionRows.length === 1 ? '' : 's'} in all.
+          {/* The one clock's session (theCount), the number the header says, never the rows counted here. */}
+          {(() => { const n = Number((groundForSignals as any)?.theCount?.session ?? (b as any).theCount?.session ?? 0); return n ? `${n} check-in${n === 1 ? '' : 's'} in all.` : null })()}
         </div>
         <Link
           to={`/grounds/${id}?tab=report`}
@@ -2911,7 +2912,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: b.title }]}
           title={b.title}
           updated={shortUpdatedLine ? undefined : (whenTheBoardLastChanged(b.lastChangedAt, direct) || undefined)}
-          subtitle={(picturedDecision ? (() => { const n = (b.participants ?? []).length; const done = (b as any).howItIsGoing?.glance?.progress?.answeredThisRound ?? null; return `${n} people answer once.${done != null ? ` ${done} of ${n} have answered.` : ''}` })() : picturedLead || picturedReader || picturedParticipant || picturedOnboarding || picturedPlan || picturedOtherKind ? picturedCadenceLine : picturedMember ? [((b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name ? `Run by ${(b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name}.` : null), theScheduleInWords(groundForSignals as any, null), spineWords].filter(Boolean).join(' ') : cadenceLine) || undefined}
+          subtitle={(picturedDecision ? (() => { /* The one count's people and answers (howItIsGoing), never the roster counted here. */ const progress = (b as any).howItIsGoing?.glance?.progress; const n = progress?.ofPeople; if (n == null) return null; const done = progress?.answeredThisRound ?? null; return `${n} people answer once.${done != null ? ` ${done} of ${n} have answered.` : ''}` })() : picturedLead || picturedReader || picturedParticipant || picturedOnboarding || picturedPlan || picturedOtherKind ? picturedCadenceLine : picturedMember ? [((b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name ? `Run by ${(b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name}.` : null), theScheduleInWords(groundForSignals as any, null), spineWords].filter(Boolean).join(' ') : cadenceLine) || undefined}
           action={(
             /*
               B-204: AT A PHONE WIDTH, THE NEXT-SESSION NOTE COULD RUN THE WHOLE PAGE SIDEWAYS.

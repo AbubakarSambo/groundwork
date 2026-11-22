@@ -34,9 +34,9 @@ export function TheNewHireBoardAsPictured(p: TheNewHireBoardAsPicturedProps) {
   const hireName = firstName(hire?.name) || 'the new hire'
   const leadName = firstName(lead?.name)
   const names = hire && leadName ? `${hireName} and ${leadName}.` : null
-  const phase = b.phaseSpine
-  const lastIsDone = !!phase?.plannedSessions && phase.currentSession >= phase.plannedSessions
-    && (phase.sessions ?? []).find((s: Any) => s.n === phase.plannedSessions)?.state === 'done'
+  /* Done when every planned session is done, by the server's own count of sessions done (howItIsGoing's roundsDone), as the list reads it. */
+  const progress = b.howItIsGoing?.glance?.progress
+  const lastIsDone = !!progress?.roundsPlanned && (progress.roundsDone ?? 0) >= progress.roundsPlanned
   const agreed: Any[] = typeof b.startingState === 'object' && b.startingState ? b.startingState.rows ?? [] : []
   const changes: Any[] = b.changeSinceLast?.rows ?? []
   const steps: Any[] = b.ninetyDays?.steps ?? []
