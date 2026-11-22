@@ -293,6 +293,11 @@ export interface Ranked {
   says: string;
   /** What the manager can ask them to do. Null where there is nothing to ask for. */
   ask: string | null;
+  /**
+   * Their open wait in the same words `says` uses ("Amani Wekesa has been waiting on Baraka for the delivery date since 22 November."), or
+   * null. For a row that says something else in place of `says` (the sales board's line from their last check-in), so the wait is never lost.
+   */
+  theWait: string | null;
   /** Whether an admin did not let this person in, who decided and when (request 85). Null where not. */
   notLetIn: boolean;
   notLetInBy: string | null;
@@ -439,6 +444,7 @@ export function whereEachPersonIs(rows: PersonRow[], roundsPlanned: number | nul
           ? `${subjectFor(r, true)} has checked in.`
           : whatHappened(r, reason, roundsPlanned),
         ask,
+        theWait: theWaitToSay(r) ? `${subjectFor(r, true)} ${aWaitInWords(theWaitToSay(r)!)}.` : null,
         notLetIn: !!r.notLetIn,
         notLetInBy: r.notLetIn?.by ?? null,
         notLetInAt: r.notLetIn?.at ?? null,

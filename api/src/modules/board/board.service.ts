@@ -70,7 +70,7 @@ import { theDealsThePromisesAreAbout } from './the-deal-a-promise-is-about';
 import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
 import { theWordsNameTheDeal, theMarkForTheDeal, theDepositFor, aDepositSaid, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, withTheSaleEachCodeAnswered, theTurnsBehindTheCodes, theSaleAsItsPaymentShowsIt, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
 import { withTheValueWorkedOut, withOnlyTheNumbersSaid, theBuyingDateOf, theBuyingDateTheySaid, BUYING_DATE, aLineIsAbout } from './a-deals-value-and-buying-date';
-import { theirLine, theirCheckInToday, HAS_NOT_CHECKED_IN_TODAY, CHECKED_IN_TODAY } from './each-persons-line-today';
+import { theirLine, theirCheckInToday, theirLastAnswer, HAS_NOT_CHECKED_IN_TODAY, CHECKED_IN_TODAY } from './each-persons-line-today';
 import { withoutADealsFigure } from './a-deals-units-are-not-a-target';
 import { KEEP_THE_TEAM_ON_TRACK, CONNECT_GOALS_ACROSS, A_NUMBER_MADE_OF_ITS_CUSTOMERS } from '../conversation/what-a-check-in-owes';
 import { eachTargetOnce, theDifferencesThatAreOnlyATargetSaidAgain } from './a-target-said-again-is-that-target';
@@ -2711,9 +2711,9 @@ export class BoardService {
         if (!aDayItRuns) {
           for (const row of out.eachPersonToday as any[]) {
             if (today.has(row.participantId)) continue;
-            const c = (checkIns as any[]).filter((x) => x.participantId === row.participantId && String(x.status).toUpperCase() === 'COMPLETED' && x.completedAt && !x.isSetup)
-              .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0];
-            if (c) last.set(row.participantId, c);
+            /* The last one they answered, by the one rule of answering (theirLastAnswer), never a session the clock closed with nothing from them. */
+            const c = theirLastAnswer(checkIns as any[], row.participantId);
+            if (c) last.set(row.participantId, { ...c.checkIn, answeredAt: c.at });
           }
         }
         const ids = [...today.values(), ...last.values()].map((c) => c.id);
@@ -2723,16 +2723,24 @@ export class BoardService {
         const deals = isInitiator
           ? (((await ((this.prisma as any).workItem?.findMany?.({ where: { groundId, kind: 'deal' }, select: { name: true, ownerParticipantId: true } }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[])
           : [];
-        out.eachPersonToday = (out.eachPersonToday as any[]).map((row) => {
+        /* Their open wait, in the words of the row it replaces (whereEachPersonIs' `theWait`), after whatever line is said here: the line
+           from their last check-in took the row's place, and the wait was lost from the row of anybody who had not answered yet (re-test,
+           22 November evening, R-10: "Not in yet" beside Amani, who was waiting on Baraka for the delivery date). */
+        const theWaitOf = new Map<string, string | null>(((out.eachPerson as any[]) ?? []).map((r) => [r.participantId, r.theWait ?? null]));
+        const withTheWait = (row: any) => {
+          const wait = theWaitOf.get(row.participantId);
+          return wait ? { ...row, line: `${String(row.line ?? '').trim()} ${wait}`.trim() } : row;
+        };
+        out.eachPersonToday = (out.eachPersonToday as any[]).map((row) => withTheWait((() => {
           const c = today.get(row.participantId);
           const before = last.get(row.participantId);
           if (!c && before) {
             const words = isInitiator
               ? theirLine((said as any[]).filter((l) => l.checkInId === before.id).map((l) => ({ text: cleanText(String(l.text ?? '')), type: l.type ?? null, createdAt: l.createdAt })), deals.filter((d) => d.ownerParticipantId === row.participantId).map((d) => String(d.name ?? '')))
               : null;
-            const on = aDaySaidInFull(new Date(before.completedAt));
+            const on = aDaySaidInFull(before.answeredAt);
             const first = String(row.who ?? '').trim().split(/\s+/)[0] || 'They';
-            const shortDay = new Intl.DateTimeFormat('en-GB', { timeZone: zone, day: 'numeric', month: 'short' }).format(new Date(before.completedAt)).replace('Sept', 'Sep');
+            const shortDay = new Intl.DateTimeFormat('en-GB', { timeZone: zone, day: 'numeric', month: 'short' }).format(before.answeredAt).replace('Sept', 'Sep');
             return { ...row, line: words ? `On ${on}, ${first} said, “${words}”` : `${first} last checked in on ${on}.`, checkedInToday: false, lastIn: shortDay };
           }
           if (!c) {
@@ -2748,9 +2756,11 @@ export class BoardService {
           /* What they said today is worded as said, by name, as their last check-in's line is: their word, never a fact the board states (Hafsah, 4 November 2026). */
           const first = String(row.who ?? '').trim().split(/\s+/)[0] || 'They';
           return { ...row, line: line ? `${first} said, “${line}”` : CHECKED_IN_TODAY, checkedInToday: true };
-        });
+        })()));
       }
     }
+    /* `theWait` is only for the line above: the row's own `says` is what every reader of the row is served. */
+    if (Array.isArray(out.eachPerson)) out.eachPerson = (out.eachPerson as any[]).map(({ theWait: _w, ...row }) => row);
 
     /*
      * THE RECORDS THIS KIND OF WORK NEEDS (request 76): deals and their stages, releases, tickets, a
