@@ -276,8 +276,10 @@ export function whoMaySee(section: string, item?: { wellbeing?: unknown; aboutWh
 export function anAimHeldByAnotherPerson(t: { whose?: unknown; target?: unknown }, speaker: string | null | undefined): boolean {
   const whose = String(t?.whose ?? '').trim().split(/\s+/)[0]?.toLowerCase() ?? '';
   const me = String(speaker ?? '').trim().split(/\s+/)[0]?.toLowerCase() ?? '';
-  /* One with a number keeps the road it always had: the targets set for a person, which the owner rules already carry. */
-  return !!whose && whose !== 'the' && whose !== me && typeof t.target !== 'number';
+  /* One with a number too (22 November): a number the lead gives a named person is that person's target, written once, with its owner, by
+     the targets she sets for each person (readTheAimsAndExpectations). Kept here as well, it was a second, ownerless "Amani sells 10
+     freezers a week." beside Amani's own "Sell 10 freezers a week", so the board counted the same target twice. */
+  return !!whose && whose !== 'the' && whose !== me;
 }
 
 /**

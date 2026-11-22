@@ -2084,6 +2084,13 @@ export function EntryChatPage() {
       // then lock" must survive a refresh. (closed was saved but never restored,
       // so ended sessions reopened editable.)
       if (saved.closed) setClosed(true)
+      /* Her setup conversation comes back whichever step she left at. Restored only while setup was open, a lead who came back to
+         the save card saved with none of her own words, so her setup was read from nothing and the target she gave never became a
+         target (Drop Access and RHEA Soil, 22 November). */
+      if ((saved as any).onboardingHistory) {
+        setOnboardingHistory((saved as any).onboardingHistory)
+        setOnboardingReady((saved as any).onboardingReady ?? false)
+      }
       const step = saved.onboardingStep ?? 0
       // The lead path legitimately has an empty history (the coordinator has no
       // check-in), so it must not fall back into onboarding on reload.
@@ -2102,11 +2109,6 @@ export function EntryChatPage() {
       } else if (step > 0) {
         setPhase('onboarding')
         setOnboardingStep(step)
-        // Restore onboarding history from session if present
-        if ((saved as any).onboardingHistory) {
-          setOnboardingHistory((saved as any).onboardingHistory)
-          setOnboardingReady((saved as any).onboardingReady ?? false)
-        }
       }
   }
 
@@ -2248,7 +2250,7 @@ export function EntryChatPage() {
   }
 
   function persistOnboarding(h: Turn[], sels: OnboardingSelections, step: number, obHistory?: Turn[], obReady?: boolean) {
-    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, schedule: theScheduleSoFar(), teamText: teamTextNow.current, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
+    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, schedule: theScheduleSoFar(), teamText: teamTextNow.current, onboardingHistory: obHistory ?? onboardingHistory, onboardingReady: obHistory !== undefined ? (obReady ?? false) : onboardingReady } as any)
   }
 
   /*
@@ -2259,8 +2261,10 @@ export function EntryChatPage() {
    * check-in starts erased the plan somebody had just agreed to. Seen live: "6 sessions planned"
    * came back as "1 session planned" after a reload, with the conversation intact above it.
    */
+  /* Her setup conversation is in every save, because `saveSession` writes the record whole: a save without it erased it, and the save
+     then sent none of her words, so the target she gave in setup was never read (Drop Access and RHEA Soil, 22 November). */
   function persistCheckin(h: Turn[], cl = false, rep = '') {
-    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, schedule: theScheduleSoFar(), teamText: teamTextNow.current } as any)
+    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, schedule: theScheduleSoFar(), teamText: teamTextNow.current, onboardingHistory, onboardingReady } as any)
   }
 
   /*
