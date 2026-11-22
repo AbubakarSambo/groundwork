@@ -98,3 +98,32 @@ describe('what was agreed says when both confirmed it on day 1', () => {
     expect((await boardAs(later, 'u-amina', 'MEMBER')).startingState.confirmed).toBeUndefined();
   });
 });
+
+/*
+ * THE GOALS A LEAD GIVES AT SET-UP ARE WHAT WAS AGREED AT THE START (release test, 21 November 2026). Esther gave Musa's goals at set-up
+ * ("by day 30 he runs the morning stock count alone", "by day 90 he handles deliveries for the whole depot") and the board read
+ * "Nothing was agreed at the start yet": a goal the lead set and nobody has asked Musa about yet was left out. One set at set-up is in;
+ * one she has not told him, one he is unsure of, and one she set later and has not asked about stay out.
+ */
+describe('a goal the lead set at set-up was agreed at the start', () => {
+  const ATSETUP = {
+    ...SETUP,
+    personObjectives: [
+      goal('s-1', 'By day 30, Tobi Adewale runs the morning stock count alone.', { awareness: 'NOT_ASKED', authoredBy: 'lead-setup' }),
+      goal('s-2', 'By day 90, Tobi Adewale handles deliveries for the whole depot.', { awareness: 'NOT_ASKED', authoredBy: 'lead-setup' }),
+      goal('s-3', 'Take over the pricing decisions', { awareness: 'NOT_TOLD', authoredBy: 'lead-setup' }),
+      goal('s-4', 'Learn the returns process', { awareness: 'UNSURE' }),
+      goal('s-5', 'Run the Saturday shift', { awareness: 'NOT_ASKED', createdAt: new Date('2026-10-01T09:00:00Z') }),
+    ],
+  };
+  it('Amina reads the set-up goals under the day each one names', async () => {
+    const b = await boardAs(ATSETUP, 'u-amina', 'MEMBER');
+    const goals = b.startingState.rows.filter((r: any) => r.kind === 'goal').map((r: any) => [r.when, r.says, r.what]);
+    expect(goals).toEqual([
+      ['By day 30', 'A goal was agreed for Tobi Adewale, to be met by day 30.', 'By day 30, Tobi Adewale runs the morning stock count alone.'],
+      ['By day 90', 'A goal was agreed for Tobi Adewale, to be met by day 90.', 'By day 90, Tobi Adewale handles deliveries for the whole depot.'],
+    ]);
+    expect(everything(b)).not.toMatch(/pricing decisions|returns process|Saturday shift/);
+    expect(b.startingState.confirmed).toBeUndefined();
+  });
+});

@@ -4984,8 +4984,21 @@ export class GroundsService {
     const lines = (items: any[] | undefined, field: string) => (items ?? []).map((i) => said(i, field)).filter(Boolean).map((t) => t.slice(0, 300));
     const people = await this.prisma.groundParticipant.findMany({
       where: { groundId },
-      select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } },
+      select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, partyType: true, user: { select: { firstName: true, lastName: true } } },
     }).catch(() => [] as any[]);
+    /*
+     * A CHECK-IN ABOUT ONE PERSON (the onboarding family: a new hire, a new manager, an advisor): WHAT SUCCESS LOOKS LIKE IS WHAT IS EXPECTED OF THEM (release test, 21 November 2026). "By day 30 he
+     * runs the morning stock count alone" was read in setup and kept only as the first line of what success looks like, so the new
+     * hire's board read "Nothing was agreed at the start yet". Where one person checks in beside the lead, each success line is that
+     * person's goal, kept as the lead's expectation set at setup (what-setup-agreed.ts), as a paste's goals for a person are.
+     */
+    const ground = await Promise.resolve(this.prisma.ground?.findUnique?.({ where: { id: groundId }, select: { scenario: true } })).catch(() => null);
+    const aboutOnePerson = !!ground?.scenario && familyFor(ground.scenario as GroundScenario) === BoardFamily.ONBOARDING;
+    const theOnePerson = ((people as any[]).filter((p) => !p.managingOnly && p.partyType !== PartyType.INITIATOR));
+    const successLines = lines(a.setup?.success, 'success');
+    const forPeople: WhatAPasteGives['forPeople'] = aboutOnePerson && theOnePerson.length === 1
+      ? successLines.map((expectation) => ({ who: theNameWeUseFor(theOnePerson[0] as any), participantId: theOnePerson[0].id, expectation, targets: [] }))
+      : [];
     const aboutPeople: WhatAPasteGives['aboutPeople'] = [];
     for (const n of a.setup?.privateNotes ?? []) {
       const who = n?.about ? whoThisNameIs(String(n.about), (people as any[]).filter((p) => !p.managingOnly) as any) : null;
@@ -4998,8 +5011,8 @@ export class GroundsService {
      * dates and what is still to decide are kept on References and resources for her alone (keptForTheLead), where she can share them.
      */
     return {
-      success: lines(a.setup?.success, 'success')[0] ?? null,
-      teamTargets: [], forPeople: [], commitments: [], questionsForPeople: [], toldToParticipants: null,
+      success: successLines[0] ?? null,
+      teamTargets: [], forPeople, commitments: [], questionsForPeople: [], toldToParticipants: null,
       dates: (a.dates ?? []).map((d: any) => ({ what: said(d, 'what'), when: String(d?.when ?? '').trim() })).filter((d) => d.what && d.when),
       unmatched: [],
       waysOfWorking: lines(a.setup?.rules, 'rule'),
