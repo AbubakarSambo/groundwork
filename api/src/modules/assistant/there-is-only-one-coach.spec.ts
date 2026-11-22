@@ -117,7 +117,9 @@ describe('the waiting lane sits above the two lanes that would swallow it', () =
 });
 
 describe('the onboarding lane answers what the role is, not only what is left', () => {
-  const UP_TO = SRC.slice(SRC.indexOf('private async whereAmIUpTo('), SRC.indexOf('private async whatIsStuck('));
+  /* Changed 22 November 2026: whatIsStuck, the method this slice ended at, became theWaitsSaid (release test of 22 November, Ask #44), so
+     the slice ends there; it still covers the onboarding lane and nothing past what it covered before. */
+  const UP_TO = SRC.slice(SRC.indexOf('private async whereAmIUpTo('), SRC.indexOf('private async theWaitsSaid('));
 
   it('names the role as its own sentence rather than only in a list header', () => {
     /*
