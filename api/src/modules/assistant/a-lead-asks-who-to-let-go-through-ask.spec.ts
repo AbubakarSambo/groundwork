@@ -17,7 +17,7 @@ const THE_VIEW = {
   found: true,
   lead: 'From the record, Dan is the one to let go, because he has not answered any of his three check-ins, but the decision is yours.',
   points: ['Amina built a waitlist with names, and the proof shows it.', 'Mercy says she has a waitlist, but nothing shows it yet.'],
-  judgesAPerson: true, aboutPerson: '',
+  judgesAPerson: true, aboutPeople: [],
 };
 
 function anAsk(as: 'grace' | 'mercy') {

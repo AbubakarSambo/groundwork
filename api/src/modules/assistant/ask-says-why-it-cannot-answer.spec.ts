@@ -23,14 +23,14 @@ describe('when Ask cannot answer, the lead is told why and what Ask can do', () 
     );
     expect(said).toBe([
       'You asked what Joseph needs to do to avoid a performance plan. I do not give a view on how well one person is doing, and nothing on record says it either.',
-      'I can tell you what each person said, what is proven and what is still open, or you can add a file with Choose a file and ask me again.',
+      'I can tell you what each person said, what is proven and what is still open.',
     ].join(' '));
     expect(said).not.toMatch(/documents you can open|The document/);
   });
 
   it('with no reason from the model, still says what was looked at and what Ask can do', async () => {
     const said = await ask({ found: false, answer: '' }, 'What is the weather?');
-    expect(said).toBe('I looked at what the team has said and at the files you can open, and the answer is not in them. I can tell you what each person said, what is proven and what is still open, or you can add a file with Choose a file and ask me again.');
+    expect(said).toBe('I looked at what the team has said and at the files you can open, and the answer is not in them. I can tell you what each person said, what is proven and what is still open.');
   });
 
   it('the model is asked for the reason, and told never to start with "the document does not state"', () => {

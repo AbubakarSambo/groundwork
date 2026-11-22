@@ -49,7 +49,7 @@ const TO_GRACE = {
     'Chloe missed her check-in of 9 November and was vague on 2 and 16 November, with nothing specific to show.',
     'Mercy says she has a waitlist, but nothing shows it yet, so it is her word and it does not earn the reward.',
   ],
-  judgesAPerson: true, aboutPerson: '',
+  judgesAPerson: true, aboutPeople: [],
 };
 
 describe('a lead hears who to let go, from the record, about the people she leads', () => {
@@ -84,7 +84,7 @@ describe('a lead hears who to let go, from the record, about the people she lead
     const said = await answerFromTheDocuments({ prisma: theOrganisation(), engine: stubborn }, { organizationId: ORG, userId: 'u-mercy', question: 'Who should I let go?' });
     console.log(`MERCY ASKS "Who should I let go?" AND READS\n${said}`);
     expect(said).not.toMatch(/let go|Dan|creative|waitlist/);
-    expect(said).toBe('I do not give a view on how people are doing, because they do not report to you and are not in a check-in you run. I can tell you what each person said, what is proven and what is still open, or you can add a file with Choose a file and ask me again.');
+    expect(said).toBe('I do not give a view on how people are doing, because they do not report to you and are not in a check-in you run. I can tell you what each person said, what is proven and what is still open.');
     expect((stubborn.extract.mock.calls as any[])[1][1][0].content).toContain('These people are not ones you are responsible for. Give no view of how any of them is doing');
   });
 });

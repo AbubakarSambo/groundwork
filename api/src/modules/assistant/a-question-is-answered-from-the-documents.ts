@@ -26,7 +26,7 @@ import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, theSalesAnswer,
 import { aDepositSaid } from '../board/a-deals-proof-is-about-that-deal';
 import { aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
 import { herYearEndRecordForAsk } from '../year-end/her-year-end-record';
-import { isOneOfThem, thePeopleTheAskerIsResponsibleFor } from './the-people-the-asker-is-responsible-for';
+import { isOneOfThem, sayThePeopleTheyLead, thePeopleTheAskerIsResponsibleFor, type ThePeopleTheyLead } from './the-people-the-asker-is-responsible-for';
 
 /** Whether a message asks something, rather than tells something. Read by its shape, never by a model. */
 const STARTS_A_QUESTION = /^\s*(?:(?:and|so|but|also|please|ok|okay)[\s,]+)?(?:what|what's|whats|when|where|which|who|whom|whose|why|how|is|are|was|were|does|do|did|can|could|will|would|should|has|have|according to|tell me|do you know)\b/i;
@@ -76,14 +76,14 @@ const ANSWER_SCHEMA = {
       offer: { type: 'string', description: 'One short sentence offering to go deeper on one named thing. Empty when there are no points.' },
       whyNot: { type: 'string', description: 'Only when found is false: one or two plain full sentences to the person, saying what they asked, what was looked at and why there is no answer. Empty when found is true.' },
       judgesAPerson: { type: 'boolean', description: 'True when the answer gives a view of how well or badly a person is doing, whether they failed or let anybody down, or who does best or worst. False when it only says what somebody still has to deliver.' },
-      aboutPerson: { type: 'string', description: 'When judgesAPerson is true: the person the view is about, as named. Empty when it compares several.' },
+      aboutPeople: { type: 'array', items: { type: 'string' }, description: 'When judgesAPerson is true: the full name of every person the view is about, as the record names them. When the question names a team or a group, list each person in it by name, never the team itself.' },
     },
     required: ['found', 'lead'],
   },
 };
 
 /** What Ask can do instead, said after every reason it cannot answer. One wording, so a caller can tell a "could not find it" from an answer. */
-export const WHAT_ASK_CAN_DO = 'I can tell you what each person said, what is proven and what is still open, or you can add a file with Choose a file and ask me again.';
+export const WHAT_ASK_CAN_DO = 'I can tell you what each person said, what is proven and what is still open.';
 export const NOT_IN_THE_DOCUMENTS = `I looked at what the team has said and at the files you can open, and the answer is not in them. ${WHAT_ASK_CAN_DO}`;
 /** The reason the model gave, then what Ask can do. With no reason, the plain sentence of what was looked at. */
 const couldNotFindIt = (whyNot: unknown): string => {
@@ -337,8 +337,9 @@ export async function answerFromTheDocuments(
   const documents = [...records, ...fromMemory, ...(await theDocumentsTheyMayOpen(deps.prisma, input))];
   if (!documents.length) return NO_DOCUMENTS_TO_READ;
   /* Whom the asker may hear a view of (O-15, Hafsah, 21 November 2026): read here, given to the model, and held below whatever it says. */
-  const theirs = await thePeopleTheAskerIsResponsibleFor(deps.prisma, input).catch(() => [] as string[]);
-  const responsibleFor: ADocumentToAnswerFrom = { fileName: 'THE PEOPLE YOU ARE RESPONSIBLE FOR', content: theirs.length ? `These people report to you, are in a check-in you run, or are the team you named: ${theirs.join(', ')}.` : 'Nobody reports to you, and you run no check-in.' };
+  const theirPeople = await thePeopleTheAskerIsResponsibleFor(deps.prisma, input).catch((): ThePeopleTheyLead => ({ names: [], checkInsTheyRun: [] }));
+  const theirs = theirPeople.names;
+  const responsibleFor: ADocumentToAnswerFrom = { fileName: 'THE PEOPLE YOU ARE RESPONSIBLE FOR', content: sayThePeopleTheyLead(theirPeople) };
   let room = MOST_WE_READ_IN_ALL;
   const given: ADocumentToAnswerFrom[] = [responsibleFor];
   /* The documents that share the question's words go first, so a short question is not answered from whatever was added last (A6). */
@@ -364,14 +365,22 @@ export async function answerFromTheDocuments(
   if (read?.judgesAPerson === true && !(await thePersonJudgementsAreOn(deps.prisma, input.organizationId))) return NOT_SHOWN_IN_THIS_ORGANISATION;
   /* And only about somebody the asker is responsible for (O-15). Otherwise it is asked once more for what is outstanding alone, and a view that still comes back is
      never said. */
-  if (read?.judgesAPerson === true && !isOneOfThem(read.aboutPerson, theirs)) {
-    const who = String(read.aboutPerson ?? '').trim();
+  /* Held person by person, by the names the view is about (bug N5: "the sales team" was held as if it were a person's name, and Wairimu, who runs that team's
+     check-in, was refused). With no name given, a view across the people the asker leads is theirs when they lead anybody. */
+  const judged = (Array.isArray(read?.aboutPeople) ? read.aboutPeople : []).map((n: unknown) => String(n ?? '').trim()).filter(Boolean);
+  const isAllTheirs = judged.length ? judged.every((n: string) => isOneOfThem(n, theirs)) : isOneOfThem('', theirs);
+  if (read?.judgesAPerson === true && !isAllTheirs) {
+    const notTheirs = judged.filter((n: string) => !isOneOfThem(n, theirs));
+    const who = notTheirs.join(' and ');
+    const one = notTheirs.length === 1;
     /* A view across several people, with nobody named ("Who should I let go?"), is said of them as people, never as "them is" (Drop Access, 22 November 2026). */
     read = await ask(who
-      ? `\n\n${who} is not one of the people you are responsible for. Give no view of how ${who} is doing: say only what is still outstanding that they own, with the record and the day.`
+      ? `\n\n${who} ${one ? 'is not one of the people' : 'are not people'} you are responsible for. Give no view of how ${who} ${one ? 'is' : 'are'} doing: say only what is still outstanding that they own, with the record and the day.`
       : `\n\nThese people are not ones you are responsible for. Give no view of how any of them is doing: say only what is still outstanding that each one owns, with the record and the day.`);
     if (read?.judgesAPerson === true) return who
-      ? `I do not give a view on how ${who} is doing, because ${who} does not report to you and is not in a check-in you run. ${WHAT_ASK_CAN_DO}`
+      ? (one
+        ? `I do not give a view on how ${who} is doing, because ${who} does not report to you and is not in a check-in you run. ${WHAT_ASK_CAN_DO}`
+        : `I do not give a view on how ${who} are doing, because they do not report to you and are not in a check-in you run. ${WHAT_ASK_CAN_DO}`)
       : `I do not give a view on how people are doing, because they do not report to you and are not in a check-in you run. ${WHAT_ASK_CAN_DO}`;
   }
   const answer = theAnswerInItsShape(read);
