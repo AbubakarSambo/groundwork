@@ -14,7 +14,7 @@ import { EveryoneHere } from './EveryoneHere'
 import { InvitePeople } from './InvitePeople'
 import { WhoCanOpenACheckIn } from './WhoCanOpenACheckIn'
 import { TheTeamsHere } from './ATeamPicker'
-import { Page, PageTitle, EdgeList, EdgeRow, Button, Section, Panel, Stack, Folded } from '@/components/gw/ui'
+import { Page, PageTitle, EdgeList, EdgeRow, Button, Section, Panel, Stack, Folded, Held } from '@/components/gw/ui'
 import { useTheDesignPass } from '@/lib/the-design-pass'
 
 /**
@@ -92,6 +92,9 @@ export function whoAddedThem(rows: { addedBy?: string | null; email?: string | n
   return `${who} added ${namesFor(rows)}, and your plan is full, so nothing has been sent to them. `
     + 'Free a seat or move to a larger plan, then send the invitations. They have not been told any of this.'
 }
+
+/* The reads the page's parts make for themselves: who is waiting, everyone here, the teams, and how people join (cause E). */
+const PARTS_OF_THE_PAGE = [['who-is-waiting'], ['org-members'], ['org-teams'], ['org-joining'], ['org-adding-people'], ['how-check-ins-work']] as const
 
 export function OrgMembersPage() {
   const navigate = useNavigate()
@@ -189,6 +192,10 @@ export function OrgMembersPage() {
       {/* THE DESIGN PASS: inviting is what an admin comes here for, so it is the page's one navy button, on the title's line, and
           the form opens right under it. Everything else on the page stays, quieter and in order. */}
       <PageTitle eyebrow={orgName} title="People" action={designPass ? <Button kind="primary" onClick={openTheInvitation}>Invite a colleague</Button> : undefined} />
+
+      {/* DRAWN WHOLE ONCE ITS READS ARE IN (page loads, 22 November 2026, cause E): the seat queue, everyone here and the teams each
+          drew nothing until their own read came back, then pushed "Invite a colleague" and "Help your team get started" down. */}
+      <Held waiting={seatQueue.isLoading || seatCount.isLoading || ownerQuery.isLoading} alsoFor={PARTS_OF_THE_PAGE} what="Getting the people here" count={6}>
 
       {designPass && inviting && <div id="invite-people"><InvitePeople /></div>}
 
@@ -328,6 +335,7 @@ export function OrgMembersPage() {
         </div>
       </Section>
       </>}
+      </Held>
     </Page>
   )
 }

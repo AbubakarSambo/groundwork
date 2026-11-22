@@ -93,7 +93,7 @@ describe('a suite that is off is never asked, on your own Suites page', () => {
   it('Grace, an admin, is told the time sheets suite is off and where to switch it on, without its route being asked', async () => {
     suitesOn({ leave: true, spend: true })
     mount(GRACE, 'mine')
-    expect(await screen.findByText('Your hours')).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Your hours' })).toBeTruthy()
     expect(screen.getByText(/The time sheets suite is not switched on\. You can switch it on under/)).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Suites' })).toBeTruthy()
     await waitFor(() => expect(yourRequestsApi.spending).toHaveBeenCalled())

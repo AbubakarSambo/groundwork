@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/gw/ui/Skeleton'
+import { Skeleton, Held } from '@/components/gw/ui/Skeleton'
 import { useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -144,7 +144,8 @@ export function TeamBoardsPage() {
         THE BOARD ITSELF, not a summary of it. Keyed by the check-in so switching tabs remounts
         rather than showing one board's answers under another's name while the next request runs.
       */}
-      <BoardPage key={active!.id} groundId={active!.id} />
+      {/* Drawn whole once the board's reads are in (page loads, 22 November 2026, cause H), so its parts never arrive one by one. */}
+      <Held key={active!.id} alsoFor={[['ground', active!.id], ['board', active!.id]]} what="Getting the board" count={4}><BoardPage groundId={active!.id} /></Held>
     </div>
   )
 }

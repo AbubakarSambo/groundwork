@@ -5,7 +5,7 @@ import { TheSpendingRoute } from './ApprovalStepsByAmount'
 import { suitesApi, reviewsApi, yourRequestsApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
-import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select, Modal, Skeleton } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select, Modal, Held } from '@/components/gw/ui'
 import { QueueLink, RequestLinks } from './QueuePage'
 import { WhoLooksAfterWhat } from './WhoLooksAfterWhat'
 import { WhatIsMissing } from './WhatIsMissing'
@@ -126,6 +126,9 @@ export function SuitesPage() {
 
   return (
     <Page>
+      {/* DRAWN WHOLE ONCE ITS READS ARE IN (page loads, 22 November 2026, cause H): the subtitle, the board and the link to your own
+          requests each came in after the placeholder and moved the page. */}
+      <Held waiting={isLoading || (!!user && !suitesOn.known) || yourLeave.isLoading || yourSpending.isLoading || yourHours.isLoading} what="Getting this page">
       <PageTitle
         eyebrow={orgName || undefined}
         title="Suites"
@@ -142,7 +145,6 @@ export function SuitesPage() {
         }
       />
 
-      {(isLoading || (!!user && !suitesOn.known)) && <Skeleton what="Getting this page" shape="rows" />}
       {/* Refused before asking, by the rule the server serves on /suites/mine, in the words the server would say (page loads, 22 November 2026). */}
       {refusedBeforeAsking && <Note tone="error">{refusedBeforeAsking}</Note>}
       {isError && (
@@ -166,6 +168,7 @@ export function SuitesPage() {
         <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">{requestsLinkLabel}</Link></p>
       )}
       {!designPass && <QueueLink userId={user?.id} />}
+      </Held>
     </Page>
   )
 }

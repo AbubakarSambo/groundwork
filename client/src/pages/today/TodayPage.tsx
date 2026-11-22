@@ -8,7 +8,7 @@ import { todayApi, type Need } from '@/api/today'
 import { outstandingNotAlreadyShown } from './outstanding-not-already-shown'
 import { withComingUpTellingTwoApart } from './tell-apart-coming-up'
 import { useAuthStore } from '@/stores/auth'
-import { Page, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp, Panel, Skeleton } from '@/components/gw/ui'
+import { Page, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp, Panel, Held } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { AdminFirstRun } from '@/pages/grounds/an-admin-lands-on-a-check-in-list'
 import { partOfTheDay, whenItComes } from './when-it-comes'
@@ -259,6 +259,10 @@ export function TodayPage() {
             </>}
           />
 
+          {/* Everything under the greeting is drawn whole once /today and the reads its parts make are in (page loads, 22 November 2026,
+              cause C): the three-row placeholder inside "What needs you" was shorter than the list that replaced it, so everything
+              under it jumped down. */}
+          <Held waiting={isLoading} alsoFor={[['appeals']]} what="Getting what needs you" count={5}>
           {/* An organisation still called by the name Groundwork made up ("Hafsah's workspace") is named here, by an admin (26 October). */}
           <NameYourOrganisation />
 
@@ -290,7 +294,6 @@ export function TodayPage() {
                 {designPass ? <ShowAll items={needRows} render={(r) => r} /> : needRows}
               </EdgeList>
             )}
-            {isLoading && <Skeleton what="Getting what needs you" shape="rows" />}
             {isError && (
               <div>
                 <Note tone="error">What needs you didn’t load. Try again.</Note>
@@ -350,6 +353,7 @@ export function TodayPage() {
             that changes every day comes first, and the one-time welcome comes after it.
           */}
           <AdminFirstRun />
+          </Held>
         </div>
 
         {comingUp.length > 0 && (
