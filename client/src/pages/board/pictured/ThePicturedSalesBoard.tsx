@@ -1216,7 +1216,7 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
     /* An admin who only reads is never told "What needs you": it is not hers to do (the light board's rule, kept). */
     needsYou: !p.readOnly ? <WhatNeedsYou b={b} renderActions={p.renderActions} groundId={p.groundId} deals={deals} sessionRows={p.sessionRows} /> : null,
     accounts: <EachAccountSideBySide b={b} />,
-    knownBelievedUnknown: <KnownBelievedUnknown b={b} unknown={[]} leadFirstName={null} />,
+    knownBelievedUnknown: <KnownBelievedUnknown b={b} unknown={[]} />,
     closing: <WhatIsClosing b={b} heading="What’s closing" />,
     teamToday: <TheTeamToday b={b} deals={deals} today={isoDay(now)} groundId={p.groundId} />,
     assumes: <WhatTheTargetAssumes b={b} />,

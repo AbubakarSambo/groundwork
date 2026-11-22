@@ -3254,7 +3254,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {!picturedCollections && !picturedMatter && picturedDecision && (
           <PartBoundary>
           <ThePicturedBoard
-            order={['theDecision', 'accounts', 'knownBelievedUnknown', 'everySession', 'otherBoards', 'heading', 'recommends']}
+            order={['theDecision', 'accounts', 'knownBelievedUnknown', 'forYouToDecide', 'everySession', 'otherBoards', 'heading', 'recommends']}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
             unknown={(((groundForSignals as any)?.contextItems ?? []) as any[]).filter((l) => l.kind === 'UNSETTLED' && !l.closedAt).map((l) => String(l.text ?? ''))}
             b={b}
