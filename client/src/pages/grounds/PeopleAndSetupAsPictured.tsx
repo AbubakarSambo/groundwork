@@ -131,7 +131,8 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const recordReminderDays: number[] = (g?.chaseAfterDays ?? [1]) as number[]
   const onRecord = useMemo(() => ({
     label: g?.label ?? '',
-    kindOfWork: g?.kindOfWork ?? '',
+    /* The one kind, as the server serves it for this page: the kind the board draws (people-and-setup.ts). */
+    kindOfWork: page?.kindOfWork ?? '',
     remind: remindKeyOf(!!g?.chasingStopped, recordReminderDays),
     remindOther: recordReminderDays.join(', '),
     tellTheLead: !!g?.tellTheLead,
@@ -143,7 +144,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
     workTogether: g?.peopleWorkTogether == null ? '' : g.peopleWorkTogether ? 'yes' : 'no',
     numbersShared: props.numbersShared,
     sharesAt: g?.reportSharesAt ? 'self' : 'you',
-  }), [g?.label, g?.kindOfWork, g?.chasingStopped, recordReminderDays.join(','), g?.tellTheLead, g?.overWhatsApp, g?.simplerWords, props.expectsUnblocking, props.peersVisible, props.contactHidden, g?.peopleWorkTogether, props.numbersShared, g?.reportSharesAt])
+  }), [g?.label, page?.kindOfWork, g?.chasingStopped, recordReminderDays.join(','), g?.tellTheLead, g?.overWhatsApp, g?.simplerWords, props.expectsUnblocking, props.peersVisible, props.contactHidden, g?.peopleWorkTogether, props.numbersShared, g?.reportSharesAt])
   const [draft, setDraft] = useState(onRecord)
   useEffect(() => { setDraft(onRecord) }, [onRecord])
   const [roles, setRoles] = useState<Record<string, string>>({})
@@ -311,7 +312,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                       {page.kindsOffered.map((k) => <option key={k} value={k}>{(KIND_OF_WORK_OPTION_LABEL as Record<string, string>)[k] ?? k}</option>)}
                     </Select>
                   )
-                  : (g?.kindOfWork ? ((KIND_OF_WORK_OPTION_LABEL as Record<string, string>)[g.kindOfWork] ?? g.kindOfWork) : 'Nobody has said yet.')}
+                  : (page?.kindOfWork ? ((KIND_OF_WORK_OPTION_LABEL as Record<string, string>)[page.kindOfWork] ?? page.kindOfWork) : 'Nobody has said yet.')}
               />
               )}
             </div>
