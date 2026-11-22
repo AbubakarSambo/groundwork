@@ -552,6 +552,16 @@ export function MagicVerifyPage() {
             Your check-in is set up. Your session is saved and you are signed in.
           </Callout>
 
+          {/* The way on comes first (Hafsah, 22 November 2026: "how do you get to your board or where you are meant to get to from
+              here"). It sat under four panels, below the fold; nothing on the page is removed, only the button moves up. */}
+          <Button
+            size="big"
+            wide
+            onClick={() => navigate(`/grounds/${nextGroundId}`, { replace: true })}
+          >
+            Go to your check-in
+          </Button>
+
           {joinUrl && (
             <Panel heading={isAnchorCheckIn ? 'Share this link to invite people' : 'Share this link to invite participants'}>
               <span className="gwui-invite-link-row">
@@ -659,13 +669,6 @@ export function MagicVerifyPage() {
             for everyone to work from under <strong>{REFERENCES_AND_RESOURCES}</strong>.
           </p>
 
-          <Button
-            size="big"
-            wide
-            onClick={() => navigate(`/grounds/${nextGroundId}`, { replace: true })}
-          >
-            Go to your check-in
-          </Button>
         </Stack>
       </Page>
     )
