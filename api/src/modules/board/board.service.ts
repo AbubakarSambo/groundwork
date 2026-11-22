@@ -28,7 +28,7 @@ import { theGlanceInASentence } from './the-glance-in-a-sentence';
 import { aPartyOutside, aWaitOnOneself, theWaitsAsABoardReadsThem } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
 import { whoSeesThisDifferently } from './who-sees-this-differently';
-import { theRoundCappedAtThePlan, whatEachSessionSays } from './one-count-for-the-sessions';
+import { whatEachSessionSays } from './one-count-for-the-sessions';
 import { aWaitSaidInFull } from './a-wait-said-in-full';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { theBlockers } from './the-blockers';
@@ -1341,9 +1341,10 @@ export class BoardService {
        * and Today are (request 97 a), so "Session 1 of 12" never sits beside "Session 2 opened on ...".
        * See one-count-for-the-sessions.
        */
-      const planned = thePlannedSessionsOf(ground as any) ?? null;
-      /* A finished round hands the count to the next one that has come (theRoundThatHasCome), by the board's own clock. */
-      const theRound = theRoundCappedAtThePlan(openRound, planned, mine as any[], now, releaseOne);
+      /* The one session clock (theSessionAndItsCount, above), the same one the board's count, the list, the check-in page and Ask read, never a
+         second working-out of it here (release test, 21 November 2026, bug 32: "Session 1 of 12" beside "All 3 sessions"). */
+      const planned = theOneCount.clock.plannedSessions;
+      const theRound = theOneCount.clock.currentSession;
       const roundNumbers = Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b);
       /* The header is drawn from these two numbers ("Session 1 of 12."); see theHeaderSays for its words. */
       out.phaseSpine = {

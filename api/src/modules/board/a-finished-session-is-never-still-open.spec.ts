@@ -94,3 +94,30 @@ describe('the header and the session lines read one count (Drop Access, 18 Octob
     expect(clock.says).toBe('Check-in 3 of 15.');
   });
 });
+
+/*
+ * THE HEADER IS THE ONE CLOCK (release test, 21 November 2026, bug 32). Wairimu's sales board read "Session 1 of 12" beside "All 3
+ * sessions": the header worked the session out again from its own rows while the board's count read the one clock. Both read the clock now.
+ */
+describe('the header reads the session the one count names', () => {
+  const WEEKS = [
+    row('p-grace', 1, 'COMPLETED', null, '2026-10-12T08:33:22Z'),
+    ...['p-joseph', 'p-kevin', 'p-mercy'].flatMap((p) => [
+      row(p, 1, 'COMPLETED', null, '2026-10-12T11:06:29Z'),
+      row(p, 2, 'COMPLETED', '2026-10-13T05:00:00Z', '2026-10-13T11:06:37Z'),
+      row(p, 3, p === 'p-mercy' ? 'NOT_STARTED' : 'COMPLETED', '2026-10-14T05:00:00Z', p === 'p-mercy' ? null : '2026-10-14T11:08:15Z'),
+    ]),
+  ];
+  /* The count is served to whoever runs the check-in (Grace); Mercy's header is checked against the same clock above. */
+  for (const [name, userId, rows] of [['Grace', 'u-grace', DROP_ROWS], ['Grace, with Mercy behind on session 3,', 'u-grace', WEEKS]] as const) {
+    it(`${name}'s header and the count name the same session`, async () => {
+      const b = await boardAs({
+        people: DROP_PEOPLE as any, initiatorId: 'u-grace', checkIns: rows as any,
+        clock: { now: NOW, timelineDays: 15, cadence: 'DAILY' },
+        groundRow: { timelineDays: 15, cadence: 'DAILY' }, releaseOneSalesBoard: true,
+      }, userId, 'MEMBER');
+      expect(b.phaseSpine.currentSession).toBe(b.theCount.session);
+      expect(theHeaderSays(b.phaseSpine.currentSession, b.phaseSpine.plannedSessions, false)).toBe(`Check-in ${b.theCount.session} of 15.`);
+    });
+  }
+});
