@@ -1,5 +1,6 @@
 import { whatsAppCouldNotTakeIt } from '../whatsapp/by-email-instead';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
+import { theQuietHoursNow } from '../../common/the-clock';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -64,6 +65,13 @@ export class ARequestToldOnWhatsApp {
     for (const userId of approverUserIds) {
       try {
         const to = await this.reach(organizationId, userId);
+        /*
+         * NOT SAID IN THE NIGHT, AND SO NEVER SAID STALE (release test, 21 November 2026, bug 90). A notice asked to go in the approver's
+         * quiet hours was held with its words and sent at seven, and Wairimu was asked to approve two requests she had approved the night
+         * before. It is left untold instead: the morning sweep (theMorningSweep) reads what still waits for each approver from the queue
+         * at that moment, and says only that, once.
+         */
+        if (itIsQuietNow(theQuietHoursNow(), to.timezone ?? (await theOrganisationsZone(this.prisma as any, organizationId).catch(() => null)))) continue;
         const said = aRequestIsWaiting(to.firstName, request.firstName, request.what);
         const sent = to.phone ? await this.whatsapp.sendFor(organizationId, to.phone, said.text, { kind: said.kind, params: said.params }) : null;
         /* One record of who did what (decision 85, build step 5): told, only when it went. */
