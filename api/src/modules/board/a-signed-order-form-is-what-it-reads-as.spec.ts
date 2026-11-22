@@ -111,7 +111,7 @@ describe('her answer to "what does it confirm" is not the form\'s description', 
     };
     await fileTheProofOnItsItem(prisma, { id: 'doc-order', groundId: 'g-1', participantId: 'p-femi', fileName: 'order.png', mimeType: 'image/png', uploaderNote: HER_ANSWER, content: ORDER_FORM });
     expect(evidence[0]).toMatchObject({ readAs: 'A signed order', countsAsProof: true, workItemId: null });
-    items = RUN.items;
+    items = RUN.items ?? [];
     expect(await fileProofThatWasFiledOnNothing(prisma, 'g-1')).toBe(1);
     expect(evidence[0]).toMatchObject({ workItemId: 'w-njeri', itemName: 'Mama Njeri Duka' });
   });
