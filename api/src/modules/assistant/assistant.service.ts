@@ -54,6 +54,7 @@ import { peersAreNamedOn } from '../reports/peers-are-named';
 import { whatThisReaderCallsEachLabel, noStandInLabelAnywhereIn } from '../reports/a-stand-in-label-never-reaches-a-reader';
 import { howManyAnsweredInWords } from '../reports/the-picture-in-plain-sentences';
 import { WHAT_THEY_SAID_OPENS_WHEN_SHARED } from '../reports/the-session-report';
+import { theirNewestWaitingRequest } from '../suites/the-spend-requests-read-elsewhere';
 import { whatSomeoneSaid, checkInsTheyMayRead, latestRounds, I_CANNOT_SHOW_YOU_THAT } from './what-they-said-that-you-may-read';
 import {
   aDelegateGranted, aDelegateLeftAlone, aDelegateRevoked, aDelegateSaidBack, aRevokeLeftAlone, aRevokeSaidBack,
@@ -2016,11 +2017,7 @@ export class AssistantService {
    */
   private async aFileGoesWithTheRequest(organizationId: string, userId: string): Promise<{ name: string } | null> {
     const since = new Date(Date.now() - 15 * 60_000);
-    const request = await (this.prisma as any).spendRequest?.findFirst?.({
-      where: { organizationId, userId, status: 'waiting', attachedName: null, createdAt: { gte: since } },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true },
-    });
+    const request = await theirNewestWaitingRequest(this.prisma, { organizationId, userId, since });
     if (!request?.id) return null;
     const theirs = await this.prisma.groundParticipant.findMany({ where: { userId, ground: { organizationId } }, select: { id: true } });
     const [doc] = theirs.length ? await this.prisma.groundDocument.findMany({
@@ -2235,9 +2232,7 @@ export class AssistantService {
   /** Where a file could go for this person now: read from their own requests, their role and the suites, never from the screen. */
   private async whereAFileCouldGo(organizationId: string, userId: string, checkIn: { label: string } | null): Promise<WhereAFileCouldGo> {
     const p: any = this.prisma;
-    const waiting = await Promise.resolve(p.spendRequest?.findFirst?.({
-      where: { organizationId, userId, status: 'waiting', attachedName: null }, orderBy: { createdAt: 'desc' }, select: { id: true, amount: true, what: true },
-    })).catch(() => null);
+    const waiting = await theirNewestWaitingRequest(p, { organizationId, userId });
     const currency = waiting && this.spending ? ((await this.spending.checkForChat(organizationId, userId, 1).catch(() => null)) as any)?.currency ?? null : null;
     const report = this.reportsOnRequest ? await this.reportsOnRequest.openRequestOf(organizationId, userId).catch(() => null) : null;
     const desk = mayAddToTheDesk(await this.roleHere(organizationId, userId).catch(() => null));

@@ -251,8 +251,9 @@ describe('Kamau, the lead of Operations, who looks after HR, where HR decides', 
     expect(l.waiting.map((w) => [w.name, w.mayDecide])).toEqual([['Aisha Otieno', true], ['Otieno Ouma', true]]);
     expect(hoursOf(await time.board(as('u-kamau'), TODAY))).toEqual([['Aisha Otieno', true], ['Otieno Ouma', true]]);
     expect((await reviews.board(as('u-kamau'), TODAY)).next.map((x) => [x.name, x.writtenWith, x.mayStart])).toEqual([['Aisha Otieno', 'Kamau Njenga', true], ['Otieno Ouma', 'Kamau Njenga', true]]);
-    /* Only what waits for him from Sales: Miriam's approved day off is not in his "off" list. */
-    expect(l.off.map((o) => o.name)).toEqual([]);
+    /* Changed 22 November 2026: whoever holds the HR duty reads who is off across the organisation, as an admin does (Batch S, round 2, T9:
+       "Who's off" left out Amani), so Kamau, who looks after HR, now reads Miriam's approved day off from Sales. Before, it expected none. */
+    expect(l.off.map((o) => o.name)).toEqual(['Miriam Wanjiku']);
   });
 
   it('Aisha, a member who looks after HR, decides Otieno’s but never her own, which goes to an admin', async () => {

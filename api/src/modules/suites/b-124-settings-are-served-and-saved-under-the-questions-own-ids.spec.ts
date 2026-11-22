@@ -52,10 +52,13 @@ describe('B-124: an admin reads the settings of leave, reviews and spending unde
     spendRules: { isOn: false, answers: { thresholds: [{ above: 100000, steps: [[{ named: 'u-naomi' }]] }] } },
     reviews: { isOn: true, answers: { approver: 'u-naomi', workflow: 'one_approver' } },
   };
-  it('leave: the days a year read back as 21 and the approver as "An admin"', async () => {
+  /* Changed 22 November 2026: Batch S (20 November) took the approver question out of leave, because who approves is now the suite's rules
+     ("whoever the rules name decides"). Leave asks only the days a year; the approver kept from before is kept as it was, and asked nowhere. */
+  it('leave: the days a year read back as 21, and the approver kept from before is kept as it was', async () => {
     const { svc, admin } = setup(legacy);
     const s = suitePage(await svc.forReader(admin), 'leave');
-    expect(s.answers).toMatchObject({ days: 21, approver: 'An admin' });
+    expect(s.answers).toMatchObject({ days: 21, approver: 'u-naomi' });
+    expect(s.questions.map((q: any) => q.id)).toEqual(['days']);
     expect(everyQuestionHasAnId(s)).toBe(true);
     expect(JSON.stringify(s.answers)).not.toMatch(/daysAYear/);
   });
@@ -73,9 +76,9 @@ describe('B-124: an admin reads the settings of leave, reviews and spending unde
   });
   it('saving writes the questions\' own ids, keeps what else was set, and drops only the old name it replaces', async () => {
     const { svc, rows, admin } = setup(legacy);
-    await svc.switch(admin, 'leave', { on: true, answers: { days: 25, approver: 'Their manager' } });
+    await svc.switch(admin, 'leave', { on: true, answers: { days: 25 } });
     const row = rows.find((r) => r.suite === 'leave');
-    expect(row.answers).toEqual({ workflow: 'one_approver', days: 25, approver: 'Their manager' });
+    expect(row.answers).toEqual({ workflow: 'one_approver', days: 25, approver: 'u-naomi' });
     await svc.switch(admin, 'spend', { on: true, answers: { currency: 'KES', limit: 150000, above: 'u-naomi' } });
     /* The limit and the person above it go to the steps by amount, and nowhere else. */
     expect(rows.find((r) => r.suite === 'spend').answers).toEqual({ workflow: 'one_approver', categories: ['Fuel'], currency: 'KES' });
