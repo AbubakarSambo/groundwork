@@ -1,3 +1,4 @@
+import { theirOwnSessionNumberIn } from './the-session-a-person-is-on';
 import { aRoundCouldHaveBeenAnswered } from './a-round-that-could-be-answered';
 import { CHECK_INS_ARE_PAUSED } from '../billing/the-trial-grace';
 import { theClocksSessionIn, type TheCountAsServed } from './the-count-as-served';
@@ -334,6 +335,8 @@ export function whatNeedsYou(
       const turn = yourTurnIn(g, reader, now);
       const next = turn ? { id: turn.checkInId, sessionNumber: turn.sessionNumber, availableFrom: turn.openedAt } : null;
       if (next) {
+        /* Their own first, whatever the team's number (theirOwnSessionNumberIn): somebody added in session 3 still reads "Your first check-in". */
+        const theirFirst = theirOwnSessionNumberIn((g.checkIns ?? []) as any, { participantId: me!.id, sessionNumber: next.sessionNumber }) === 1;
         const opened = time(next.availableFrom);
         const days = opened ? Math.floor((at - opened) / DAY) : 0;
         const need: Need = {
@@ -346,7 +349,7 @@ export function whatNeedsYou(
            * rows are the same thing - your own check-in, waiting for you - so they say so, and
            * differ only on where in the run it is.
            */
-          title: next.sessionNumber === 1 ? `Your first check-in for ${g.label}` : `Your next check-in for ${g.label}`,
+          title: theirFirst ? `Your first check-in for ${g.label}` : `Your next check-in for ${g.label}`,
           /*
            * The prototype's second line (today-lead.txt). "Everyone else's answers are read against
            * yours" is true only of the lead's own first check-in, so only they are told it. Nothing
@@ -369,7 +372,7 @@ export function whatNeedsYou(
         };
         /* Not first among what needs them while they are away: the round does not wait for them. */
         if (reader.awayUntil) otherTurns.push(need);
-        else if (next.sessionNumber === 1) firstTurns.push(need);
+        else if (theirFirst) firstTurns.push(need);
         else if (days > A_WHILE) lateTurns.push(need);
         else otherTurns.push(need);
         myOpenTurn ??= g.label;

@@ -1,3 +1,4 @@
+import { theSessionANewcomerStartsIn } from './the-session-a-person-is-on';
 import { yourTurnIn } from './what-needs-you';
 import { theQuietHoursNow } from '../../common/the-clock';
 import { whoARoundWaitsFor } from './who-a-round-waits-for';
@@ -6498,8 +6499,9 @@ export class GroundsService {
         },
       });
 
+      /* Their first session is the team's session now (theSessionANewcomerStartsIn), so somebody added in session 3 checks in for session 3. */
       await tx.checkIn.create({
-        data: { groundId, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: session1AvailableFrom },
+        data: { groundId, participantId: participant.id, sessionNumber: await theSessionANewcomerStartsIn(tx, groundId), status: CheckInStatus.NOT_STARTED, availableFrom: session1AvailableFrom },
       });
 
       /**

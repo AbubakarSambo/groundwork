@@ -1,3 +1,4 @@
+import { theSessionANewcomerStartsIn } from '../grounds/the-session-a-person-is-on';
 import { REFERENCES_AND_RESOURCES, PEOPLE_AND_SETUP } from '../../common/the-tab-names';
 import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
 import { notTheLeadHerself, herSetupWordsAsATurn, howSheDescribesHerself, aLineThatDescribesNothing } from './the-lead-is-you-in-her-report';
@@ -3139,7 +3140,7 @@ from finishing at all.`;
       });
       if (!checkIn) {
         checkIn = await tx.checkIn.create({
-          data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+          data: { groundId: ground.id, participantId: participant.id, sessionNumber: await theSessionANewcomerStartsIn(tx, ground.id), status: CheckInStatus.NOT_STARTED },
         });
       }
       return { user, checkIn };

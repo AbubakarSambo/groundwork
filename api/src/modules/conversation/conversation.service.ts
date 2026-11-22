@@ -1,3 +1,4 @@
+import { theirOwnSessionNumber } from '../grounds/the-session-a-person-is-on';
 import { thePlannedSessionsOf } from '../grounds/this-sessions-count';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { withoutAMissedStepNobodySaid } from './a-missing-proof-is-not-a-missed-step';
@@ -898,7 +899,7 @@ export class ConversationService {
     // above. Same for initiator and participant: this reads checkIn.participantId
     // generically, with no party-type branch.
     let priorRecordEntries: { sessionNumber: number; entries: { type: string; text: string }[] }[] = [];
-    if (checkIn.sessionNumber >= 2 && !checkIn.isSelfCorrection) {
+    if ((await theirOwnSessionNumber(this.prisma, checkIn)) >= 2 && !checkIn.isSelfCorrection) {
       const priorCheckIns = await this.prisma.checkIn.findMany({
         where: {
           participantId: checkIn.participantId,
@@ -1245,7 +1246,7 @@ export class ConversationService {
   > {
     if (!checkIn || checkIn.isFinal || checkIn.isSelfCorrection || checkIn.isSetup) return null;
     const whoAreYouComesFirst = STARTING_SCENARIOS.has(String(ground?.scenario ?? '')) && checkIn.participant?.partyType !== PartyType.INITIATOR
-      && checkIn.sessionNumber === 1 && !theRosterAlreadySaysWhoTheyAre(aRoleInTheirOwnWords(checkIn.participant as any));
+      && (await theirOwnSessionNumber(this.prisma, checkIn)) === 1 && !theRosterAlreadySaysWhoTheyAre(aRoleInTheirOwnWords(checkIn.participant as any));
     if (whoAreYouComesFirst) return null;
     const who = { groundId: checkIn.groundId, participantId: checkIn.participantId, sessionNumber: checkIn.sessionNumber };
     const now = await whatItWouldRestOn(this.prisma, who).catch(() => null);
@@ -1632,7 +1633,7 @@ export class ConversationService {
      */
     const startsSomething = STARTING_SCENARIOS.has(String(ground?.scenario ?? ''));
     const notTheLead = checkIn.participant.partyType !== PartyType.INITIATOR;
-    const firstSession = checkIn.sessionNumber === 1;
+    const firstSession = (await theirOwnSessionNumber(this.prisma, checkIn)) === 1;
     /* Unless their row already says which of the two they are - see theRosterAlreadySaysWhoTheyAre.
        IN THEIR OWN WORDS ONLY (request 36). The model is no longer handed the lead's sentence about
        an invited person, so a row that holds only that sentence says nothing the conversation can
@@ -4268,6 +4269,8 @@ export class ConversationService {
     /* The opener is a different job from a turn - see only-the-rules-this-turn-needs. */
     how?: { forTheOpener?: boolean },
   ): Promise<string> {
+    /* Which of their own sessions this is (theirOwnSessionNumber): 1 for their first conversation, even for somebody added in session 3. */
+    const theirOwn = await theirOwnSessionNumber(this.prisma, checkIn);
     /**
      * Objectives included, because the engine was reading people against a target it had not been
      * given. This fetched every scalar on the ground and no relations, so `GroundObjective` - the
@@ -4358,7 +4361,7 @@ export class ConversationService {
     // Also read specificityDimensions from the most recent prior session.
     let priorSession: string | undefined;
     let lowSpecificityMultiDim = false;
-    if (checkIn.sessionNumber >= 2) {
+    if (theirOwn >= 2) {
       const priorCheckIns = await this.prisma.checkIn.findMany({
         where: {
           participantId: checkIn.participantId,
@@ -4502,7 +4505,7 @@ export class ConversationService {
     const packKeyBase = `scenario.${ground.scenario.toLowerCase()}`;
     const packParty = checkIn.participant.partyType.toLowerCase();
     const scenarioPackOverride =
-      checkIn.sessionNumber === 1
+      theirOwn === 1
         ? await (ground.moment
             ? this.prompts
                 .getActiveContent(`${packKeyBase}.${String(ground.moment).toLowerCase()}.${packParty}`)
@@ -4944,7 +4947,9 @@ export class ConversationService {
       /* Whoever set it up, by first name, so the setup block never says "the person who set this up".
          A lead is named to everybody in their own check-in, so this is no wider than the report. */
       setUpBy: ((lead: any) => theFirstNameFrom(lead?.user?.firstName, lead?.user?.lastName))((ground.participants ?? []).find((p) => p.partyType === PartyType.INITIATOR)),
+      /* The team's session, for where the run stands; and their own, for how this person's conversation opens (theirOwnSessionNumber). */
       sessionNumber: checkIn.sessionNumber,
+      theirOwnSession: theirOwn,
       /**
        * HOW LONG THIS RUN IS, WHICH THE PROMPT WAS GUESSING AT.
        *
@@ -5076,7 +5081,7 @@ export class ConversationService {
      * to the other half.
      */
     let returningUserContext = '';
-    if (checkIn.sessionNumber >= 2 && !checkIn.isSelfCorrection) {
+    if (theirOwn >= 2 && !checkIn.isSelfCorrection) {
       returningUserContext = await this.buildReturningUserContext(checkIn.participantId, checkIn.sessionNumber);
       /*
        * AND THE CHECK-INS THEY MISSED JUST BEFORE THIS ONE (night quality run 1, problem 5). Jared missed two and his
@@ -5094,7 +5099,7 @@ export class ConversationService {
       this.context.build({
         groundId: checkIn.groundId,
         participantId: checkIn.participantId,
-        sessionNumber: checkIn.sessionNumber,
+        sessionNumber: theirOwn,
         latestMessage,
         checkInId: checkIn.id,
       }),
@@ -6014,7 +6019,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return whoCarries ? { whoCarries, whereItStands: '' } : { whoCarries: '', whereItStands };
     })();
 
-    const oneThingToDoBetter = checkIn.sessionNumber === 1
+    const oneThingToDoBetter = theirOwn === 1
       ? theOneThingToDoBetter({
           /*
            * The board's objectives carry the numbers; the dates live on the per-person
@@ -6275,7 +6280,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const theOneThingToday = how?.forTheOpener ? '' : await this.theOneThingTodayHere(checkIn as any).catch(() => '');
     const thisTurn = {
       hasASituationPack: !!(packForThisSituation && packForThisSituation.trim().length > 200),
-      sessionNumber: checkIn.sessionNumber,
+      sessionNumber: theirOwn,
       isTheOpener: !!how?.forTheOpener,
     };
     const systemPrompt = onlyTheRulesThisTurnNeeds(wholeEngine, thisTurn);
@@ -6429,7 +6434,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   /** Whether this is the first session of somebody on the anchor lead's team, with the anchor on: the one gate the baseline's own words use too. */
   private async theBaselineApplies(checkIn: { sessionNumber: number; participant: { partyType: any } }, ground: any): Promise<boolean> {
     if (!aCheckInStartedFromTheAnchor(ground)) return false;
-    if (checkIn.participant.partyType === PartyType.INITIATOR || checkIn.sessionNumber !== 1) return false;
+    if (checkIn.participant.partyType === PartyType.INITIATOR || (await theirOwnSessionNumber(this.prisma, checkIn as any)) !== 1) return false;
     return (await theAnchorScenarioIsOn(this.prisma)) === true;
   }
 
@@ -6470,10 +6475,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     latestMessage: string,
     turnsThisSession: { role: 'AI' | 'PERSON'; content: string }[] = [],
   ): Promise<{ text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo>; isTheBaseline?: boolean; followUp?: WhatToFollowUp | null; closing?: boolean } | null> {
+    /* Their own session (theirOwnSessionNumber): somebody added in session 3 gets the baseline first, then the weekly check-in. */
+    const theirOwn = await theirOwnSessionNumber(this.prisma, checkIn);
     const guidance = await theAnchorParticipantGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, {
       ground,
       isTheLead: checkIn.participant.partyType === PartyType.INITIATOR,
-      sessionNumber: checkIn.sessionNumber,
+      sessionNumber: theirOwn,
     });
     if (!guidance) {
       /*
@@ -6483,7 +6490,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const baseline = await theAnchorBaselineGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, {
         ground,
         isTheLead: checkIn.participant.partyType === PartyType.INITIATOR,
-        sessionNumber: checkIn.sessionNumber,
+        sessionNumber: theirOwn,
       });
       if (!baseline) return null;
       const told = this.briefFor(ground, { participantId: checkIn.participantId, isLead: false }, untoldHere)?.says?.trim() || null;
@@ -7153,7 +7160,7 @@ ${told}` : '';
       // groundsSeen counts GROUNDS, not sessions - twelve check-ins on one
       // ground is still one shared history, and counting sessions would tell the
       // engine someone is a veteran on their first week.
-      const firstSessionHere = checkIn.sessionNumber === 1;
+      const firstSessionHere = (await theirOwnSessionNumber(this.prisma, checkIn)) === 1;
       await this.prisma.personStyleProfile.upsert({
         where: { userId_organizationId: { userId, organizationId: ground.organizationId } },
         create: { userId, organizationId: ground.organizationId, ...merged, groundsSeen: 1 },

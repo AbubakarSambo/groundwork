@@ -184,3 +184,54 @@ describe('the 22 November world: two people who never answered session 2, and Ol
     expect(emitted).toEqual([]);
   });
 });
+
+/**
+ * SOMEBODY ADDED LATE IS WRITTEN IN THE TEAM'S SESSION, AND STILL HAS A FIRST CONVERSATION (Hafsah, 22 November 2026: "fix if you see
+ * something"). Olu, added while the team is on session 3, gets his first row written as session 3, so the board, the mails and that
+ * session's report read it there from the record itself; and his first conversation is still his first (theirOwnSessionNumber), so it
+ * introduces Groundwork and asks his role.
+ */
+describe('a late joiner’s first row is the team’s session, and their first conversation is still their first', () => {
+  const W1 = D('2026-11-08T04:35:00Z');
+  const W2 = D('2026-11-15T04:35:00Z');
+  const W3 = D('2026-11-22T04:35:00Z');
+  const NOW3 = D('2026-11-22T05:23:00Z');
+  const done = (p: string, n: number, opened: Date) => row(p, n, 'COMPLETED', opened, { completedAt: opened, turns: said(opened), createdAt: opened });
+  const teamRows = [
+    ...['amani', 'chidi', 'zawadi', 'juma', 'neema'].map((p) => done(p, 1, W1)),
+    ...['amani', 'chidi', 'zawadi'].map((p) => done(p, 2, W2)), open('juma', 2, W2), open('neema', 2, W2),
+    ...['amani', 'chidi'].map((p) => done(p, 3, W3)), open('zawadi', 3, W3),
+  ];
+  const db = (rows: any[], earlier: any[] = []) => ({
+    ground: { findUnique: async () => ({ timelineDays: 84, cadence: 'WEEKLY', cadenceDays: null, runsUntilEnded: false, participants: PEOPLE.filter((p) => p.id !== 'olu'), checkIns: rows }) },
+    checkIn: { findMany: async () => earlier },
+  });
+
+  it('is written as session 3 when the team is on session 3, and as session 1 before anything has begun', async () => {
+    const { theSessionANewcomerStartsIn } = await import('./the-session-a-person-is-on');
+    expect(await theSessionANewcomerStartsIn(db(teamRows), 'g1', NOW3)).toBe(3);
+    expect(await theSessionANewcomerStartsIn(db([]), 'g1', NOW3)).toBe(1);
+    expect(await theSessionANewcomerStartsIn(db(teamRows.filter((r) => r.sessionNumber === 1).map((r) => ({ ...r, status: 'NOT_STARTED', availableFrom: D('2026-12-01T05:00:00Z') }))), 'g1', NOW3)).toBe(1);
+  });
+
+  it('his session 3 is his own first conversation, and his next is his second', async () => {
+    const { theirOwnSessionNumber, theirOwnSessionNumberIn } = await import('./the-session-a-person-is-on');
+    expect(await theirOwnSessionNumber(db(teamRows, []), { participantId: 'olu', sessionNumber: 3 })).toBe(1);
+    expect(await theirOwnSessionNumber(db(teamRows, [{ participantId: 'olu', sessionNumber: 3 }]), { participantId: 'olu', sessionNumber: 4 })).toBe(2);
+    /* Somebody numbered from 1, the lead's optional and set-up rows included, reads exactly their session number. */
+    expect(await theirOwnSessionNumber(db(teamRows, [{ participantId: 'amani', sessionNumber: 1 }, { participantId: 'amani', sessionNumber: 2 }]), { participantId: 'amani', sessionNumber: 3 })).toBe(3);
+    const his = [{ participantId: 'olu', sessionNumber: 3 }, { participantId: 'olu', sessionNumber: 4 }];
+    expect(theirOwnSessionNumberIn(his, his[0])).toBe(1);
+    expect(theirOwnSessionNumberIn(his, his[1])).toBe(2);
+  });
+
+  it('written that way, every count reads him in session 3 with no renumbering at all', () => {
+    const olu = [{ ...done('olu', 3, NOW3), createdAt: NOW3, availableFrom: null }, { ...open('olu', 4, D('2026-11-29T04:35:00Z')), createdAt: NOW3 }];
+    const all = [...teamRows, ...olu];
+    expect(inTheTeamsNumbering(all as any[])).toEqual(all);
+    const { bySession, clock } = theSessionAndItsCount({ ...GROUND, checkIns: all } as any, { now: D('2026-11-22T06:00:00Z') });
+    expect(clock.currentSession).toBe(3);
+    expect(bySession[3].answered).toContain('olu');
+    expect(bySession[1].onTheCheckIn).not.toContain('olu');
+  });
+});
