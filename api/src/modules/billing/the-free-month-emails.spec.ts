@@ -3,6 +3,10 @@ import { PricingService } from './pricing.service';
 import { BillingService } from './billing.service';
 import { TheFreeMonthEmails } from './the-free-month-emails';
 import { forgetTheOrganisationsZone } from '../../common/the-organisations-own-day';
+import { whilePayingIsPossible } from './paying-is-possible-for-specs';
+
+/* Paying is possible in this file, so the pause and the no-plan refusals apply as built (23 November 2026). */
+whilePayingIsPossible();
 
 /**
  * THE FREE MONTH'S EMAILS, AND THE FOUR WEEKS AFTER IT, AS GRACE, OTIENO, WANJIRU AND JUMA READ THEM (Hafsah, 15 October and

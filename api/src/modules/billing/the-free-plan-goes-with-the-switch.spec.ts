@@ -98,7 +98,42 @@ describe('ILRI on live: made before the trial, its free check-ins used, nothing 
   });
 });
 
-describe('a team at or over the trial size starts on a plan', () => {
+/* A Stripe test key, so paying is possible here (payingIsPossibleHere). Restored after. */
+const A_TEST_KEY = 'sk_test_51abcdefghijklmnopqrstuvwxyz0123456789';
+let keyBefore: string | undefined;
+const withAKey = () => {
+  beforeAll(() => { keyBefore = process.env.STRIPE_SECRET_KEY; process.env.STRIPE_SECRET_KEY = A_TEST_KEY; });
+  afterAll(() => { if (keyBefore === undefined) delete process.env.STRIPE_SECRET_KEY; else process.env.STRIPE_SECRET_KEY = keyBefore; });
+};
+const withNoKey = () => {
+  beforeAll(() => { keyBefore = process.env.STRIPE_SECRET_KEY; delete process.env.STRIPE_SECRET_KEY; });
+  afterAll(() => { if (keyBefore !== undefined) process.env.STRIPE_SECRET_KEY = keyBefore; });
+};
+
+describe('while paying is not wired (no Stripe key), nobody is refused for having no plan (Hafsah, 23 November 2026)', () => {
+  withNoKey();
+  it('ILRI is still given its trial once, as built', async () => {
+    const { svc, org } = billing({});
+    expect(await svc.canCreateGround('org-1')).toEqual({ allowed: true });
+    expect(org.freeTrialStartedAt).toBeInstanceOf(Date);
+  });
+  it('a team at or over the trial size can open a check-in and add people, and is not given the trial', async () => {
+    const { svc, org } = billing({ seats: 20 });
+    expect(await svc.canCreateGround('org-1')).toEqual({ allowed: true });
+    expect(await svc.canInviteMember('org-1')).toEqual({ allowed: true });
+    expect(org.freeTrialStartedAt).toBeNull();
+  });
+  it('after the trial and its four weeks, a check-in can still be opened', async () => {
+    const { svc } = billing({
+      trial: { ...ON, onSince: '2026-08-01T00:00:00.000Z' },
+      org: { freeTrialStartedAt: new Date('2026-08-01T00:00:00.000Z'), freeUntil: new Date('2026-09-01T00:00:00.000Z'), freePlan: 'SMALL_TEAM' },
+    });
+    expect(await svc.canCreateGround('org-1')).toEqual({ allowed: true });
+  });
+});
+
+describe('a team at or over the trial size starts on a plan, once paying is possible', () => {
+  withAKey();
   it('is not given the trial, and is told plainly how to go on', async () => {
     const { svc, org } = billing({ seats: 20 });
     expect(await svc.canCreateGround('org-1')).toEqual({ allowed: false, reason: NO_PLAN_TO_OPEN, noPlan: true });
@@ -118,7 +153,8 @@ describe('a team at or over the trial size starts on a plan', () => {
   });
 });
 
-describe('after the trial: no new check-in until a plan is chosen', () => {
+describe('after the trial: no new check-in until a plan is chosen, once paying is possible', () => {
+  withAKey();
   it('an organisation whose trial and the four weeks after it are over cannot open one, and is not given another trial', async () => {
     const { svc, org } = billing({
       trial: { ...ON, onSince: '2026-08-01T00:00:00.000Z' },

@@ -147,6 +147,8 @@ export class TheFreeMonthEmails {
     const trial = await this.pricing.getFreeTrial().catch(() => null);
     if (!trial?.on) return done;
     const [grace, setting] = await Promise.all([theGraceInForce(this.prisma), theGraceSetting(this.prisma)]);
+    /* Nothing can be paid for yet (23 November 2026): no email asks anybody to choose a plan or warns of a pause. */
+    if (grace?.payingIsPossible === false) return done;
     /* Every organisation whose free month ends within the next few days or ended within its four weeks. The four weeks may have
        started later than the month's end (`notBefore`), so then every ended month is read and the arithmetic decides. */
     const weeksAgo = new Date(now.getTime() - (setting.weeks * 7 + 1) * DAY);

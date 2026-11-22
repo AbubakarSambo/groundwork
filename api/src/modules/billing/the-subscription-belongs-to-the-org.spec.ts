@@ -75,7 +75,7 @@ describe('what /billing/status returns', () => {
 
   it('an organisation nothing covers reports a cap of one, the person who set it up, not "no cap"', () => {
     /* Updated 23 November 2026: there is no free plan of five people; the free trial is cover, so it reports its plan's cap. */
-    expect(GET_STATUS).toContain('covers.plan ? await this.pricing.memberCapFor(covers.plan as any) : 1');
+    expect(GET_STATUS).toContain("covers.covers === 'free tier' ? 1 : covers.plan ? await this.pricing.memberCapFor(covers.plan as any) : null");
   });
 
   it('and the cap it reports is the one the gate will apply', () => {

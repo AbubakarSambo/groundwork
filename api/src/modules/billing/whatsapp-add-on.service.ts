@@ -170,7 +170,7 @@ export class WhatsAppAddOnService {
     /* The free trial is the only free plan, and every organisation gets it once, the first time it needs cover (22 November
        2026): the same grant billing makes, so WhatsApp and the check-ins never disagree about whether a team is covered. */
     const graceNow = await theGraceInForce(this.prisma).catch(() => null);
-    if (whatCoversThem(org, now, graceNow).covers === 'free tier' && !isPaused(org, graceNow)) {
+    if (whatCoversThem(org, now).covers === 'free tier' && !isPaused(org, graceNow)) {
       const got = await new TheFreeTrialService(this.prisma, this.pricing).grantIfItApplies(organizationId, 'fewer', now).catch(() => null);
       if (got?.granted) org = (await this.prisma.organization.findUnique({ where: { id: organizationId }, select: ORG_FIELDS })) ?? org;
     }

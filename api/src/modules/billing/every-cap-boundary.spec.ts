@@ -1,5 +1,9 @@
 import { NO_PLAN_TO_ADD, BillingService } from './billing.service';
 import { PricingService, DEFAULT_FREE_MEMBER_LIMIT } from './pricing.service';
+import { whilePayingIsPossible } from './paying-is-possible-for-specs';
+
+/* Paying is possible in this file, so the pause and the no-plan refusals apply as built (23 November 2026). */
+whilePayingIsPossible();
 
 /**
  * EVERY CAP, AT ITS EDGE, ON THE PATH THAT ACTUALLY REFUSES.

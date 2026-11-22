@@ -5,6 +5,10 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { BillingService, PAUSED_UNTIL_THEY_SUBSCRIBE, NO_PLAN_TO_OPEN } from './billing.service';
 import { PricingService } from './pricing.service';
 import { shouldSayWhatGroundworkIs } from '../email/what-groundwork-is';
+import { whilePayingIsPossible } from './paying-is-possible-for-specs';
+
+/* Paying is possible in this file, so the pause and the no-plan refusals apply as built (23 November 2026). */
+whilePayingIsPossible();
 
 /**
  * FOUR WEEKS AFTER A FREE TRIAL, THEN GROUNDWORK PAUSES UNTIL THEY PAY (Hafsah, 2 November 2026).
@@ -119,7 +123,7 @@ describe('the setting', () => {
   it('is in force only while the free trial is on, from the later of the two moments', async () => {
     const prisma = (trial: any) => ({ platformSetting: { findUnique: async ({ where }: any) => (where.key === 'pricing.freeTrial' ? { value: trial } : { value: { weeks: 5, onSince: '2026-10-20T00:00:00Z' } }) } });
     expect(await theGraceInForce(prisma({ on: false }))).toBeNull();
-    expect(await theGraceInForce(prisma({ on: true, onSince: '2026-11-01T00:00:00Z' }))).toEqual({ weeks: 5, notBefore: new Date('2026-11-01T00:00:00Z') });
+    expect(await theGraceInForce(prisma({ on: true, onSince: '2026-11-01T00:00:00Z' }))).toEqual({ weeks: 5, notBefore: new Date('2026-11-01T00:00:00Z'), payingIsPossible: true });
   });
 });
 
@@ -162,7 +166,16 @@ function baridi(stand: 'in its weeks' | 'paused' | 'paid') {
   return { prisma, email, billing, whatsapp, delivered, whatsappRows, notifications, now };
 }
 
+/* A Stripe test key, so paying is possible here (payingIsPossibleHere) and the pause applies as built. Restored after. */
+const A_TEST_KEY = 'sk_test_51abcdefghijklmnopqrstuvwxyz0123456789';
+const withAKey = () => {
+  let before: string | undefined;
+  beforeAll(() => { before = process.env.STRIPE_SECRET_KEY; process.env.STRIPE_SECRET_KEY = A_TEST_KEY; });
+  afterAll(() => { if (before === undefined) delete process.env.STRIPE_SECRET_KEY; else process.env.STRIPE_SECRET_KEY = before; });
+};
+
 describe('the doors, for an organisation in its four weeks, paused, and then paying', () => {
+  withAKey();
   beforeAll(() => jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'setTimeout', 'setInterval', 'queueMicrotask', 'clearTimeout', 'clearInterval', 'clearImmediate'] }));
   afterAll(() => jest.useRealTimers());
 
@@ -227,5 +240,31 @@ describe('the doors, for an organisation in its four weeks, paused, and then pay
     expect(forTheAdmin.onTheHouse).toBeNull();
     const forJuma = await w.billing.getStatus('org-baridi', false).catch((e: any) => ({ error: e?.message } as any));
     expect(forJuma.afterTheTrial).toBeNull();
+  });
+});
+
+/*
+ * WHILE PAYING IS NOT WIRED, NOBODY IS PAUSED (Hafsah, 23 November 2026: "Yes"). With no Stripe key there is no plan anybody could
+ * choose, so the four weeks after the trial never run out: no "no plan" refusal, no pause, nothing said about paying. The same
+ * Baridi, on the same day it would have been paused.
+ */
+describe('while paying is not wired (no Stripe key)', () => {
+  let before: string | undefined;
+  beforeAll(() => { before = process.env.STRIPE_SECRET_KEY; delete process.env.STRIPE_SECRET_KEY; jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'setTimeout', 'setInterval', 'queueMicrotask', 'clearTimeout', 'clearInterval', 'clearImmediate'] }); });
+  afterAll(() => { if (before !== undefined) process.env.STRIPE_SECRET_KEY = before; jest.useRealTimers(); });
+
+  it('the day it would have paused, it is not paused: a check-in opens, a new one can be made, and nothing asks it to pay', async () => {
+    const w = baridi('paused');
+    jest.setSystemTime(w.now);
+    expect((await w.billing.canStartSession('g-sales')).allowed).toBe(true);
+    expect(await w.billing.canCreateGround('org-baridi')).toEqual({ allowed: true });
+    expect(await theOrganisationsPausedNow(w.prisma, w.now)).toEqual([]);
+  });
+
+  it('the rule follows the key alone: none or a placeholder means paying is not possible, a test key means it is', () => {
+    const { payingIsPossibleHere } = require('./what-kind-of-stripe-key');
+    expect(payingIsPossibleHere(undefined, 'production')).toBe(false);
+    expect(payingIsPossibleHere('sk_test_xxx', 'development')).toBe(false);
+    expect(payingIsPossibleHere(A_TEST_KEY, 'development')).toBe(true);
   });
 });

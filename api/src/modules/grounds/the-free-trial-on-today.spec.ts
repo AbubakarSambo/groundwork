@@ -1,5 +1,9 @@
 import { theFreeTrialLine } from './the-free-trial-on-today';
 import { forgetTheOrganisationsZone } from '../../common/the-organisations-own-day';
+import { whilePayingIsPossible } from '../billing/paying-is-possible-for-specs';
+
+/* Paying is possible in this file, so the pause and the no-plan refusals apply as built (23 November 2026). */
+whilePayingIsPossible();
 
 /** Hafsah, 12 October 2026: "Today shows one line for a new admin: the free trial has started and when it ends." */
 const NOW = new Date('2026-10-12T09:00:00Z');
@@ -25,7 +29,9 @@ describe('the free trial on Today', () => {
 
   it('says nothing with no trial, or once it has ended while the free trial is switched off', async () => {
     expect(await theFreeTrialLine(org({ freeTrialStartedAt: null, freeUntil: new Date('2026-11-12T09:00:00Z') }) as any, `org-${++n}`, 'u-grace', 'ADMIN', NOW)).toBeNull();
-    expect(await theFreeTrialLine(org({ freeTrialStartedAt: new Date('2026-08-01'), freeUntil: new Date('2026-09-01') }) as any, `org-${++n}`, 'u-grace', 'ADMIN', NOW)).toBeNull();
+    /* The switch said off explicitly: a missing row reads as on since 22 November 2026. */
+    const OFF = { 'pricing.freeTrial': { on: false, teamsUnder: 20, months: 1 } };
+    expect(await theFreeTrialLine(org({ freeTrialStartedAt: new Date('2026-08-01'), freeUntil: new Date('2026-09-01') }, OFF) as any, `org-${++n}`, 'u-grace', 'ADMIN', NOW)).toBeNull();
   });
 });
 

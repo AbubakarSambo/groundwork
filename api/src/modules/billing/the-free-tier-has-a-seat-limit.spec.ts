@@ -1,6 +1,10 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { BillingService, freeSeatLimitMessage, paidSeatLimitMessage, NO_PLAN_TO_ADD } from './billing.service';
+import { whilePayingIsPossible } from './paying-is-possible-for-specs';
+
+/* Paying is possible in this file, so the pause and the no-plan refusals apply as built (23 November 2026). */
+whilePayingIsPossible();
 
 /**
  * PERSON NUMBER SIX WAS SIMPLY ADDED.

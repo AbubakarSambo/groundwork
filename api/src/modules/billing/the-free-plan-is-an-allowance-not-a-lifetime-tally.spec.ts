@@ -1,4 +1,8 @@
 import { BillingService, NO_PLAN_TO_OPEN } from './billing.service';
+import { whilePayingIsPossible } from './paying-is-possible-for-specs';
+
+/* Paying is possible in this file, so the pause and the no-plan refusals apply as built (23 November 2026). */
+whilePayingIsPossible();
 
 /**
  * THERE IS NO ALLOWANCE OF FREE CHECK-INS (rewritten 23 November 2026: Hafsah, 22 November, "there's nothing like 10 free

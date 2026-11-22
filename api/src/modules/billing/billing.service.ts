@@ -148,8 +148,9 @@ export class BillingService {
     const read = () => this.prisma.organization.findUnique({ where: { id: organizationId }, select }) as Promise<any>;
     const org = await read();
     if (!org) return null;
-    const grace = await this.theGrace();
-    if (isCovered(org, new Date(), grace) || isPaused(org, grace)) return org;
+    /* The trial is owed only where nothing of its own covers them: not paying and no free run going. Read without the grace, so
+       an organisation that cannot pay yet is still given its trial as built. */
+    if (whatCoversThem(org, new Date()).covers !== 'free tier' || isPaused(org, await this.theGrace())) return org;
     return (await this.theTrialIsGivenNow(organizationId)) ? ((await read()) ?? org) : org;
   }
 
@@ -365,8 +366,9 @@ export class BillingService {
     const grace = await this.theGrace();
     if (isPaused(org, grace)) return { allowed: false, reason: NO_PLAN_TO_OPEN, noPlan: true };
 
+    /* The trial first, as built (it refuses anybody it does not apply to); then whatever covers them. */
+    if (whatCoversThem(org, new Date()).covers === 'free tier' && (await this.theTrialIsGivenNow(organizationId))) return { allowed: true };
     if (isCovered(org, new Date(), grace)) return { allowed: true };
-    if (await this.theTrialIsGivenNow(organizationId)) return { allowed: true };
 
     // Contributor access code supplied.
     if (accessCode?.trim()) {
@@ -474,7 +476,7 @@ export class BillingService {
     if (await this.extraSeatsFor(org)) return null;
     /* Whichever covers them today decides the cap: their own plan or the one we gave them. With neither, only the person who created it. */
     const covered = whatCoversThem(org, new Date(), await this.theGrace());
-    const cap = covered.plan ? await this.pricing.memberCapFor(covered.plan as any) : 1;
+    const cap = covered.covers === 'free tier' ? 1 : covered.plan ? await this.pricing.memberCapFor(covered.plan as any) : null;
     if (cap === null || cap === undefined) return null;
     /* Never negative: an organisation already over its cap has no room, not room owed back. */
     return Math.max(0, cap - (await this.seatsTaken(organizationId)));
@@ -491,7 +493,7 @@ export class BillingService {
     const org = await this.theOrgWithItsCover(organizationId);
     if (!org) return null;
     const covered = whatCoversThem(org, new Date(), await this.theGrace());
-    const cap = covered.plan ? await this.pricing.memberCapFor(covered.plan as any) : 1;
+    const cap = covered.covers === 'free tier' ? 1 : covered.plan ? await this.pricing.memberCapFor(covered.plan as any) : null;
     return cap ?? null;
   }
 
@@ -509,7 +511,8 @@ export class BillingService {
      */
     if (!subscribed) return count >= 1 ? { allowed: false, reason: NO_PLAN_TO_ADD } : { allowed: true };
 
-    const cap = await this.pricing.memberCapFor((covered.plan ?? org.subscriptionPlan) as any);
+    const capPlan = covered.plan ?? org.subscriptionPlan;
+    const cap = capPlan ? await this.pricing.memberCapFor(capPlan as any) : null;
     if (cap === null) return { allowed: true };
     /*
      * EXTRA SEATS (fix list item 6): past the included seats, the person is an extra seat at the plan's price, not refused.
@@ -1131,7 +1134,7 @@ export class BillingService {
      */
     const grace = await this.theGrace();
     const covers = whatCoversThem(org, new Date(), grace);
-    const peopleCap = covers.plan ? await this.pricing.memberCapFor(covers.plan as any) : 1;
+    const peopleCap = covers.covers === 'free tier' ? 1 : covers.plan ? await this.pricing.memberCapFor(covers.plan as any) : null;
 
     /* Three counts, in parallel with each other and cheap - all indexed by organisation. */
     const [everyGround, reportsOut, tookPart] = await Promise.all([

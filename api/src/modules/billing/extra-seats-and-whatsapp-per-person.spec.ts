@@ -4,6 +4,10 @@ import { WhatsAppAddOnService, theMonthStarted } from './whatsapp-add-on.service
 import { thisMonth, aCheaperPlan, seatsCost, thisAddsASeat, whatsappPeopleCharged, type APlansPrices } from './what-a-month-costs';
 import { theStatusAsTheyMayReadIt } from './billing.controller';
 import { AdminController } from '../admin/admin.controller';
+import { whilePayingIsPossible } from './paying-is-possible-for-specs';
+
+/* Paying is possible in this file, so the pause and the no-plan refusals apply as built (23 November 2026). */
+whilePayingIsPossible();
 
 // The services under test read the real clock, and this file is written as of 15 October 2026 (see NOW):
 // the "free month" in it ends 14 November. Freeze the date only, or it starts failing once that passes.
