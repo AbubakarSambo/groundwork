@@ -42,7 +42,7 @@ export interface APerson {
  * Role and team together, comma-joined as the rest of the product already writes two facts side
  * by side (see `whereTheySitLine`, people-here.ts) - never a colon, dot or arrow between them.
  */
-function roleAndTeam(p: APerson): string {
+export function roleAndTeam(p: APerson): string {
   const role = roleWord(p.role).trim()
   const team = (p.team ?? '').trim()
   if (role && team) return `${role}, ${team}`

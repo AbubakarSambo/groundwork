@@ -2,7 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { ReportsService } from './reports.service';
-import { theTraceForThisReader, whichTeamItIsWaitingOn, type ACheckInTheReaderMayOpen, type AStoredTrace } from './the-blocker-trace';
+import { theTraceForThisReader, whichTeamItIsWaitingOn, mayReadAStep, whereAWaitStandsWithNoChain, type ACheckInTheReaderMayOpen, type AStoredTrace } from './the-blocker-trace';
+import { blockerHasSubstance, dedupeDependencies } from '../board/reads';
+import { DependencyStatus } from '@prisma/client';
 import { theDayInWords } from '../board/the-headline-and-where-each-target-stands';
 import { labelsForParties } from './party-labels';
 import { peersAreNamedOn } from './peers-are-named';
@@ -60,9 +62,15 @@ export class TheBlockerTraceService {
       where: { organizationId: reader.organizationId, endGroundId: groundId },
       orderBy: { createdAt: 'asc' },
     })) as unknown as AStoredTrace[];
-    if (stored.length === 0) return { traces: [] };
+    /* The waits said here on somebody who is not in this check-in: where every blocker here that leaves it starts, chain or no chain. */
+    const waits = dedupeDependencies((await this.prisma.groundDependency.findMany({
+      where: { groundId, onParticipantId: null, status: { in: [DependencyStatus.WAITING, DependencyStatus.BLOCKING] }, clearedAt: null },
+      select: { id: true, groundId: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, namedTheThing: true, escalatedAt: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    }).catch(() => [])) as any[]).filter((w) => blockerHasSubstance(w) && !!(w.onLabel ?? '').trim());
+    if (stored.length === 0 && waits.length === 0) return { traces: [] };
 
-    const wanted = [...new Set(stored.flatMap((t) => (t.steps ?? []).map((s) => s.groundId)))].filter((id) => openable.has(id));
+    const wanted = [...new Set([groundId, ...stored.flatMap((t) => (t.steps ?? []).map((s) => s.groundId))])].filter((id) => openable.has(id));
     const rows = await this.prisma.ground.findMany({
       where: { id: { in: wanted }, organizationId: reader.organizationId },
       select: {
@@ -135,6 +143,21 @@ export class TheBlockerTraceService {
         decisionNeeded: mine.whole && trace.decisionNeeded ? say(endGround, { text: trace.decisionNeeded }).text : null,
         waitingOn,
         decidedBy: decider ? youTakesItsVerb(`${decider} ${decider.toLowerCase() === 'you' ? 'decide' : 'decides'}.`).replace(/^./, (c) => c.toUpperCase()) : null,
+      });
+    }
+    /* Every other wait here that leaves this check-in, as far as the record follows it: its one step, and who it waits on since when. */
+    /* A wait a chain was followed from is that chain, served or not: one this reader may not read is not offered again as having none. */
+    const followed = new Set(stored.map((t) => t.anchorDependencyId).filter(Boolean));
+    for (const w of waits) {
+      if (followed.has(w.id) || !byId.has(groundId) || !mayReadAStep({ groundId, personId: w.fromParticipantId }, mayOpen, reader)) continue;
+      const what = say(groundId, { text: String(w.what ?? '').trim() }).text;
+      traces.push({
+        id: w.id,
+        steps: [{ kind: 'need', checkIn: (byId.get(groundId)!.label ?? '').trim(), checkInId: groundId, owner: nameIn(groundId, w.fromParticipantId), text: what.charAt(0).toUpperCase() + what.slice(1) }],
+        whereItStarted: null,
+        decisionNeeded: null,
+        decidedBy: null,
+        waitingOn: say(groundId, { text: whereAWaitStandsWithNoChain(w, (d) => theDayInWords(d, now)) }).text,
       });
     }
     return { traces };

@@ -79,7 +79,7 @@ export function WhereTheBlockerStarted() {
             <div className="pb-rows">
               {t.steps.map((s, i) => (
                 <div className="pb-row pb-trace-row" key={i}>
-                  <b>{s.kind}</b>
+                  <b>{s.kind.charAt(0).toUpperCase() + s.kind.slice(1)}</b>
                   <span className="pb-dot pb-dot-said" />
                   <span>
                     <span className="pb-trace-text">{s.text}</span>
@@ -90,12 +90,13 @@ export function WhereTheBlockerStarted() {
               ))}
             </div>
             {t.waitingOn && <p className="gwui-panel-text">{t.waitingOn}</p>}
-            {t.whereItStarted && <p className="gwui-panel-text"><b>Where it started:</b> {t.whereItStarted}</p>}
+            {/* The engine serves each sentence whole, "Where it started: ..." and "Decision needed: ...": the page adds no second label. */}
+            {t.whereItStarted && <p className="gwui-panel-text">{t.whereItStarted}</p>}
             {t.decisionNeeded && (
               <Panel>
                 <div className="pb-trace-decision">
                   <div>
-                    <p className="pb-card-h">{`Decision needed: ${t.decisionNeeded}`}</p>
+                    <p className="pb-card-h">{t.decisionNeeded}</p>
                     {t.decidedBy && <p className="gwui-panel-text">{t.decidedBy}</p>}
                   </div>
                   {asker && <Button kind="secondary" to={`/grounds/${id}?tab=context`}>{`Ask ${firstName(asker)}`}</Button>}
