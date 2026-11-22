@@ -65,6 +65,8 @@ export type PeopleAndSetup =
       howItRuns: string;
       problems: ASetupProblem[];
       sessions: string;
+      /** The sessions the team has finished, the number "sessions" says, so the lead's own count can be read beside it. */
+      teamSessionsDone: number;
       yourSessionsDone: number;
       sessionsPlanned: number | null;
       joinedWithTheLink: string;
@@ -303,6 +305,7 @@ export async function readPeopleAndSetup(
     howItRuns,
     problems,
     sessions,
+    teamSessionsDone: planned != null ? Math.min(rounds, planned) : rounds,
     yourSessionsDone: planned != null ? Math.min(yourSessionsDone, planned) : yourSessionsDone,
     sessionsPlanned: planned,
     joinedWithTheLink,

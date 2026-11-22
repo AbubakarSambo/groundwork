@@ -594,7 +594,11 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                 <FieldRow label="Your status" value={statusSentence(whatThisStatusMeans(g?.status))} />
                 <FieldRow
                   label="Your check-ins"
-                  value={(participants.find((p) => p.userId === user?.id)?.managingOnly) ? 'You check in when you choose. Use Check in yourself any time.' : yourSessionsSentence(mySessionsDone, plannedSessions)}
+                  value={(participants.find((p) => p.userId === user?.id)?.managingOnly) ? 'You check in when you choose. Use Check in yourself any time.' : [
+                    yourSessionsSentence(mySessionsDone, plannedSessions),
+                    /* Beside "1 of 12 sessions done" above, her own count read as the team's; the team's, as served, says which is which. */
+                    page && typeof page.teamSessionsDone === 'number' ? `The team has finished ${page.teamSessionsDone}.` : null,
+                  ].filter(Boolean).join(' ')}
                 />
               </FieldRows>
             )}

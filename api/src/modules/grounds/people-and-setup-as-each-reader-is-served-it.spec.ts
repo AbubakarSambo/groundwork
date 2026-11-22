@@ -84,6 +84,8 @@ describe('the lead, Grace, reads the whole page', () => {
       { participantId: 'p-peter', says: "Peter Ouma can't start, because the invitation to Peter bounced.", fix: 'fix-the-address' },
     ]);
     expect(r.sessions).toBe('3 of 18 sessions done. Sessions already done are never removed.');
+    /* The number that sentence says, served beside it, so the lead's own count can be read as hers (22 November 2026). */
+    expect(r.teamSessionsDone).toBe(3);
     expect(r.joinedWithTheLink).toBe('1 person has answered with it.');
     expect(r.kindOfWork).toBe('sales team');
     expect(r.othersWithAccess).toBe("The people above and the admins of Drop Access can see it. So can a lead in the same department, once the team's report is shared.");

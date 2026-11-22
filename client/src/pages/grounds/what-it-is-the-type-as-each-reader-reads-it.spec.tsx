@@ -152,3 +152,17 @@ describe('with Release 2 off', () => {
     expect(screen.queryByText('Fee notes and invoices')).toBeNull()
   })
 })
+
+/*
+ * HER OWN CHECK-INS BESIDE THE TEAM'S (coordinator's count check, 22 November 2026). Wairimu read "1 of 12 sessions done" at the top and,
+ * under "Your check-ins", her own three, and the two looked contradictory. The team's number is served beside the sentence that says it,
+ * and her own line says it too.
+ */
+describe('Wanjiru, who runs it and checks in herself, reads her own count beside the team’s', () => {
+  it('her own sessions, then the sessions the team has finished, as served', async () => {
+    ;(groundsApi.peopleAndSetup as any).mockResolvedValue({ ...SERVED_TO_WANJIRU, sessions: '1 of 12 sessions done. Sessions already done are never removed.', teamSessionsDone: 1 })
+    renderPage(props({ mySessionsDone: 3, plannedSessions: 12 }))
+    await waitFor(() => expect(screen.getByText('1 of 12 sessions done. Sessions already done are never removed.')).toBeTruthy(), { timeout: 5000 })
+    expect(screen.getByText('3 of 12 check-ins are done. The team has finished 1.')).toBeTruthy()
+  })
+})
