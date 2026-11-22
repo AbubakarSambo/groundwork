@@ -71,13 +71,28 @@ describe('Wairimu reads the goal she changed at the top of her own board', { tim
     expect(text.split(CHANGED).length - 1).toBe(1)
   })
 
-  it('a stock-out on another goal is said too, and a headline question already says the goal, so its name is not said twice', () => {
+  /* Changed 22 November evening (R-6): a goal with a change of its own says that change, and only that; the glance's stop is said here only
+     for a goal with no change of its own. Before, both were drawn, and the same change read twice whenever the glance's copy had lost its
+     quotation marks at the read. */
+  it('a stock-out on another goal is said where this goal has no change, and a headline question already says the goal, so its name is not said twice', () => {
     const stopped = 'On 21 November the goal changed, because the depot is closed.'
     const b = { ...withTheChange(asWairimuWithItsKind), headline: { question: 'Will each person build a waitlist of 15 shops by 31 December?', answer: null } }
+    b.objectives = [{ ...theGoal, changed: null }]
     b.howItIsGoing.glance.inTheWay.stopped = stopped
     const { container } = render(<MemoryRouter><HeadlineAndGap b={b} deals={null} groups={{}} /></MemoryRouter>)
     const text = container.textContent ?? ''
-    expect(text).toContain(`${stopped}${CHANGED}`)
+    expect(text).toContain(stopped)
     expect(text).not.toContain('What the team is aiming for')
+  })
+
+  /* RE-TEST, 22 NOVEMBER EVENING (R-6): the engine serves the change on the goal with its quotation marks, and the glance's copy without
+     them (the read strips marks it cannot find in the record). Wairimu read the sentence twice. */
+  it('the change is said once when the glance holds the same change without its quotation marks', () => {
+    const b = withTheChange(asWairimuWithItsKind)
+    b.howItIsGoing.glance.inTheWay.stopped = CHANGED.replace(/[“”]/g, '')
+    const { container } = render(<MemoryRouter><HeadlineAndGap b={b} deals={null} groups={{}} /></MemoryRouter>)
+    const text = container.textContent ?? ''
+    expect(text).toContain(`What the team is aiming for${GOAL}.${CHANGED}`)
+    expect(text.split('the goal changed').length - 1).toBe(1)
   })
 })

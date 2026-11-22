@@ -4041,7 +4041,7 @@ function buildActivePathway(ctx: PromptContext): string {
    * nothing here replaces it - and the pack follows underneath as what the conversation is about.
    */
   const pack = theSituationsGuide(ctx.scenarioPackOverride
-    ?? buildScenarioPackForParty(scenario, partyType, ctx.moment, whichStage(ctx.sessionNumber, ctx.totalSessions)) ?? '');
+    ?? buildScenarioPackForParty(scenario, partyType, ctx.moment, sessionNumber <= 1 ? 'first' : whichStage(ctx.sessionNumber, ctx.totalSessions)) ?? '');
 
   /* The continuity block leads, because it sets the opening. The pack says what to talk about. */
   const withTheScenarioUnderneath = (continuity: string): string =>
@@ -4405,6 +4405,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
      */
     ...whereInTheRun({
       sessionNumber: ctx.sessionNumber,
+      theirOwnSession: ctx.theirOwnSession,
       runsUntilEnded: ongoing,
       totalSessions: total,
       moment: ctx.moment ?? null,

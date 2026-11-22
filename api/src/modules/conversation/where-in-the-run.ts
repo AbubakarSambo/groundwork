@@ -68,21 +68,29 @@ const MOMENT_MEANING: Record<GroundMoment, string> = {
 
 export function whereInTheRun(input: {
   sessionNumber: number;
+  /**
+   * Which of this person's own conversations it is (theirOwnSessionNumber). Their first is a first check-in, wherever the team's run
+   * is: Sade, added in session 3, was told "since our last check-in" in her first (re-test, 22 November evening, R-13), because the
+   * position was read from the team's session and said MIDDLE ("open from what this person said they own"). What is left of the run
+   * stays the team's.
+   */
+  theirOwnSession?: number;
   /** Runs until the lead ends it: no total, no "further check-ins planned", no run length. */
   runsUntilEnded?: boolean;
   totalSessions?: number;
   moment?: GroundMoment | null;
   timelineDays?: number | null;
 }): string[] {
+  const theirFirst = input.theirOwnSession === 1;
   if (input.runsUntilEnded) {
-    const position = positionInRun(input.sessionNumber, undefined, true);
+    const position = theirFirst ? 'first' : positionInRun(input.sessionNumber, undefined, true);
     const lines = [
       `WHERE_IN_THE_RUN: ${position} - ${POSITION_MEANING[position]} This check-in runs until the lead ends it. There is no planned last check-in, so never say how far through it is, never say it is halfway or nearly over, and never wrap up as if this were the last one.`,
     ];
     if (input.moment) lines.push(`MOMENT: ${input.moment} - ${MOMENT_MEANING[input.moment]}`);
     return lines;
   }
-  const position = positionInRun(input.sessionNumber, input.totalSessions);
+  const position = theirFirst ? 'first' : positionInRun(input.sessionNumber, input.totalSessions);
   const remaining = sessionsRemaining(input.sessionNumber, input.totalSessions);
   const lines = [
     `WHERE_IN_THE_RUN: ${position} - ${POSITION_MEANING[position]} ${

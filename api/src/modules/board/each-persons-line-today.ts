@@ -1,3 +1,5 @@
+import { whenTheyAnswered, type ASessionAsItHappened } from './a-day-they-checked-in';
+
 /**
  * "THE TEAM TODAY", EACH PERSON'S LINE FROM THEIR LAST CHECK-IN (Hafsah's point 10, 17 October; board-as-lead.txt: Aisha
  * "Visited John Butchery and Fresh Foods; sent 1 quote", Omar "Hasn't checked in today", "Not in yet").
@@ -35,14 +37,30 @@ export function theirLine(lines: readonly ALineTheySaid[], dealNames: readonly s
 
 const dayIn = (d: Date, zone: string) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 
-/** The check-in this person finished today, in the organisation's day, or null. */
-export function theirCheckInToday<T extends { participantId: string | null; status: string; completedAt: Date | string | null; isSetup?: boolean | null }>(
+/** A check-in row as the board reads it, with their first answer in it where it was read (`turns`: their first turn). */
+export type ACheckInTheyMayHaveAnswered = { participantId: string | null; status: string; completedAt: Date | string | null; isSetup?: boolean | null; closedReason?: string | null; turns?: { createdAt?: Date | string | null }[] | null } & ASessionAsItHappened;
+
+/**
+ * THE LAST CHECK-IN THEY ANSWERED, AND WHEN (re-test, 22 November evening, R-11). The board read "Chidi last checked in on Monday 23
+ * November" from the session the clock closed that morning with nothing from him (COMPLETED, with a `completedAt`), while the same
+ * morning's summary said he had not checked in the last two times. Both now read the one rule of answering (a-day-they-checked-in's
+ * `whenTheyAnswered`): a session the clock closed with nothing of theirs is not a check-in, and one they answered is on the day they answered.
+ */
+export function theirLastAnswer<T extends ACheckInTheyMayHaveAnswered>(checkIns: readonly T[], participantId: string): { checkIn: T; at: Date } | null {
+  let best: { checkIn: T; at: Date } | null = null;
+  for (const c of checkIns) {
+    if (c.participantId !== participantId || c.isSetup) continue;
+    const turns = Array.isArray(c.turns) ? c.turns : null;
+    const at = whenTheyAnswered({ ...c, answers: turns ? turns.length : c.answers, firstAnsweredAt: turns ? turns[0]?.createdAt ?? null : c.firstAnsweredAt });
+    if (at && (!best || at > best.at)) best = { checkIn: c, at };
+  }
+  return best;
+}
+
+/** The check-in this person answered today, in the organisation's day, or null. */
+export function theirCheckInToday<T extends ACheckInTheyMayHaveAnswered>(
   checkIns: readonly T[], participantId: string, now: Date, zone: string,
 ): T | null {
-  const today = dayIn(now, zone);
-  const done = checkIns
-    .filter((c) => c.participantId === participantId && String(c.status).toUpperCase() === 'COMPLETED' && !!c.completedAt && !c.isSetup)
-    .filter((c) => dayIn(new Date(c.completedAt as any), zone) === today)
-    .sort((a, b) => new Date(b.completedAt as any).getTime() - new Date(a.completedAt as any).getTime());
-  return done[0] ?? null;
+  const last = theirLastAnswer(checkIns, participantId);
+  return last && dayIn(last.at, zone) === dayIn(now, zone) ? last.checkIn : null;
 }
