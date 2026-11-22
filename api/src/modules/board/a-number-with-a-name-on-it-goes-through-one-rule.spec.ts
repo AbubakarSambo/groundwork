@@ -200,6 +200,9 @@ describe('every surface that hands out whose number it is', () => {
     'modules/board/an-aim-is-counted-now.ts': "counts only the aims its caller hands in, already read through targetsFor, from each aim's own deals or bills; serves nobody",
     /* Fix plan 17 November, group B: the material for one person's assessment holds the team's aims and that person's own and never another person's, stricter than targetsFor for every reader (even the lead's own read keeps only her own share), because the assessment is read by pages for other readers. It serves nobody itself. Added to this list 19 November, when the spec was found failing on it. */
     'modules/conversation/assess-the-conversation.ts': "builds one person's assessment material from the team's aims and that person's own, never another person's, a stricter rule than targetsFor for every reader; serves nobody itself",
+    /* A goal changed by its lead, 22 November 2026: works out and writes the change to the one goal row from the lead's own words, and names whose goal
+       it was in the check-in's log. It serves nobody itself; who may read what the goal was is decided by its callers (theChangeAsASentence's whatItWas). */
+    'modules/grounds/a-goal-changed-by-its-lead.ts': "writes a goal changed by its lead to the one goal row and keeps whose it was in the log; serves nobody itself, and its callers decide who reads what it was",
     'modules/board/your-team-person-by-person.ts': "reads each person's own records (work items) by their own id, for the lead who runs the check-in alone; never a target or a number",
   };
 

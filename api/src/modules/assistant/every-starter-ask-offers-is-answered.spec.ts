@@ -130,17 +130,40 @@ describe('what each reader reads in answer', () => {
   });
 });
 
+/**
+ * The asker's own places and the promises kept on them, as the one reader of a person's promises reads them (thePromisesOf, which My work
+ * reads too): their places by their own user id, then the promises on those places by participant id. Changed 22 November 2026 (release
+ * test of 22 November, Ask #25 and #26): Ask's own query (groundCommitment by `participant.userId`) is gone, so these rows are now found the
+ * way My work finds them. What each person reads is unchanged.
+ */
+type APlace = { id: string; groundId: string; label: string; awaitingSeat?: boolean };
+function theirPlaces(byUser: Record<string, APlace[]>) {
+  return jest.fn(async ({ where }: any = {}) => (byUser[where?.userId] ?? []).map((p) => ({ id: p.id, groundId: p.groundId, awaitingSeat: !!p.awaitingSeat, ground: { label: p.label } })));
+}
+function keptOn(rows: any[]) {
+  return jest.fn(async ({ where }: any = {}) => {
+    const ids: string[] = typeof where?.participantId === 'string' ? [where.participantId] : where?.participantId?.in ?? [];
+    return rows.filter((r) => ids.includes(r.participantId));
+  });
+}
+const aPromise = (participantId: string, groundId: string, text: string, whenSaid: string | null, minute: number) =>
+  ({ id: `c-${participantId}-${minute}`, participantId, groundId, text, whenSaid, status: 'UNKNOWN', createdAt: new Date(Date.UTC(2026, 10, 2, 9, minute)) });
+
 /** REQUEST 180 ITEM 2, AS EACH PERSON READS IT. Baraka has two promises written down in "Sales team, Q3"; Esther has none. */
 describe('"What did I say I would do?"', () => {
   const asBaraka = (userId: string) => {
     const h = askGroundwork({ userId });
     h.prisma.person.findFirst = jest.fn(async () => ({ id: 'p1', externalId: `ext-${userId}`, displayName: 'X', active: true, linkedUserId: userId }));
     h.prisma.commitment.findMany = jest.fn(async () => []);
-    h.prisma.groundCommitment = {
-      findMany: jest.fn(async ({ where }: any) => (where.participant.userId === 'u-baraka'
-        ? [{ text: 'Send the Kisumu price list', whenSaid: 'by Friday', ground: { label: 'Sales team, Q3' } }, { text: 'Ask Juma about the discount.', whenSaid: null, ground: { label: 'Sales team, Q3' } }]
-        : [])),
-    };
+    /* Esther is in the same check-in, with nothing of her own written down. */
+    h.prisma.groundParticipant.findMany = theirPlaces({
+      'u-baraka': [{ id: 'pp-b', groundId: 'g-q3', label: 'Sales team, Q3' }],
+      'u-esther': [{ id: 'pp-e', groundId: 'g-q3', label: 'Sales team, Q3' }],
+    });
+    h.prisma.groundCommitment = { findMany: keptOn([
+      aPromise('pp-b', 'g-q3', 'Send the Kisumu price list', 'by Friday', 1),
+      aPromise('pp-b', 'g-q3', 'Ask Juma about the discount.', null, 2),
+    ]) };
     return h;
   };
 
@@ -164,12 +187,13 @@ describe('"What did I say I would do?" for a promise written down while setting 
     h.prisma.person.findFirst = jest.fn(async () => ({ id: 'p1', externalId: `ext-${userId}`, displayName: 'X', active: true, linkedUserId: userId }));
     h.prisma.commitment.findMany = jest.fn(async () => []);
     h.prisma.groundCommitment = { findMany: jest.fn(async () => []) };
-    h.prisma.groundParticipant.findMany = jest.fn(async ({ where }: any) => (where.userId === 'u-wairimu' ? [{ id: 'pp-w', ground: { label: 'Sales team, last quarter' } }] : []));
-    h.prisma.personObjective = {
-      findMany: jest.fn(async ({ where }: any) => (where.participantId.in.includes('pp-w') && where.authoredBy === 'self' && where.status === 'OPEN'
-        ? [{ text: 'I will settle the 21 day credit rule with finance by the end of October.', dueSaid: 'by the end of October', participantId: 'pp-w' }]
-        : [])),
-    };
+    h.prisma.groundParticipant.findMany = theirPlaces({
+      'u-wairimu': [{ id: 'pp-w', groundId: 'g-last', label: 'Sales team, last quarter' }],
+      'u-other': [{ id: 'pp-o', groundId: 'g-last', label: 'Sales team, last quarter' }],
+    });
+    h.prisma.personObjective = { findMany: keptOn([
+      { id: 'po-w', groundId: 'g-last', participantId: 'pp-w', text: 'I will settle the 21 day credit rule with finance by the end of October.', kind: 'COMMITMENT', status: 'OPEN', statusChangedAt: null, authoredBy: 'self', dueSaid: 'by the end of October', createdAt: new Date('2026-10-01T09:00:00Z') },
+    ]) };
     return h;
   };
 
@@ -193,9 +217,10 @@ describe('"What did I say I would do?" says each promise whole, once', () => {
     const h = askGroundwork({ userId: 'u-amani' });
     h.prisma.person.findFirst = jest.fn(async () => ({ id: 'p1', externalId: 'ext-a', displayName: 'X', active: true, linkedUserId: 'u-amani' }));
     h.prisma.commitment.findMany = jest.fn(async () => []);
-    h.prisma.groundCommitment = { findMany: jest.fn(async () => [
-      { text: 'I will send it by Friday now that I have the new name.', whenSaid: 'by Friday', ground: { label: 'Sales team, Q3' } },
-      { text: 'I will send the Kisumu list.', whenSaid: 'by Friday', ground: { label: 'Sales team, Q3' } },
+    h.prisma.groundParticipant.findMany = theirPlaces({ 'u-amani': [{ id: 'pp-a', groundId: 'g-q3', label: 'Sales team, Q3' }] });
+    h.prisma.groundCommitment = { findMany: keptOn([
+      aPromise('pp-a', 'g-q3', 'I will send it by Friday now that I have the new name.', 'by Friday', 1),
+      aPromise('pp-a', 'g-q3', 'I will send the Kisumu list.', 'by Friday', 2),
     ]) };
     const t = textOf(await h.service.respond('org-a', 'p1', 'What did I say I would do?'));
     /* Each promise once, in the second person, as a full sentence (privacy sweep, 7 October, item 4). */
@@ -276,9 +301,9 @@ describe('"What did I say I would do?" for somebody with no seat yet (decision 1
     const h = askGroundwork({ userId: 'u-tobi' });
     h.prisma.person.findFirst = jest.fn(async () => ({ id: 'p1', externalId: 'ext-t', displayName: 'X', active: true, linkedUserId: 'u-tobi' }));
     h.prisma.commitment.findMany = jest.fn(async () => []);
-    h.prisma.groundCommitment = { findMany: jest.fn(async ({ where }: any) => (where.participant.awaitingSeat === undefined && where.participant.userId === 'u-tobi'
-      ? [{ text: 'I will send the Kisumu list.', whenSaid: 'by Friday', ground: { label: 'Sales team, Q3' } }] : [])) };
-    h.prisma.groundParticipant.findMany = jest.fn(async () => [{ id: 'pp-t', awaitingSeat: true, ground: { label: 'Sales team, Q3' } }]);
+    /* Held for a seat, her place still finds her own promises. */
+    h.prisma.groundParticipant.findMany = theirPlaces({ 'u-tobi': [{ id: 'pp-t', groundId: 'g-q3', label: 'Sales team, Q3', awaitingSeat: true }] });
+    h.prisma.groundCommitment = { findMany: keptOn([aPromise('pp-t', 'g-q3', 'I will send the Kisumu list.', 'by Friday', 1)]) };
     h.prisma.personObjective = { findMany: jest.fn(async () => []) };
     const t = textOf(await h.service.respond('org-a', 'p1', 'What did I say I would do?'));
     expect(t).toContain('In "Sales team, Q3", you said you would send the Kisumu list by Friday.');
