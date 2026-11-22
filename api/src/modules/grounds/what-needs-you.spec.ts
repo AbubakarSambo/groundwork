@@ -103,7 +103,7 @@ describe('Today, as Miriam, who takes part in the sales team', () => {
   const r = whatNeedsYou([salesAsMiriam], { userId: MIRIAM, role: 'MEMBER', organizationId: 'org' }, [{ id: 'g-x', label: 'Supplier review', createdBy: 'Omar Ali' }], NOW);
 
   it('tells her about her report and her own report, and nothing that is not hers', () => {
-    expect(titles(r)).toEqual(['The report for Sales team, Q3 is ready', 'Your own report for Sales team, Q3']);
+    expect(titles(r)).toEqual(['The report for Sales team, Q3 is ready', 'Your own report for Sales team, Q3 is ready']);
     expect(r.needs[0].detail).toBe('Three deals moved stage.');
     expect(r.needs[1]).toMatchObject({ detail: null, action: { label: 'Read it', to: '/checkin/c4/report' } });
   });

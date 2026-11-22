@@ -69,7 +69,7 @@ Who: **M** member, **L** lead (runs a check-in), **A** admin, **H** HR or financ
 | 44 | Ask what is stuck, and who is waiting | All | "whats stuck" | The web and WhatsApp | Yes, by answering |
 | 45 | Ask what a colleague said, only as much as you may already read | All | "what did Femi say last week" | The web and WhatsApp | Yes, by answering |
 | 46 | Ask who somebody is on the roster | All | "who is Sam" | The web and WhatsApp | Yes, by answering |
-| 47 | Read one person’s history, as their lead | L of that person | "how has Joseph been doing" | The web and WhatsApp | Yes, by answering |
+| 47 | Read how one person you lead or manage is doing, with the evidence | L or manager of that person | "how has Joseph been doing" | The web and WhatsApp | Yes, by answering |
 | 48 | Ask whether the strategy is moving | All | "is the strategy working" | The web and WhatsApp | Yes, by answering |
 
 ## 5. Requests: leave, spending, hours

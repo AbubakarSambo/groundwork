@@ -41,7 +41,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { howManyQuestionsOwnerAsked, ownAskTurns, searchOwnQuestions } from './a-persons-own-ask-turns';
 import { contextIsInAskGroundwork } from '../admin/what-is-hidden-at-release';
 import { DependencyStatus } from '@prisma/client';
-import { aQuestionAskedAboutARequest, aQuestionSaidBack, aQuestionSent, aQuestionNotSent, WHICH_REQUEST_TO_ASK_ABOUT, NOTHING_TO_ASK_ABOUT, HOURS_TAKE_NO_QUESTION } from '../suites/an-approver-asks-by-saying-so';
+import { aQuestionAskedAboutARequest, aQuestionSaidBack, aQuestionSent, aQuestionNotSent, WHICH_REQUEST_TO_ASK_ABOUT, NOTHING_TO_ASK_ABOUT, HOURS_TAKE_NO_QUESTION, WHAT_IS_YOUR_QUESTION } from '../suites/an-approver-asks-by-saying-so';
 import { HOW_DO_I_CAN_BE_ASKED, whatYouCanAskSaid } from './what-you-can-ask-here';
 import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
 import { aPromiseAsASentence } from './a-promise-as-a-sentence';
@@ -118,7 +118,6 @@ import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
 import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { theOpenSession as theOpenSessionOfACheckIn, whereOneStands } from '../engagement/heres-what-is-new';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
-import { theRecordForPromises, thePromisesSaidDone } from '../conversation/a-promise-said-done-is-kept';
 import { onWhatsApp, askedOnWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 /** The parked kinds that belong to the app's setup conversation (Add context), never to a message on WhatsApp. */
 const THE_APPS_OWN_SETUP_KINDS = new Set(['context', 'context_turn', 'context_line', 'lead_note', 'which_context_check_in']);
@@ -293,6 +292,7 @@ function aSourceInPlainWords(sys: string, _stale: boolean): string {
 }
 
 import { isAQuestion, answerFromTheDocuments, NO_DOCUMENTS_TO_READ } from './a-question-is-answered-from-the-documents';
+import { theDirectReportsOf } from '../suites/who-may-decide';
 import { openTheLeadsCheckIn } from '../grounds/check-in-yourself';
 /** "I want to do my own check-in", "check in myself", "my check-in now". */
 const A_WISH_TO_CHECK_IN_MYSELF = /\b(?:(?:do|start|begin|answer)\s+my\s+(?:own\s+)?check[\s-]?in|check[\s-]?in\s+(?:myself|for\s+myself)|my\s+own\s+check[\s-]?in)\b/i;
@@ -303,6 +303,8 @@ const WHICH_DECISION_KIND = 'which_decision';
 /* "Add our staff handbook for everyone." is done, not pointed at a page: what to do with the file, where they are (Batch S round 2, T3). */
 const A_DOCUMENT_FOR_EVERYONE_ON_THE_WEB = 'Press the + beside the message box and choose the file. I will read it and tell you what it holds, and it goes on the Desk for everyone only when you say yes.';
 const A_DOCUMENT_FOR_EVERYONE_ON_WHATSAPP = 'Send me the file here, with a line saying it is for everyone. I will read it and tell you what it holds, and it goes on the Desk for everyone only when you say yes.';
+
+const NOTHING_IS_STUCK = 'Nothing is recorded as waiting on you, and you have not named anything you are waiting on.';
 
 /** One thing Today holds for somebody, as a sentence: its title, then what it says. */
 function aNeedSaid(n: { title: string; detail: string | null }): string {
@@ -675,6 +677,15 @@ export class AssistantService {
       }
       if (parked) return this.resolveParked(organizationId, personId, who, parked, message, { groundId, userId, forceAddContext });
     }
+    /*
+     * AN OPEN DRAFT IS A WAITING STEP TOO, ASKED BEFORE ANY LANE (release test of 22 November 2026, #20). It was asked only of a message no lane
+     * claimed, so Wairimu's "cancel" during her goal draft went to the model's pick, stopping somebody acting for her, and she read "Nobody acts for
+     * you at the moment". The model says whether the message answers the draft, stops it, or is something else; something else goes on as before.
+     */
+    if (who) {
+      const continued = await this.continueTheDraft(organizationId, who, message, async () => (await this.placed(organizationId, message)).lane !== 'unplaced');
+      if (continued) return continued;
+    }
 
     /*
      * WHAT CAN YOU HELP ME WITH, AND HOW DO I, IN ANY WORDS (Batch S, S5). The model has read the message (respondInner); these two only
@@ -802,11 +813,12 @@ export class AssistantService {
     /*
      * WHERE YOUR HOURS STAND (decision 85, build step 11): "how many hours have I logged this week?"
      * answered from the person's own hours against the time sheet rules, for them only. With no rules
-     * set, or rules that do not ask this person, it falls through to what answered it before.
+     * set, or rules that do not ask this person, the hours they gave this week are still said.
      */
     if (who && userId && asksWhereMyHoursStand(message) && this.timeSheets) {
       const standing = await Promise.resolve(this.timeSheets.standing?.({ userId, organizationId })).catch(() => null);
-      if (standing?.said) return rules('log_hours', text(`${standing.said} ${HOURS_CAN_BE_TOLD_HERE}`));
+      const said = standing?.said ?? standing?.recorded;
+      if (said) return rules('log_hours', text(`${said} ${HOURS_CAN_BE_TOLD_HERE}`));
     }
 
 
@@ -883,18 +895,6 @@ export class AssistantService {
        * her "I've uploaded it." was answered "I cannot answer that one yet". A file with no numbers to record is simply kept and can be asked about.
        */
       if (JUST_ADDED_A_DOCUMENT.test(message) && (await this.aFileJustAdded(organizationId, personId, groundId))) return rules('add_a_document', text(A_FILE_KEPT));
-    }
-
-    /*
-     * AN OPEN DRAFT TAKES PLAIN ANSWERS.
-     *
-     * The objective lane asked "what is being measured?" and then nothing read the reply: a person
-     * who answered "revenue from the Lagos hub" was told what the assistant can do instead. A message
-     * no lane claims, from somebody with a draft that is still asking, is the answer to what it asked.
-     */
-    if (who && routed.lane === 'unplaced') {
-      const continued = await this.continueTheDraft(organizationId, who, message);
-      if (continued) return continued;
     }
 
     /* Every lane answers from one place (answerInTheLane), whether the rules placed the message or the model read it from the guide. */
@@ -1342,7 +1342,12 @@ export class AssistantService {
     const week = await this.board.whoNeedsYouThisWeek(organizationId, key, { ...(await this.theBoardLeavesOut(organizationId)), readerIsAdmin });
     /* What Today holds for them comes first, from the one source Today reads: "It is quiet" was said to Amani while her own check-in waited (release test of 21 November 2026, Ask #13). */
     const today = await this.whatTodayHoldsForYou(organizationId, userId);
-    if (!week.buckets.length) return rules('where_am_i_needed', text(today.length ? whatIsWaitingSaid(today) : NOTHING_FLAGGED));
+    /* With nobody waiting on them this week, what they are waiting on themselves is said too (release test of 22 November 2026, #13). */
+    if (!week.buckets.length) {
+      const waits = await this.theWaitsSaid(organizationId, who, userId);
+      const parts = [...(today.length ? [whatIsWaitingSaid(today)] : []), ...(waits ? [waits] : [])];
+      return rules('where_am_i_needed', text(parts.length ? parts.join('\n\n') : NOTHING_FLAGGED));
+    }
 
     /*
      * EACH ONE A FULL SENTENCE, WITH THE PERSON'S NAME AND THE DAY IT BEGAN (3 October 2026). This read
@@ -1362,7 +1367,12 @@ export class AssistantService {
     return this.withItsSource(rules('where_am_i_needed', text(parts.join('\n\n'))), WHAT_NEEDS_YOU_SOURCE);
   }
 
-  private async whatIsStuck(organizationId: string, who: string | null, question = '', userId: string | null = null): Promise<Reply> {
+  /**
+   * WHO IS WAITING ON WHOM, FROM THE RECORD, AS SENTENCES. Null when nothing waits either way, so "what is stuck" and "where am I needed" can say
+   * it beside what Today holds rather than in place of it: Amani's "whats stuck" read only "Your own report for Sales team, Q4", and nothing about
+   * her wait on Baraka, once her own report was ready (release test of 22 November 2026, #44 and #13).
+   */
+  private async theWaitsSaid(organizationId: string, who: string | null, userId: string | null = null): Promise<string | null> {
     const readerIsAdmin = !!userId && await this.isAnAdminHere(organizationId, userId);
     const { waiting, waitedOn } = await this.board.waitingAcrossTheOrg(organizationId, undefined, await this.theBoardLeavesOut(organizationId));
 
@@ -1382,13 +1392,7 @@ export class AssistantService {
      * whoever runs that check-in, in "where am I needed" (whoNeedsYouThisWeek).
      */
 
-    if (!mine.length && !onMe.length) {
-      return rules('what_is_stuck', text(
-        key
-          ? 'Nothing is recorded as waiting on you, and you have not named anything you are waiting on.'
-          : 'I cannot match you to a check-in, so I cannot tell you what is waiting on you.',
-      ));
-    }
+    if (!mine.length && !onMe.length) return null;
 
     /*
      * The day it began is stated rather than turned into a word. "Long overdue" is a judgement the
@@ -1423,25 +1427,14 @@ export class AssistantService {
         ? `${who} says they cannot go on without ${w.what}, and has been waiting on you for it${since(w)}${inIt}.`
         : `${who} has been waiting on you for ${w.what}${since(w)}${inIt}.`;
     };
+    /* Whom they said they wait on, in their own words ("Baraka"): theirs to read, as they said it. */
+    const fromWhom = (w: (typeof waiting)[number]) => (String((w as any).onLabel ?? '').trim() ? ` from ${String((w as any).onLabel).trim()}` : '');
     const yours = (w: (typeof waiting)[number]) => (w.status === DependencyStatus.BLOCKING
-      ? `You said you cannot go on without ${w.what}, and you have been waiting for it${since(w)}${where(w)}.`
-      : `You have been waiting for ${w.what}${since(w)}${where(w)}.`);
+      ? `You said you cannot go on without ${w.what}${fromWhom(w)}, and you have been waiting for it${since(w)}${where(w)}.`
+      : `You have been waiting for ${w.what}${fromWhom(w)}${since(w)}${where(w)}.`);
     const aList = (lines: string[]) => (lines.length === 1 ? lines[0] : lines.map((l) => `- ${l}`).join('\n'));
 
-    /*
-     * ANSWER THE QUESTION THEY ASKED FIRST, EVEN WHEN THE ANSWER IS NOTHING.
-     *
-     * Driving this found it: asked "what am I waiting on", somebody with nothing of their own but
-     * one handoff sitting with them got back a list headed "Waiting on you". Both facts are true and
-     * the second is the more useful one, but leading with it silently answers a different question,
-     * and the reader has to work out that the swap happened. Saying so costs one line.
-     */
-    const askedAboutTheirOwn = /waiting on\b/i.test(question) && !/on me\b/i.test(question);
-
     const parts: string[] = [];
-    if (askedAboutTheirOwn && !mine.length && onMe.length) {
-      parts.push('You have not named anything you are waiting on. What I do have is the other direction.');
-    }
     if (onMe.length) {
       parts.push(
         `${onMe.length > 1 ? 'Other people have said they are waiting on you for these things.\n' : ''}${aList(onMe.map(onYou))}\n\n`
@@ -1451,7 +1444,7 @@ export class AssistantService {
     if (mine.length) {
       parts.push(`${mine.length > 1 ? 'You have said you are waiting for these things.\n' : ''}${aList(mine.map(yours))}`);
     }
-    return rules('what_is_stuck', text(parts.join('\n\n')));
+    return parts.join('\n\n');
   }
 
   /**
@@ -4109,11 +4102,11 @@ export class AssistantService {
   /**
    * THE DRAFT'S NEXT QUESTION IS ANSWERED HERE.
    *
-   * Only when a draft of theirs is still asking and no lane claimed the message. The draft's own
+   * Only when a draft of theirs is still asking, before any lane, and only what the model reads as its answer or a stop. The draft's own
    * refusal ("that is not a measure") is returned as the reply, so the screen and the chat say the
    * same thing about the same answer. When the last piece lands, the offer to set it follows.
    */
-  private async continueTheDraft(organizationId: string, who: string, message: string): Promise<Reply | null> {
+  private async continueTheDraft(organizationId: string, who: string, message: string, placedOnALane: () => Promise<boolean> = async () => false): Promise<Reply | null> {
     /* A draft that cannot be read is no draft: this must never be the reason a plain message gets no answer. */
     const open = await Promise.resolve(
       this.prisma.objectiveDraft?.findFirst({
@@ -4125,7 +4118,8 @@ export class AssistantService {
     const next = whatToAskForNext(open);
     if (!next) return null;
     /* Only an answer is taken as the answer: anything else is answered as itself, and a person can always leave the draft. */
-    const step = await whatTheyDoWithTheStep(this.engine as any, this.prompts as any, { message, waiting: next.asks });
+    /* With no reading from the model, a message the rules place on a lane is that lane's, as it was before the draft was asked first. */
+    const step = await whatTheyDoWithTheStep(this.engine as any, this.prompts as any, { message, waiting: next.asks }, (await placedOnALane()) ? 'something_else' : 'answers');
     if (step === 'something_else') return null;
     if (step === 'stops') {
       await Promise.resolve().then(() => this.prisma.objectiveDraft.update({ where: { id: open.id }, data: { state: 'ABANDONED' } })).catch(() => undefined);
@@ -5191,6 +5185,7 @@ export class AssistantService {
     return {
       isAGuest,
       mayAddPeople: theRolesTheyMayGive(role ?? null, howPeopleJoin).length > 0,
+      managesSomebody: !isAGuest && !!userId && (await read(() => theDirectReportsOf(this.prisma, { organizationId, userId }), { userIds: [] as string[], unsigned: [] as string[] })).userIds.length > 0,
       isAnAdmin: role === 'ADMIN',
       looksAfterHr: !isAGuest && !!userId && duties.hr === userId,
       isAPrincipal: yearEnd.own,
@@ -5262,6 +5257,7 @@ export class AssistantService {
       case 'how_many_days_left': return this.yourDaysOfLeaveLeft(organizationId, userId, message);
       case 'your_requests': return this.aboutYourRequests(organizationId, userId, message);
       case 'who_is_away': return this.whoIsAway(organizationId, userId, message);
+      case 'a_question_about_a_request': return userId ? this.aQuestionAboutARequestWanted(organizationId, who, userId, message) : null;
       /* "end Chidi's right" in words the rules do not place: the same say-back as "Chidi no longer acts for me", which ends nothing without a yes (release test 21 November, 80). */
       case 'stop_a_delegate': return this.stopADelegate(organizationId, who, userId, message);
       case 'what_is_due': return this.whatIsDue(organizationId, who, userId);
@@ -5337,12 +5333,16 @@ export class AssistantService {
   private async whatNeedsYouNow(organizationId: string, who: string | null, userId: string | null, asked: 'next' | 'stuck'): Promise<Reply> {
     const lane = asked === 'next' ? 'what_next' : 'what_is_stuck';
     const needs = await this.whatTodayHoldsForYou(organizationId, userId);
-    if (!needs.length) return asked === 'next' ? this.whatNext(organizationId, who, userId) : this.compose(await this.whatIsStuck(organizationId, who, '', userId));
     if (asked === 'next') {
+      if (!needs.length) return this.whatNext(organizationId, who, userId);
       const [first, ...rest] = needs;
       return rules(lane, text([`Do this first. ${aNeedSaid(first)}`, ...(rest.length ? [`After that, ${rest.length === 1 ? 'one more thing waits' : `${rest.length} more things wait`} for you on your Today page.`] : [])].join('\n\n')));
     }
-    return rules(lane, text(whatIsWaitingSaid(needs)));
+    /* What Today holds and who waits on whom, both: one never stands in for the other. */
+    const waits = await this.theWaitsSaid(organizationId, who, userId);
+    const parts = [...(needs.length ? [whatIsWaitingSaid(needs)] : []), ...(waits ? [waits] : [])];
+    if (!parts.length) return rules(lane, text(who ? NOTHING_IS_STUCK : 'I cannot match you to a check-in, so I cannot tell you what is waiting on you.'));
+    return rules(lane, text(parts.join('\n\n')));
   }
 
   /** What Today shows this reader as needing them: open check-ins, approvals waiting, reports to read. The one source Today reads. */
@@ -5537,12 +5537,16 @@ export class AssistantService {
       const me: any = await Promise.resolve((this.prisma as any).user?.findUnique?.({ where: { id: userId }, select: { awaitingOrgApproval: true } })).catch(() => ({ awaitingOrgApproval: true }));
       if (me?.awaitingOrgApproval === true) return rules(lane, text(WAITING_TO_BE_LET_IN));
     }
-    const [commitments, toDos, waiting] = await Promise.all([
-      this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN', ...notFromAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId), 'sourceGroundId') }, orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }] }).then((rows) => withoutCommitmentsFromGoalsNotToldYet(this.prisma, rows)),
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
+    const [commitments, toDos, waiting, inCheckIns] = await Promise.all([
+      this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN', ...notFromAKeptCheckIn(kept, 'sourceGroundId') }, orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }] }).then((rows) => withoutCommitmentsFromGoalsNotToldYet(this.prisma, rows)),
       this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),
       userId ? this.waitingForYouToDecide(organizationId, userId).catch(() => []) : Promise.resolve([]),
+      /* What they said in their check-ins, as My work lists it (release test of 22 November 2026, #10: "Nothing is due" beside "Send the update on Friday"). */
+      this.theOpenPromisesInTheirCheckIns(organizationId, userId, kept),
     ]);
-    return rules(lane, text(whatIsDueSaid({ commitments: commitments as any, toDos: toDos as any, waitingToDecide: waiting.length, now: new Date() })));
+    const saidInCheckIns = inCheckIns.map((c) => ({ text: c.text, whenSaid: c.whenSaid, checkIn: c.ground?.label ?? null }));
+    return rules(lane, text(whatIsDueSaid({ commitments: commitments as any, toDos: toDos as any, saidInCheckIns, waitingToDecide: waiting.length, now: new Date() })));
   }
 
   /**
@@ -5648,12 +5652,16 @@ export class AssistantService {
     const named = subject.trim();
     const self = THE_ASKER.test(named);
     const kept = await keptInTheApp(this.prisma as any, organizationId);
+    /* Somebody else's history only for the people the asker is responsible for (decision O-15, Hafsah, 21 November 2026): anybody in a check-in they run,
+       and the people who report to them on the role map, in whatever check-in those people take part. Grace, Wairimu's manager, read "I cannot find
+       Wairimu in any of them" (release test of 22 November 2026, 33). */
+    const theirs = self ? [] : (await theDirectReportsOf(this.prisma, { organizationId, userId }).catch(() => ({ userIds: [] as string[] }))).userIds;
     const grounds = ((await this.prisma.ground.findMany({
       where: self
         ? { organizationId, status: { notIn: [...A_GROUND_NO_MESSAGE_IS_ABOUT] }, participants: { some: { userId } } }
-        : { organizationId, initiatorId: userId, status: { notIn: [...A_GROUND_NO_MESSAGE_IS_ABOUT] } },
+        : { organizationId, status: { notIn: [...A_GROUND_NO_MESSAGE_IS_ABOUT] }, OR: [{ initiatorId: userId }, ...(theirs.length ? [{ participants: { some: { userId: { in: theirs } } } }] : [])] },
       select: {
-        id: true, label: true,
+        id: true, label: true, initiatorId: true,
         participants: { select: { id: true, userId: true, email: true, nameGiven: true, managingOnly: true, user: { select: { firstName: true, lastName: true } } } },
       },
       orderBy: { createdAt: 'desc' },
@@ -5661,12 +5669,15 @@ export class AssistantService {
     })) as any[]).filter((g) => mayBeRead(kept, g.id));
     const words = named.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
     const fullName = (p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || String(p.nameGiven ?? '').trim();
-    const found: { groundId: string; personId: string }[] = [];
+    const found: { groundId: string; personId: string; asTheirManager: boolean }[] = [];
     for (const g of grounds) {
+      const runsIt = g.initiatorId === userId;
       for (const p of (g.participants ?? []) as any[]) {
         if (p.managingOnly) continue;
+        /* In a check-in somebody else runs, only the people who report to the asker. */
+        if (!self && !runsIt && !theirs.includes(p.userId)) continue;
         const hit = self ? p.userId === userId : (() => { const have = fullName(p).toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean); return words.length > 0 && words.every((w) => have.includes(w)); })();
-        if (hit) found.push({ groundId: g.id, personId: p.id });
+        if (hit) found.push({ groundId: g.id, personId: p.id, asTheirManager: !self && !runsIt });
       }
     }
     if (!found.length) {
@@ -5675,7 +5686,7 @@ export class AssistantService {
     const parts: string[] = [];
     for (const f of found.slice(0, 3)) {
       let page: any;
-      try { page = await readMyWork(this.prisma as any, this.board as any, { groundId: f.groundId, userId, personId: f.personId }); } catch { continue; }
+      try { page = await readMyWork(this.prisma as any, this.board as any, { groundId: f.groundId, userId, personId: f.personId, asTheirManager: f.asTheirManager }); } catch { continue; }
       if (!page || page.on !== true || !page.person?.participantId) continue;
       const history: AHistoryPage = {
         checkInName: page.checkInName, personName: page.person.name, firstName: page.person.firstName || page.person.name,
@@ -5685,6 +5696,7 @@ export class AssistantService {
         behaviours: page.performing?.behaviours ?? [],
         coaching: page.coaching?.better ?? [],
         judgementsOff: page.judgements === false,
+        asTheirManager: f.asTheirManager,
       };
       parts.push(aHistorySaid(history));
     }
@@ -5947,6 +5959,29 @@ export class AssistantService {
       select: { id: true },
     });
     return { lane, composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
+  }
+
+  /**
+   * "I HAVE A QUESTION FOR AMANI ABOUT HER LEAVE REQUEST" (release test of 22 November 2026, #56). Wairimu read "there is no information about a
+   * leave request for Amani Wekesa on record" while that request waited for her. A question already written is said back as before; with none
+   * yet, the request is named, from what waits for this reader, and the question is asked for. Nothing is sent without her yes.
+   */
+  private async aQuestionAboutARequestWanted(organizationId: string, who: string, userId: string, message: string): Promise<Reply> {
+    const asked = aQuestionAskedAboutARequest(message);
+    const said = asked ? await this.proposeAQuestionAboutARequest(organizationId, who, userId, asked) : null;
+    if (said) return said;
+    const lane = 'decide_a_request';
+    const all: AWaitingRequest[] = await this.waitingForYouToDecide(organizationId, userId).catch(() => []);
+    if (!all.length) return rules(lane, text(NOTHING_TO_ASK_ABOUT));
+    /* Whose request, by the first names of the people whose requests wait for this reader, and which kind, where the message says. */
+    const words = new Set(message.toLowerCase().split(/[^\p{L}'’-]+/u));
+    const byName = all.filter((r) => r.firstName && words.has(r.firstName.toLowerCase()));
+    const suite = whichSuite(message);
+    const kind = suite === 'time' ? 'hours' : suite;
+    const byKind = kind ? (byName.length ? byName : all).filter((r) => r.kind === kind) : [];
+    const left = byKind.length ? byKind : byName.length ? byName : all;
+    if (left.length > 1) return rules(lane, text(WHICH_REQUEST_TO_ASK_ABOUT(left)));
+    return rules(lane, text(left[0].kind === 'hours' ? HOURS_TAKE_NO_QUESTION(left[0].firstName) : WHAT_IS_YOUR_QUESTION(left[0])));
   }
 
   /** The yes: the question goes through the boards' own `askAQuestion`, which checks again that this reader decides it, and tells the person. */
@@ -6975,31 +7010,25 @@ export class AssistantService {
   }
 
   /**
-   * THE PROMISES STILL OPEN IN THEIR OWN CHECK-INS, ONE READING FOR EVERY LANE (polish round 15, U5). Kevin asked "What did I promise this
-   * week?" and read "You said you would do 2 things that are still waiting", then "What should I do next about Upper Hill Offices?" and
-   * read "You have no open commitments or to-dos": one lane read his check-ins' promises and the other did not. Both read this. A promise
-   * the record shows was done (thePromisesSaidDone, the lead's morning summary's own reading) is not open. Only the asker's own place in
-   * each check-in is read, never through a name.
+   * THE PROMISES STILL OPEN IN THEIR OWN CHECK-INS, READ WHERE MY WORK READS THEM (polish round 15, U5; release test of 22 November 2026, #9 and #10).
+   * Kevin asked "What did I promise this week?" and then "What should I do next?", and one lane read his check-ins' promises and the other did not.
+   * Then Amani's My work listed "Send the update on Friday" while Ask told her she had said she would do nothing and that nothing was due: Ask read
+   * the stored promises its own way, and My work read them through thePromisesOf. Every lane now reads thePromisesOf, the one reader of a person's
+   * promises (a promise said done is done, a promise and the to-do written for it are one), for the asker's own places only, never through a name.
    */
   private async theOpenPromisesInTheirCheckIns(organizationId: string, linkedUserId: string | null | undefined, kept: any): Promise<{ id: string; text: string; whenSaid: string | null; createdAt: Date; ground: { label: string } | null }[]> {
     if (!linkedUserId) return [];
-    const rows: any[] = await (this.prisma as any).groundCommitment?.findMany?.({
-      where: {
-        status: 'UNKNOWN',
-        /* Held for a seat keeps their own promises (decision 110, B3): only the seat limit stops, and only new participation. */
-        participant: { userId: linkedUserId },
-        ground: { organizationId, ...notAKeptCheckIn(kept) },
-      },
-      select: { id: true, text: true, whenSaid: true, createdAt: true, participantId: true, groundId: true, ground: { select: { label: true } } },
-      orderBy: { createdAt: 'asc' },
+    /* Held for a seat keeps their own promises (decision 110, B3): only the seat limit stops, and only new participation. */
+    const places: any[] = await (this.prisma as any).groundParticipant?.findMany?.({
+      where: { userId: linkedUserId, ground: { organizationId, ...notAKeptCheckIn(kept) } },
+      select: { id: true, groundId: true, ground: { select: { label: true } } },
     })?.catch?.(() => []) ?? [];
-    if (!rows.length) return [];
-    const forPromises = await theRecordForPromises(this.prisma as any, [...new Set(rows.map((r) => String(r.groundId)).filter(Boolean))]).catch(() => ({ lines: [], waits: [], people: [], answers: [] } as any));
-    const done = new Set(thePromisesSaidDone(
-      rows.map((c) => ({ id: c.id, participantId: c.participantId, text: c.text, createdAt: c.createdAt })),
-      forPromises.lines, forPromises.waits, (id: string) => forPromises.people.find((p: any) => p.id === id)?.names ?? [], forPromises.people.map((p: any) => p.id), forPromises.answers,
-    ).map((x) => x.id));
-    return rows.filter((r) => !done.has(r.id)).map((r) => ({ id: r.id, text: String(r.text ?? ''), whenSaid: r.whenSaid ?? null, createdAt: new Date(r.createdAt), ground: r.ground ?? null }));
+    if (!places.length) return [];
+    const label = new Map<string, string>(places.map((p) => [String(p.groundId), String(p.ground?.label ?? 'your check-in')]));
+    const promises = await thePromisesOf(this.prisma as any, places.map((p) => p.id), (g) => label.get(g) ?? 'your check-in').catch(() => [] as any[]);
+    return promises.filter((p: any) => p.open).map((p: any) => ({
+      id: p.id, text: String(p.raw ?? ''), whenSaid: p.whenSaid ?? null, createdAt: new Date(p.createdAt ?? Date.now()), ground: { label: label.get(String(p.groundId)) ?? 'your check-in' },
+    }));
   }
 
   /**
@@ -7022,33 +7051,13 @@ export class AssistantService {
     }));
     const inCheckIns: any[] = await this.theOpenPromisesInTheirCheckIns(organizationId, me.linkedUserId, kept);
 
-    /*
-     * WHAT THEY SAID THEY WOULD DO, WRITTEN DOWN WHILE SETTING A CHECK-IN UP OR ANSWERING, AS THE YOU PAGE READS IT (user journeys, F-5).
-     * The You page lists the person's own to-dos and commitments from their goals ("person_objectives", said by themselves, still open), and
-     * Ask read neither, so a lead whose You page held "Settle the 21 day credit rule with finance by the end of October." was told she had
-     * said she would do nothing. The same rows, the same rule, and only the asker's own place in each check-in.
-     */
-    const myPlaces: any[] = me.linkedUserId
+    /* Their places, for saying plainly where they have no seat yet. Their own to-dos and goals' commitments are already among the promises read above (F-5). */
+    const noSeat: any[] = (me.linkedUserId
       ? await (this.prisma as any).groundParticipant?.findMany?.({
         where: { userId: me.linkedUserId, ground: { organizationId, ...notAKeptCheckIn(kept) } },
-        select: { id: true, awaitingSeat: true, ground: { select: { label: true } } },
+        select: { awaitingSeat: true, ground: { select: { label: true } } },
       })?.catch?.(() => []) ?? []
-      : [];
-    const ownToDos: any[] = myPlaces.length
-      ? await (this.prisma as any).personObjective?.findMany?.({
-        where: { participantId: { in: myPlaces.map((x) => x.id) }, kind: { in: ['COMMITMENT', 'TODO'] }, authoredBy: 'self', status: 'OPEN' },
-        select: { text: true, dueSaid: true, participantId: true },
-        orderBy: { createdAt: 'asc' },
-      })?.catch?.(() => []) ?? []
-      : [];
-    const sameWords = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-    const alreadyListed = new Set(inCheckIns.map((c) => sameWords(String(c.text))));
-    for (const o of ownToDos) {
-      const text = String(o.text ?? '').trim();
-      if (!text || alreadyListed.has(sameWords(text))) continue;
-      alreadyListed.add(sameWords(text));
-      inCheckIns.push({ text, whenSaid: o.dueSaid ?? null, ground: myPlaces.find((x) => x.id === o.participantId)?.ground ?? null });
-    }
+      : []).filter((x: any) => x.awaitingSeat);
 
     const now = new Date();
     const lines: string[] = [];
@@ -7066,7 +7075,6 @@ export class AssistantService {
       if (!lines.includes(line)) lines.push(line);
     }
     /* In a check-in with no seat for them yet, said plainly, so a person is not left to wonder why nothing new is asked of them. */
-    const noSeat = myPlaces.filter((x) => x.awaitingSeat);
     if (!lines.length) {
       return rules('what_did_i_commit_to', text(`You have not said you will do anything that is still waiting. When you say you will do something in a check-in, it shows up here.${noSeat.length ? `\n\n${noSeat.map((x) => noSeatYetSays(String(x.ground?.label ?? 'your check-in'))).join('\n')}` : ''}`));
     }

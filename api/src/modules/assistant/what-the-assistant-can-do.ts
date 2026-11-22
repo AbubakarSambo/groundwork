@@ -500,7 +500,8 @@ export const CAPABILITY_BY_KEY = new Map(WHAT_THE_ASSISTANT_CAN_DO.map((c) => [c
  * and neither knew how anything is done on screen.
  */
 /** "inviter" is anybody who may add people here: an admin, or anybody who is not a guest where the organisation lets anyone add people. */
-export type WhoMayUseIt = 'everyone' | 'member' | 'lead' | 'admin' | 'hr' | 'principal' | 'delegate' | 'inviter';
+/** "manager" is anybody somebody reports to on the role map (decision O-15, Hafsah, 21 November 2026). */
+export type WhoMayUseIt = 'everyone' | 'member' | 'lead' | 'admin' | 'hr' | 'principal' | 'delegate' | 'inviter' | 'manager';
 
 /** Who is reading, from their own standing. Every list below is cut from this, and nothing about anybody else. */
 export interface TheReader {
@@ -526,6 +527,8 @@ export interface TheReader {
   waitingForYou?: number;
   /** They may add people here (users/the-role-an-invitation-gives.ts): an admin, or anybody here where anyone may add people. Absent reads as no. */
   mayAddPeople?: boolean;
+  /** Somebody reports to them on the role map. Absent reads as no. */
+  managesSomebody?: boolean;
 }
 
 export interface Guide {
@@ -703,7 +706,7 @@ export const THE_GUIDE: Guide[] = [
   { key: 'what_is_stuck', section: 4, who: ['member'], notOffered: true, does: 'ask what is stuck, and who is waiting', example: 'whats stuck' },
   { key: 'what_did_they_say', section: 4, who: ['member'], notOffered: true, does: 'ask what a colleague said, only as much as you may already read', example: 'what did Femi say last week' },
   { key: 'who_is', section: 4, who: ['member'], notOffered: true, does: 'ask who somebody is on the roster', example: 'who is Sam' },
-  { key: 'a_persons_history', lane: 'performance_history', section: 4, who: ['lead'], whoSaid: 'L of that person', notOffered: true, does: 'read one person\u2019s history, as their lead', example: 'how has Joseph been doing' },
+  { key: 'a_persons_history', lane: 'performance_history', section: 4, who: ['lead', 'manager'], whoSaid: 'L or manager of that person', notOffered: true, does: 'read how one person you lead or manage is doing, with the evidence', example: 'how has Joseph been doing' },
   { key: 'is_the_strategy_moving', section: 4, who: ['member'], notOffered: true, does: 'ask whether the strategy is moving', example: 'is the strategy working' },
   { key: 'how_many_days_left', section: 5, who: ['member'], needs: 'leave', notOffered: true, does: 'ask how many leave days you have left', example: 'how many days left' },
   { key: 'your_requests', section: 5, who: ['member'], notOffered: true, does: 'ask where your own requests are', example: 'has my leave been approved' },
@@ -734,7 +737,7 @@ export function mayUse(g: Guide, r: TheReader): boolean {
   if (g.who.includes('everyone')) return true;
   if (r.isAGuest) return false;
   return g.who.includes('member') || (g.who.includes('lead') && r.runsOne) || (g.who.includes('admin') && !!r.isAnAdmin) || (g.who.includes('hr') && !!r.looksAfterHr)
-    || (g.who.includes('principal') && !!r.isAPrincipal) || (g.who.includes('delegate') && !!r.actsForSomebody) || (g.who.includes('inviter') && !!r.mayAddPeople);
+    || (g.who.includes('principal') && !!r.isAPrincipal) || (g.who.includes('delegate') && !!r.actsForSomebody) || (g.who.includes('inviter') && !!r.mayAddPeople) || (g.who.includes('manager') && !!r.managesSomebody);
 }
 
 /** Is the suite it needs switched on for them. */
@@ -778,7 +781,7 @@ export function theDescriptionFor(r: TheReader): { role: string; things: { key: 
 
 /** Who does it, said as a person would, for somebody who may not. */
 export function whoDoesIt(g: Guide): string {
-  const names = g.who.filter((w) => w !== 'member' && w !== 'everyone').map((w) => (w === 'admin' || w === 'inviter' ? 'an admin' : w === 'hr' ? 'the person who looks after HR' : w === 'principal' ? 'a senior person' : w === 'delegate' ? 'the person who acts for them' : 'the lead who runs the check-in'));
+  const names = g.who.filter((w) => w !== 'member' && w !== 'everyone').map((w) => (w === 'admin' || w === 'inviter' ? 'an admin' : w === 'hr' ? 'the person who looks after HR' : w === 'principal' ? 'a senior person' : w === 'delegate' ? 'the person who acts for them' : w === 'manager' ? 'their manager' : 'the lead who runs the check-in'));
   return names.length <= 1 ? names[0] ?? 'an admin' : `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
 }
 
@@ -797,7 +800,7 @@ export const WHAT_ASK_NEVER_DOES: { does: string; whoSaid: string; example: stri
 ];
 
 const THE_SECTIONS = ['Finding your way', 'Your own work', 'Check-ins', 'The team and the company', 'Requests: leave, spending, hours', 'Admin: setting things up', 'The Desk and company context', 'Reports', 'A senior person and the person who acts for her', 'What Ask must refuse or never do'];
-const WHO_IN_SHORT: Record<WhoMayUseIt, string> = { everyone: 'All', member: 'All', lead: 'L', admin: 'A', hr: 'H', principal: 'P', delegate: 'D', inviter: 'A' };
+const WHO_IN_SHORT: Record<WhoMayUseIt, string> = { everyone: 'All', member: 'All', lead: 'L', admin: 'A', hr: 'H', principal: 'P', delegate: 'D', inviter: 'A', manager: 'Manager' };
 
 /**
  * docs/use-cases/what-ask-does.md, WRITTEN FROM THE GUIDE AND NOTHING ELSE (Hafsah, 20 November 2026), so the document and what Ask does cannot

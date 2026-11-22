@@ -69,6 +69,8 @@ export async function handleTheDraftWords(
     const job = await Promise.resolve(prisma.persistentJob?.findFirst?.({ where: { organizationId: a.organizationId, principalUserId, kind: 'annual_report' }, select: { id: true } })).catch(() => null);
     if (!job) return null;
     /* Asked for a draft that does not exist yet, she is told so plainly. It used to fall through to the chat, which offered to email "what I said about" something else (Fatima round 3). */
+    /* And asked to change one that does not exist yet ("add March to the report"), she is told so, never answered as an instruction to her team (release test of 22 November 2026, #74). */
+    if (readTheChange(a.message, year)) return `There is no draft yet, so there is nothing to change. I make the first one when there is something on the record to put in it, and I will email it as soon as it is ready. Tell me then what to change.`;
     const asked = asWhatSheMeans(await (a.readTheRequest ?? ((m: string) => whatSheMeans(m, {})))(a.message, null).catch(() => null)).asks;
     return asked === 'send_draft' ? `There is no draft yet, ${isPrincipal ? 'so I have nothing to send you' : 'so I have nothing to send'}. I make the first one when there is something on the record to put in it, and I will email it as soon as it is ready.` : null;
   }

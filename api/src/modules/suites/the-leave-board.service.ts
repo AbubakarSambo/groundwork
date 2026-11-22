@@ -12,7 +12,7 @@ import { loadLookups, type Lookups } from './the-lookups';
 import { oneAtATime } from './the-same-request-at-once';
 import { NOBODY_ELSE_CAN_DECIDE, nobodyElseCanDecide, couldBeNamed, decidesIt, everyRuleIn, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type APassedStep, type DecidesNow, type WhoDecides } from './who-may-decide';
 import { whyPassOn, type WhyPassedOn } from './a-request-waits-too-long';
-import { aRequestsHistory, recordIt } from './a-request-is-recorded';
+import { aRequestsHistory, recordIt, whyItWentOn } from './a-request-is-recorded';
 import { claimIt, theyGotThereFirst, whereItIsNow } from './a-request-is-answered-once';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { aLeaveRequest, leaveInWords, type AWaitingRequest, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
@@ -422,7 +422,8 @@ export class LeaveBoardService {
     const where = new Map<string, string>();
     for (const r of rows) {
       const now = r.status === 'waiting' ? await this.now(r, people, answers) : null;
-      where.set(r.id, whereYourRequestIs(`Your ${leaveInWords(dayOf(r.startsOn), dayOf(r.endsOn))}`, await this.whereItStands(r, now, undefined, reader.userId)));
+      const why = await whyItWentOn(this.prisma, reader.organizationId, 'leave', r, reader.userId).catch(() => null);
+      where.set(r.id, [whereYourRequestIs(`Your ${leaveInWords(dayOf(r.startsOn), dayOf(r.endsOn))}`, await this.whereItStands(r, now, undefined, reader.userId)), why].filter(Boolean).join(' '));
     }
     /* Their own days a year: the organisation's, or the number an admin set for their job title, app role, team or them (who-a-rule-is-for.ts). */
     const forWhom = await readForWhom(this.prisma, reader.organizationId);

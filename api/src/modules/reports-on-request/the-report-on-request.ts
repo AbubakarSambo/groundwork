@@ -99,11 +99,12 @@ export function aMaterialLabel(via: AMaterialVia | string, name: string): string
 
 /* ------------------------------------------------------------------ the outline */
 
-export function theOutlineSaid(outline: ASection[], sources: ASource[], first: boolean): string {
+/** `first` is a first outline, `false` one changed in their words, and 'waiting' the one already sent and not yet checked, said again when they ask for a report. */
+export function theOutlineSaid(outline: ASection[], sources: ASource[], first: boolean | 'waiting'): string {
   const byId = new Map(sources.map((s) => [s.id, s]));
   const used = new Set(outline.flatMap((s) => s.sourceIds));
   const lines: string[] = [];
-  lines.push(`${first ? 'Here is a first outline to check.' : 'Here is the outline with your changes.'} It has ${outline.length === 1 ? 'one section' : `${outline.length} sections`}.`);
+  lines.push(`${first === 'waiting' ? 'The report you asked for is still waiting for you to check its outline.' : first ? 'Here is a first outline to check.' : 'Here is the outline with your changes.'} It has ${outline.length === 1 ? 'one section' : `${outline.length} sections`}.`);
   outline.forEach((s, i) => {
     const from = s.sourceIds.map((id) => byId.get(id)?.label).filter((x): x is string => !!x);
     lines.push(`${i + 1}. ${sentence(s.heading)} ${from.length ? `This would use ${aList(from)}.` : 'Nothing you chose speaks to this yet, so anything in it would be marked unverified.'}`);

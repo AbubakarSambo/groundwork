@@ -8,22 +8,21 @@
  * (a-question-is-answered-from-the-documents.ts). Somebody who acts for her is not responsible for her team: the rule follows the asker, not whose record it is.
  */
 import { theTeamSheNamed } from '../executive-onboarding/the-material-for-work';
+import { theDirectReportsOf } from '../suites/who-may-decide';
 
 const nameOf = (u: any) => [u?.firstName, u?.lastName].filter(Boolean).join(' ').trim();
 
 export async function thePeopleTheAskerIsResponsibleFor(prisma: any, a: { organizationId: string; userId: string }): Promise<string[]> {
   const names = new Set<string>();
   const add = (n: unknown) => { const t = String(n ?? '').replace(/\s+/g, ' ').trim(); if (t) names.add(t); };
-  const reports: any[] = (await Promise.resolve(prisma.organizationMembership?.findMany?.({ where: { organizationId: a.organizationId, reportsToUserId: a.userId }, select: { userId: true } })).catch(() => [])) ?? [];
-  const me: any = await Promise.resolve(prisma.person?.findFirst?.({ where: { organizationId: a.organizationId, linkedUserId: a.userId }, select: { externalId: true } })).catch(() => null);
-  const onTheRoster: any[] = me?.externalId ? (await Promise.resolve(prisma.person?.findMany?.({ where: { organizationId: a.organizationId, managerExternalId: me.externalId }, select: { displayName: true, givenName: true, familyName: true, linkedUserId: true } })).catch(() => [])) ?? [] : [];
+  const direct = await theDirectReportsOf(prisma, a);
   const grounds: any[] = (await Promise.resolve(prisma.ground?.findMany?.({ where: { organizationId: a.organizationId, initiatorId: a.userId }, select: { id: true } })).catch(() => [])) ?? [];
   const inMine: any[] = grounds.length ? (await Promise.resolve(prisma.groundParticipant?.findMany?.({ where: { groundId: { in: grounds.map((g) => g.id) } }, select: { userId: true, nameGiven: true } })).catch(() => [])) ?? [] : [];
-  const userIds = [...new Set([...reports.map((r) => r.userId), ...inMine.map((p) => p.userId)].filter((x) => x && x !== a.userId))];
+  const userIds = [...new Set([...direct.userIds, ...inMine.map((p) => p.userId)].filter((x) => x && x !== a.userId))];
   const users: any[] = userIds.length ? (await Promise.resolve(prisma.user?.findMany?.({ where: { id: { in: userIds } }, select: { id: true, firstName: true, lastName: true } })).catch(() => [])) ?? [] : [];
   for (const u of users) add(nameOf(u));
   for (const p of inMine) if (!p.userId) add(p.nameGiven);
-  for (const p of onTheRoster) if (p.linkedUserId !== a.userId) add(p.displayName || [p.givenName, p.familyName].filter(Boolean).join(' '));
+  for (const n of direct.unsigned) add(n);
   for (const c of await theTeamSheNamed(prisma, a.organizationId, a.userId).catch(() => [])) add(c.name);
   return [...names];
 }

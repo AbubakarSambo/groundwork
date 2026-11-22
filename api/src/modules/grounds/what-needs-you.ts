@@ -402,7 +402,7 @@ export function whatNeedsYou(
         ownReports.push({
           key: `own-${g.id}`,
           kind: 'ready',
-          title: `Your own report for ${g.label}`,
+          title: `Your own report for ${g.label} is ready`,
           detail: null,
           action: { label: 'Read it', to: `/checkin/${last.id}/report` },
           ...base,

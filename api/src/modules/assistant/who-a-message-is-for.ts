@@ -54,8 +54,13 @@ export async function whoTheMessageIsFor(engine: Engine, prompts: Prompts, input
  * took every message after it: "how is Chidi doing", "cancel" and "show me the outline" were each read "That is a word, not a reason". The
  * same reading decides here: they answer it, they leave it, or they ask for something else. With no model, they answer it, as before.
  */
-export async function whatTheyDoWithTheStep(engine: Engine, prompts: Prompts, input: { message: string; waiting: string | null }): Promise<'answers' | 'stops' | 'something_else'> {
+export async function whatTheyDoWithTheStep(
+  engine: Engine, prompts: Prompts, input: { message: string; waiting: string | null },
+  /** What it is when the model gives no reading: an answer, as before, unless the caller knows the rules placed it elsewhere. */
+  unread: 'answers' | 'something_else' = 'answers',
+): Promise<'answers' | 'stops' | 'something_else'> {
   const read = await theReading(engine, prompts, input.message, input.waiting);
-  if (read?.stops === true) return 'stops';
-  return read?.for === 'ask' ? 'something_else' : 'answers';
+  if (!read) return unread;
+  if (read.stops === true) return 'stops';
+  return read.for === 'ask' ? 'something_else' : 'answers';
 }
