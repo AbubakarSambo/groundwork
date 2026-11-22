@@ -215,17 +215,25 @@ export function howOftenItRuns(g: { cadence?: Cadence | string | null; workingDa
  * Both days are calendar days as midnight UTC. Rounds moved onto the same working day count once.
  */
 export function howManyRoundsUpTo(s: Omit<TheSchedule, 'startedAt' | 'zone'>, startDay: number, endDay: number): number {
+  return theRoundDaysUpTo(s, startDay, endDay).length;
+}
+
+/**
+ * THE ROUND DAYS THEMSELVES, FROM THE START UP TO AND INCLUDING THE END (setup, 23 November 2026). The setup screen used to walk its
+ * own dates and said 29 where the saved check-in held 25. It now shows these days, the same ones the count above is made of, so the
+ * dates set up and the dates saved are one list. `most` stops an open-ended list early.
+ */
+export function theRoundDaysUpTo(s: Omit<TheSchedule, 'startedAt' | 'zone'>, startDay: number, endDay: number, most = 5000): Day[] {
   const sched = s as TheSchedule;
   const zone = (s as TheSchedule).zone;
   const start = onADayTheyWork(startDay, s.workingDays, zone);
-  let last: Day = -Infinity;
-  let count = 0;
-  for (let k = 0; k < 5000; k += 1) {
+  const days: Day[] = [];
+  for (let k = 0; k < 5000 && days.length < most; k += 1) {
     const d = onADayTheyWork(roundDay(sched, start, k), s.workingDays, zone);
     if (d > endDay) break;
-    if (d > last) { count += 1; last = d; }
+    if (!days.length || d > days[days.length - 1]) days.push(d);
   }
-  return count;
+  return days;
 }
 
 /**

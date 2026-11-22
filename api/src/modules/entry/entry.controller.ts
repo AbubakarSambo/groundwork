@@ -9,6 +9,7 @@ import { TheOpenLinkService } from './the-open-link.service';
 import { A_ROOM_MAY_START_PER_MINUTE, A_PERSON_MAY_SAY_PER_MINUTE } from '../../common/guards/a-room-of-people-is-not-one-person';
 import { HOW_MANY_PEOPLE_ONE_CHECK_IN_HOLDS } from './how-many-people-one-check-in-holds';
 import { A_CHECK_IN_TAKES } from '../../common/how-long-a-check-in-takes';
+import { theDatesBeforeItIsSaved } from './the-dates-before-it-is-saved';
 import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject, Min, Max, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 import { peopleOnLines, MOST_IN_ONE_PASTE } from '../users/putting-a-whole-company-on';
@@ -381,6 +382,15 @@ export class PeopleOnLinesDto {
   pasted!: string;
 }
 
+class TheDatesDto {
+  @IsOptional() @IsString() @MaxLength(20) cadence?: string;
+  @IsOptional() @IsInt() @Min(0) @Max(31) cadenceAnchorDay?: number;
+  @IsOptional() @IsArray() @ArrayMaxSize(7) @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true }) cadenceDays?: number[];
+  @IsOptional() @IsArray() @ArrayMaxSize(7) @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true }) workingDays?: number[];
+  @IsOptional() @IsString() @MaxLength(10) startsOn?: string;
+  @IsOptional() @IsString() @MaxLength(10) endsOn?: string;
+}
+
 @Controller('entry')
 export class EntryController {
   private readonly logger = new Logger(EntryController.name);
@@ -709,6 +719,17 @@ export class EntryCommitController {
   @Get('a-check-in-takes')
   aCheckInTakes() {
     return { takes: A_CHECK_IN_TAKES };
+  }
+
+  /**
+   * THE DATES A SETUP WILL OPEN ON, from the check-in's own schedule (the-dates-before-it-is-saved.ts). Public, because setup is done
+   * before anybody signs in. Creates nothing and reads nothing stored.
+   */
+  @Public()
+  @Throttle({ global: { limit: 60, ttl: 60000 } })
+  @Post('the-dates')
+  theDates(@Body() dto: TheDatesDto) {
+    return theDatesBeforeItIsSaved(dto);
   }
 
   /* A hundred people scanning one QR code in one minute is the case this exists for, and ten a
