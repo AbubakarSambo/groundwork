@@ -529,6 +529,12 @@ export const groundsApi = {
    * Deleting a check-in that was only ever a test. Its lead alone, and only while nobody else has
    * given an account - the server refuses with a sentence naming who, which the page shows.
    */
+  /** Put a check-in on hold, and lift it. Its lead or an admin; the reason is kept in the log, never shown to anyone. */
+  pause: (groundId: string) =>
+    apiClient.post<{ groundId: string; status: string }>(`/grounds/${groundId}/pause`, { reason: 'Paused from People and setup.' }).then(r => r.data),
+  resume: (groundId: string) =>
+    apiClient.post<{ groundId: string }>(`/grounds/${groundId}/resume`, { reason: 'Resumed from People and setup.' }).then(r => r.data),
+
   remove: (groundId: string) =>
     apiClient.delete<{ deleted: boolean; label: string }>(`/grounds/${groundId}`).then(r => r.data),
 

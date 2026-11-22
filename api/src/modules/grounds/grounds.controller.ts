@@ -542,16 +542,14 @@ export class GroundsController {
    * by side, because a resume route without a pause route is a key to a door nobody can lock.
    */
   @Post(':id/pause')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Put the check-in on hold: nothing is added, nothing moves, until it is resumed (admin only)' })
+  @ApiOperation({ summary: 'Put the check-in on hold: nothing is added, nothing moves, until it is resumed (its lead or an admin)' })
   async pause(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: HoldDto) {
     await this.grounds.pauseGround(id, userId, dto.reason);
     return { groundId: id, status: 'PAUSED' };
   }
 
   @Post(':id/resume')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Lift the hold and return the check-in to the status it was paused from (admin only)' })
+  @ApiOperation({ summary: 'Lift the hold and return the check-in to the status it was paused from (its lead or an admin)' })
   async resume(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: HoldDto) {
     await this.grounds.resumeGround(id, userId, dto.reason);
     return { groundId: id };

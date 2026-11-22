@@ -138,10 +138,11 @@ describe('the service writers refuse a held or ended ground', () => {
 });
 
 describe('the one way out of a hold', () => {
-  const service = (ground: any, member = true) => {
+  const service = (ground: any, member: boolean | 'member' = true) => {
     const prisma: any = {
       ground: { findUnique: jest.fn(async () => ground), update: jest.fn(async (args: any) => ({ ...ground, ...args.data })) },
-      user: { findFirst: jest.fn(async () => (member ? { id: 'admin' } : null)) },
+      /* An admin of the organisation unless said otherwise (bug 35: the rule is its lead or an admin, not any member). */
+      user: { findFirst: jest.fn(async () => (member === true ? { id: 'admin', role: 'ADMIN' } : member === 'member' ? { id: 'someone', role: 'MEMBER' } : null)) },
     };
     const svc = new GroundsService(prisma, {} as any, {} as any, { emit: jest.fn() } as any, {} as any, {} as any, {} as any);
     return { svc, prisma };
@@ -178,5 +179,22 @@ describe('the one way out of a hold', () => {
   it('takes the same org-membership check as pausing', async () => {
     const { svc } = service(paused, false);
     await expect(svc.resumeGround(paused.id, 'stranger', 'x')).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('the lead who runs it may pause and resume it without being an admin', async () => {
+    const { svc, prisma } = service({ ...paused, status: GroundStatus.ACTIVE, initiatorId: 'u-lead' }, 'member');
+    await svc.pauseGround(paused.id, 'u-lead', 'Paused by its lead');
+    expect(prisma.ground.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: GroundStatus.PAUSED }) }));
+    const again = service({ ...paused, initiatorId: 'u-lead' }, 'member');
+    await again.svc.resumeGround(paused.id, 'u-lead', 'Resumed by its lead');
+    expect(again.prisma.ground.update).toHaveBeenCalled();
+  });
+
+  it('a member who does not run it may neither pause nor resume it, and is told who can', async () => {
+    const { svc, prisma } = service({ ...paused, status: GroundStatus.ACTIVE, initiatorId: 'u-lead' }, 'member');
+    await expect(svc.pauseGround(paused.id, 'someone', 'x')).rejects.toThrow('Only the person running this check-in, or an admin here, can pause it, so ask one of them.');
+    const held = service({ ...paused, initiatorId: 'u-lead' }, 'member');
+    await expect(held.svc.resumeGround(paused.id, 'someone', 'x')).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.ground.update).not.toHaveBeenCalled();
   });
 });

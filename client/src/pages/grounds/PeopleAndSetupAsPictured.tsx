@@ -634,7 +634,10 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
         </Stack>
       </Section>
 
-      {/* 9. ENDING */}
+      {/* 9. PAUSING (release test 22 November, bug 35): its lead or an admin puts it on hold and lifts the hold, here beside ending it. */}
+      {(isInitiator || isOrgAdmin) && <PauseOrResume groundId={id} status={g?.status} />}
+
+      {/* 10. ENDING */}
       <Panel as="section" aria-label="Ending it">
         {isInitiator ? (
           <Stack gap={10}>
@@ -654,7 +657,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             {props.deleteError && <Note tone="error">{props.deleteError}</Note>}
             {nobodyElseAnswered && props.confirmDelete && (
               <FlexRow gap={8} wrap align="center">
-                <span>Delete "{g?.label}" for good? Everything goes, including the conversation, the check-ins and anything uploaded.</span>
+                <span>Delete "{g?.label}" for good? Everything goes, including the conversation, the check-ins and anything uploaded. This cannot be undone.</span>
                 <Button kind="danger" disabled={props.removeGround.isPending} onClick={() => props.removeGround.mutate()}>
                   {props.removeGround.isPending ? 'Deleting…' : 'Yes, delete it'}
                 </Button>
@@ -802,5 +805,40 @@ function AFieldWithItsLabel({ label, value }: { label: string; value: ReactNode 
       <span className="gwui-b8-field-label">{label}</span>
       {typeof value === 'string' ? <Text size="15" as="p">{value}</Text> : value}
     </div>
+  )
+}
+
+/**
+ * PAUSE AND RESUME A CHECK-IN (release test 22 November, bug 35: Wairimu found "Give it more time" and "Decide how it ends" and
+ * nothing to hold it). The server had both doors (POST /grounds/:id/pause and /resume) but only for admins; its lead or an admin may
+ * use them now. A held check-in sends nobody a message and takes nothing new until it is resumed, and resuming puts it back where it was.
+ */
+export function PauseOrResume({ groundId, status }: { groundId: string | undefined; status: string | null | undefined }) {
+  const qc = useQueryClient()
+  const held = status === 'PAUSED'
+  const live = ['OPEN', 'AWAITING_PARTIES', 'REPORT_READY', 'ACTIVE'].includes(String(status ?? ''))
+  const change = useMutation({
+    mutationFn: () => (held ? groundsApi.resume(groundId!) : groundsApi.pause(groundId!)),
+    onSuccess: () => {
+      toast.success(held ? 'The check-in is running again.' : 'The check-in is paused.')
+      qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(groundId ?? '') })
+      qc.invalidateQueries({ queryKey: ['grounds'] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change. Try again.'),
+  })
+  if (!groundId || (!held && !live)) return null
+  return (
+    <Panel as="section" aria-label="Pausing it">
+      <FlexRow gap={12} justify="space-between" align="center" wrap>
+        <Text size="15" as="p">
+          {held
+            ? 'This check-in is paused. Nobody is asked to check in and no reminders go out until you resume it. Everything already written stays as it is.'
+            : 'Pausing it stops the check-ins and reminders until you resume it. Everything already written stays as it is.'}
+        </Text>
+        <Button kind="secondary" disabled={change.isPending} onClick={() => change.mutate()}>
+          {change.isPending ? (held ? 'Resuming…' : 'Pausing…') : held ? 'Resume this check-in' : 'Pause this check-in'}
+        </Button>
+      </FlexRow>
+    </Panel>
   )
 }

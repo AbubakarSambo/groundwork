@@ -8512,11 +8512,7 @@ export class GroundsService {
       throw new BadRequestException('This check-in cannot be paused in the state it is in now, so there is nothing to do.');
     }
 
-    // Verify the requesting user belongs to this ground's org or is the initiator.
-    const initiatorOrAdmin = await this.prisma.user.findFirst({
-      where: { id: adminUserId, organizationId: ground.organizationId },
-    });
-    if (!initiatorOrAdmin) throw new ForbiddenException('Only a member of the organisation can pause a check-in, so ask one to do it.');
+    await this.theLeadOrAnAdminHere(ground, adminUserId, 'pause');
 
     await this.prisma.ground.update({
       where: { id: groundId },
@@ -8532,6 +8528,18 @@ export class GroundsService {
    * `pausedFromStatus` existed has no recorded prior status; those go back to ACTIVE, and the log
    * says so, because a guess is worth naming.
    */
+  /**
+   * WHO MAY HOLD A CHECK-IN, AND LIFT THE HOLD (release test 22 November, bug 35): the person running it, or an admin of its
+   * organisation. The routes were for admins only while the service let any member through, so the lead who runs it could not, and
+   * a member who does not could have. One rule, here, for both doors.
+   */
+  private async theLeadOrAnAdminHere(ground: { initiatorId: string | null; organizationId: string }, userId: string, doing: 'pause' | 'resume'): Promise<void> {
+    if (ground.initiatorId && ground.initiatorId === userId) return;
+    const here = await this.prisma.user.findFirst({ where: { id: userId, organizationId: ground.organizationId }, select: { id: true, role: true } });
+    if (String(here?.role ?? '') === 'ADMIN') return;
+    throw new ForbiddenException(`Only the person running this check-in, or an admin here, can ${doing} it, so ask one of them.`);
+  }
+
   async resumeGround(groundId: string, adminUserId: string, reason: string): Promise<void> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
@@ -8539,10 +8547,7 @@ export class GroundsService {
       throw new BadRequestException('This check-in is not on hold, so there is nothing to resume.');
     }
 
-    const member = await this.prisma.user.findFirst({
-      where: { id: adminUserId, organizationId: ground.organizationId },
-    });
-    if (!member) throw new ForbiddenException('Only a member of the organisation can resume a check-in, so ask one to do it.');
+    await this.theLeadOrAnAdminHere(ground, adminUserId, 'resume');
 
     const backTo = ground.pausedFromStatus ?? GroundStatus.ACTIVE;
     if (!ground.pausedFromStatus) {
