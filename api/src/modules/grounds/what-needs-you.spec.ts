@@ -42,7 +42,8 @@ const sales: ListedCheckIn = {
 const leadership: ListedCheckIn = {
   id: 'g-lead', label: 'Leadership, Q3', status: 'ACTIVE', organizationId: 'org', initiatorId: AMANI,
   participants: [person('p-a', AMANI, 'Amani'), person('p-w2', WAIRIMU, 'Wairimu')],
-  checkIns: [{ id: 'l2', participantId: 'p-w2', sessionNumber: 4, status: 'NOT_STARTED', availableFrom: ago(2) }],
+  /* Wairimu's finished third session is on the list, so her fourth reads as her next (theirOwnSessionNumberIn), not as somebody added late. */
+  checkIns: [{ id: 'l1', participantId: 'p-w2', sessionNumber: 3, status: 'COMPLETED', availableFrom: ago(170), completedAt: ago(168) }, { id: 'l2', participantId: 'p-w2', sessionNumber: 4, status: 'NOT_STARTED', availableFrom: ago(2) }],
   glance: { progress: { roundsDone: 3, roundsPlanned: 12 } },
 };
 

@@ -52,8 +52,9 @@ describe('missed check-ins', () => {
 
 describe('the report follow-up (to Grace)', () => {
   const c: any = { done: 1, cleared: 0, waiting: 2, open: 0, difference: "the standard for what counts as a 'sold' unit is not being applied consistently", scenario: 'OKR_ALIGNMENT', daysSinceTheReport: 8 };
+  /* Changed 22 November 2026 (release test 21 November, bug 38, commit 1415e2429): the report's sentence is said whole after "The report found this.", never put after "that". */
   it('on: "The report found"', () => {
-    expect(theFollowUpWords('Grace', 'Sales team, Q4', MON, c).lines[1]).toBe("The report found that the standard for what counts as a 'sold' unit is not being applied consistently. No check-in has been held since, so that has not been looked at again.");
+    expect(theFollowUpWords('Grace', 'Sales team, Q4', MON, c).lines[1]).toBe("The report found this. The standard for what counts as a 'sold' unit is not being applied consistently. No check-in has been held since, so that has not been looked at again.");
   });
 });
 

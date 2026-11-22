@@ -59,7 +59,8 @@ export function theFollowUpWords(firstName: string | null | undefined, label: st
     : moved > 0
       ? `${capital(things(moved, 'thing', 'things'))} on "${name}" moved after the report went out`
       : c.waiting > 0
-        ? `People on "${name}" still wait on ${things(c.waiting, 'thing', 'things')}, and nothing has been marked done since the report`
+        /* "Nothing has moved", as the subjects beside it say "moved": "nothing has been marked done" made a long name's subject too long (22 November 2026). */
+        ? `People on "${name}" still wait on ${things(c.waiting, 'thing', 'things')}, and nothing has moved since the report`
         : `Nothing has been marked done or cleared on "${name}" since the report went out`;
   /* THE FINDING, WHERE THERE IS ONE (engagement spec section 11). The message goes only when no next session has been opened, so no picture has been made since
      and the difference the report found has not been looked at again: that is said as what it is, and not as "still unresolved". */

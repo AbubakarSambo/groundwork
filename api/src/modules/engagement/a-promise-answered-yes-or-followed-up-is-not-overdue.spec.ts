@@ -56,7 +56,7 @@ describe('Brian answered "Yes, I did." to "Did you let her know?"', () => {
     expect(await c.said(at('2026-10-15T08:00:00Z'))).not.toContain('Brian said');
   });
   it('and on Wednesday morning, before he answered, it was one day late, as was true', async () => {
-    expect(await c.said(at('2026-10-14T08:00:00Z'))).toContain('These are overdue on your team. Brian said “I will let Njeri know today”. That was due by Tuesday 13 October and is one day late.');
+    expect(await c.said(at('2026-10-14T08:00:00Z'))).toContain('Your team: Brian said “I will let Njeri know today”. That was due by Tuesday 13 October and is one day late.');
   });
   it('a "No, not yet." keeps nothing, and nor does a yes to a question about something else', () => {
     const answers = (said: string, asked = 'Last time you said you needed to tell Njeri in accounts about the Kasarani Foods filing. Did you let her know?') =>
@@ -90,7 +90,7 @@ describe('Joseph followed up with Mama Pima, and said what she answered', () => 
   });
   it('and on Tuesday, when it was late, the summary says who "her" is', async () => {
     const c = aCheckIn({ ground: G, label: 'Sales team, Q4', people, lead: 'grace', promises: [promise], checkIns: [monday, wednesday] });
-    expect(await c.said(at('2026-10-14T08:00:00Z'))).toContain('These are overdue on your team. Joseph said “I\'ll follow up with her tomorrow” about Mama Pima. That was due by Tuesday 13 October and is one day late.');
+    expect(await c.said(at('2026-10-14T08:00:00Z'))).toContain('Your team: Joseph said “I\'ll follow up with her tomorrow” about Mama Pima. That was due by Tuesday 13 October and is one day late.');
   });
   it('"Mama Pima has not replied" keeps nothing', async () => {
     const noReply = { ...wednesday, turns: [wednesday.turns[0], turn('PERSON', 'I called, but Mama Pima has not replied yet.', '2026-10-14T11:08:27.229Z')] };
