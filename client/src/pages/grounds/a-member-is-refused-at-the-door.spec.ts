@@ -33,7 +33,10 @@ describe('a member is refused at the door, not on submit', () => {
 
   it('adding people is behind being an admin', () => {
     /* U.4 review: the People door says "Only an admin can open People.", so it names what it guards. */
-    expect(route('/org/members')).toContain('<AdminsOnly what="open People">');
+    /* Changed 22 November 2026: People has its own door since "who can add people" (an admin, or anybody the organisation lets add
+       people). It still names what it guards with the same words, "open People". */
+    expect(route('/org/members')).toContain('<WhoMayAddPeople>');
+    expect(APP.slice(APP.indexOf('function WhoMayAddPeople'), APP.indexOf('function AdminsOnly'))).toContain('what="open People"');
   });
 
   it('each door reads one field and nothing else', () => {

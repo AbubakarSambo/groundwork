@@ -18,7 +18,7 @@ let currentUser: { id: string; role: string; email: string }
 vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: currentUser, isAuthenticated: true }),
 }))
-vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
+vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn(), peopleAndSetup: vi.fn() } }))
 vi.mock('@/api/participantRequests', () => ({ participantRequestsApi: { list: vi.fn().mockResolvedValue([]) } }))
 vi.mock('@/api/reports', () => ({ reportsApi: { get: vi.fn() } }))
 vi.mock('@/api/documents', () => ({ documentsApi: { list: vi.fn() } }))
@@ -56,6 +56,15 @@ describe('"Your sessions" never reads more sessions done than are planned', () =
         { id: 'c1b', participantId: 'p-lead', sessionNumber: 1, status: 'COMPLETED', completedAt: '2026-09-01T11:00:00.000Z', isSelfCorrection: true },
       ],
       boardRenders: true,
+    })
+    /*
+     * Changed 22 November 2026: "Your check-ins" is now the count the server serves (people-and-setup.ts, yourSessionsDone, from
+     * theSessionsDoneBy, which counts each session once; its own spec holds the self-correction case). The page reads that one count and
+     * no longer works it out from the rows, so this serves what the server serves for these rows: one session done.
+     */
+    ;(groundsApi as any).peopleAndSetup.mockResolvedValue({
+      on: true, view: 'lead', howItRuns: '', problems: [], sessions: '', yourSessionsDone: 1, sessionsPlanned: 6, joinedWithTheLink: '',
+      kindOfWork: null, kindsOffered: [], othersWithAccess: '', runsIt: null, organisationName: 'Acme', roleDescribed: {},
     })
     renderPage()
     expect(await screen.findByText('You have checked in for 1 of the 6 sessions.')).toBeTruthy()

@@ -45,7 +45,9 @@ describe('each gated control', () => {
     const route = (p: string) => app.slice(app.indexOf(`path="${p}"`), app.indexOf('/>', app.indexOf(`path="${p}"`)))
     /* U.18: Connections moved to the prototype's three addresses; each is behind the same door. */
     for (const p of ['/settings/connections', '/settings/whatsapp', '/settings/tools']) expect(route(p)).toContain('<AdminsOnly')
-    expect(route('/org/members')).toContain('<AdminsOnly')
+    /* Changed 22 November 2026: People has its own door since "who can add people" (an admin, or anybody the organisation lets add people), so it is
+       no longer AdminsOnly; the connections pages above still are. */
+    expect(route('/org/members')).toContain('<WhoMayAddPeople')
   })
 
   it('a role that changes empties the query cache, so nothing answers from the old role', () => {
