@@ -1212,6 +1212,10 @@ model Ground {
   /// than guessing ACTIVE. Written by pauseGround, cleared by resumeGround. Null on any ground
   /// paused before this column existed; resume falls back to ACTIVE for those and says so.
   pausedFromStatus   GroundStatus? @map("paused_from_status")
+  /// TAKEN OFF EVERYONE'S LISTS (Hafsah, 22 November 2026). Set by its lead or an admin when a check-in people have already
+  /// answered should go. The record stays: every word people said, the reports and the contribution record are kept. Only
+  /// the way in goes: lists, counts, boards, the Desk, My work and Ask skip it (see a-hidden-check-in-is-on-no-list.ts).
+  hiddenAt           DateTime?     @map("hidden_at")
 
   /// WHEN THE TIME RAN OUT, AND WHAT THIS CHECK-IN WAS BEFORE IT DID.
   ///

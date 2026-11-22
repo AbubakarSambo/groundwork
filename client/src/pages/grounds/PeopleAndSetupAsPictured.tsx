@@ -637,6 +637,9 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
       {/* PAUSING (release test 22 November, bug 35): its lead or an admin puts it on hold and lifts the hold, here above ending it. */}
       {(isInitiator || isOrgAdmin) && <PauseOrResume groundId={id} status={g?.status} />}
 
+      {/* DELETING ONE PEOPLE HAVE ANSWERED (Hafsah, 22 November 2026): the record stays, so it comes off everyone's lists instead. */}
+      {(isInitiator || isOrgAdmin) && !nobodyElseAnswered && <TakeItOffEveryList groundId={id} label={g?.label} />}
+
       {/* 9. ENDING */}
       <Panel as="section" aria-label="Ending it">
         {isInitiator ? (
@@ -839,6 +842,47 @@ export function PauseOrResume({ groundId, status }: { groundId: string | undefin
           {change.isPending ? (held ? 'Resuming…' : 'Pausing…') : held ? 'Resume this check-in' : 'Pause this check-in'}
         </Button>
       </FlexRow>
+    </Panel>
+  )
+}
+
+/**
+ * DELETE A CHECK-IN PEOPLE HAVE ANSWERED (Hafsah, 22 November 2026). "Delete this test" only works before anybody else answers,
+ * because after that the record stays. Its lead or an admin can still make it go: it comes off everyone's lists, and what people
+ * said, the reports and each person's history are kept. The server decides who may (POST /grounds/:id/hide) and every list skips it.
+ */
+export function TakeItOffEveryList({ groundId, label }: { groundId: string | undefined; label: string | undefined }) {
+  const qc = useQueryClient()
+  const [asking, setAsking] = useState(false)
+  const hide = useMutation({
+    mutationFn: () => groundsApi.hide(groundId!),
+    onSuccess: () => {
+      toast.success(`"${label ?? 'The check-in'}" is deleted from everyone's lists.`)
+      qc.invalidateQueries({ queryKey: ['grounds'] })
+      window.location.assign('/grounds')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not work. Try again.'),
+  })
+  if (!groundId) return null
+  return (
+    <Panel as="section" aria-label="Deleting it">
+      <Stack gap={10}>
+        <FlexRow gap={12} justify="space-between" align="center" wrap>
+          <Text size="15" as="p">
+            People have already answered this check-in, so what they said is kept. You can still delete the check-in, and it will be gone from everyone's lists.
+          </Text>
+          {!asking && <Button kind="secondary" redText onClick={() => setAsking(true)}>Delete this check-in</Button>}
+        </FlexRow>
+        {asking && (
+          <FlexRow gap={8} wrap align="center">
+            <span>Delete "{label}"? It will be gone from everyone's lists, and nobody will be asked to check in again. The words people said are kept.</span>
+            <Button kind="danger" disabled={hide.isPending} onClick={() => hide.mutate()}>
+              {hide.isPending ? 'Deleting…' : 'Yes, delete it'}
+            </Button>
+            <Button kind="secondary" onClick={() => setAsking(false)}>Keep it</Button>
+          </FlexRow>
+        )}
+      </Stack>
     </Panel>
   )
 }

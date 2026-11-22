@@ -555,6 +555,13 @@ export class GroundsController {
     return { groundId: id };
   }
 
+  /** Take a check-in people have answered off everyone's lists. Its lead or an admin; the record is kept. */
+  @Post(':id/hide')
+  @ApiOperation({ summary: "Take the check-in off everyone's lists; what people said and the reports are kept (its lead or an admin)" })
+  async hide(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.takeOffEveryList(id, userId);
+  }
+
   @Get(':id/participants/:participantId/invite-url')
   @ApiOperation({ summary: 'Get the current invite URL for a pending participant (initiator only)' })
   async getParticipantInviteUrl(

@@ -198,3 +198,29 @@ describe('the one way out of a hold', () => {
     expect(prisma.ground.update).not.toHaveBeenCalled();
   });
 });
+
+describe('deleting a check-in people have answered takes it off every list and keeps the record', () => {
+  const service = (role: 'ADMIN' | 'MEMBER') => {
+    const ground = { id: 'g1', status: GroundStatus.ACTIVE, initiatorId: 'u-lead', organizationId: 'o1' };
+    const prisma: any = {
+      ground: { findUnique: jest.fn(async () => ground), update: jest.fn(async (args: any) => ({ ...ground, ...args.data })), delete: jest.fn() },
+      user: { findFirst: jest.fn(async () => ({ id: 'x', role })) },
+    };
+    return { svc: new GroundsService(prisma, {} as any, {} as any, { emit: jest.fn() } as any, {} as any, {} as any, {} as any), prisma };
+  };
+
+  it('its lead or an admin sets hiddenAt, and nothing is deleted', async () => {
+    for (const [who, role] of [['u-lead', 'MEMBER'], ['an-admin', 'ADMIN']] as const) {
+      const { svc, prisma } = service(role);
+      await expect(svc.takeOffEveryList('g1', who)).resolves.toEqual({ groundId: 'g1', hidden: true });
+      expect(prisma.ground.update).toHaveBeenCalledWith({ where: { id: 'g1' }, data: { hiddenAt: expect.any(Date) } });
+      expect(prisma.ground.delete).not.toHaveBeenCalled();
+    }
+  });
+
+  it('a member who does not run it cannot, and is told who can', async () => {
+    const { svc, prisma } = service('MEMBER');
+    await expect(svc.takeOffEveryList('g1', 'someone')).rejects.toThrow('Only the person running this check-in, or an admin here, can delete it, so ask one of them.');
+    expect(prisma.ground.update).not.toHaveBeenCalled();
+  });
+});

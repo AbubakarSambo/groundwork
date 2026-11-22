@@ -538,6 +538,10 @@ export const groundsApi = {
   remove: (groundId: string) =>
     apiClient.delete<{ deleted: boolean; label: string }>(`/grounds/${groundId}`).then(r => r.data),
 
+  /** Take a check-in people have answered off everyone's lists. Its lead or an admin; what people said and the reports are kept. */
+  hide: (groundId: string) =>
+    apiClient.post<{ groundId: string; hidden: true }>(`/grounds/${groundId}/hide`).then(r => r.data),
+
   stateBaseline: (groundId: string, body: { successLooksLike?: string; conditions?: string[]; changeReason?: string }) =>
     apiClient.post<{ version: number; successLooksLike: string | null; conditions: string[]; changeReason: string | null; effectiveFrom: string }>(
       `/grounds/${groundId}/baseline`, body,

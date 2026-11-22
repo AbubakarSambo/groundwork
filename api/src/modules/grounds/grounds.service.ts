@@ -8533,7 +8533,7 @@ export class GroundsService {
    * organisation. The routes were for admins only while the service let any member through, so the lead who runs it could not, and
    * a member who does not could have. One rule, here, for both doors.
    */
-  private async theLeadOrAnAdminHere(ground: { initiatorId: string | null; organizationId: string }, userId: string, doing: 'pause' | 'resume'): Promise<void> {
+  private async theLeadOrAnAdminHere(ground: { initiatorId: string | null; organizationId: string }, userId: string, doing: 'pause' | 'resume' | 'delete'): Promise<void> {
     if (ground.initiatorId && ground.initiatorId === userId) return;
     const here = await this.prisma.user.findFirst({ where: { id: userId, organizationId: ground.organizationId }, select: { id: true, role: true } });
     if (String(here?.role ?? '') === 'ADMIN') return;
@@ -8560,6 +8560,21 @@ export class GroundsService {
     });
 
     this.logger.warn(`Ground ${groundId} resumed to ${backTo} by user ${adminUserId}. Reason: ${reason}`);
+  }
+
+  /**
+   * TAKE A CHECK-IN OFF EVERYONE'S LISTS (Hafsah, 22 November 2026). Once people have answered, a check-in cannot be deleted,
+   * because the record stays. Its lead or an admin can still make it go: `hiddenAt` is set, and every list and count skips it
+   * from then on (prisma/a-hidden-check-in-is-on-no-list.ts). Nothing people said, no report and no contribution is removed.
+   * `hiddenAt` is written through a cast while the generated client in the shared node_modules predates the column.
+   */
+  async takeOffEveryList(groundId: string, userId: string): Promise<{ groundId: string; hidden: true }> {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    await this.theLeadOrAnAdminHere(ground, userId, 'delete');
+    await this.prisma.ground.update({ where: { id: groundId }, data: { hiddenAt: new Date() } as unknown as Prisma.GroundUpdateInput });
+    this.logger.warn(`Ground ${groundId} taken off every list by user ${userId}. The record is kept.`);
+    return { groundId, hidden: true };
   }
 
   /**
