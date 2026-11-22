@@ -22,7 +22,7 @@ describe('where somebody is on WhatsApp', () => {
   });
   it('says each in a full sentence', () => {
     expect(WHERE_ON_WHATSAPP_SAYS.waiting).toBe('They have not written on WhatsApp yet.');
-    expect(WHERE_ON_WHATSAPP_SAYS.connected).toBe('Connected. They can check in on WhatsApp.');
+    expect(WHERE_ON_WHATSAPP_SAYS.connected).toBe('Connected. They have written to Groundwork from this number.');
   });
 });
 

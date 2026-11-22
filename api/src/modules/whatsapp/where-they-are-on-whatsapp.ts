@@ -15,7 +15,7 @@ export const WHERE_ON_WHATSAPP_SAYS: Record<WhereOnWhatsApp, string> = {
   'no-number': 'No WhatsApp number yet.',
   'not-connected': 'Not connected yet. Nothing has been sent to this number.',
   waiting: 'They have not written on WhatsApp yet.',
-  connected: 'Connected. They can check in on WhatsApp.',
+  connected: 'Connected. They have written to Groundwork from this number.',
 };
 
 export async function whereTheyAreOnWhatsApp(prisma: any, phone: string | null | undefined): Promise<WhereOnWhatsApp> {
