@@ -96,7 +96,7 @@ import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { theGlanceAsThisReaderMayReadIt, whatIsInTheWay } from './what-a-manager-needs-at-a-glance';
-import { readPeopleAndSetup } from './people-and-setup';
+import { readPeopleAndSetup, whoElseHasAnswered } from './people-and-setup';
 import { readReferencesAndResources, readTheEvidence, aLineToKeep, aKeyFactFrom, type EvidenceQuery } from './references-and-resources';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
@@ -7203,10 +7203,11 @@ export class GroundsService {
         id: true, label: true, initiatorId: true,
         participants: {
           select: {
-            id: true, userId: true, email: true,
+            id: true, userId: true, email: true, nameGiven: true,
             user: { select: { firstName: true, lastName: true } },
           },
         },
+        checkIns: { select: { participantId: true, status: true } },
       },
     });
     /* NotFound rather than Forbidden for a stranger, as everywhere else here. */
@@ -7219,17 +7220,12 @@ export class GroundsService {
       );
     }
 
-    const others = ground.participants.filter((p) => p.userId !== requestingUserId);
-    const answered = others.length
-      ? await this.prisma.checkIn.findMany({
-        where: { participantId: { in: others.map((p) => p.id) }, status: CheckInStatus.COMPLETED },
-        select: { participantId: true },
-      })
-      : [];
+    /* The one rule People and setup also serves (whoElseHasAnswered), so the page offers this delete exactly when it works (bug N6). */
+    const answered = whoElseHasAnswered(ground.participants, ground.checkIns as any[], ground.initiatorId);
     if (answered.length) {
-      const who = [...new Set(answered.map((a) => a.participantId))]
+      const who = answered
         .map((pid) => {
-          const p = others.find((x) => x.id === pid);
+          const p = ground.participants.find((x) => x.id === pid);
           const named = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim();
           /* Never an address as a name (Hafsah, 28 Sep 2026; screens requests 56, 58, 65). */
           return named || (p as any)?.nameGiven?.trim() || 'a colleague';

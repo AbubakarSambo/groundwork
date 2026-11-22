@@ -273,7 +273,10 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
     { key: 'on', label: 'On WhatsApp', says: 'The check-in, the reminders and the report go to their phone. They reply to the message and that reply is their answer.' },
     { key: 'in', label: 'In Groundwork only', says: 'This one stays here even though your organisation has a number. For a conversation you would rather was not on somebody’s phone.' },
   ]
-  const nobodyElseAnswered = !(props.whoIsInThisParties ?? []).some((p) => p.done && !p.isSelf)
+  /* The server's one answer (people-and-setup.ts, whoElseHasAnswered, the rule the delete itself asks), never this session's count:
+     somebody who answered session 1 has answered, whatever session it is now (release test 22 November, bug N6). Until it is served,
+     the page offers only what keeps the record. */
+  const nobodyElseAnswered = page?.stillATest === true
   const n = sessionsUpToTheEnd(props) ?? sessionsFor(props.timelineDaysDraft, props.cadenceDraft) ?? 1
 
   /* What it is: before who is in it with the switch off, after it with the design pass on (the people are the main thing). */

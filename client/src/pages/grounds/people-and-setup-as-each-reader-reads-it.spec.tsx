@@ -75,6 +75,8 @@ const SERVED_TO_GRACE = {
   othersWithAccess: "The people above and the admins of Drop Access can see it. So can a lead in the same department, once the team's report is shared.",
   runsIt: 'Grace Achieng', organisationName: 'Drop Access',
   roleDescribed: { 'p-grace': true, 'p-kevin': true, 'p-mercy': true, 'p-joseph': false, 'p-peter': true },
+  /* 5 check-ins are done, so others have answered: the server says it is not a test any more (bug N6). */
+  stillATest: false,
 }
 const SERVED_TO_NAOMI = {
   ...SERVED_TO_GRACE, view: 'admin',
@@ -150,8 +152,14 @@ describe('Grace, who runs the sales check-in, reads the whole page in the pictur
     expect(screen.getByText('First check-in done')).toBeTruthy()
     expect(screen.getByText('+254 7·· ··· 410')).toBeTruthy()
     expect(screen.getByText('You changed how long it runs from 2 weeks to 3 weeks on 14 October.')).toBeTruthy()
-    expect(screen.getByText('Nobody else has answered yet, so this can still be deleted as a test. Otherwise, ending it stops new check-ins, everything stays as it is, and each person keeps their own history.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Delete this test' })).toBeTruthy()
+    /* 22 November 2026, bug N6: this used to read "Nobody else has answered yet" beside "5 of 15 check-ins done", because the page
+       counted only this session. The server's answer says others have answered, so Grace reads the true sentence and the delete that
+       keeps the record. */
+    expect(screen.queryByText(/Nobody else has answered yet/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Delete this test' })).toBeNull()
+    expect(screen.getByText('Ending it stops new check-ins. Everything stays as it is, and each person keeps their own history. This can’t be undone.')).toBeTruthy()
+    expect(screen.getByText("People have already answered this check-in, so what they said is kept. You can still delete the check-in, and it will be gone from everyone's lists.")).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Delete this check-in' })).toBeTruthy()
     expect(screen.getByText('Decide how it ends')).toBeTruthy()
     expect(screen.queryByText("You can't end a check-in you don't run. Ask us and we'll end it, usually the same day.")).toBeNull()
     expect((screen.getByLabelText('Their role here, for Kevin Otieno') as HTMLInputElement).value).toBe('Rep, Nairobi hardware shops')
