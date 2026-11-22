@@ -58,19 +58,19 @@ describe('one settings change, as one sentence', () => {
  */
 describe('"your sessions", as one sentence', () => {
   it('names both numbers in a sentence', () => {
-    expect(yourSessionsSentence(1, 12)).toBe('1 of 12 check-ins are done.')
+    expect(yourSessionsSentence(1, 12)).toBe('You have checked in for 1 of the 12 sessions.')
   })
 
   it('reads correctly for exactly one planned session', () => {
-    expect(yourSessionsSentence(1, 1)).toBe('1 of 1 check-in is done.')
+    expect(yourSessionsSentence(1, 1)).toBe('You have checked in for it.')
   })
 
   it('still reads as a sentence when nothing planned is known', () => {
-    expect(yourSessionsSentence(3, null)).toBe('3 check-ins done so far.')
-    expect(yourSessionsSentence(1, null)).toBe('1 check-in done so far.')
+    expect(yourSessionsSentence(3, null)).toBe('You have checked in 3 times so far.')
+    expect(yourSessionsSentence(1, null)).toBe('You have checked in once so far.')
   })
 
   it('B-012: never says more are done than are planned', () => {
-    expect(yourSessionsSentence(9, 6)).toBe('6 of 6 check-ins are done.')
+    expect(yourSessionsSentence(9, 6)).toBe('You have checked in for 6 of the 6 sessions.')
   })
 })

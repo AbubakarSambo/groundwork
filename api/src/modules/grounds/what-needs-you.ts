@@ -10,7 +10,7 @@ import { theAwayLine } from '../suites/who-is-away';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 import { theNotJoinedYetLine } from './invited-not-joined-yet';
 import { theCheckIn, yourCheckIn } from './which-check-in-it-is';
-import { wasAQuietClose } from './an-answer-includes-a-refusal';
+import { wasAQuietClose, AN_ANSWER } from './an-answer-includes-a-refusal';
 import { checksInOnlyWhenTheyChoose } from './the-lead-checks-in-when-they-choose';
 import { isShut } from './a-ground-that-has-ended';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
@@ -308,7 +308,8 @@ export function whatNeedsYou(
     let aTurnOfMineIsOpenHere = false;
     if (!over && me && !heldFromMyOwn && !paused) {
       const next = sessions
-        .filter((c) => c.participantId === me.id && c.status !== 'COMPLETED' && hasOpened(c, at))
+        /* Not one they have answered, a decline included (AN_ANSWER): a declined session from August read "Your next check-in ... It opened on 29 August." */
+        .filter((c) => c.participantId === me.id && !(AN_ANSWER as string[]).includes(c.status) && hasOpened(c, at))
         .sort((a, b) => a.sessionNumber - b.sessionNumber)[0];
       if (next) {
         const opened = time(next.availableFrom);

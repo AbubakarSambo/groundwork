@@ -74,7 +74,9 @@ export function railAttention(g: RailGround, myUserId: string | null | undefined
   const checkIns = (g.checkIns ?? []).filter((c) => !c.isSetup)
 
   if (me) {
-    const mine = checkIns.filter((c) => c.participantId === me.id && c.status !== 'COMPLETED')
+    /* The server's rule for Today's "Your turn" (what-needs-you.ts): not answered, a decline included, and opened. A session somebody
+       has started is open whatever its date says (release test, 21 November 2026: the list said "Your turn" while Today said nothing did). */
+    const mine = checkIns.filter((c) => c.participantId === me.id && c.status !== 'COMPLETED' && c.status !== 'DECLINED')
     // The earliest open one: being two rounds behind should read as one thing to do,
     // not two, or the rail nags twice for the same person.
     const next = mine.sort((a, b) => a.sessionNumber - b.sessionNumber)[0]
@@ -82,7 +84,7 @@ export function railAttention(g: RailGround, myUserId: string | null | undefined
       const from = next.availableFrom ? new Date(next.availableFrom) : null
       // Not yet open is not "your turn": a session scheduled for next fortnight is
       // not something anybody is late for.
-      if (from && from.getTime() > now.getTime()) return { kind: 'none' }
+      if (from && from.getTime() > now.getTime() && next.status !== 'IN_PROGRESS') return { kind: 'none' }
       const daysLate = from ? Math.floor((now.getTime() - from.getTime()) / 86_400_000) : 0
       return daysLate > OVERDUE_AFTER_DAYS
         ? { kind: 'overdue', sessionNumber: next.sessionNumber, daysLate }

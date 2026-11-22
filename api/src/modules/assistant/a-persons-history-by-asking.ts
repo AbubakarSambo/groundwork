@@ -1,3 +1,4 @@
+import { andList } from '../reports/each-wait-under-whoever-holds-it';
 /**
  * A PERSON'S HISTORY, ASKED FOR BY NAME (chat is king, section 8).
  *
@@ -60,12 +61,17 @@ export function aHistorySaid(p: AHistoryPage): string {
   const has = p.self ? 'have' : 'has';
   const out: string[] = [`This is ${p.self ? 'your' : `${p.firstName}’s`} history in "${p.checkInName}", read from ${p.self ? 'your' : 'their'} check-ins${p.self || p.judgementsOff ? '' : ' and from what you have told me about them'}.`];
   if (p.checkIns.due > 0) {
-    out.push(`${who} ${has} done ${p.checkIns.done} of ${p.checkIns.due} check-ins, ${p.checkIns.onTime} on time and ${p.checkIns.specific} with specific answers.`);
+    /* Where judgements are off, on time and specific are not read at all, so they are not said as nought (release test, 21 November 2026:
+       "Amani has done 0 of 2 check-ins, 0 on time and 0 with specific answers"). */
+    out.push(p.judgementsOff
+      ? `${who} ${has} checked in for ${p.checkIns.done} of the ${p.checkIns.due} check-ins due.`
+      : `${who} ${has} checked in for ${p.checkIns.done} of the ${p.checkIns.due} check-ins due, ${p.checkIns.onTime} of them on time and ${p.checkIns.specific} with specific answers.`);
   } else {
     out.push(`There is no finished check-in for ${p.self ? 'you' : p.firstName} here yet, so there is no history to read.`);
   }
   const nums = p.numbers.filter((n) => String(n.value ?? '').trim() && String(n.label ?? '').trim());
-  if (nums.length) out.push(nums.map((n) => `${n.label} is ${n.value}.`).join(' '));
+  /* Each number as the page shows it, value then what it counts, in one sentence: "check-ins is 0 of 2." was the label read as a subject. */
+  if (nums.length) out.push(`The numbers on the page are ${andList(nums.map((n) => `${String(n.value).trim()} ${String(n.label).trim()}`))}.`);
   if (p.judgementsOff) return out.join('\n\n');
   const read = p.behaviours.filter((b) => b.verdict !== 'Not enough yet');
   if (read.length) {
