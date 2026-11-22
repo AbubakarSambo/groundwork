@@ -101,7 +101,8 @@ export function theCountOfASession(
 ): { counted: string[]; answered: number; ofPeople: number; notAnswered: string[] } {
   const withTheirRows = (people ?? []).map((p) => ({
     ...p, awayUntil: awayUntilOn(leave?.get(p.id), now),
-    checkIns: (rows ?? []).filter((c) => !c.isSetup && c.participantId === p.id && (c.sessionNumber ?? 1) === session),
+    /* All their sessions, so somebody whose first session comes later is not counted in this one; the count reads this session's own. */
+    checkIns: inTheTeamsNumbering((rows ?? []).filter((c) => !c.isSetup)).filter((c) => c.participantId === p.id),
   }));
   const c = whoHasAnswered(withTheirRows, session, scenario ?? null);
   const counted = c.onTheCheckIn;

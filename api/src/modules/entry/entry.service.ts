@@ -2703,7 +2703,7 @@ from finishing at all.`;
      * still records, because with zero contributors the count is the same either way. The only
      * change is that the question is asked once the party is known.
      */
-    await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber);
+    await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber, checkIn.participantId);
 
     // Zero contributors = a deliberate solo/broadcast start: the initiator
     // completing session 1 is the whole party, so the ground goes ACTIVE.

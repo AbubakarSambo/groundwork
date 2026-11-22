@@ -128,7 +128,8 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = theQuietHoursNow
     {
       roundsDone,
       roundsPlanned,
-      people: ((it.participants ?? []) as any[]).map((p: any) => ({ ...p, awayUntil: awayUntilOn(it.leave?.get(p.id), now) })) as any,
+      /* With all their sessions in the team's numbering, so the glance counts the people the session's count counts (whoHasAnswered). */
+      people: ((it.participants ?? []) as any[]).map((p: any) => ({ ...p, awayUntil: awayUntilOn(it.leave?.get(p.id), now), checkIns: (sessions as any[]).filter((c) => c.participantId === p.id) })) as any,
       /* Which round, and the situation, so the population rule can be asked rather than guessed at. */
       sessionNumber: openRound,
       scenario: (it as any).scenario ?? null,
