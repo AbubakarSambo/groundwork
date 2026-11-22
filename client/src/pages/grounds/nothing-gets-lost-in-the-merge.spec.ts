@@ -175,9 +175,10 @@ describe('nothing the check-in pages can do gets lost in a merge', () => {
        purpose, which is the one reason this number is allowed to go down. 42 until `activate`
        went the same way with the reveal: see there-is-no-reveal.spec.ts. 39 since
        `getMyCheckinStatus` came off this list 1 October 2026 - a capability still alive outside
-       these four pages, see the note above, not a capability lost from the product. */
+       these four pages, see the note above, not a capability lost from the product. 38 since `claimFreeExtension` went with the
+       free plan, 22 November 2026: a capability dropped on purpose. */
     const total = Object.values(OPERATIONS).reduce((n, c) => n + c.length, 0)
-    expect(total).toBe(39)
+    expect(total).toBe(38)
   })
 })
 
