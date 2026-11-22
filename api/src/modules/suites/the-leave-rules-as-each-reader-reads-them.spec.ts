@@ -155,7 +155,12 @@ describe('with no leave rules set, every reader reads exactly what they read bef
       );
     });
 
-    it(`${label}: the request is kept as annual, Wairimu reads no kind and no rule, and Joy reads nothing`, async () => {
+    /*
+     * Changed 22 November 2026. Since Batch S, round 2, T9 (e35c4cbdb, on staging), whoever holds the HR duty reads the leave board whether or not the rules
+     * tell HR anything: Peter was refused until he set leave up. This test still expected Joy to be refused, and has failed on staging since. With no
+     * rules, Joy reads the board as HR, and nothing is recorded as told to her.
+     */
+    it(`${label}: the request is kept as annual, Wairimu reads no kind and no rule, and Joy is told nothing`, async () => {
       const { send, leave, as, events } = setup({ rules });
       const r = await send('u-aisha', '2026-10-08', '2026-10-09');
       expect(r.kind).toBe('annual');
@@ -170,7 +175,9 @@ describe('with no leave rules set, every reader reads exactly what they read bef
       expect(board.toldToHr).toEqual([]);
       expect(board.off).toEqual([{ id: 'r-miriam-oct', name: 'Miriam Wanjiku', startsOn: '2026-10-09', endsOn: '2026-10-09', kind: 'annual' }]);
       await leave.decide(as('u-wairimu'), r.id, 'approved');
-      await expect(leave.board(as('u-joy'), TODAY)).rejects.toThrow(ForbiddenException);
+      const joy = await leave.board(as('u-joy'), TODAY);
+      expect(joy.reader).toBe('hr');
+      expect(joy.waiting).toEqual([]);
       expect(events.filter((e) => e.toUserId === 'u-joy')).toEqual([]);
     });
 
