@@ -16,6 +16,8 @@ vi.mock('@/api/you', () => ({ youApi: { get: vi.fn() } }))
 vi.mock('@/api/my-data', () => ({ myDataApi: { get: vi.fn(), erase: vi.fn() } }))
 vi.mock('@/api/patterns', () => ({ patternsApi: { answer: vi.fn() } }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { list: vi.fn().mockResolvedValue([]) } }))
+/* The leave and requests sections (21 November 2026) ask which suites are on; here none is, so a member is shown neither. */
+vi.mock('@/api/suites', () => ({ suitesApi: { mine: vi.fn().mockResolvedValue({ leave: false, spend: false, time: false, reviews: false }) }, yourRequestsApi: {}, reviewsApi: { mineQuietly: vi.fn().mockResolvedValue([]) } }))
 import { youApi } from '@/api/you'
 import { myDataApi } from '@/api/my-data'
 import { patternsApi } from '@/api/patterns'
@@ -90,22 +92,23 @@ describe('Miriam reads her own You board', () => {
     await screen.findByRole('heading', { name: 'What you said you’d do' })
     const said = section('What you said you’d do')
     expect(within(said).getByText('From every check-in')).toBeInTheDocument()
-    /* Rebuilt from the shared parts (group 2, piece 2): the row is now the shared `Row`
-       (`gwui-row`, components/gw/ui/Rows.tsx), in place of the page's own `gw-you-row`. */
-    expect([...said.querySelectorAll('.gwui-row')].map(r => [...r.children].map(c => c.textContent))).toEqual([
-      ['Visit Westgate Deli on Friday', 'Sales team, Q3', 'Friday', 'Open'],
-      ['Send Green Mart the quote, with a photo', 'Sales team, Q3', '', 'Kept'],
+    /* 21 November 2026 (Hafsah: "commitments, open and kept, with dates"): each row is now the promise in bold, then one sentence
+       saying where it was said, when, and what became of it, then how it stands. The facts are the same; the columns became a sentence. */
+    expect([...said.querySelectorAll('.gwui-row')].map(r => r.textContent)).toEqual([
+      'Visit Westgate Deli on FridayYou said this in Sales team, Q3. It is still open, and you said you would do it Friday.Open',
+      'Send Green Mart the quote, with a photoYou said this in Sales team, Q3. You kept it.Kept',
     ])
   })
 
   it('links to her own reports and her work in each check-in, and offers her data as one file', async () => {
     open(MIRIAM, MIRIAMS)
-    await screen.findByRole('heading', { name: 'Your own reports' })
-    expect(hrefOf(section('Your own reports'), 'Read')).toBe('/checkin/c38/report')
+    /* 21 November 2026: her own reports are now part of "Your performance history" (Hafsah: "performance history"), with the same link. */
+    await screen.findByRole('heading', { name: 'Your performance history' })
+    expect(hrefOf(section('Your performance history'), 'Read it')).toBe('/checkin/c38/report')
     /* SCREEN FAULT 10: 30px tall on a phone before the shared 40px tap class was added. */
-    expect(within(section('Your own reports')).getByRole('link', { name: 'Read' }).className).toContain('gwui-tap-44')
+    expect(within(section('Your performance history')).getByRole('link', { name: 'Read it' }).className).toContain('gwui-tap-44')
     /* Walkthrough pass 2, item 4: dates read in full ("23 September", not "23 Sept"). */
-    expect(within(section('Your own reports')).getByText('23 September')).toBeInTheDocument()
+    expect(within(section('Your performance history')).getByText('It was written from your answers on 23 September.')).toBeInTheDocument()
     const each = section('Your work in each')
     expect(within(each).getByText('Sales team, Q3')).toBeInTheDocument()
     expect(within(each).getByText('You have finished 38 check-ins.')).toBeInTheDocument()
@@ -131,9 +134,12 @@ describe('Miriam reads her own You board', () => {
     expect(text).not.toMatch(/specific|confidence|rating|score/i)
     expect(text).not.toMatch(/\bPIP\b|at risk|\bexit\b/i)
     /* Nothing of the engine's is drawn until the engine serves it. */
-    for (const h of ['Where you stand', 'Worth knowing now', 'Something Groundwork noticed about your work', 'Coaching, followed over time', 'What you contributed', 'Something that keeps coming up']) {
+    for (const h of ['Where you stand', 'Worth knowing now', 'Something Groundwork noticed about your work', 'Coaching, followed over time', 'What you contributed']) {
       expect(screen.queryByRole('heading', { name: h })).toBeNull()
     }
+    /* 21 November 2026 (Hafsah: the You page "really has no information on"): "Something that keeps coming up" is always drawn now,
+       and says in a sentence that nothing has come up yet, rather than leaving the page without it. */
+    expect(within(section('Something that keeps coming up')).getByText(/Nothing has come up often enough about your work to name/)).toBeInTheDocument()
     /* Nothing is asked of her on this board, so there is no such part; and nothing shares her load (U.16). */
     expect(text).not.toContain('Everything asked of you this week')
     expect(text).not.toContain('Share with your lead')
@@ -242,7 +248,8 @@ describe('when the engine serves its own parts (request 14)', () => {
     })
     await screen.findByText('Your board')
     expect(screen.queryByText('Something about a colleague’s work')).toBeNull()
-    expect(screen.queryByRole('heading', { name: 'Something that keeps coming up' })).toBeNull()
+    /* The section is always drawn now (21 November 2026); a colleague's pattern still never is. */
+    expect(within(section('Something that keeps coming up')).getByText(/Nothing has come up often enough about your work to name/)).toBeInTheDocument()
   })
 
   it('lets Miriam say what’s behind it, and shows her own words back', async () => {
@@ -327,7 +334,8 @@ describe('Everything asked of you this week (D3, U.16), on your own board only',
     open(MIRIAM, ASKED)
     await screen.findByRole('heading', { name: 'Everything asked of you this week' })
     const s = section('Everything asked of you this week')
-    expect(within(s).getByText('From every check-in you’re in. Only you see this.')).toBeInTheDocument()
+    /* Changed 21 November 2026 (Batch E, N13): no "Only you see this." note on a screen. */
+    expect(within(s).getByText('From every check-in you’re in.')).toBeInTheDocument()
     const rows = within(s).getAllByRole('listitem').map((li) => li.textContent)
     expect(rows).toEqual([
       'Kwame, first 90 daysThe demo freezer booking for ThursdayThe demo freezer booking is due Thursday.',

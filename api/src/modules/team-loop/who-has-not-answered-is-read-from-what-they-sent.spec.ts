@@ -36,7 +36,8 @@ describe('who answered, and who did not, in the summary she reads', () => {
     const ibrahim = contacts.find((c: any) => c.name === 'Ibrahim Sule')!;
     const email = await theUpdateForHer(x.prisma, null, { organizationId: 'org-1', principalUserId: 'u-fatima', first: 'Fatima', contacts, since: x.now, now: x.now, lead: 'week', asks: [{ askedOfEmail: ibrahim.contactKey, askedOfName: ibrahim.name, state: 'queued', askedAt: null }] });
     console.log(`WHAT FATIMA READS\n${email}`);
-    expect(email).toContain('My message to Ibrahim has not gone out yet, so I have not asked them yet.');
+    /* Changed 21 November 2026 (Batch E, N1): one sentence for anybody not written to yet, whether the message is held or could not go that day. */
+    expect(email).toContain('I have not been able to write to Amina and Ibrahim yet, so I have not asked them yet. I will write to them tomorrow morning.');
     expect(email).not.toContain('no new message from');
   });
 });

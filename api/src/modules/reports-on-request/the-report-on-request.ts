@@ -99,11 +99,12 @@ export function aMaterialLabel(via: AMaterialVia | string, name: string): string
 
 /* ------------------------------------------------------------------ the outline */
 
-export function theOutlineSaid(outline: ASection[], sources: ASource[], first: boolean): string {
+/** `first` is a first outline, `false` one changed in their words, and 'waiting' the one already sent and not yet checked, said again when they ask for a report. */
+export function theOutlineSaid(outline: ASection[], sources: ASource[], first: boolean | 'waiting'): string {
   const byId = new Map(sources.map((s) => [s.id, s]));
   const used = new Set(outline.flatMap((s) => s.sourceIds));
   const lines: string[] = [];
-  lines.push(`${first ? 'Here is a first outline to check.' : 'Here is the outline with your changes.'} It has ${outline.length === 1 ? 'one section' : `${outline.length} sections`}.`);
+  lines.push(`${first === 'waiting' ? 'The report you asked for is still waiting for you to check its outline.' : first ? 'Here is a first outline to check.' : 'Here is the outline with your changes.'} It has ${outline.length === 1 ? 'one section' : `${outline.length} sections`}.`);
   outline.forEach((s, i) => {
     const from = s.sourceIds.map((id) => byId.get(id)?.label).filter((x): x is string => !!x);
     lines.push(`${i + 1}. ${sentence(s.heading)} ${from.length ? `This would use ${aList(from)}.` : 'Nothing you chose speaks to this yet, so anything in it would be marked unverified.'}`);
@@ -283,15 +284,25 @@ export function theChosenSources(outline: ASection[], sources: ASource[]): ASour
   return sources.filter((s) => used.has(s.id));
 }
 
-/** A long report sent on WhatsApp goes in parts, each whole paragraphs, so nothing is cut off. */
+/**
+ * A long report sent on WhatsApp goes in parts, each whole paragraphs, so nothing is cut off. A paragraph longer than one part is split between
+ * its sentences (Dangote rerun, N2: a 9,000-character say-back was one paragraph, and everything after 3,800 characters was dropped mid-sentence).
+ */
 export function inParts(text: string, most = 3800): string[] {
   const parts: string[] = [];
   let now = '';
-  for (const para of String(text ?? '').split(/\n{2,}/)) {
-    const next = now ? `${now}\n\n${para}` : para;
-    if (next.length <= most) { now = next; continue; }
+  const add = (piece: string, joint: string) => {
+    const next = now ? `${now}${joint}${piece}` : piece;
+    if (next.length <= most) { now = next; return; }
     if (now) parts.push(now);
-    now = para.length <= most ? para : para.slice(0, most);
+    now = piece;
+  };
+  for (const para of String(text ?? '').split(/\n{2,}/)) {
+    if (para.length <= most) { add(para, '\n\n'); continue; }
+    let first = true;
+    for (const sentence of para.match(/[^.!?]+(?:[.!?]+["”’)]*|$)\s*/g) ?? [para]) {
+      for (let i = 0; i < sentence.length; i += most) { add(sentence.slice(i, i + most).trim(), first ? '\n\n' : ' '); first = false; }
+    }
   }
   if (now) parts.push(now);
   return parts;

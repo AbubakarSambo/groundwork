@@ -49,7 +49,16 @@ export const THE_INSTRUCTION_IS_UNCLEAR = (first: string, matter: string | null,
 };
 export const THE_INSTRUCTION_IS_ON = 'Done. I will do it as I said, and I will tell you if anything stops me.';
 export const THE_INSTRUCTION_IS_OFF = 'All right. I have not asked anybody anything.';
-export const NO_ONE_TO_ASK = (first: string) => `${first}, I would do that, but nobody in your team has told me they are happy to hear from me yet. Please send me their names and contacts first.`;
+/**
+ * NOBODY TO WRITE TO, SAID FROM WHO IS ON HER RECORD (release test 21 November, 81). It read "nobody in your team has told me they are happy to hear from me",
+ * which nobody is ever asked, to a senior person who had given no names at all.
+ */
+export const NO_ONE_TO_ASK = (first: string, a: { notIntroducedYet: number; namedButNotOnIt: string[] }) =>
+  a.namedButNotOnIt.length
+    ? `${first}, I would do that, but ${nameList(a.namedButNotOnIt)} ${a.namedButNotOnIt.length === 1 ? 'is' : 'are'} not among the people in your team I can write to. Send me ${a.namedButNotOnIt.length === 1 ? 'their' : 'each one\'s'} phone number or email address, and I will introduce myself first.`
+    : a.notIntroducedYet
+      ? `${first}, I would do that, but I have not been able to introduce myself to anybody in your team yet, so there is nobody I can write to. I will tell you as soon as I can.`
+      : `${first}, I would do that, but you have not given me anybody in your team to write to yet. Send me their names with a phone number or an email address, and I will introduce myself to them first.`;
 /** Her own name, never a fixed one (it read "Only Fatima" in every organisation). */
 export const ONLY_SHE_CAN_GIVE_ONE = (principalFirst: string) => `Only ${principalFirst} can give me an instruction like that.`;
 
@@ -73,26 +82,30 @@ export const THE_ASK_FOR_AN_UPDATE = (first: string, forName: string, matter: st
 
 /**
  * WHO WILL BE WRITTEN TO, HOW, AND ABOUT WHAT (Batch D, R5, D2). Said back before anything goes, from the people on her record: she is never asked who her
- * team is. Each person with something open is named with it; the rest are named together by how they are reached.
+ * team is. The people are named by how they are reached, and each is asked about what is still open with them (the ask itself names it).
+ *
+ * WHAT SHE IS TOLD IS WHAT WILL HAPPEN (Dangote rerun, N1 and N2). Whether a person can be written to today is read from one owner (has-this-person-been-asked.ts,
+ * howTheyCanBeWrittenToToday), and anybody who cannot is named, with when they will be. It was one sentence per person (9,024 characters for 64 people), which
+ * no phone could take in one message.
  */
-export const THE_TEAM_WRITTEN_TO = (a: { first: string; matter: string | null; today: boolean; people: { name: string; how: 'WhatsApp' | 'email'; about: string | null; more: number }[] }) => {
+export const THE_TEAM_WRITTEN_TO = (a: { first: string; matter: string | null; today: boolean; people: { name: string; how: 'WhatsApp' | 'email'; about: string | null; more: number; tomorrow?: boolean }[] }) => {
   const list = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
   const when = a.today ? 'today' : 'now';
-  const n = a.people.length;
+  const now = a.people.filter((p) => !p.tomorrow);
+  const later = a.people.filter((p) => p.tomorrow).map((p) => p.name);
   const askFor = a.matter ? `about ${a.matter.replace(/[.!?]+$/, '')}` : 'where their work stands';
-  if (n === 1) {
-    const p = a.people[0];
-    return `${a.first}, I will write to ${p.name} on ${p.how} ${when}, and ask them ${askFor}${p.about ? `, and about ${aThing(p.about)}, which is still open${p.more ? `, and ${p.more} more ${p.more === 1 ? 'matter' : 'matters'}` : ''}` : ''}. Nobody is asked for a document I already have. I will tell you as soon as they have answered. Shall I go ahead?`;
+  const laterSaid = later.length ? ` ${list(later)} ${later.length === 1 ? 'has' : 'have'} already had a message from me today, so I will write to them tomorrow morning.` : '';
+  const closing = `I will tell you as soon as they have answered${a.today ? ', and this evening with whatever I have and who has not answered' : ', or after three days with whatever I have and who has not answered'}. Shall I go ahead?`;
+  if (now.length === 1) {
+    const p = now[0];
+    return `${a.first}, I will write to ${p.name} ${p.how === 'email' ? 'by email' : 'on WhatsApp'} ${when}, and ask them ${askFor}${p.about ? `, and about ${aThing(p.about)}, which is still open${p.more ? `, and ${p.more} more ${p.more === 1 ? 'matter' : 'matters'}` : ''}` : ''}.${laterSaid} Nobody is asked for a document I already have. I will tell you as soon as they have answered. Shall I go ahead?`;
   }
-  const out: string[] = [`${a.first}, I will write to ${n} people on your record ${when}, and ask each of them ${askFor}.`];
-  for (const p of a.people.filter((x) => x.about)) out.push(`I will write to ${p.name} on ${p.how} and ask about ${aThing(p.about!)}, which is still open${p.more ? `, and ${p.more} more ${p.more === 1 ? 'matter' : 'matters'}` : ''}.`);
-  const rest = a.people.filter((x) => !x.about);
-  const byWhatsApp = rest.filter((x) => x.how === 'WhatsApp').map((x) => x.name);
-  const byEmail = rest.filter((x) => x.how === 'email').map((x) => x.name);
+  if (!now.length) return `${a.first}, everybody I would write to has already had a message from me today, so I will write to ${list(later)} tomorrow morning, and ask each of them ${askFor}. Nobody is asked for a document I already have. ${closing}`;
+  const byWhatsApp = now.filter((x) => x.how === 'WhatsApp').map((x) => x.name);
+  const byEmail = now.filter((x) => x.how === 'email').map((x) => x.name);
   const parts = [byWhatsApp.length ? `${list(byWhatsApp)} on WhatsApp` : '', byEmail.length ? `${list(byEmail)} by email` : ''].filter(Boolean);
-  if (parts.length) out.push(`I will write to ${parts.join(', and to ')}, and ask what they have done and what is still open.`);
-  out.push(`Nobody is asked for a document I already have. I will tell you as soon as they have answered${a.today ? ', and this evening with whatever I have and who has not answered' : ', or after three days with whatever I have and who has not answered'}. Shall I go ahead?`);
-  return out.join(' ');
+  const open = now.some((p) => p.about) ? ' I will also ask each of them about anything still open with them.' : '';
+  return `${a.first}, I will write to ${now.length} people on your record ${when}, and ask each of them ${askFor}. I will write to ${parts.join(', and to ')}.${open}${laterSaid} Nobody is asked for a document I already have. ${closing}`;
 };
 
 /* ---- Corrections. ---- */

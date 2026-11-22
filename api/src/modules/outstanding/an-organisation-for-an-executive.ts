@@ -14,6 +14,8 @@ type Row = Record<string, any>;
 function matches(row: Row, where: Row | undefined): boolean {
   if (!where) return true;
   return Object.entries(where).every(([k, v]) => {
+    /* Either of several, as the database reads OR (Batch E: a lookup by email or number matched every row here, so everybody looked like everybody). */
+    if (k === 'OR' && Array.isArray(v)) return v.some((w) => matches(row, w));
     if (v && typeof v === 'object' && !(v instanceof Date) && !Array.isArray(v) && !('in' in v) && !('notIn' in v) && !('not' in v) && !('gte' in v) && !('lte' in v) && k.includes('_')) return matches(row, v as Row);
     if (v && typeof v === 'object' && !(v instanceof Date)) {
       if ('in' in v) return (v as any).in.includes(row[k]);

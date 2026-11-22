@@ -133,7 +133,7 @@ export class ReportsOnRequestService {
   private async whereItStands(open: any, channel: TheChannel): Promise<string> {
     const sources = await this.sources(open.organizationId, open.userId, open.id, channel);
     const kept = (open.outline ?? {}) as TheOutlineKept;
-    if (open.status === 'outline' && kept.sections?.length) return theOutlineSaid(kept.sections, sources, false);
+    if (open.status === 'outline' && kept.sections?.length) return theOutlineSaid(kept.sections, sources, 'waiting');
     return theOpening(this.whatItCanDrawOn(sources), channel, await this.address(open.organizationId));
   }
 
@@ -240,20 +240,28 @@ export class ReportsOnRequestService {
   async byEmail(a: { organizationId: string; userId: string; subject: string | null; newWords: string; wholeBody: string | null; hasFiles: boolean; files: () => Promise<AFileToRead[]> }): Promise<string | null> {
     const open = await this.openRequestOf(a.organizationId, a.userId);
     const forwarded = /^\s*(?:fwd?|fw)\s*:/i.test(a.subject ?? '') || /-{2,}\s*Forwarded message/i.test(a.wholeBody ?? '');
-    if (!open) {
-      if (a.hasFiles || forwarded || !a.newWords.trim()) return null;
-      const understood = await understandTheMessage(this.engine as any, this.prompts as any, a.newWords).catch(() => null);
-      if (understood?.kind !== 'report') return null;
-      return (await this.start({ organizationId: a.organizationId, userId: a.userId, message: a.newWords, channel: 'email', about: understood.about }))?.said ?? null;
-    }
-    if (!a.hasFiles && !forwarded && a.newWords.trim()) {
+    const subject = String(a.subject ?? '').replace(/^\s*(?:(?:re|fwd?|fw)\s*:\s*)+/i, '').trim();
+    const wordsOnly = !a.hasFiles && !forwarded && !!a.newWords.trim();
+    if (open && wordsOnly) {
       const heard = await this.hear({ organizationId: a.organizationId, userId: a.userId, message: a.newWords, channel: 'email' });
       if (heard) return heard.said;
-      if (open.status !== 'gathering') return null;
     }
-    const subject = String(a.subject ?? '').replace(/^\s*(?:(?:re|fwd?|fw)\s*:\s*)+/i, '').trim();
-    const added = await this.add({ organizationId: a.organizationId, userId: a.userId, via: 'email', files: await a.files(), words: (forwarded ? a.wholeBody : a.newWords)?.trim() ? { name: subject, text: `Subject ${subject || 'none'}\n\n${forwarded ? a.wholeBody : a.newWords}` } : null, channel: 'email' });
-    return added?.said ?? null;
+    /* What they forward or attach while one is open is material for it, and so are their words while it is still gathering. */
+    if (open && (!wordsOnly || open.status === 'gathering')) {
+      const added = await this.add({ organizationId: a.organizationId, userId: a.userId, via: 'email', files: await a.files(), words: (forwarded ? a.wholeBody : a.newWords)?.trim() ? { name: subject, text: `Subject ${subject || 'none'}\n\n${forwarded ? a.wholeBody : a.newWords}` } : null, channel: 'email' });
+      return added?.said ?? null;
+    }
+    /*
+     * A REPORT ASKED FOR BY MAIL, also while another waits for its outline to be checked (release test of 22 November 2026, 106): Wairimu's
+     * "can you write me a short report on how Sales team Q4 is going this month?" was not heard by the open one, and was answered "You have no
+     * check-in open right now". The subject is part of what they asked: "Quarterly report for the board" in the subject and "can you draft it"
+     * below was filed as a forwarded document, because only the words below were read (21 November 2026, item 106).
+     */
+    const asked = [subject, a.newWords.trim()].filter(Boolean).join('\n\n');
+    if (a.hasFiles || forwarded || !asked) return null;
+    const understood = await understandTheMessage(this.engine as any, this.prompts as any, asked).catch(() => null);
+    if (understood?.kind !== 'report') return null;
+    return (await this.start({ organizationId: a.organizationId, userId: a.userId, message: asked, channel: 'email', about: understood.about }))?.said ?? null;
   }
 
   /** WHATSAPP. A document sent while a request is open is material for it; words are heard as in the chat. Null when no request is open, or the words are about something else. */

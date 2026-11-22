@@ -35,11 +35,13 @@ const references = (served: any, isTheLead: boolean) => {
 beforeEach(() => { vi.clearAllMocks() })
 
 describe('References and resources, as Grace reads it', () => {
-  it('off: who can read it, who wrote it, and "Only you see this" on her notes, as before', async () => {
+  /* Changed 21 November 2026 (Batch E, N13): "Only you see this. ... They never see them." was a privacy note on a screen, which the standards forbid. It is gone with the switch off too; who may read People is still the backend's rule. */
+  it('off: who can read it and who wrote it, and no privacy note on her notes', async () => {
     references({ ...S.grace.references, directMorning: false }, true)
     expect(await screen.findByText('Your team’s reference for this work. They can read it, except People. Only you can add to it.')).toBeTruthy()
     expect(text()).toContain('Groundwork wrote this from Grace’s words at setup.')
-    expect(text()).toContain('Only you see this. Your notes on each person. They never see them. Their check-ins do not use them yet.')
+    expect(text()).toContain('Your notes on each person. Their check-ins do not use them yet.')
+    expect(text()).not.toMatch(/Only you see this|They never see/)
   })
   it('on: what the page is, the purpose, how the team works and her notes on each person, with no privacy note', async () => {
     references(asServedOn(S.grace.references), true)

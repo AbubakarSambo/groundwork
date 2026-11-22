@@ -41,6 +41,8 @@ export class UserResponseDto {
   isPlatformAdmin: boolean;
   /** Whether this person may open a check-in. Computed by the rule, never a permission itself. */
   mayOpenCheckIns?: boolean;
+  /** Whether this person may add people here (Hafsah, 21 November 2026). Computed by the rule, never a permission itself. */
+  mayAddPeople?: boolean;
 
   /** The same organisation object `/auth/me` returns. See buildAuthResponse for why. */
   @ApiProperty()

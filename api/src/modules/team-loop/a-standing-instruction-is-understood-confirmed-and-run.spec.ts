@@ -41,6 +41,26 @@ describe('a standing instruction is understood and repeated back before anything
     expect(x.t.persistentJob.rows.filter((j: any) => j.kind.startsWith('standing:'))).toHaveLength(0);
   });
 
+  /* Release test 21 November, 81: "What can the team close this week" was read as an instruction and answered "nobody in your team has told me they are happy to hear from me yet". */
+  it('a question asked of her register is not an instruction, even when the model would read it as one', async () => {
+    const x = await aTeamLoopWorld({ mind: aScriptedMind({ instruction: { kind: 'handle_with_team', matter: 'what the team can close this week' } }), now: at(11, '10:00') });
+    expect(await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'What can the team close this week' })).toBeNull();
+    expect(x.t.persistentJob.rows.filter((j: any) => j.kind.startsWith('standing:'))).toHaveLength(0);
+  });
+
+  it('with nobody to write to, she is told what is true of her record: nobody given, or nobody introduced yet', async () => {
+    const x = await aTeamLoopWorld({ mind: aScriptedMind({ instruction: { kind: 'handle_with_team', matter: 'their recap' } }), now: at(11, '10:00') });
+    const words = 'Write to my team now and ask each of them for their recap';
+    for (const c of x.t.outreachContact.rows) c.state = 'proposed';
+    const notYet = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: words });
+    x.t.outreachContact.rows.length = 0;
+    const nobody = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: words });
+    console.log(`FATIMA READS\n${notYet}\n${nobody}`);
+    expect(notYet).toBe('Fatima, I would do that, but I have not been able to introduce myself to anybody in your team yet, so there is nobody I can write to. I will tell you as soon as I can.');
+    expect(nobody).toBe('Fatima, I would do that, but you have not given me anybody in your team to write to yet. Send me their names with a phone number or an email address, and I will introduce myself to them first.');
+    expect(`${notYet} ${nobody}`).not.toMatch(/happy to hear from me/);
+  });
+
   it('reads it with no model at all, plainly, and still repeats it back', async () => {
     const x = await aTeamLoopWorld({ mind: aScriptedMind(), now: at(11, '10:00') });
     (x.service as any).mind = { ...aScriptedMind(), readAnInstruction: async () => null };
@@ -65,7 +85,8 @@ describe('a standing instruction is run on the clock, once, and survives a resta
     expect((await sweep(at(12, '08:30'))).join()).toMatch(/asked 2 for 2026-11-13/);
     expect(await sweep(at(12, '08:35'))).toEqual([]);
     const asks = x.w.sent.map((m) => [m.to, m.channel, m.kind]);
-    expect(asks).toEqual([['amina@example.com', 'email', 'routine'], ['+2348035550101', 'whatsapp', 'team-ask']]);
+    /* Changed 21 November 2026 (Batch E, N1): Ibrahim has not written on WhatsApp in the last 24 hours, and the ask has no approved template, so it goes by email, as she was told. (This fake accepted any WhatsApp; the real gate refuses it, which is how 55 people told "WhatsApp" got an email in the Dangote rerun.) */
+    expect(asks).toEqual([['amina@example.com', 'email', 'routine'], ['ibrahim@example.com', 'email', 'routine']]);
     console.log(`WHAT IBRAHIM READS ON THURSDAY\n${x.w.sent[1].text}\n\nWHAT AMINA READS ON THURSDAY\n${x.w.sent[0].text}`);
     expect(x.w.sent[1].text).toBe("Hello Ibrahim, Fatima asked me to collect the team's updates. Please send me where things stand on your work, and any document that shows it. You can write it here, forward it, or send a voice note.");
 
@@ -131,7 +152,8 @@ describe('"Handle this with the team and come back when ready"', () => {
     const back = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'Handle the Kilele permit with the team and come back when ready.' });
     console.log(`WHAT FATIMA READS\n${back}`);
     /* Batch D, R5: the say-back names each person on her record, how they are reached and what is open with them, instead of first names only. */
-    expect(back).toBe('Fatima, I will write to 2 people on your record now, and ask each of them about the Kilele permit. I will write to Ibrahim Sule on WhatsApp, and to Amina Yusuf by email, and ask what they have done and what is still open. Nobody is asked for a document I already have. I will tell you as soon as they have answered, or after three days with whatever I have and who has not answered. Shall I go ahead?');
+    /* Changed 21 November 2026 (Batch E, N1 and N2): the say-back names people by how they are reached, in one form whatever the number of people. */
+    expect(back).toBe('Fatima, I will write to 2 people on your record now, and ask each of them about the Kilele permit. I will write to Amina Yusuf and Ibrahim Sule by email. Nobody is asked for a document I already have. I will tell you as soon as they have answered, or after three days with whatever I have and who has not answered. Shall I go ahead?');
     await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'Yes' });
     const sweep = (when: Date) => runTheStandingInstructions(x.prisma, (x.service as any).ports(), when);
     expect((await sweep(at(11, '10:05'))).join()).toMatch(/asked 2/);

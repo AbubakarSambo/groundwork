@@ -136,6 +136,49 @@ describe('T3. a question Ask answers is answered by its own answer', () => {
     expect(await a.say('whats stuck')).toBe('2 things are waiting for you.\n- Amani asked for leave from 30 November to 2 December.\n- Juma and Neema have not answered yet.');
   });
 
+  /*
+   * Batch F, F3, and the release test of 21 November (69, 80, 104). F3 first skipped the model's choice of answer for anybody whose report is a year-end draft, so
+   * "whos off next week" went to the documents and ended "add a file with Choose a file". Changed 22 November 2026: the model always picks the answer, and her
+   * year-end record is told to it as who she is, so "Which claims are weak?" is placed on no lane and reaches her record.
+   */
+  const aSeniorPerson = (meaning: Record<string, any>) => {
+    const engine = aModel(meaning);
+    const a = { ...asSomebody(engine), engine };
+    a.prisma.yearEndDraft = { findFirst: jest.fn(async ({ where }: any) => (where.principalUserId === 'u-1' ? { id: 'yd-1' } : null)) };
+    return a;
+  };
+
+  it('a senior person\'s year-end record is told to the model as who she is', async () => {
+    const said = 'Which claims are weak?';
+    const a = aSeniorPerson({ [said]: { kind: 'question' } });
+    jest.spyOn(a.s, 'aQuestionAnsweredFromTheDocuments').mockResolvedValue({ lane: 'answer_from_documents', composedBy: 'rules', blocks: [{ type: 'text', body: 'Three claims rest only on what somebody said.' }] });
+    expect(await a.say(said)).toBe('Three claims rest only on what somebody said.');
+    const read = a.engine.extract.mock.calls.map((c: any[]) => String(c[1][0].content)).find((c: string) => c.startsWith(said)) ?? '';
+    expect(read).toContain('a senior person whose year-end report Groundwork prepares from her record');
+    expect(read).toContain('which claims are proven and which are only said');
+  });
+
+  it('for a senior person, "whos off next week" is still answered by who is away, never the documents', async () => {
+    const said = 'whos off next week';
+    const a = aSeniorPerson({ [said]: { kind: 'question', guide: 'who_is_away' } });
+    const documents = jest.spyOn(a.s, 'aQuestionAnsweredFromTheDocuments');
+    jest.spyOn(a.s, 'whoIsAway').mockResolvedValue({ lane: 'who_is_away', composedBy: 'rules', blocks: [{ type: 'text', body: 'Peter is off from Monday 23 to Wednesday 25 November.' }] });
+    expect(await a.say(said)).toBe('Peter is off from Monday 23 to Wednesday 25 November.');
+    expect(documents).not.toHaveBeenCalled();
+  });
+
+  it('"end Chidi\'s right", in words the rules do not place, is said back by ending a right, never answered from the documents', async () => {
+    const said = "end Chidi's right";
+    /* An instruction, so the model reads it as wanted: a question only reads, and ends nobody's right (release test 21 November, Ask fixes). */
+    const a = aSeniorPerson({ [said]: { kind: 'wants', guide: 'stop_a_delegate' } });
+    const documents = jest.spyOn(a.s, 'aQuestionAnsweredFromTheDocuments');
+    a.prisma.delegate = { findMany: jest.fn(async () => [{ id: 'd1', organizationId: 'org-a', principalUserId: 'u-1', delegateEmail: 'chidi@msingi.test', delegateName: 'Chidi Okeke', delegateUserId: 'u-chidi', revokedAt: null }]) };
+    const t = await a.say(said);
+    expect(documents).not.toHaveBeenCalled();
+    console.log(`SHE TYPES\n${said}\nSHE READS\n${t}`);
+    expect(t).toMatch(/Chidi Okeke/);
+  });
+
   it('"Add our staff handbook for everyone." is told what to do with the file, never "You do not need a page for it"', async () => {
     const said = 'Add our staff handbook for everyone.';
     const a = asSomebody(aModel({ [said]: { kind: 'wants', guide: 'a_document_for_everyone' } }), 'ADMIN');

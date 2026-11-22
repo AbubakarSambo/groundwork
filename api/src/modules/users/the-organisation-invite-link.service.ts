@@ -4,12 +4,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BillingService } from '../billing/billing.service';
 import { AuthService } from '../auth/auth.service';
 import { theDomainOf, effectiveJoinDomain } from '../../common/an-email-domain';
+import { theRoleTheLinkGives, GUESTS_CANNOT_JOIN } from './the-role-an-invitation-gives';
 
 /**
  * THE ORGANISATION'S OWN INVITE LINK (A3 #/j/baridi and A4 "Baridi's invite link"; U.3).
  *
  * Hafsah, 26 September: one link per organisation, as in the prototype; joining through it gives
- * "Takes part"; an admin can turn it off, which makes a new link. So the link is the prototype's
+ * "Takes part", or "Guest" where an admin chose it while guests can join (21 November 2026); an admin can turn it off, which makes a new link. So the link is the prototype's
  * /j/<organisation> shape with a random part, "baridi-7k2p": readable, but not guessable from the
  * name alone, and a new random part every time it is turned on, so turning it off kills the old one.
  * `aNewCode` already draws its random part from `crypto.randomBytes`, which is not guessable from
@@ -53,10 +54,24 @@ export class TheOrganisationInviteLinkService {
     @Inject(forwardRef(() => AuthService)) private readonly auth: AuthService,
   ) {}
 
-  /** For the admin: whether it is on, and its code. */
+  /** For the admin: whether it is on, its code, the role it gives, and whether "Guest" may be chosen. */
   async state(organizationId: string) {
-    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { inviteLinkCode: true } });
-    return { on: !!org?.inviteLinkCode, code: org?.inviteLinkCode ?? null };
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { inviteLinkCode: true, guestsMayJoin: true, inviteLinkRole: true } });
+    return { on: !!org?.inviteLinkCode, code: org?.inviteLinkCode ?? null, role: theRoleTheLinkGives(org), guestsMayJoin: org?.guestsMayJoin === true };
+  }
+
+  /**
+   * THE ROLE THE LINK GIVES (Hafsah, 21 November 2026): "Takes part", or "Guest" while guests can join the organisation. It
+   * leaves the link itself as it is, on or off, with the same code.
+   */
+  async setRole(organizationId: string, role: string) {
+    if (role !== 'MEMBER' && role !== 'GUEST') throw new BadRequestException('Choose Takes part or Guest.');
+    if (role === 'GUEST') {
+      const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { guestsMayJoin: true } });
+      if (!org?.guestsMayJoin) throw new BadRequestException(GUESTS_CANNOT_JOIN);
+    }
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { inviteLinkRole: role } });
+    return this.state(organizationId);
   }
 
   /** On makes a NEW code; off clears it, so the old link stops working at once. */
@@ -90,10 +105,10 @@ export class TheOrganisationInviteLinkService {
     return { open: true as const, organisationName: org.name, inviterName: inviter };
   }
 
-  /** "Join <organisation>": as "Takes part", through the plan's seat check, then into it. */
+  /** "Join <organisation>": as the role the link gives ("Takes part" unless an admin chose "Guest"), through the plan's seat check, then into it. */
   async join(code: string, userId: string, via: any = 'password') {
     const org = code
-      ? await this.prisma.organization.findUnique({ where: { inviteLinkCode: code }, select: { id: true, name: true, email: true, joinDomain: true } })
+      ? await this.prisma.organization.findUnique({ where: { inviteLinkCode: code }, select: { id: true, name: true, email: true, joinDomain: true, guestsMayJoin: true, inviteLinkRole: true } })
       : null;
     if (!org) throw new ForbiddenException('That invite link is not open any more. Ask whoever sent it for the new one.');
     const already = await this.prisma.organizationMembership.findUnique({
@@ -132,7 +147,7 @@ export class TheOrganisationInviteLinkService {
     if (!room.allowed) {
       throw new BadRequestException(`${org.name} has no room for another person on its plan right now. Ask an admin there to make room, or to invite you when there is.`);
     }
-    await this.prisma.organizationMembership.create({ data: { userId, organizationId: org.id, role: 'MEMBER' as any, joinedHow: 'link' } });
+    await this.prisma.organizationMembership.create({ data: { userId, organizationId: org.id, role: theRoleTheLinkGives(org) as any, joinedHow: 'link' } });
     return this.auth.switchOrganization(userId, org.id, via);
   }
 }

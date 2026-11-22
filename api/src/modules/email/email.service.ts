@@ -2308,12 +2308,15 @@ export class EmailService implements OnModuleInit {
    * "SEND ME THAT" FROM THE ASSISTANT (decision 109). The person asked for this email, so it is not a routine message: it is never counted toward
    * the day's one, never held back for it, and never stopped by the opt-out for what we decide to send. Same shape as the digest.
    */
-  async sendMeThat(email: string, subject: string, text: string): Promise<void> {
+  /** What they asked for in Ask, to them alone. It goes now, in quiet hours too, because they have just asked and are waiting; what became of it is returned, so Ask says what happened. */
+  async sendMeThat(email: string, subject: string, text: string): Promise<'sent' | 'held' | 'suppressed'> {
     const html = text
       .split('\n')
       .map((line) => (line.trim() ? `<p>${escapeHtml(line)}</p>` : ''))
       .join('');
-    await this.sendEmail({ to: email, subject, html }, undefined, 'sendMeThat');
+    const context: DeliveryContext = { kind: 'OTHER', answeringNow: true };
+    await this.sendEmail({ to: email, subject, html }, context, 'sendMeThat');
+    return context.outcome ?? 'sent';
   }
 
   async sendRoundDigest(email: string, subject: string, text: string): Promise<void> {

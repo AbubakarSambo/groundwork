@@ -191,5 +191,16 @@ export async function aRequestsHistory(prisma: PrismaService, organizationId: st
   return { said: theRecordInWords(records, await theNamesIn(prisma, records), readerUserId, suite) };
 }
 
+/**
+ * WHY A WAITING REQUEST NOW WAITS FOR SOMEBODY ELSE, from its own record (release test of 22 November 2026, #54). Amani read "Your leave ... is waiting
+ * for an admin" while "who approves my leave" said Wairimu: both true, because it had waited two working days for Wairimu and gone on, and nothing said
+ * so. The record's own sentence for the last time it went on is said beside where it is. Null when it never went on, or has moved on since.
+ */
+export async function whyItWentOn(prisma: PrismaService, organizationId: string, suite: SuiteOfARecord, r: { id: string; status: string; escalatedTo?: number | null }, readerUserId: string): Promise<string | null> {
+  if (r.status !== 'waiting' || !r.escalatedTo) return null;
+  const last = (await theRecordOf(prisma, organizationId, suite, r.id)).filter((x) => x.kind === 'escalated').pop();
+  return last ? theRecordInWords([last], await theNamesIn(prisma, [last]), readerUserId, suite)[0] ?? null : null;
+}
+
 /** The suite a waiting request's kind is kept under. */
 export const SUITE_OF_A_REQUEST: Record<'leave' | 'hours' | 'spend', SuiteOfARecord> = { leave: 'leave', hours: 'time', spend: 'spend' };

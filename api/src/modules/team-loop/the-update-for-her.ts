@@ -11,6 +11,7 @@
  * When the model gives nothing safe, the facts are told plainly, grouped by person. Either way it is the same facts.
  */
 import { MONTHS } from '../year-end/the-year-end-content';
+import { aThingOnHerRecord } from '../executive-onboarding/the-material-for-work';
 import { theThingOf, theThingWithItsDay } from './a-nudge-that-helps';
 import { SOURCE, thePersonBehind } from './what-their-reply-says';
 import { nameList } from './the-team-words';
@@ -34,6 +35,8 @@ export interface TheUpdateArgs {
 export async function theAsksStillWaiting(prisma: any, a: { principalUserId: string; contacts: any[]; asks: TheUpdateArgs['asks'] }): Promise<{ quiet: string[]; notGone: string[] }> {
   const quiet: string[] = [];
   const notGone: string[] = [];
+  /* Somebody this cycle has not written to at all (they could not be written to that day, Dangote rerun N1) is named with the ones whose message is still waiting. */
+  for (const c of a.contacts) if (c.name && !a.asks.some((g) => String(g.askedOfEmail ?? '').toLowerCase() === String(c.contactKey ?? '').toLowerCase())) notGone.push(c.name);
   for (const g of a.asks) {
     if (g.state === 'queued') { if (g.askedOfName) notGone.push(g.askedOfName); continue; }
     if (g.state !== 'asked' || !g.askedAt) continue;
@@ -61,7 +64,7 @@ export async function theFactsAboutTheTeam(prisma: any, a: TheUpdateArgs): Promi
       else if (m.state === 'KEPT') {
         const id = String(m.provenBy ?? '').startsWith('material:') ? String(m.provenBy).slice(9) : null;
         const doc: any = id ? await prisma.principalMaterial.findFirst({ where: { id, fromUserId: { startsWith: 'contact:' } } }) : null;
-        if (doc) add(first, `${first} sent “${doc.fileName}” as the proof for “${thing}”, and it is counted as done.`);
+        if (doc) add(first, `${first} sent ${aThingOnHerRecord(doc, 'a')} as the proof for “${thing}”, and it is counted as done.`);
         else add(first, `${first} says ${thing} is done, but nothing shows it yet, so I have not counted it as done.`, true);
       } else if (m.waitingOn) add(first, `${first} said they will ${theThingWithItsDay(thing, m.dueSaid ?? null)}, and that depends on ${m.waitingOn}, in a message on ${day(m.statedAt ?? m.createdAt)}.`);
       else add(first, `${first} said they will ${theThingWithItsDay(thing, m.dueSaid ?? null)}, in a message on ${day(m.statedAt ?? m.createdAt)}.`);
@@ -91,7 +94,7 @@ export async function theUpdateForHer(prisma: any, mind: TheTeamMind | null | un
   if (facts.length) paragraphs.push(...theUpdateParagraphs(shown, left, narrated));
   else paragraphs.push('Nobody has told me anything I can add yet.');
   if (quiet.length) paragraphs.push(`I have had no new message from ${nameList(quiet)} since I asked.`);
-  if (notGone.length) paragraphs.push(`My message to ${nameList(notGone)} has not gone out yet, so I have not asked them yet.`);
+  if (notGone.length) paragraphs.push(`I have not been able to write to ${nameList(notGone)} yet, so I have not asked them yet. I will write to them tomorrow morning.`);
   if (facts.length) paragraphs.push(facts.some((f) => f.fact.unverified) ? 'Everything above comes from what they sent me. Where it is only what somebody said, I have said so.' : 'Everything above comes from what they sent me.');
   return paragraphs.join('\n\n');
 }

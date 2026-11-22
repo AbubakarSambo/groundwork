@@ -25,6 +25,7 @@ function open(who = 'miriam') {
   vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => {
     if (url.startsWith('/users?')) return { data: { data: people, meta: { total: people.length } } } as any
     if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } } as any
+    if (url === '/users/organization/teams') return { data: [{ name: 'Leadership', people: 1 }, { name: 'Sales', people: 2 }] } as any
     return { data: {} } as any
   })
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -66,9 +67,11 @@ describe('what Grace reads about Miriam', () => {
      * cards match what the server actually does, so this is now offered rather than hidden.
      */
     expect(screen.getByText('Guest')).toBeTruthy()
-    expect(screen.getByText('From another organisation. Sees only the check-ins they’re invited to.')).toBeTruthy()
+    expect(screen.getByText('Sees only the check-ins they’re added to, and nothing else here.')).toBeTruthy()
     expect(screen.getByText('Used to add whole teams to a check-in')).toBeTruthy()
-    expect(screen.getByRole('textbox', { name: 'Team' })).toHaveValue('Sales')
+    /* The team is picked from the teams here now (Hafsah, 21 November 2026), so it is a choice, not a typed box. */
+    expect(await screen.findByDisplayValue('Sales')).toBeTruthy()
+    expect(screen.getByRole('combobox', { name: 'Team' })).toHaveValue('Sales')
     expect(screen.getByText('Checking in')).toBeTruthy()
     expect(screen.getByText('Holds a seat')).toBeTruthy()
     expect(screen.getByText('1 check-in')).toBeTruthy()

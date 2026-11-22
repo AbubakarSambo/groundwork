@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { theRoleTheLinkGives } from '../users/the-role-an-invitation-gives';
 import { MembershipRequestStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -252,6 +253,9 @@ export class WhoIsWaitingAtTheDoorService {
       }
     }
 
+    const linkGives = isASecondOrganisationRequest
+      ? theRoleTheLinkGives(await Promise.resolve((this.prisma as any).organization?.findUnique?.({ where: { id: organizationId }, select: { guestsMayJoin: true, inviteLinkRole: true } })).catch(() => null))
+      : 'MEMBER';
     await this.prisma.$transaction(async (tx) => {
       await tx.membershipRequest.update({
         where: { id: request.id },
@@ -260,7 +264,8 @@ export class WhoIsWaitingAtTheDoorService {
       if (isASecondOrganisationRequest) {
         await tx.organizationMembership.upsert({
           where: { userId_organizationId: { userId: request.userId, organizationId } },
-          create: { userId: request.userId, organizationId, role: 'MEMBER' as any, joinedHow: 'link' },
+          /* Somebody who came by the invite link is let in as the role it gives (Hafsah, 21 November 2026). */
+          create: { userId: request.userId, organizationId, role: linkGives as any, joinedHow: 'link' },
           update: {},
         });
       } else {

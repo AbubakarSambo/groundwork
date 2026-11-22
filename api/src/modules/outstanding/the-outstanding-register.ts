@@ -193,7 +193,8 @@ export function howAlike(a: { text: string; owner: string }, b: { text: string; 
   const score = shared / Math.min(wa.size, wb.size);
   const sameOwner = a.owner === b.owner || a.owner === 'unconfirmed' || b.owner === 'unconfirmed';
   if (score >= 0.75 && shared >= 2 && sameOwner) return 'same';
-  if (score >= 0.5 && shared >= 2) return 'maybe';
+  /* Two people's lines are never asked about as one on shared words (Dangote rerun, N6: 1,705 questions to Maryam, most of them two people's generated lines). */
+  if (score >= 0.5 && shared >= 2 && sameOwner) return 'maybe';
   return 'different';
 }
 
@@ -427,8 +428,11 @@ export function assemble(raws: Raw[], noteOf: Map<string, any>, a: Pick<BuildArg
       settledAt: r.settledAt,
     }));
     const status = statusOfAnItem(parts);
-    /* The fullest wording leads, and a confirmed owner beats "unconfirmed". */
-    const lead = [...ordered].sort((p, q) => q.action.length - p.action.length)[0];
+    /* THE LINE READS THE LATEST RECORD (Batch F, F2). A settled item is said in the words of what settled it, and any other in the words of its newest source. "The
+       fullest wording" led before, and a document's first lines, copied as a claim, are always the longest (E-7: "Community development agreement: Ibese host
+       communities Signed at Ibese on ..." under "What was achieved"). A confirmed owner beats "unconfirmed". */
+    const settling = status === 'completed' ? ordered.filter((_, i) => parts[i].status === 'completed') : [];
+    const lead = settling[0] ?? ordered[ordered.length - 1];
     const owner = ordered.find((r) => r.owner !== 'unconfirmed')?.owner ?? 'unconfirmed';
     const withWhen = ordered.find((r) => r.whenSaid) ?? null;
     const noted = ordered.map((r) => noteOf.get(keyOf(r))).filter(Boolean);
@@ -439,7 +443,9 @@ export function assemble(raws: Raw[], noteOf: Map<string, any>, a: Pick<BuildArg
     const decisionNote = noted.find((n) => n.decisionQuestion);
     const fromRequest = ordered.find((r) => r.decision)?.decision ?? null;
     const decision = status === 'awaiting decision' ? (decisionNote ? { question: decisionNote.decisionQuestion, options: decisionNote.decisionOptions ?? [] } : fromRequest) : null;
-    const verifiedAt = new Date(Math.max(...ordered.map((r) => (r.settledAt ?? r.updatedAt).getTime()), ...noted.map((n) => (n.lastVerifiedAt ? new Date(n.lastVerifiedAt).getTime() : 0))));
+    /* A finished item was settled when its first proof came, not when somebody last mentioned it (Dangote rerun, N12: "I sent it on 11 September", said on 20 November, moved Ibese to 20 November). */
+    const proofs = parts.filter((p) => p.status === 'completed').map((p) => (p.settledAt ?? p.at).getTime());
+    const verifiedAt = status === 'completed' && proofs.length ? new Date(Math.min(...proofs)) : new Date(Math.max(...ordered.map((r) => (r.settledAt ?? r.updatedAt).getTime()), ...noted.map((n) => (n.lastVerifiedAt ? new Date(n.lastVerifiedAt).getTime() : 0))));
     const flagged = noted.find((n) => n.carryForward !== null && n.carryForward !== undefined)?.carryForward;
     const open = status !== 'completed' && status !== 'cancelled';
     const beyondTheYear = !!dueOn && dueOn.getUTCFullYear() > a.now.getUTCFullYear();

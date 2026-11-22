@@ -224,7 +224,7 @@ export class ExecutiveOnboardingService {
           const revised = await this.work().hearAVoiceNote({ organizationId: a.organizationId, userId: a.userId!, text: heard.text, unclear: heard.unclear, channel: 'whatsapp', now }).catch(() => null);
           if (revised) return { reply: revised };
           if (!heard.unclear.length) {
-            const spoken = (await this.yearEnd?.handle({ organizationId: a.organizationId, userId: a.userId!, message: heard.text, channel: 'whatsapp' }).catch(() => null)) ?? (await hearHer(this.db, this.ports(), { organizationId: a.organizationId, userId: a.userId, message: heard.text, now, channel: 'whatsapp' }));
+            const spoken = await this.herWordsOnWhatsApp({ organizationId: a.organizationId, userId: a.userId, message: heard.text, now });
             if (spoken) return { reply: spoken };
           }
         }
@@ -236,7 +236,7 @@ export class ExecutiveOnboardingService {
     if (speaking) {
       /* Plain words that are not about her setup go on to Ask and the check-in as they always did. */
       if (a.arrived.kind === 'text') {
-        const said = await hearHer(this.db, this.ports(), { organizationId: a.organizationId, userId: a.userId, message: a.arrived.text, now, channel: 'whatsapp' });
+        const said = await this.herWordsOnWhatsApp({ organizationId: a.organizationId, userId: a.userId, message: a.arrived.text, now });
         if (said) return { reply: said };
         /* Her first words to this number are what let her introduction go, and the introduction is the answer to them: a second hello from the chat, seconds later, answers nothing more (Fatima round 4, N26). */
         return introductionsReleased > 0 && speaking.speaker.isPrincipal ? { reply: null } : null;
@@ -252,6 +252,15 @@ export class ExecutiveOnboardingService {
     const kept = await keepATeamMembersReply(this.db, this.intakePorts(), { organizationId: a.organizationId, contact, fromAddress: contact.email ?? phone, channel: 'whatsapp', providerId: null, subject: null, body: text, receivedAt: now, files, beyondTheLimit: 0, now });
     if (helped) { await answeredByTheWork(this.db, kept.batchId, now).catch(() => undefined); return { reply: helped }; }
     return { reply: null };
+  }
+
+  /**
+   * HER WORDS ON WHATSAPP, TYPED OR SAID ALOUD, IN ONE ORDER (release test 21 November, 82): a change to her draft first, as Ask hears it, then her setup and her
+   * instructions. Typed words were read as an instruction to her team first, so "add March to the report" was answered "I can follow up with the team on ...".
+   */
+  private async herWordsOnWhatsApp(a: { organizationId: string; userId: string | null; message: string; now: Date }): Promise<string | null> {
+    const draft = a.userId ? await this.yearEnd?.handle({ organizationId: a.organizationId, userId: a.userId, message: a.message, channel: 'whatsapp' }).catch(() => null) : null;
+    return draft ?? hearHer(this.db, this.ports(), { ...a, channel: 'whatsapp' });
   }
 
   /** Every minute: the batches that have gone quiet are answered once, and the introductions that were held are tried again when their hour has passed. */

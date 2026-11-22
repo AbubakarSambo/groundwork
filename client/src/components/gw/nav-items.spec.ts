@@ -40,3 +40,20 @@ describe('a member reaches their own Suites without Today', () => {
     expect(adminItems.find(i => i.label === 'Suites')!.to).toBe('/settings/suites')
   })
 })
+
+/* WHO CAN ADD PEOPLE (Hafsah, 21 November 2026): People is in a member's rail only when the server says they may add people. */
+describe('People, for whoever may add people', () => {
+  it('an admin always, a member only when the organisation lets anyone add people, a guest never', () => {
+    const hasPeople = (u: any) => navItemsFor(u).some(i => i.label === 'People')
+    expect(hasPeople({ role: 'ADMIN' })).toBe(true)
+    expect(hasPeople({ role: 'MEMBER' })).toBe(false)
+    expect(hasPeople({ role: 'MEMBER', mayAddPeople: false })).toBe(false)
+    expect(hasPeople({ role: 'MEMBER', mayAddPeople: true })).toBe(true)
+    expect(hasPeople({ role: 'GUEST' })).toBe(false)
+  })
+  it('Connections and Plan and billing stay an admin\'s, whatever the setting', () => {
+    const labels = navItemsFor({ role: 'MEMBER', mayAddPeople: true }).map(i => i.to)
+    expect(labels).not.toContain('/settings/connections')
+    expect(labels).not.toContain('/billing')
+  })
+})

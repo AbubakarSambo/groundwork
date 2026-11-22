@@ -115,12 +115,13 @@ describe('a note that is not meaningful is not sent', () => {
     const { w, run } = await aWorldWithJobs(NOW, false);
     w.t.groundCommitment.rows.push(
       { id: 'c-pay-1', groundId: 'g-ministry', participantId: 'gp-amina', text: 'Prepare the quarterly payment schedule', action: 'Prepare the quarterly payment schedule.', whenSaid: null, status: 'UNKNOWN', source: 'CHECK_IN', settledBy: null, settledAt: null, createdAt: at('2026-11-05T10:00:00Z'), updatedAt: at('2026-11-05T10:00:00Z') },
-      { id: 'c-pay-2', groundId: 'g-assembly', participantId: 'gp-ibrahim', text: 'Quarterly payment schedule preparation', action: 'Quarterly payment schedule preparation.', whenSaid: null, status: 'UNKNOWN', source: 'CHECK_IN', settledBy: null, settledAt: null, createdAt: at('2026-11-05T10:00:00Z'), updatedAt: at('2026-11-05T10:00:00Z') },
+      { id: 'c-pay-2', groundId: 'g-ministry', participantId: 'gp-amina', text: 'Quarterly payment report for the board', action: 'Quarterly payment report for the board.', whenSaid: null, status: 'UNKNOWN', source: 'CHECK_IN', settledBy: null, settledAt: null, createdAt: at('2026-11-05T10:00:00Z'), updatedAt: at('2026-11-05T10:00:00Z') },
     );
     await run();
     await run(at('2026-11-11T09:00:00Z'));
     const decisions = w.whatsapps.filter((x) => /needs your decision/.test(x.text));
-    expect(decisions.map((x) => x.text)).toEqual(['Fatima, one thing for your year-end work needs your decision. Is "Prepare the quarterly payment schedule" from a check-in the same thing as "Quarterly payment schedule preparation" from a check-in? I have kept them apart until you tell me.']);
+/* Changed 21 November 2026 (Batch E, N6): two people's lines are never asked about as one on shared words, so the pair that may be one matter is now one person's two lines. */
+    expect(decisions.map((x) => x.text)).toEqual(['Fatima, one thing for your year-end work needs your decision. Is "Prepare the quarterly payment schedule" from a check-in the same thing as "Quarterly payment report for the board" from a check-in? I have kept them apart until you tell me.']);
     await run(at('2026-11-12T09:00:00Z'));
     expect(w.whatsapps.filter((x) => /needs your decision/.test(x.text))).toHaveLength(1);
   });

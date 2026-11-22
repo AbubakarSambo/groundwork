@@ -259,6 +259,16 @@ describe('a report on request, as each reader reads it', () => {
     expect(said).toContain('I read each one once.');
   });
 
+  it('by email, a new report asked for while an outline waits is answered about that report, never "You have no check-in open" (release test of 22 November 2026, 106)', async () => {
+    const { svc } = aService();
+    await svc.start({ organizationId: ORG, userId: 'u-fatima', message: 'report on my departments', channel: 'chat' });
+    await svc.hear({ organizationId: ORG, userId: 'u-fatima', message: 'ready for the outline', channel: 'chat' });
+    const said = await svc.byEmail({ organizationId: ORG, userId: 'u-fatima', subject: 'report', newWords: 'can you write me a short report on how my departments are going this month?', wholeBody: 'can you write me a short report on how my departments are going this month?', hasFiles: false, files: async () => [] });
+    console.log(`FATIMA EMAILS FOR A REPORT WHILE AN OUTLINE WAITS, AND READS\n${said}`);
+    expect(said).toMatch(/^The report you asked for is still waiting for you to check its outline\. It has \d sections\./);
+    expect(said).not.toContain('with your changes');
+  });
+
   it('on WhatsApp, a document is kept for the report, and a long report is sent in whole paragraphs', async () => {
     const { svc, w } = aService();
     await svc.start({ organizationId: ORG, userId: 'u-fatima', message: 'report', channel: 'whatsapp' });
@@ -268,6 +278,13 @@ describe('a report on request, as each reader reads it', () => {
     const parts = inParts(['a'.repeat(3000), 'b'.repeat(3000), 'c'.repeat(100)].join('\n\n'));
     expect(parts).toHaveLength(2);
     expect(parts.every((p) => p.length <= 3800)).toBe(true);
+    /* Dangote rerun, N2: one paragraph of 9,000 characters reached Fatima cut off after 3,800, mid-sentence. Every sentence arrives, in parts. */
+    const sayBack = Array.from({ length: 64 }, (_, i) => `I will write to Person ${i} on WhatsApp and ask about “the matter still open with them”, which is still open.`).join(' ');
+    const inPieces = inParts(sayBack);
+    expect(inPieces.length).toBeGreaterThan(1);
+    expect(inPieces.every((p) => p.length <= 3800)).toBe(true);
+    expect(inPieces.join(' ').replace(/\s+/g, ' ')).toBe(sayBack.replace(/\s+/g, ' '));
+    expect(inPieces.every((p) => /\.$/.test(p))).toBe(true);
   });
 
   it('with no model it never writes a report on a guess', async () => {

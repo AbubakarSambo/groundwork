@@ -14,6 +14,7 @@
  * The model only reads (the-team-mind.ts); this file decides what is written, from words the person wrote.
  */
 import { addACommitment, markACommitmentDone } from '../assistant/a-commitment-has-one-writer';
+import { aThingOnHerRecord } from '../executive-onboarding/the-material-for-work';
 import { aCommitmentKey } from '../conversation/what-happened-to-what-they-said';
 import { theFullerPromise } from '../conversation/the-same-promise-said-more-fully';
 import { THE_ONE_QUESTION, THE_QUESTIONS, THANKS_AND_COVERED, THANKS_FOR_THE_UPDATE } from './the-team-words';
@@ -45,20 +46,21 @@ const onTheDay = (d: Date | string | null | undefined) => { if (!d) return ''; c
  * writes to them, so it never asks for one again. Only their own material is read (the team loop's limit), never what the senior person sent.
  */
 export async function whatTheRecordAlreadyHoldsFrom(prisma: any, contact: any, person: { externalId: string } | null): Promise<string[]> {
-  const sent: any[] = (await (async () => prisma.principalMaterial.findMany({ where: { fromUserId: `contact:${contact.id}`, principalUserId: contact.principalUserId }, select: { fileName: true, receivedAt: true }, orderBy: { receivedAt: 'desc' }, take: 12 }))().catch(() => [])) ?? [];
+  const sent: any[] = (await (async () => prisma.principalMaterial.findMany({ where: { fromUserId: `contact:${contact.id}`, principalUserId: contact.principalUserId }, select: { fileName: true, receivedAt: true, kind: true, channel: true, subject: true }, orderBy: { receivedAt: 'desc' }, take: 12 }))().catch(() => [])) ?? [];
   const proven: any[] = person ? (await (async () => prisma.commitment.findMany({ where: { organizationId: contact.organizationId, personExternalId: person.externalId, source: SOURCE, state: 'KEPT', provenBy: { startsWith: 'material:' } }, select: { text: true, resolvedAt: true }, take: 12 }))().catch(() => [])) ?? [] : [];
   return [
-    ...sent.filter((m) => m.fileName).map((m) => `the file “${m.fileName}”, sent${onTheDay(m.receivedAt)}`),
+    ...sent.filter((m) => m.fileName).map((m) => aThingOnHerRecord(m)),
     ...proven.map((c) => `the proof that “${String(c.text).replace(/\s+/g, ' ').trim().slice(0, 140)}” is done${c.resolvedAt ? `, from${onTheDay(c.resolvedAt).replace(/^ on/, '')}` : ''}`),
   ];
 }
 
 export async function theirWorkNow(prisma: any, contact: any): Promise<{ work: TheirWork; externalId: string | null }> {
   const person = await thePersonBehind(prisma, contact);
-  const open: any[] = person ? (await prisma.commitment.findMany({ where: { organizationId: contact.organizationId, personExternalId: person.externalId, source: SOURCE, state: 'OPEN' } })) ?? [] : [];
+  const all: any[] = person ? (await prisma.commitment.findMany({ where: { organizationId: contact.organizationId, personExternalId: person.externalId, source: SOURCE } })) ?? [] : [];
+  const open = all.filter((c) => c.state === 'OPEN');
   return {
     externalId: person?.externalId ?? null,
-    work: { first: String(contact.name ?? '').split(' ')[0] || 'there', commitments: open.map((c) => ({ id: c.id, text: c.text, dueSaid: c.dueSaid ?? null, waitingOn: c.waitingOn ?? null })), openQuestions: await theQuestionsStillOpen(prisma, contact), alreadyHeld: await whatTheRecordAlreadyHoldsFrom(prisma, contact, person) },
+    work: { first: String(contact.name ?? '').split(' ')[0] || 'there', commitments: open.map((c) => ({ id: c.id, text: c.text, dueSaid: c.dueSaid ?? null, waitingOn: c.waitingOn ?? null })), settled: all.filter((c) => c.state === 'KEPT').slice(-40).map((c) => ({ id: c.id, text: c.text, proven: String(c.provenBy ?? '').startsWith('material:') })), openQuestions: await theQuestionsStillOpen(prisma, contact), alreadyHeld: await whatTheRecordAlreadyHoldsFrom(prisma, contact, person) },
   };
 }
 
@@ -92,14 +94,31 @@ const theWords = (about: string): string => {
   return `“${cut}”`;
 };
 
-export interface TheirCheckIn { /** What was read from each thing they sent, for the reply to be written from. */ readings?: WhatTheySaid[]; reply: string | null; wrote: { commitments: number; kept: number; blockers: number; answered: string[] }; asked: string | null }
+export interface TheirCheckIn { /** What was read from each thing they sent, for the reply to be written from. */ readings?: WhatTheySaid[]; reply: string | null; /** `unproven`: the results kept as only their word, with nothing on the record to show them. */ wrote: { commitments: number; kept: number; unproven?: number; blockers: number; answered: string[] }; asked: string | null }
 
 export async function turnTheirReplyIntoTheirCheckIn(prisma: any, mind: TheTeamMind | null | undefined, a: { contact: any; items: AnItemTheySent[]; now: Date; since?: Date | null; /** The conversation so far (the-conversation-so-far.ts). */ recent?: string }): Promise<TheirCheckIn> {
   const { contact, now } = a;
   const since = a.since ?? null;
   const { work, externalId } = await theirWorkNow(prisma, contact);
   const first = work.first;
-  const wrote = { commitments: 0, kept: 0, blockers: 0, answered: [] as string[] };
+  const wrote = { commitments: 0, kept: 0, unproven: 0, blockers: 0, answered: [] as string[] };
+  /*
+   * WHAT THE TEAM HAS ALREADY SENT TO HER RECORD CAN SHOW A RESULT (Batch F, F5; D13). The documents a member of her team sent are read once, only when a result
+   * has no proof in what this person sent, and only the ones that share most of its words; the same reader as for their own documents decides. What she forwarded
+   * herself is never read here, and nothing about the document, or who sent it, is told to the person.
+   */
+  let theTeamsDocuments: { materialId: string; text: string }[] | null = null;
+  const shownOnHerRecord = async (thing: string): Promise<{ materialId: string } | null> => {
+    if (!mind?.whichShowsIt) return null;
+    theTeamsDocuments = theTeamsDocuments ?? (((await Promise.resolve(prisma.principalMaterial?.findMany?.({ where: { principalUserId: contact.principalUserId, state: 'kept', kind: 'file', fromUserId: { startsWith: 'contact:' } }, select: { id: true, text: true, fromUserId: true } })).catch(() => [])) ?? []) as any[])
+      .filter((m) => String(m.fromUserId ?? '').startsWith('contact:') && String(m.text ?? '').trim() && !a.items.some((i) => i.materialId === m.id))
+      .map((m) => ({ materialId: m.id as string, text: String(m.text) }));
+    const words = [...new Set(thing.toLowerCase().match(/[a-z0-9][a-z0-9.,-]{3,}/g) ?? [])];
+    const near = theTeamsDocuments.map((d) => ({ d, n: words.filter((w) => d.text.toLowerCase().includes(w)).length })).filter((x) => x.n >= 2).sort((x, y) => y.n - x.n).slice(0, 5).map((x) => x.d);
+    if (!near.length) return null;
+    const id = await mind.whichShowsIt({ thing, by: first, documents: near.map((d) => ({ id: d.materialId, name: 'a document on the record', text: d.text.slice(0, 3000) })) }).catch(() => null);
+    return near.find((d) => d.materialId === id) ?? null;
+  };
   let keptEarlier = 0;
   let asked: string | null = null;
   /* The documents they sent. None of them proves anything by arriving with a claim: each outcome is matched to the document that shows it (which-document-shows-it.ts). */
@@ -153,11 +172,13 @@ export async function turnTheirReplyIntoTheirCheckIn(prisma: any, mind: TheTeamM
     for (const c of said.commitments) await put(c.text, c.whenSaid, item.at ?? now, { waitingOn: c.waitingOn });
     /* A blocker is kept as an open matter when it says who or what it waits on. A fact about the day ("the road was bad") is not a matter on anybody's list (Fatima round 1, I-10). */
     for (const b of said.blockers) { if (!b.waitingOn) continue; await put(b.text, null, item.at ?? now, { waitingOn: b.waitingOn }); wrote.blockers += 1; }
-    /* Something that happened on the day is an activity with its own question about what came of it, never a "done?" probe, and never a line on anybody's list. */
-    for (const e of item.isDocument ? [] : said.events ?? []) {
-      if (asked) break;
-      /* The question is the model's, tailored to the event. Where it wrote none, nothing more is worth asking, and nothing is asked. */
-      if (e.ask && await mayAskOnce(prisma, contact, `q:event:${aCommitmentKey(e.text, null).slice(0, 60)}`, now, since)) asked = e.ask;
+    /* Something that happened on the day is never a line on anybody's list, and nothing is asked about it (Dangote rerun, N10). */
+    /* What they now say about a promise reaches it: a new day, what it waits on, and "not finished after all" (D10: "approved in principle" was never recorded). A claim only ever goes down on their word: a promise counted as done with no proof is open again, and one a document proves stands. */
+    for (const u of said.updates ?? []) {
+      const row = (await have()).find((c) => c.id === u.commitmentId);
+      if (!row) continue;
+      const reopen = u.notFinished && row.state === 'KEPT' && !String(row.provenBy ?? '').startsWith('material:');
+      await prisma.commitment.update({ where: { id: row.id }, data: { ...(u.whenSaid ? { dueSaid: u.whenSaid } : {}), ...(u.waitingOn ? { waitingOn: u.waitingOn } : {}), ...(reopen ? { state: 'OPEN', resolvedAt: null } : {}) } });
     }
     for (const o of said.outcomes) {
       /* A result read out of a document is that document's claim: nothing shows it unless another document does, and the person who forwarded it is not asked to prove it. */
@@ -168,13 +189,18 @@ export async function turnTheirReplyIntoTheirCheckIn(prisma: any, mind: TheTeamM
       /* A document that shows THIS, and did not carry it, is what shows it. Their word alone, a document about something else, or the document that made the claim is kept as their word: the register calls that "unverified". */
       const others = documents.filter((d) => d.materialId !== item.materialId);
       const shownBy = others.length && mind?.whichShowsIt ? await mind.whichShowsIt({ thing: target.text, by: first, documents: others.map((d) => ({ id: d.materialId!, name: 'a document they sent', text: d.text })) }).catch(() => null) : null;
-      const proof = shownBy ? others.find((d) => d.materialId === shownBy) ?? null : null;
+      const proofHere = shownBy ? others.find((d) => d.materialId === shownBy) ?? null : null;
+      /* Nothing they sent shows it: what the team has already sent to her record may (Batch F, F5; D13: Toyin was asked for proof of a payment the Treasury bank advice already showed). */
+      const proof = proofHere ?? (!fromADocument ? await shownOnHerRecord(target.text) : null);
+      /* A promise already counted as done is counted again only when this brings its first proof; a proof it has stands (D14: an outcome can now be tied to a promise already counted). */
+      if (target.state === 'KEPT' && (!proof || String(target.provenBy ?? '').startsWith('material:'))) continue;
       /* A claim somebody disputed stays open until something independent shows it. */
       if (isDisputedMark(target) && !proof) continue;
       await markACommitmentDone(prisma, target.id);
       await prisma.commitment.update({ where: { id: target.id }, data: { provenBy: proof ? `material:${proof.materialId}` : null } });
       wrote.kept += 1;
       if (o.commitmentId) keptEarlier += 1;
+      if (!proof) wrote.unproven += 1;
       if (!proof && !fromADocument && !asked && (await mayAskOnce(prisma, contact, 'q:result', now, since))) asked = THE_ONE_QUESTION.done(first, theWords(target.text));
     }
     for (const ans of said.answers) {

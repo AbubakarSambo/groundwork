@@ -144,6 +144,8 @@ const NAV_ITEMS = [
     label: 'People',
     to: '/org/members',
     adminOnly: true,
+    /* And anybody the organisation lets add people (Hafsah, 21 November 2026): People is where they invite a colleague. */
+    orWhoMayAddPeople: true,
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <circle cx="7" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
@@ -285,12 +287,12 @@ const NAV_ITEMS = [
  * quiet count `QueueLink` reads (`GET /suites/queue`); everybody else's sidebar is unchanged.
  */
 export function navItemsFor(
-  user: { role?: string; isPlatformAdmin?: boolean } | null | undefined,
+  user: { role?: string; isPlatformAdmin?: boolean; mayAddPeople?: boolean } | null | undefined,
   opts: { queueServesThem?: boolean; suiteOnForMember?: boolean } = {},
 ) {
   return NAV_ITEMS.filter(item => {
     if ((item as any).platformAdminOnly) return !!user?.isPlatformAdmin
-    if ((item as any).adminOnly) return user?.role === 'ADMIN'
+    if ((item as any).adminOnly) return user?.role === 'ADMIN' || (!!(item as any).orWhoMayAddPeople && user?.mayAddPeople === true)
     /* A lead of this organisation, by role, or anybody else the approver's queue currently serves
        something to. An admin has the same page under the organisation's name. */
     if ((item as any).leadOnly) return user?.role === 'LEAD' || !!opts.queueServesThem
