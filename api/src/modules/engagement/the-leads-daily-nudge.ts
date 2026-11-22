@@ -43,6 +43,7 @@ import { theEngagementMoment } from './the-engagement-release-moment';
 import { theQuietIn, quietIn } from './who-has-gone-quiet';
 import { whoHasMissedCheckIns, whatTheLeadReads, TOLD_THE_LEAD } from '../grounds/missed-check-ins';
 import { isAlreadyHeld, hasBeenToldOnce, nowToldOnce } from './a-message-sent-once';
+import { whatTheMorningSaid, rememberWhatTheMorningSaid, saidYesterday, stillOpenFromYesterday, theDayBefore } from './what-the-morning-said';
 import { theDirectMorningFor, theMorningSaysOnlyThatNothingNeedsYou, theParagraph, theEmailParts, theSubject, type TheDirectMorning } from './the-direct-morning';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 
@@ -809,8 +810,17 @@ export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = n
       /* What is said once (decision 136) is left out once it has been said. */
       const toldBefore = new Set<string>();
       for (const t of everything.risks) if (t.onceKey && await hasBeenToldOnce(prisma, t.onceKey)) toldBefore.add(t.onceKey);
-      const found: WhatIsOutstanding = { ...everything, risks: everything.risks.filter((t) => !t.onceKey || !toldBefore.has(t.onceKey)) };
-      if (!theseAreOutstanding(found)) continue;
+      const unsaid: WhatIsOutstanding = { ...everything, risks: everything.risks.filter((t) => !t.onceKey || !toldBefore.has(t.onceKey)) };
+      if (!theseAreOutstanding(unsaid)) continue;
+      /* What is new since yesterday's morning, as the direct morning reads it (what-the-morning-said.ts; bug 34). */
+      const todaysKey = theDirectMorningsKey(lead.userId, theDayIn7(now, zoneHere ?? 'Africa/Lagos'));
+      const yesterday = await whatTheMorningSaid(prisma, theDirectMorningsKey(lead.userId, theDayBefore(theDayIn7(now, zoneHere ?? 'Africa/Lagos'))));
+      const saidToday = [...unsaid.needsYou, ...(unsaid.dueToday ?? []), ...unsaid.overdueOnYourTeam, ...unsaid.risks].map((t) => String(t.text ?? ''));
+      let repeated = 0;
+      const isNew = (t: { text?: string }) => { const again = saidYesterday(yesterday, String(t.text ?? '')); if (again) repeated += 1; return !again; };
+      const found: WhatIsOutstanding = { ...unsaid, needsYou: unsaid.needsYou.filter(isNew), dueToday: (unsaid.dueToday ?? []).filter(isNew), overdueOnYourTeam: unsaid.overdueOnYourTeam.filter(isNew), risks: unsaid.risks.filter(isNew) };
+      const still = stillOpenFromYesterday(repeated, aNumberInWords);
+      if (still) found.risks = [...found.risks, { text: still } as any];
       const markTold = async (said: WhatIsOutstanding, went: any = 'sent', to?: string) => {
         for (const t of said.risks.slice(0, said.risks.length <= AT_MOST ? AT_MOST : AT_MOST - 1)) if (t.onceKey) await nowToldOnce(prisma, t.onceKey, went, to ? { sender: NUDGE_SENDER, to } : undefined);
       };
@@ -827,14 +837,14 @@ export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = n
         const window = theWindowForm(user.firstName, phoneFacts, link);
         /* The words a person reads inside the 24 hours are the window form; outside it, the template with its one paragraph. */
         const result: any = await deps.whatsapp.sendFor(lead.organizationId, phone, window, { kind: NUDGE_KIND, params: template.params });
-        if (result?.sent !== false) { await markTold(phoneFacts); tried++; continue; }
+        if (result?.sent !== false) { await markTold(phoneFacts); await rememberWhatTheMorningSaid(prisma, todaysKey, saidToday); tried++; continue; }
         /* Held back by a rule of the day (one a day, "Not now", WhatsApp not turned on) means nothing more today. Any other reason it did not go: she is owed it by email instead. */
         if (THE_DAYS_OWN_LIMITS.has(String(result?.error ?? ''))) { tried++; continue; }
       }
       if (await isAlreadyHeld(prisma, NUDGE_SENDER, user.email)) continue;
       const went = await deps.email.sendTheLeadsDailyNudge(user.email, theNudgeSubject(outstanding), theNudgeParts(outstanding), user.firstName, 'See everything', link);
       await markTold(outstanding, went, user.email);
-      if (went !== 'suppressed') tried++;
+      if (went !== 'suppressed') { tried++; await rememberWhatTheMorningSaid(prisma, todaysKey, saidToday); }
     } catch {
       /* One lead's nudge that could not be put together never stops the others. */
     }
@@ -886,6 +896,25 @@ export async function sendTheDirectMorningTo(
     if (m && m.parts.some((p) => p.lines.length) && !theMorningSaysOnlyThatNothingNeedsYou(m)) mornings.push(m);
   }
   if (!mornings.length) return 'nothing';
+  /*
+   * WHAT IS NEW SINCE YESTERDAY'S MORNING (release test, 22 November 2026, bug 34: the same words four days running). A line yesterday's
+   * morning said word for word is not said again; how many of those are still open is said once. The target always stays: it is where she
+   * is today. What was said today is kept on today's record for tomorrow's morning (what-the-morning-said.ts).
+   */
+  const yesterday = await whatTheMorningSaid(prisma, theDirectMorningsKey(lead.userId, theDayBefore(theDayIn7(now, zone))));
+  const saidToday = mornings.flatMap((m) => m.parts.flatMap((p) => p.lines.filter((l) => !l.boardOnly).map((l) => l.text)));
+  let repeated = 0;
+  const fresh: TheDirectMorning[] = mornings.map((m) => ({ ...m, parts: m.parts.map((p) => (p.key === 'target' ? p : {
+    ...p, lines: p.lines.filter((l) => { const again = !l.boardOnly && saidYesterday(yesterday, l.text); if (again) repeated += 1; return !again; }),
+  })) }));
+  const still = stillOpenFromYesterday(repeated, aNumberInWords);
+  if (still) {
+    const first = fresh[0];
+    const where = [...first.parts].reverse().find((p) => p.key !== 'target' && p.lines.length)
+      ?? (first.parts.push({ key: 'needsYou', heading: 'What needs you today', lead: 'Needs you today:', lines: [] }), first.parts[first.parts.length - 1]);
+    where.lines.push({ text: still, rank: 99 });
+  }
+  mornings.splice(0, mornings.length, ...fresh);
   const base = (deps.frontendUrl || '').replace(/\/$/, '');
   const link = `${base}/grounds/${mornings[0].groundId}/board`;
   const subject = theSubject(user.firstName, mornings);
@@ -913,12 +942,13 @@ export async function sendTheDirectMorningTo(
      */
     const window = body.replace(/\{\{(\d+)\}\}/g, (_m, n) => params[Number(n) - 1] ?? '');
     const result: any = await deps.whatsapp.sendFor(lead.organizationId, phone, window, { kind: NUDGE_KIND, params, paramsFor: { groundwork_first_contact: [firstContact] } } as any);
-    if (result?.sent !== false) { await nowToldOnce(prisma, key, 'sent'); return 'sent'; }
+    if (result?.sent !== false) { await nowToldOnce(prisma, key, 'sent'); await rememberWhatTheMorningSaid(prisma, key, saidToday); return 'sent'; }
     if (THE_DAYS_OWN_LIMITS.has(String(result?.error ?? ''))) { await nowToldOnce(prisma, key, 'held'); return 'not-now'; }
   }
   if (await isAlreadyHeld(prisma, NUDGE_SENDER, user.email)) return 'not-now';
   if (!deps.email.sendTheDirectMorning) return 'nothing';
   const went = await deps.email.sendTheDirectMorning(user.email, subject, user.firstName, theEmailParts(mornings), 'Open your board', link);
   await nowToldOnce(prisma, key, went as any, { sender: NUDGE_SENDER, to: user.email });
+  if (went !== 'suppressed') await rememberWhatTheMorningSaid(prisma, key, saidToday);
   return 'sent';
 }
