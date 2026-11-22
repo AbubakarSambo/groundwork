@@ -111,7 +111,7 @@ describe('GW-PRI-02: report before release shows the forming picture, not the fi
     expect(result).not.toHaveProperty('sharedPicture');
     expect(result).not.toHaveProperty('agreements');
     expect(result).not.toHaveProperty('divergences');
-    expect(result.saying).toBe("The team's picture of session 1 is not shared yet.");
+    expect(result.saying).toBe("The team's picture of check-in 1 is not shared yet.");
   });
 
   it('returns the SAME forming picture to the initiator before release (symmetric with the participant above)', async () => {

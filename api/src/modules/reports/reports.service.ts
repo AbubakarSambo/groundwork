@@ -3379,6 +3379,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
        them. NEVER every admin of the organisation, the same access rule decision 58 gave patterns.
        See patterns/who-reads-a-pattern, runsItForAPattern. */
     const evaluationWordsRunsIt = runsItForAPattern(ground as any, requestingUserId);
+    /* Hafsah, 22 November 2026: exact words go only to the people in the check-in. A reader who neither runs it nor is on it reads Groundwork's words. */
+    const readsInOurWords = !isInitiator && !me && !evaluationWordsRunsIt;
     /* THIS SESSION'S picture, released on its own (decision 76, item 4): not the report's first release. */
     const released = isThisSessionReleased(ground.report as any, sessionNumber);
 
@@ -3587,7 +3589,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           isLead: isInitiator || evaluationWordsRunsIt,
           viewerParticipantId: me?.id ?? null,
           participants: ground.participants as any,
-        }) || (isOrgAdmin && !evaluationWordsRunsIt && isEvaluationCheckIn((ground as any).scenario)),
+        }) || readsInOurWords,
         /* The Blockers tile names only the reader's own waits, as the board's header and tile do (ownWaitsOnly). */
         ownWaitsOnly: !!me && !viewerIsLead && !evaluationWordsRunsIt
           && (!this.peersAreNamed(ground as any, me.id) || isEvaluationCheckIn((ground as any).scenario)),
@@ -3806,7 +3808,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * or a manager, reads what each person said in Groundwork's own words, on every kind of check-in (release test of 21 November, case #45). The
      * admin who set it up for its lead runs it (decision 60 point 4) and reads it as the lead does. Ask reads the same served rows.
      */
-    if (!isInitiator && !me && !evaluationWordsRunsIt) {
+    if (readsInOurWords) {
       shape.whatEachPersonSaid = whatEachPersonSaidInOurWords(shape.whatEachPersonSaid as any[]) as any;
       shape.sections = theSectionsInOurWords(shape.sections as any[]) as any;
     }
