@@ -167,10 +167,17 @@ export function theDay(d: Date): string {
  * check-in held 25 (Hafsah, 22 November 2026). Without an end the count is unknown, so it stops at "and on from there". One check-in says
  * its one day. "When I choose" has no dates, so it says nothing.
  */
-export function theDatesInWords(r: { days: string[]; count: number | null }, cadence: Cadence, endsOn = ''): string | null {
+export function theDatesInWords(r: { days: string[]; count: number | null }, cadence: Cadence, endsOn = '', startsNow = false): string | null {
   if (cadence === 'SEQUENTIAL' || !r.days.length) return null
   const days = r.days.map(fromIso)
   if (cadence === 'ONE_TIME') return `The check-in opens on ${theDay(days[0])}.`
+  /* "Now" opens the first one at once and keeps it open until the next set day at least half a cycle away (the schedule's own rule,
+     Hafsah, 11 October 2026), so the first day is not one of the set days. Said as it is, so a Friday never reads as a Monday. */
+  if (startsNow && days.length > 1 && days[0].getDay() !== days[1].getDay()) {
+    /* The count stays the whole count: the first one is one of them. */
+    const rest = (theDatesInWords({ days: r.days.slice(1), count: r.count }, cadence, endsOn) ?? '').replace(/^Check-ins open on /, 'Then check-ins open on ')
+    return `The first check-in opens as soon as you start it, on ${theDay(days[0])}, and stays open until ${theDay(days[1])}. ${rest}`.trim()
+  }
   const words = days.map((d, i) => {
     const sameMonth = i > 0 && d.getMonth() === days[i - 1].getMonth()
     return sameMonth ? `${DAY_SHORT[d.getDay()]} ${d.getDate()}` : `${DAY_SHORT[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`
@@ -232,6 +239,8 @@ export function TheSetup(p: {
   startsOn: string
   onStartsOn: (s: string) => void
   endsOn: string
+  /** The end the save will keep when none is chosen, as the server says it: shown in the box, never an empty one. */
+  theEndItWillKeep?: string
   onEndsOn: (s: string) => void
   /** True when it runs until the lead ends it (the prototype's "When I end it"). */
   runsUntilEnded?: boolean
@@ -358,7 +367,7 @@ export function TheSetup(p: {
           )}
           {untilEnded
             ? <Text size="14-5" ink="sub" as="p">{THE_SETUP.untilYouEndIt}</Text>
-            : <TextField type="date" aria-label={THE_SETUP.whenItEnds} value={p.endsOn} min={p.startsOn || iso(today)} onChange={(e) => p.onEndsOn(e.target.value)} className="gwui-narrow-field" />}
+            : <TextField type="date" aria-label={THE_SETUP.whenItEnds} value={p.endsOn || p.theEndItWillKeep || ''} min={p.startsOn || iso(today)} onChange={(e) => p.onEndsOn(e.target.value)} className="gwui-narrow-field" />}
         </SetupBlock>
       )}
 

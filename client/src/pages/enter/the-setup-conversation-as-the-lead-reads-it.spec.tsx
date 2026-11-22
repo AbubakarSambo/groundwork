@@ -10,7 +10,7 @@ import { EntryChatPage } from './EntryChatPage'
  * "Getting started", the arrow steps, "Pick a different situation" or the chickens example.
  */
 vi.mock('@/api/entry', () => ({
-  entryApi: { opener: vi.fn().mockResolvedValue({ reply: '' }), chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn(), theDates: vi.fn().mockResolvedValue({ days: ['2026-11-23'], count: 12 }), peopleOnLines: vi.fn().mockResolvedValue([]) },
+  entryApi: { aCheckInTakes: vi.fn().mockResolvedValue('About ten minutes'), opener: vi.fn().mockResolvedValue({ reply: '' }), chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn(), theDates: vi.fn().mockResolvedValue({ days: ['2026-11-23'], count: 12 }), peopleOnLines: vi.fn().mockResolvedValue([]) },
 }))
 vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn() } }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: null, isAuthenticated: false }) }))
@@ -44,7 +44,8 @@ describe('the setup conversation', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Set up a check-in' })).toBeTruthy()
     /* Changed in F5 (stage 2): the opening is one line with the measured length. Changed 3 November evening (Hafsah: no cards in the
        conversation): the kind of check-in and its meaning are in the summary, with It’s something else, and End session is on screen. */
-    expect(document.body.textContent).toContain('This takes about five minutes. You can stop any time.')
+    /* 22 November 2026: the server's one figure, the same as the setup page's "Each check-in takes about ten minutes." */
+    await waitFor(() => expect(document.body.textContent).toContain('This takes about ten minutes. You can stop any time.'))
     expect(screen.queryByRole('region', { name: 'This sounds like' })).toBeNull()
     const summary = screen.getByRole('complementary', { name: 'What is set so far' })
     expect(summary.textContent).toContain('Help someone get back on track')
@@ -54,7 +55,7 @@ describe('the setup conversation', () => {
     /* Changed 22 November 2026: setup has no End check-in; it ends with the one save in the panel. */
     expect(screen.queryByRole('button', { name: 'End check-in' })).toBeNull()
     const page = document.body.textContent ?? ''
-    for (const old of ['Give this a name', 'Getting started', 'check-in is about 10 minutes', 'What is going on', 'Save & invite', 'Pick a different situation', 'Set up as', 'organic chickens', 'Fills in as you talk', 'about ten minutes']) {
+    for (const old of ['Give this a name', 'Getting started', 'check-in is about 10 minutes', 'What is going on', 'Save & invite', 'Pick a different situation', 'Set up as', 'organic chickens', 'Fills in as you talk']) {
       expect(page, old).not.toContain(old)
     }
   })
@@ -139,7 +140,7 @@ describe('the setup shows what will be saved (U.6 review)', () => {
     expect(await screen.findByText('Not set yet. This will run every week unless you pick one.')).toBeTruthy()
     /* The server is asked for the situation's own rhythm, to its usual end, and its count is what the page says. */
     const { entryApi } = await import('@/api/entry')
-    await waitFor(() => expect(vi.mocked(entryApi.theDates)).toHaveBeenCalledWith(expect.objectContaining({ cadence: 'WEEKLY', endsOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) })))
+    await waitFor(() => expect(vi.mocked(entryApi.theDates)).toHaveBeenCalledWith(expect.objectContaining({ cadence: 'WEEKLY', scenario: 'PIP' }) /* no end is guessed: the server says the save's own (22 November 2026) */))
     await waitFor(() => expect(document.body.textContent).toMatch(/, 12 check-ins in all\./))
     expect(document.body.textContent).not.toContain('every 2 weeks unless')
   })

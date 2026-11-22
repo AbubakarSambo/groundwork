@@ -1,4 +1,4 @@
-import { SETUP_TAKES } from '@/lib/how-long-setup-takes'
+import { useACheckInTakes, inASentence } from '@/lib/how-long-setup-takes'
 import { useAuthStore } from '@/stores/auth'
 import { useHelpStore } from '@/stores/help'
 import { HOW_TO_STEPS } from './how-a-check-in-is-run'
@@ -47,6 +47,7 @@ const RES_PILLS: { label: string; bg: string; color: string }[] = [
 ]
 
 function Tab0({ onNext, mayStart }: { onNext: () => void; mayStart: boolean }) {
+  const takes = useACheckInTakes()
   return (
     <div style={{ padding: 24 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -58,7 +59,7 @@ function Tab0({ onNext, mayStart }: { onNext: () => void; mayStart: boolean }) {
         {mayStart && (
           <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>1. Start a check-in</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>Pick the situation, set how long it runs and how often people check in, then add the people. Takes {SETUP_TAKES}.</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>Pick the situation, set how long it runs and how often people check in, then add the people.{takes ? ` It takes ${inASentence(takes)}.` : ''}</div>
           </div>
         )}
         <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16 }}>

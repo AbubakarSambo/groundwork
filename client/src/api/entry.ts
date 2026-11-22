@@ -217,8 +217,8 @@ export const entryApi = {
     apiClient.get<{ takes: string }>('/entry/a-check-in-takes').then(r => r.data.takes),
 
   /** The dates a setup will open on and how many in all (null with no end), from the check-in's own schedule on the server. */
-  theDates: (schedule: { cadence: string; cadenceAnchorDay?: number; cadenceDays?: number[]; workingDays?: number[]; startsOn?: string; endsOn?: string }) =>
-    apiClient.post<{ days: string[]; count: number | null }>('/entry/the-dates', schedule).then(r => r.data),
+  theDates: (schedule: { cadence: string; cadenceAnchorDay?: number; cadenceDays?: number[]; workingDays?: number[]; startsOn?: string; endsOn?: string; runsUntilEnded?: boolean; scenario?: string; timelineDays?: number }) =>
+    apiClient.post<{ days: string[]; count: number | null; endsOn?: string | null }>('/entry/the-dates', schedule).then(r => r.data),
 
   opener: (scenario?: string, source?: string) =>
     apiClient.post<{ reply: string; source?: string; thePeopleStep?: ThePeopleStepRules }>('/entry/opener', { scenario, source }).then(r => r.data),

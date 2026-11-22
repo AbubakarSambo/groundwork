@@ -17,6 +17,8 @@ import { THE_GROUPS_IN_ORDER } from './the-way-in'
 const onboardStream = vi.fn().mockResolvedValue({ reply: 'Who is it, and what were they meant to be delivering?', extracted: {} })
 vi.mock('@/api/entry', () => ({
   entryApi: {
+    /* The one figure, as the server serves it (22 November 2026: setup and the check-in say the same length). */
+    aCheckInTakes: vi.fn().mockResolvedValue('About ten minutes'),
     opener: vi.fn().mockResolvedValue({ reply: '' }),
     chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn(),
     onboardStream: (...a: unknown[]) => onboardStream(...a),
@@ -45,7 +47,7 @@ describe('someone signed out opens /start', () => {
     openStart()
     expect(await screen.findByRole('heading', { level: 1, name: 'What do you need updates on, or want to track?' })).toBeTruthy()
     /* Changed in F5: the length is the measured one (how-long-setup-takes.ts), not "about two minutes". */
-    expect(screen.getByText('A goal, a new hire, a decision. Describe it and I’ll set it up in about five minutes.')).toBeTruthy()
+    expect(await screen.findByText('A goal, a new hire, a decision. Describe it and I’ll set it up in about ten minutes.')).toBeTruthy()
     for (const example of [
       'Track the team’s targets for the quarter',
       'Sales are behind and I don’t know why',
@@ -120,11 +122,11 @@ describe('someone signed out opens /start', () => {
 describe('someone signed in starts a check-in', () => {
   /* Changed in F5 (the approved journey, stage 1): a signed-in lead meets the same way in as the prototype's start.txt, with the
      examples as buttons, under the crumbs; "Set up a check-in" and "Describe it in your own words" are gone. */
-  it('reads start.txt’s words under the crumbs, with the examples as buttons and no example in the box', () => {
-    render(<TheDoor signedIn onSend={() => {}} onSeeEverySituation={() => {}} />)
+  it('reads start.txt’s words under the crumbs, with the examples as buttons and no example in the box', async () => {
+    render(<TheDoor signedIn takes="About ten minutes" onSend={() => {}} onSeeEverySituation={() => {}} />)
     expect(text(screen.getByRole('navigation', { name: 'Where you are' }))).toBe('Check-ins/New check-in')
     expect(screen.getByRole('heading', { level: 1, name: 'What do you need updates on, or want to track?' })).toBeTruthy()
-    expect(screen.getByText('A goal, a new hire, a decision. Describe it and I’ll set it up in about five minutes.')).toBeTruthy()
+    expect(await screen.findByText('A goal, a new hire, a decision. Describe it and I’ll set it up in about ten minutes.')).toBeTruthy()
     const box = screen.getByLabelText('What do you need updates on, or want to track?') as HTMLTextAreaElement
     expect(box.placeholder).toBe('')
     expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy()

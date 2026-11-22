@@ -19,10 +19,13 @@ import { Panel, PageTitle, TextArea, Button, QuickReplies, Stack, Note } from '@
  */
 export function TheDoor({
   signedIn,
+  takes = null,
   onSend,
   onSeeEverySituation,
 }: {
   signedIn: boolean
+  /** How long it takes, as the server serves it (useACheckInTakes, read by the page); nothing is said about the length until it is. */
+  takes?: string | null
   onSend: (text: string) => void
   onSeeEverySituation: () => void
 }) {
@@ -34,7 +37,7 @@ export function TheDoor({
       <PageTitle
         crumbs={signedIn ? THE_DOOR_CRUMBS.map(label => ({ label })) : undefined}
         title={THE_DOOR.heading}
-        subtitle={THE_DOOR.help}
+        subtitle={THE_DOOR.help(takes)}
       />
       <Panel>
         <Stack gap={10}>

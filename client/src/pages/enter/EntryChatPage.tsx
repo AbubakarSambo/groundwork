@@ -3,7 +3,7 @@ import { UPLOAD_ACCEPT_ATTR, WHAT_YOU_CAN_UPLOAD_SHORT } from '@/lib/what-you-ca
 import { whenItWas } from '../../lib/a-date-reads-the-same-everywhere'
 import { useState, useEffect, useRef } from 'react'
 import { HOW_A_SITUATION_IS_CHOSEN } from '@/lib/one-way-to-say-what-a-situation-does'
-import { SETUP_TAKES, useACheckInTakes } from '@/lib/how-long-setup-takes'
+import { useACheckInTakes, inASentence } from '@/lib/how-long-setup-takes'
 import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENCE_VALUE, type ScenarioKey } from '@/lib/scenario-catalog'
 /*
  * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
@@ -1141,7 +1141,8 @@ export function groupOf(card: { cardKey: string; scenario: string }): string {
  */
 /* The target journey's opening, one line (F5, stage 2), with the measured length from its one owner. */
 /* It names no button (release test, 22 November 2026, bug 8), the same as the check-in's own first line (api the-opening-line.ts). */
-export const THE_SETUP_LINE = `This takes ${SETUP_TAKES}. You can stop any time.`
+/* How long it takes is the server's one figure (useACheckInTakes): setup is the lead's first check-in. Nothing is said until it is served. */
+export const theSetupLine = (takes: string | null) => (takes ? `This takes ${inASentence(takes)}. You can stop any time.` : 'You can stop any time.')
 export function theSetupIsDoneSaying(firstOpensOn: string | null): string {
   const d = firstOpensOn ? new Date(`${firstOpensOn}T12:00:00Z`) : null
   const day = d && !isNaN(d.getTime()) ? whenItWas(d, 'weekdayAndDay', 'UTC') : null
@@ -1315,6 +1316,13 @@ export function fallbackGroundName(situation?: string, where?: string, saidSoFar
  * 90 days unless the lead said a different number of days somewhere in the conversation
  * ("first 60 days", "a 60-day start" and the like) - never guessed beyond what was actually said.
  */
+/** The next date that is this weekday (0 is Sunday), today when today is it, as YYYY-MM-DD on this device's calendar. */
+export function theNextDayIsA(weekday: number, today: Date = new Date()): string {
+  const d = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  while (d.getDay() !== weekday) d.setDate(d.getDate() + 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function newHireDays(saidSoFar: string): number {
   const m = saidSoFar.match(/(\d{1,3})\s*-?\s*day/i)
   const n = m ? parseInt(m[1], 10) : NaN
@@ -1893,18 +1901,8 @@ export function EntryChatPage() {
     const facts = SCENARIO_FACTS[theSituationSaved]
     if (!facts) return
     if (!cadenceChosen) setCadence(CADENCE_VALUE[facts.cadence] as typeof cadence)
-    if (!endChosen && facts.cadence !== 'One time') {
-      const from = checkInBy ? new Date(`${checkInBy}T00:00:00`) : new Date()
-      /* The length said in the conversation first ("six weeks"), else the situation's usual one. */
-      const days = plannedFrom?.timelineDays ?? facts.timelineDays
-      /* The end is the day of the last check-in, as many as that length holds at this rhythm. */
-      const gap = ({ DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 } as Record<string, number>)[cadenceChosen ? cadence : CADENCE_VALUE[facts.cadence]] ?? 1
-      const n = Math.max(1, Math.floor(days / gap))
-      const end = gap === 30
-        ? new Date(from.getFullYear(), from.getMonth() + (n - 1), from.getDate())
-        : new Date(from.getFullYear(), from.getMonth(), from.getDate() + gap * (n - 1))
-      setLastCheckInBy(`${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`)
-    }
+    /* No end is guessed here: with none chosen or said, the save keeps the kind's own length, and the server says that end
+       (POST /entry/the-dates) so the setup shows it filled in (Hafsah, 22 November 2026: never an empty end). */
   }, [theSituationSaved, cadenceChosen, cadence, endChosen, checkInBy, plannedFrom?.timelineDays, onboardingSelections.classifiedScenario, scenario, pickedSituation])
 
   /* A DAILY CHECK-IN IS MONDAY TO FRIDAY UNLESS SHE SAYS OTHERWISE (Hafsah, 15 October). Set while nothing she said or
@@ -2457,7 +2455,18 @@ export function EntryChatPage() {
         /* The day she named ("every Monday") and the days the team works, as the one reading heard them, unless she already chose
            them on the setup page. Without the day it came from the start date, which was a Sunday (walk fault 5). */
         const heardDay = (res.extracted as { cadenceAnchorDay?: number }).cadenceAnchorDay
-        if (typeof heardDay === 'number' && cadenceAnchorDay == null) { setCadenceAnchorDay(heardDay); keepTheSchedule({ cadenceAnchorDay: heardDay }) }
+        if (typeof heardDay === 'number' && cadenceAnchorDay == null) {
+          setCadenceAnchorDay(heardDay)
+          keepTheSchedule({ cadenceAnchorDay: heardDay })
+          /* THE FIRST DAY FOLLOWS THE DAY SAID (Hafsah, 22 November 2026): "Mondays" said on a Friday starts on Monday, not on the Friday
+             with the next Monday a week on. Only while she has not chosen a start, and only for a weekday ("every Monday"). */
+          const rhythm = (res.extracted.cadence as string | undefined) ?? cadence
+          if (!checkInBy && heardDay >= 0 && heardDay <= 6 && (rhythm === 'WEEKLY' || rhythm === 'FORTNIGHTLY')) {
+            const first = theNextDayIsA(heardDay)
+            setCheckInBy(first)
+            keepTheSchedule({ checkInBy: first })
+          }
+        }
         const heardDays = (res.extracted as { workingDays?: number[] }).workingDays
         if (Array.isArray(heardDays) && heardDays.length && !daysChangedOnTheSummary.current) { daysAreTheDailyDefault.current = false; setWorkingDays(heardDays); keepTheSchedule({ workingDays: heardDays }) }
         if (res.extracted.timelineDays && res.extracted.timelineDays > 0) {
@@ -3236,20 +3245,23 @@ export function EntryChatPage() {
    * the saved check-in held 25, and a Sunday the server moves to Monday). Asked only while the setup page is open.
    */
   const theDatesQuery = useQuery({
-    queryKey: ['the-dates', cadence, cadenceAnchorDay, cadenceDays.join(','), workingDays.join(','), checkInBy, runsUntilEnded ? '' : lastCheckInBy],
+    queryKey: ['the-dates', cadence, cadenceAnchorDay, cadenceDays.join(','), workingDays.join(','), checkInBy, runsUntilEnded, lastCheckInBy, theKind(), plannedFrom?.timelineDays],
     queryFn: () => entryApi.theDates({
       cadence,
       ...(cadenceAnchorDay != null ? { cadenceAnchorDay } : {}),
       ...(cadenceDays.length >= 2 ? { cadenceDays } : {}),
       ...(workingDays.length ? { workingDays } : {}),
       startsOn: checkInBy || undefined,
-      endsOn: runsUntilEnded ? undefined : (lastCheckInBy || undefined),
+      /* An end she chose or said; with none, the server says the end the save will keep (the kind's own length, or the length said). */
+      ...(runsUntilEnded ? { runsUntilEnded: true } : lastCheckInBy ? { endsOn: lastCheckInBy } : {}),
+      ...(theKind() ? { scenario: theKind() } : {}),
+      ...(plannedFrom?.timelineDays ? { timelineDays: plannedFrom.timelineDays } : {}),
     }),
     enabled: settingUp,
     staleTime: 60_000,
     retry: false,
   })
-  const theDatesSaid = theDatesQuery.data ? theDatesInWords(theDatesQuery.data, cadence) : null
+  const theDatesSaid = theDatesQuery.data ? theDatesInWords(theDatesQuery.data, cadence, theDatesQuery.data.endsOn ?? '', !checkInBy) : null
   /**
    * THE ONE CARD THAT IS NOT A CONVERSATION.
    *
@@ -3526,6 +3538,7 @@ export function EntryChatPage() {
         startsOn={checkInBy}
         onStartsOn={(d) => { setCheckInBy(d); keepTheSchedule({ checkInBy: d }) }}
         endsOn={lastCheckInBy}
+        theEndItWillKeep={theDatesQuery.data?.endsOn ?? ''}
         onEndsOn={(d) => { endChangedOnTheSummary.current = true; setEndChosen(true); setRunsUntilEnded(false); setLastCheckInBy(d); keepTheSchedule({ lastCheckInBy: d, runsUntilEnded: false, endChosen: true }) }}
         runsUntilEnded={runsUntilEnded}
         onRunsUntilEnded={(until) => { endChangedOnTheSummary.current = true; setEndChosen(true); setRunsUntilEnded(until); keepTheSchedule({ runsUntilEnded: until, endChosen: true }) }}
@@ -3713,7 +3726,7 @@ export function EntryChatPage() {
                     {/* THE LAST PLACE BEFORE A READER'S EYES. `[[SESSION_COMPLETE]]` was photographed
                         in a bubble in production, with its markdown asterisks intact. Stripped on the
                         server too - this is a net, not the fix. */}
-                    {i === firstShown ? <><span className="gwui-setup-line">{THE_SETUP_LINE}</span><br /><br /><span>{nothingInternalReachesTheBubble(m.content)}</span></> : nothingInternalReachesTheBubble(m.content)}
+                    {i === firstShown ? <><span className="gwui-setup-line">{theSetupLine(takes)}</span><br /><br /><span>{nothingInternalReachesTheBubble(m.content)}</span></> : nothingInternalReachesTheBubble(m.content)}
                   </Bubble>
                 )
                 return bubble
@@ -3742,7 +3755,7 @@ export function EntryChatPage() {
                       }}
                     />
                   ) : (
-                    <TheDoor signedIn={!!user} onSend={describeItInYourOwnWords} onSeeEverySituation={() => setSeeingEverySituation(true)} />
+                    <TheDoor signedIn={!!user} takes={takes} onSend={describeItInYourOwnWords} onSeeEverySituation={() => setSeeingEverySituation(true)} />
                   )}
                 </div>
               )}

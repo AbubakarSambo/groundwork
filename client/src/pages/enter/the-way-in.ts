@@ -1,4 +1,4 @@
-import { SETUP_TAKES } from '@/lib/how-long-setup-takes'
+import { inASentence } from '@/lib/how-long-setup-takes'
 
 /*
  * THE WAY INTO A NEW CHECK-IN, IN THE PROTOTYPE'S OWN WORDS (U.6, B1).
@@ -13,11 +13,12 @@ import { SETUP_TAKES } from '@/lib/how-long-setup-takes'
  * start.txt: the way in, for everybody (F5, the approved target journey, stage 1). A lead who has just made the organisation meets
  * the same screen as somebody signed out: one question, the examples as buttons that fill the box, one button. "Describe it in your
  * own words" and the sentence about pressing send are gone, and there is no example text in the box, so no example can ever be kept
- * as something the lead said. How long it takes is the measured figure (how-long-setup-takes.ts), not "about two minutes".
+ * as something the lead said. How long it takes is the server's one figure (useACheckInTakes), the same one every page says.
  */
 export const THE_DOOR = {
   heading: 'What do you need updates on, or want to track?',
-  help: `A goal, a new hire, a decision. Describe it and I’ll set it up in ${SETUP_TAKES}.`,
+  /* How long, as the server's one figure says it (useACheckInTakes); nothing is said about the length until it is served. */
+  help: (takes: string | null) => (takes ? `A goal, a new hire, a decision. Describe it and I’ll set it up in ${inASentence(takes)}.` : 'A goal, a new hire, a decision. Describe it and I’ll set it up.'),
   button: 'Continue',
 } as const
 
