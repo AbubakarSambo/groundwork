@@ -97,7 +97,7 @@ async function openInviteBlock(anchor: boolean) {
     await screen.findByText('Who needs to be part of this?')
     return
   }
-  const emailInput = await screen.findByPlaceholderText('your@email.com')
+  const emailInput = await screen.findByPlaceholderText('you@company.com')
   /* The save step asks "Your name" now (local test of staging, 15 October). */
   { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
   fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
@@ -150,7 +150,8 @@ describe('the people step, for an anchor draft', () => {
       thePeopleStep: served,
     }))
     renderPage()
-    /* Fault 3: already on screen, no email to send first. */
+    /* Fault 3: before any email is sent. On the setup page, behind Change (22 November 2026). */
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
     expect(await screen.findByText('Served: who needs to be part of this?')).toBeTruthy()
     expect(screen.getByText('Served: add up to 20 people from the engine itself.')).toBeTruthy()
     expect(screen.queryByText('Who needs to be part of this?')).toBeNull()
@@ -189,17 +190,11 @@ describe('the limit is enforced at every place a contributor is actually added',
 
   /* REWRITTEN (round 6): the colleague picker writes into the one team box, so queueColleague is gone. The picker still takes only the
      room actually left, counted as everybody on the list and in the box; and a box over the limit stops the save (readTheTeamBox). */
-  it('the colleague picker takes only the room actually left, counting the box too', () => {
-    expect(src).toContain('const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - peopleOnTheList) : picked.length')
-    expect(src).not.toMatch(/function queueColleague/)
-  })
-
-  it('submitInviteContext (the "Add person" button) checks the limit first', () => {
-    expect(src).toContain("if (!inviteAdded.includes(inviteContextFor) && !mayAddOneMorePerson()) return")
-  })
-
-  it('the "Skip" button checks the limit before adding without context', () => {
-    expect(src).toContain('if (inviteAdded.includes(inviteContextFor) || mayAddOneMorePerson()) {')
+  /* REWRITTEN 22 November 2026: the tick-list, the per-person note box, its "Add person" and its "Skip" are gone. A colleague is picked as
+     the name is typed, and that pick checks the room left, counting everybody on the list and in the box. */
+  it('a colleague picked as the name is typed takes only the room actually left, counting the box too', () => {
+    expect(src).toContain('if (isAnchorDraft() && peopleOnTheList >= thePeopleStepRules.mayAdd) { toast.error(thePeopleStepRules.limitSentence); return }')
+    expect(src).not.toMatch(/function queueColleague|submitInviteContext|mayAddOneMorePerson/)
   })
 
   /* The pasted list's "Add all" is the one team box now (Hafsah, 31 October 2026); it counts the room left the same way. */
@@ -210,9 +205,11 @@ describe('the limit is enforced at every place a contributor is actually added',
 })
 
 describe('the people step, for every other situation', () => {
+  /* Changed 22 November 2026: the setup page's own block heading, "Who’s in it" (setup.txt), in place of the save card's "Invite people". */
   it('keeps the ordinary heading', async () => {
     await openInviteBlock(false)
-    expect(await screen.findByText('Invite people')).toBeTruthy()
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
+    expect(await screen.findByRole('region', { name: 'Who’s in it' })).toBeTruthy()
     expect(screen.queryByText('Who needs to be part of this?')).toBeNull()
   })
 })

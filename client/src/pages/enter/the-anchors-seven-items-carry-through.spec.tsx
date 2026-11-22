@@ -102,7 +102,8 @@ describe('the anchor’s seven items merge across turns', () => {
     await waitFor(() => expect(onboardStream).toHaveBeenCalledTimes(2))
     // Both the two already heard, AND the new one: nothing heard before was lost by a turn that
     // said nothing about it.
-    await waitFor(() => expect(screen.getAllByRole('listitem').length).toBe(3))
+    /* The anchor's panel ends with who is in it and its Change (22 November 2026), so the seven's rows are counted on their own. */
+    await waitFor(() => expect(screen.getAllByRole('listitem').filter((li) => !li.textContent?.startsWith('Who’s in it')).length).toBe(3))
     expect(screen.getByText('Keeping renewals on track')).toBeTruthy()
   })
 
@@ -187,50 +188,18 @@ describe('the anchor’s seven items on the report call', () => {
     }))
   }
 
-  it('sends the seven under anchorItems, so the lead’s reveal says what she said', async () => {
+  /*
+   * Changed 22 November 2026: the page no longer makes the first report (the report is never part of setup; the server makes it from the
+   * conversation when it is saved). The seven stay with the setup as it is kept, and nothing asks for a report from the page, for an
+   * anchor draft or any other.
+   */
+  it('keeps the seven with the setup, and asks the page for no report of its own', async () => {
     seedAnchorCheckIn()
     renderPage('/start')
     await waitFor(() => expect(screen.getAllByText('I keep our biggest accounts renewing.').length).toBeGreaterThan(0))
-    fireEvent.click(screen.getByRole('button', { name: 'End check-in' }))
-    const dialog = await screen.findByRole('dialog', { name: 'End this check-in?' })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'End check-in' }))
-    await waitFor(() => expect(entryApi.report).toHaveBeenCalled())
-    const call = (entryApi.report as any).mock.calls[0]
-    expect(call[4]).toMatchObject({
-      responsibleFor: 'Keeping renewals on track',
-      tryingToMove: 'My whole team',
-      howItContributes: 'They keep the renewals coming in',
-      seeingToday: 'People closing tickets without checking the account is still happy',
-      whyItBothersYou: 'We lose renewals we never saw coming',
-      whatTheyDontUnderstand: 'That a closed ticket is not the same as a happy customer',
-      whatTheyWouldDoDifferently: 'Check in with the account before closing anything',
-    })
-  })
-
-  it('a non-anchor draft sends no anchorItems on the report call', async () => {
-    localStorage.setItem('gw_entry_session', JSON.stringify({
-      scenario: 'NEW_PROJECT',
-      closed: false,
-      history: [
-        { role: 'assistant', content: 'What brings you here?' },
-        { role: 'user', content: 'A new project is starting.' },
-      ],
-      onboardingStep: 7,
-      onboardingSelections: { mode: 'new', initial: 'A new project is starting.' },
-      onboardingHistory: [
-        { role: 'assistant', content: 'What brings you here?' },
-        { role: 'user', content: 'A new project is starting.' },
-      ],
-      groundName: 'A new project',
-    }))
-    renderPage('/start')
-    await waitFor(() => expect(screen.getAllByText('A new project is starting.').length).toBeGreaterThan(0))
-    fireEvent.click(screen.getByRole('button', { name: 'End check-in' }))
-    const dialog = await screen.findByRole('dialog', { name: 'End this check-in?' })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'End check-in' }))
-    await waitFor(() => expect(entryApi.report).toHaveBeenCalled())
-    const call = (entryApi.report as any).mock.calls[0]
-    expect(call[4]).toBeUndefined()
+    const kept = JSON.parse(localStorage.getItem('gw_entry_session')!)
+    expect(kept.onboardingSelections.anchorItems).toMatchObject({ responsibleFor: 'Keeping renewals on track', whatTheyWouldDoDifferently: 'Check in with the account before closing anything' })
+    expect(entryApi.report).not.toHaveBeenCalled()
   })
 })
 
@@ -254,8 +223,8 @@ describe('the people step’s Name field, for an anchor draft', () => {
 
     /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
-    fireEvent.change(screen.getByPlaceholderText('your@email.com'), { target: { value: 'lead@example.test' } })
-    fireEvent.submit(screen.getByPlaceholderText('your@email.com').closest('form')!)
+    fireEvent.change(screen.getByPlaceholderText('you@company.com'), { target: { value: 'lead@example.test' } })
+    fireEvent.submit(screen.getByPlaceholderText('you@company.com').closest('form')!)
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
 
     const [, body] = (authApi.entrySave as any).mock.calls[0]
@@ -273,8 +242,8 @@ describe('the people step’s Name field, for an anchor draft', () => {
 
     /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
-    fireEvent.change(screen.getByPlaceholderText('your@email.com'), { target: { value: 'lead@example.test' } })
-    fireEvent.submit(screen.getByPlaceholderText('your@email.com').closest('form')!)
+    fireEvent.change(screen.getByPlaceholderText('you@company.com'), { target: { value: 'lead@example.test' } })
+    fireEvent.submit(screen.getByPlaceholderText('you@company.com').closest('form')!)
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
 
     const [, body] = (authApi.entrySave as any).mock.calls[0]
@@ -304,12 +273,14 @@ describe('the people step’s Name field, for an anchor draft', () => {
       onboardingSelections: { mode: 'new', initial: 'New project' },
     }))
     renderPage('/start')
-    const emailInput = await screen.findByPlaceholderText('your@email.com')
+    const emailInput = await screen.findByPlaceholderText('you@company.com')
     /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
     fireEvent.submit(emailInput.closest('form')!)
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
-    expect(screen.getByText(/One per line: a name, an email and a phone number\./)).toBeTruthy()
+    /* The box is on the setup page, behind Change (22 November 2026). */
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
+    expect(await screen.findByText(/One per line: a name, an email and a phone number\./)).toBeTruthy()
   })
 })

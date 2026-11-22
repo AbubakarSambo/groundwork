@@ -171,11 +171,12 @@ describe('the check-in phase, once the engine has spoken', () => {
       groundName: 'Daniel, the next six weeks',
     }))
     const { container } = renderPage()
-    await waitFor(() => expect(screen.getByText('What you said is on record.')).toBeTruthy())
-    /* FAULT 10 (live review): "releases when all parties are in" was the product's own jargon for
-       itself. Said plainly now: everyone gets the shared report once everyone has checked in. */
-    expect(screen.getByText('Invite others to check in. Everyone gets the shared report once all of you have checked in.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Invite and finish' })).toBeTruthy()
+    /* Changed 22 November 2026: the bar holds the one save itself (start-chat.txt's block for somebody signed out) and Change, which opens
+       the setup page; "Invite and finish" and the card it opened are gone. */
+    expect(await screen.findByText('Keep this conversation')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Save it' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Change' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Invite and finish' })).toBeNull()
     expect(screen.queryByPlaceholderText('Type your answer')).toBeNull()
     expectAtMostOnePrimaryButton(container)
   })

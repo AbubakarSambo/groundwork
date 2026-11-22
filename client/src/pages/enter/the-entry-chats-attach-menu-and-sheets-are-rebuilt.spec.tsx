@@ -46,7 +46,7 @@ if (QUICK_ACTIONS_START === -1 || QUICK_ACTIONS_END === -1 || QUICK_ACTIONS_END 
 const QUICK_ACTIONS_RANGE = stripComments(FULL_SOURCE.slice(QUICK_ACTIONS_START, QUICK_ACTIONS_END))
 
 const DOC_CONTEXT_START = FULL_SOURCE.indexOf('{/* Doc context overlay */}')
-const DOC_CONTEXT_END = FULL_SOURCE.indexOf('* Save card.')
+const DOC_CONTEXT_END = FULL_SOURCE.indexOf('{/* New scenario conflict modal */}') /* the save card that followed is gone (22 November 2026) */
 if (DOC_CONTEXT_START === -1 || DOC_CONTEXT_END === -1 || DOC_CONTEXT_END <= DOC_CONTEXT_START) {
   throw new Error('the 4d-2 doc-context source range markers moved - update this spec to find the new ones')
 }

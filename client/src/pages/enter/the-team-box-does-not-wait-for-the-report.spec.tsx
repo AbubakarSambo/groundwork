@@ -63,24 +63,28 @@ function open() {
 describe('the field lead presses End session while the setup is still talking', () => {
   beforeEach(() => { localStorage.clear(); vi.clearAllMocks() })
 
-  it('opens the save card with his four people in the team box and Save ready, while the report is still being written', async () => {
+  /* Changed 22 November 2026: there is no End session and no save card. His four are in the panel from the conversation, with the one save
+     ready at once, and on the setup page behind Change they are in the box with their numbers; nothing waits for a report. */
+  it('has his four people ready, with the one save, and nothing waiting for a report', async () => {
     seedTheFieldLeadsSetup()
     open()
-
-    const box = (await screen.findByLabelText('Your team, one per line')) as HTMLTextAreaElement
-    expect(box.value.split('\n')).toEqual(NAMED.map((n) => `${n}, ${PHONES[n]}`))
-    expect(screen.getByRole('status').textContent).toMatch(/\S/)
-    const save = screen.getByRole('button', { name: 'Save this' }) as HTMLButtonElement
+    const save = (await screen.findByRole('button', { name: 'Start it' })) as HTMLButtonElement
     expect(save.disabled).toBe(false)
+    expect(await screen.findByText('You mentioned Kwame Owusu, Akua Boateng, Kofi Nkrumah and Adwoa Agyemang. Add their emails in the chat.')).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('button', { name: /^Change/ })[0])
+    const box = (await screen.findByLabelText('Your team, one per line')) as HTMLTextAreaElement
+    await waitFor(() => expect(box.value.split('\n')).toEqual(NAMED.map((n) => `${n}, ${PHONES[n]}`)))
+    const { entryApi } = await import('@/api/entry')
+    expect(entryApi.report).not.toHaveBeenCalled()
   })
 
-  it('keeps the ended setup at once, so leaving before the report comes back to it', async () => {
+  it('keeps his setup as he left it, so leaving and coming back loses nothing', async () => {
     seedTheFieldLeadsSetup()
     open()
-
+    await screen.findByRole('button', { name: 'Start it' })
     const kept = JSON.parse(localStorage.getItem('gw_entry_session')!)
-    expect(kept.closed).toBe(true)
-    expect(kept.history.filter((t: any) => t.role === 'user').map((t: any) => t.content)).toEqual([expect.stringContaining('Kwame Owusu 024 123 3613')])
+    expect(kept.onboardingHistory.filter((t: any) => t.role === 'user').map((t: any) => t.content)).toEqual([expect.stringContaining('Kwame Owusu 024 123 3613')])
+    expect(kept.teamText.split('\n')).toEqual(NAMED.map((n) => `${n}, ${PHONES[n]}`))
   })
 
   it('saves at once with the team and their numbers, without waiting for the report', async () => {

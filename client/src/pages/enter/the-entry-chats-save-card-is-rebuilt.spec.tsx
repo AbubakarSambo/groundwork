@@ -33,8 +33,9 @@ import {
 
 const FULL_SOURCE = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
 
-const SAVECARD_START = FULL_SOURCE.indexOf('      {/*\n        * Save card.')
-const SAVECARD_END = FULL_SOURCE.indexOf('{/* End session confirmation modal */}')
+/* Changed 22 November 2026: the save card is gone; what took its place (the one save, the people block and the setup page) is checked. */
+const SAVECARD_START = FULL_SOURCE.indexOf('  const theSaveBlock = user ? (')
+const SAVECARD_END = FULL_SOURCE.indexOf('  const thePanel = atTheDoor ? null : (')
 if (SAVECARD_START === -1 || SAVECARD_END === -1 || SAVECARD_END <= SAVECARD_START) {
   throw new Error('the 4d-3 source range markers moved - update this spec to find the new ones')
 }
@@ -59,6 +60,7 @@ vi.mock('@/api/entry', () => ({
     classifyIntent: vi.fn(),
     patchDraft: vi.fn().mockResolvedValue({ ok: true }),
     commit: vi.fn().mockResolvedValue({ groundId: 'g-created' }),
+    theDates: vi.fn().mockResolvedValue({ days: [], count: null }),
   },
 }))
 vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn(), colleagues: vi.fn().mockResolvedValue([]) } }))
@@ -127,9 +129,11 @@ describe('the save card, anonymous, before saving', () => {
        page has always shown, untouched by this part. Opening it is a fold, not a save or a send:
        it reveals a section, it does not submit anything. */
     fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
-    expect(screen.getByPlaceholderText('your@email.com')).toBeTruthy()
+    expect(screen.getByPlaceholderText('you@company.com')).toBeTruthy()
     expect(screen.getAllByText('Daniel, the next six weeks').length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'Save my check-in' })).toBeTruthy()
+    /* 22 November 2026: start-chat.txt's "Save it", the one save somebody signed out has; no report is drawn in setup. */
+    expect(screen.getByRole('button', { name: 'Save it' })).toBeTruthy()
+    expect(document.body.textContent).not.toContain('What you told me')
     expectAtMostOnePrimaryButton(container)
     expect(entryApi.chat).not.toHaveBeenCalled()
     expect(authApi.entrySave).not.toHaveBeenCalled()
@@ -141,15 +145,16 @@ describe('the save card, anonymous, before saving', () => {
     seedClosedSession()
     const { container } = renderPage()
     fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
-    const emailInput = screen.getByPlaceholderText('your@email.com')
+    const emailInput = screen.getByPlaceholderText('you@company.com')
     /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
     fireEvent.submit(emailInput.closest('form')!)
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledTimes(1))
     expect(await screen.findByText('Check your email')).toBeTruthy()
-    expect(screen.getByText('Name this situation')).toBeTruthy()
-    expect(screen.getByText('Invite people')).toBeTruthy()
+    /* The setup page is still there to change, the name and who is in it with it (22 November 2026). */
+    expect(screen.getByRole('textbox', { name: 'Name this check-in' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Who’s in it' })).toBeTruthy()
     expectAtMostOnePrimaryButton(container)
   })
 })
@@ -163,7 +168,7 @@ describe('the save card asks the lead her name, once (local test of staging, 15 
     seedClosedSession()
     renderPage()
     fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
-    const emailInput = screen.getByPlaceholderText('your@email.com')
+    const emailInput = screen.getByPlaceholderText('you@company.com')
     fireEvent.change(emailInput, { target: { value: 'hjumare+local@example.test' } })
     fireEvent.submit(emailInput.closest('form')!)
     expect(await screen.findByText('Write your name, so the people you invite know who is asking.')).toBeTruthy()
@@ -183,7 +188,8 @@ describe('the save card, already signed in', () => {
     seedClosedSession()
     const { container } = renderPage()
     fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
-    expect(screen.getByRole('button', { name: 'Save this' })).toBeTruthy()
+    /* 22 November 2026: the setup page's one start, "Start it" with nobody else on it, in place of "Save this". */
+    expect(screen.getByRole('button', { name: 'Start it' })).toBeTruthy()
     /* FAULT E (reviewer, third round): "Saving to rukia@example.test. No confirmation needed,
        you are already signed in." read like a log line. One plain sentence instead.
 
@@ -191,19 +197,20 @@ describe('the save card, already signed in', () => {
        still named the account and gave the address ("We save this to your account,
        admin@fieldnote.test."). Updated to speak to the person by first name, with no "account"
        and no address. This test is changed because it pinned the old, faulty wording. */
-    expect(screen.getByText('We save this for you, Rukia.')).toBeTruthy()
+    /* 22 November 2026: the sentence went with the save card; still nothing names the account or her address. */
     expect(screen.queryByText(/We save this to your account/)).toBeNull()
-    expect(screen.queryByPlaceholderText('your@email.com')).toBeNull()
+    expect(screen.queryByText(/rukia@example\.test/)).toBeNull()
+    expect(screen.queryByPlaceholderText('you@company.com')).toBeNull()
     expectAtMostOnePrimaryButton(container)
     expect(authApi.entrySave).not.toHaveBeenCalled()
   })
 
-  it('falls back to a plain sentence with no address when no name is known', async () => {
+  it('shows no address when no name is known either', async () => {
     authedUser = { id: 'u1', email: 'rukia@example.test' }
     seedClosedSession()
     renderPage()
-    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
-    expect(screen.getByText('We save this for you.')).toBeTruthy()
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
+    expect(await screen.findByRole('button', { name: 'Start it' })).toBeTruthy()
     expect(screen.queryByText(/rukia@example\.test/)).toBeNull()
   })
 
@@ -226,12 +233,12 @@ describe('the save card, already signed in', () => {
     seedClosedSession()
     renderPage()
     fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
-    const danielCheckbox = await screen.findByRole('checkbox', { name: 'Daniel Park' })
-    fireEvent.click(danielCheckbox)
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Grace Achieng' }))
-    const picker = screen.getByRole('listbox').closest('div')!.parentElement as HTMLElement
-    fireEvent.click(within(picker).getByRole('button', { name: /^Add/ }))
-
+    /* 22 November 2026: no tick-list; a colleague is suggested in the one box as the name is typed, and a pick is a row on the list. */
+    const box = await screen.findByLabelText('Your team, one per line')
+    fireEvent.change(box, { target: { value: 'Dan', selectionStart: 3 } })
+    fireEvent.mouseDown(await screen.findByRole('option', { name: /Daniel Park/ }))
+    fireEvent.change(box, { target: { value: 'Gra', selectionStart: 3 } })
+    fireEvent.mouseDown(await screen.findByRole('option', { name: /Grace Achieng/ }))
     await waitFor(() => expect(screen.getByText(/Daniel Park/)).toBeTruthy())
     await pressTheSave()
 
@@ -310,7 +317,8 @@ describe('which day it lands on, end to end (nothing-removed-screens.md item 2)'
     seedClosedSession({ cadence: 'MONTHLY', cadenceChosen: true })
     renderPage()
     fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
-    const select = await screen.findByRole('combobox')
+    /* The team box suggests colleagues as a combobox too now, so the day of the month is found by its own label. */
+    const select = await screen.findByLabelText('On which day of the month')
     fireEvent.change(select, { target: { value: '15' } })
     await pressTheSave()
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
@@ -350,13 +358,10 @@ describe('changing how many sessions a check-in runs (fault 2, live walk, 6 Octo
       onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
     }))
     renderPage()
-    /* Opened now from End session, the only way to the card before any answer (the header's count that opened it is gone). */
-    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'End check-in' }))
-
-    /* Changed 22 November 2026: the eyebrow carried a privacy note ("It will be your private report."), which no screen says. */
-    expect(await screen.findByText('This will be check-in 1.')).toBeTruthy()
-    expect(screen.getByText('Nothing is on record yet.')).toBeTruthy()
-    expect(screen.queryByText('This is check-in 1.')).toBeNull()
+    /* Changed 22 November 2026: there is no card and no heading over it any more; nothing on the page claims a check-in 1, a report or a
+       record before an answer is given. */
+    await screen.findByText('How is it going?')
+    for (const claim of ['This will be check-in 1.', 'This is check-in 1.', 'Nothing is on record yet.']) expect(screen.queryByText(claim)).toBeNull()
     expect(screen.queryByText(/your private report|private to you/)).toBeNull()
     expect(screen.queryByText('What you said is on record.')).toBeNull()
   })
@@ -386,7 +391,7 @@ describe('a mentioned person keeps her name when added after the email is given 
     })
     renderPage()
     fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
-    const emailInput = screen.getByPlaceholderText('your@email.com')
+    const emailInput = screen.getByPlaceholderText('you@company.com')
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
     fireEvent.submit(emailInput.closest('form')!)

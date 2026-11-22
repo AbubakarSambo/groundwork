@@ -100,8 +100,8 @@ describe('an anchor draft at ready', () => {
 
     await sendOnboardingMessage('Nobody on my team sees how the renewals land.')
 
-    // Straight to the reveal - no fork in between.
-    await screen.findByText('Help my team understand')
+    // No fork in between: the panel names the served label (the lead's reveal is the server's report now, read after saving).
+    expect((await screen.findAllByText('Help my team understand')).length).toBeGreaterThan(0)
     expect(screen.queryByText('I set this up and check in myself')).toBeNull()
     expect(screen.queryByText('I check in once to set the context, then only they check in')).toBeNull()
 
@@ -147,9 +147,11 @@ describe('every other situation (decision 133)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
 
     expect(await screen.findByText(/Done: your board is ready with today’s picture\./)).toBeTruthy()
-    await vi.waitFor(() => expect(entryApi.report).toHaveBeenCalledTimes(1))
-    /* The report is built from the setup conversation itself. */
-    expect(JSON.stringify((entryApi.report as any).mock.calls[0][0])).toContain('A new project is starting.')
+    /* Changed 22 November 2026: at ready nothing opens and no report is made on the page; the conversation is the first session's
+       record, saved by the one save in the panel, and the server makes the report from it. */
+    expect(entryApi.report).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByPlaceholderText('Type your answer')).toBeTruthy()
     expect(entryApi.chat).not.toHaveBeenCalled()
     expect(screen.queryByText('I set this up and check in myself')).toBeNull()
     expect(screen.queryByText('I check in once to set the context, then only they check in')).toBeNull()

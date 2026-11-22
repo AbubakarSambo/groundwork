@@ -62,7 +62,7 @@ describe("the anchor's schedule default is one month, weekly", () => {
   it('shows the weekly rhythm on the save card, not every 2 weeks', async () => {
     seedAnchorDraft()
     renderPage()
-    await screen.findByPlaceholderText(/your@email/i, {}, { timeout: 4000 })
+    await screen.findByPlaceholderText(/you@company/i, {}, { timeout: 4000 })
     /*
      * SCREEN FAULT 3 (live walk, 6 October 2026): THE WEEKLY DEFAULT IS NOW A CHOSEN ONE, NOT AN
      * UNCONFIRMED GUESS. Before this fix the schedule showed "Not set yet. This will run every
@@ -71,7 +71,9 @@ describe("the anchor's schedule default is one month, weekly", () => {
      * to its own FORTNIGHTLY default). Now the anchor's weekly rhythm is sent as a real choice, so
      * the screen shows it the same way: "Every week" selected, no "not set yet" warning.
      */
-    /* Setup page, piece 3a: "How often" is the shared `Choices` now, so the chosen rhythm is a checked radio. */
+    /* Setup page, piece 3a: "How often" is the shared `Choices` now, so the chosen rhythm is a checked radio. On the setup page, behind
+       Change (22 November 2026). */
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
     await waitFor(() => expect(screen.getByRole('radio', { name: 'Every week' })).toHaveAttribute('aria-checked', 'true'))
     expect(screen.queryByText(/not set yet/i)).toBeNull()
   })
@@ -79,7 +81,7 @@ describe("the anchor's schedule default is one month, weekly", () => {
   it('commits cadence WEEKLY and an end date one month after the start', async () => {
     seedAnchorDraft()
     renderPage()
-    const emailField = await screen.findByPlaceholderText(/your@email/i, {}, { timeout: 4000 })
+    const emailField = await screen.findByPlaceholderText(/you@company/i, {}, { timeout: 4000 })
     /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailField, { target: { value: 'lead@x.test' } })
@@ -110,7 +112,7 @@ describe('screen fault 2 (live walk, 6 October 2026): the name is the served sen
   it('commits the served groundLabel, not the aim or the organisation fallback', async () => {
     seedAnchorDraft()
     renderPage()
-    const emailField = await screen.findByPlaceholderText(/your@email/i, {}, { timeout: 4000 })
+    const emailField = await screen.findByPlaceholderText(/you@company/i, {}, { timeout: 4000 })
     /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailField, { target: { value: 'lead@x.test' } })
@@ -124,7 +126,7 @@ describe('screen fault 2 (live walk, 6 October 2026): the name is the served sen
   it('never shows "Name this situation" or "Still to set", after the email is sent', async () => {
     seedAnchorDraft()
     renderPage()
-    const emailField = await screen.findByPlaceholderText(/your@email/i, {}, { timeout: 4000 })
+    const emailField = await screen.findByPlaceholderText(/you@company/i, {}, { timeout: 4000 })
     /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailField, { target: { value: 'lead@x.test' } })

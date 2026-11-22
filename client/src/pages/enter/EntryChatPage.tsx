@@ -3806,7 +3806,8 @@ export function EntryChatPage() {
                     <div className="gwui-ec-doc-panel-inner">
                       <div className="gwui-ec-doc-panel-tabs">
                         {(['paste', 'upload'] as const).map(t => (
-                          <Button key={t} kind={docTab === t ? 'primary' : 'secondary'} size="small" onClick={() => setDocTab(t)}>
+                          /* Which one is chosen is said by aria-pressed, not by a second navy button beside the one save (one primary per screen). */
+                          <Button key={t} kind="secondary" size="small" aria-pressed={docTab === t} onClick={() => setDocTab(t)}>
                             {t === 'paste' ? 'Paste text' : 'Upload file'}
                           </Button>
                         ))}
