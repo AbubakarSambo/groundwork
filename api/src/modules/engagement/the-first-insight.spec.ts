@@ -141,7 +141,8 @@ describe('the words themselves', () => {
     expect(many!.lines.join(' ')).toContain('What I would do is bring the people involved together on that one question.');
     const none = theFirstInsight(SERVED({ stand: { open: [], stillOpen: 0, agreed: 3, settled: ['a', 'b', 'c'], openWithReasons: [] } }), 'Q4', { isTheLead: true });
     expect(none!.subjectForTheLead).toBeNull();
-    expect(none!.lines[0]).toBe('Nothing in the report for "Q4" is still open.');
+    /* Changed 22 November 2026 (release test, bug 20): "Nothing ... is still open" read as no waits open, under a subject counting four. */
+    expect(none!.lines[0]).toBe('The report for "Q4" found nothing that people see differently.');
   });
   it('says a difference the report wrote as a whole sentence as that sentence, and not after "differ on" (found on the test bed, journey 5)', () => {
     const real = SERVED({ stand: {

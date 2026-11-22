@@ -121,7 +121,9 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
   const noneNameable = open.length > 0 && isAStandIn(ordered[0]);
   const theCount = (l: string) => `The report for "${l}" found ${aNumberInWords(open.length)} ${open.length === 1 ? 'difference' : 'differences'} still open`;
   if (open.length) lines.push(noneNameable ? `${theCount(name)}.` : firstOpenSaid(name, ordered, true));
-  else lines.push(`Nothing in the report for "${name}" is still open.`);
+  /* What the report holds open is where people see things differently, never the waits: "Nothing ... is still open" sat under "Four
+     handoffs are still waiting" (release test, 22 November 2026, bug 20). So it says which it is. */
+  else lines.push(`The report for "${name}" found nothing that people see differently.`);
   const question = whatEachPersonSaid(String(report?.theConversationWorthHaving ?? '').replace(/\s+/g, ' ').trim());
   /* What the report writes about one finding can say it in all three places; a line that repeats one already in the mail is left out (a-sentence-said-twice.ts). */
   if (question && !lines.some((l) => saysTheSame(l, question))) lines.push(/[.!?]$/.test(question) ? question : `${question}.`);
