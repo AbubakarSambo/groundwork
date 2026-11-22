@@ -252,7 +252,7 @@ import { theStallRuleOnRecord, theStallRuleAsALine, theStallRuleDeclined, NO_STA
 import { whenTheyPay, theUnitsOf } from './a-sales-aim-is-counted-from-the-deals';
 import { theAimsCountedNow } from './an-aim-is-counted-now';
 import { theDealsOnRecord, theSalesStages, whereAWeeklyCountStands, whatTheseDealsHold, theDealsTheCountIsMadeOf, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
-import { theWaitsOnCustomersApart, theirOwnAnswersWhereTheWaitsWereSaid, withoutTheWaitsOnCustomers } from './a-customers-reply-is-on-its-deal';
+import { theColleaguesOf, theWaitsOnCustomersApart, theirOwnAnswersWhereTheWaitsWereSaid, withoutTheWaitsOnCustomers } from './a-customers-reply-is-on-its-deal';
 import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
 import { whatTheSwitchboardServes, type TheSwitchboardServed } from './the-switchboard';
 import { theCollectionsBoardFor } from './the-collections-board.service';
@@ -680,7 +680,7 @@ export class BoardService {
     let waitsOnCustomers: any[] = [];
     if (theDealsCounted.length) {
       const theirOwnAnswers = await theirOwnAnswersWhereTheWaitsWereSaid(this.prisma, (ground as any).dependencies as any[]).catch(() => new Map<string, string[]>());
-      const apart = theWaitsOnCustomersApart((ground as any).dependencies as any[], theDealsCounted, theirOwnAnswers);
+      const apart = theWaitsOnCustomersApart((ground as any).dependencies as any[], theDealsCounted, theirOwnAnswers, await theColleaguesOf(this.prisma, [groundId]).catch(() => [] as string[]));
       (ground as any).dependencies = apart.team;
       waitsOnCustomers = apart.onDeals;
     }

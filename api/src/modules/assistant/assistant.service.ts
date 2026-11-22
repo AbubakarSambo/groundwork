@@ -1055,7 +1055,7 @@ export class AssistantService {
       case 'when_is_my_next_check_in':
         return rules('when_is_my_next_check_in', text(await whenIsMyNextCheckIn(this.prisma, organizationId, userId ?? null)));
       case 'what_my_check_in_is_for':
-        return rules('what_my_check_in_is_for', text(await whatMyCheckInIsFor(this.prisma, organizationId, userId ?? null)));
+        return rules('what_my_check_in_is_for', text(await whatMyCheckInIsFor(this.prisma, organizationId, userId ?? null, this.theTeamsGoalsAsTheirBoardShowsThem(userId ?? null))));
       case 'company_priorities':
         return rules('company_priorities', text(await theCompanysPriorities(this.prisma, this.grounds, await this.readerOfTheCompany(organizationId, userId ?? null))));
       case 'is_the_strategy_moving':
@@ -1515,6 +1515,16 @@ export class AssistantService {
     }
     const more = chosen.length > 5 ? `\n\nThere ${chosen.length - 5 === 1 ? 'is one more check-in' : `are ${chosen.length - 5} more check-ins`} you can read. Ask me about one by its name.` : '';
     return rules(lane, text(`${lines.join('\n')}${more}\n\nThis is counted the way your board counts it.`));
+  }
+
+  /** The team's goals on a check-in as this person's own board serves them (BoardService.get, as them): the one source for what the team is aiming for. */
+  private theTeamsGoalsAsTheirBoardShowsThem(userId: string | null): (groundId: string) => Promise<string[]> {
+    return async (groundId) => {
+      if (!userId) return [];
+      const board: any = await this.board.get(groundId, userId).catch(() => null);
+      if (!board || board.renders === false) return [];
+      return ((board.objectives ?? []) as any[]).filter((o) => !o.ownerParticipantId && String(o.name ?? '').trim()).map((o) => String(o.name));
+    };
   }
 
   /**
@@ -5336,7 +5346,7 @@ export class AssistantService {
       case 'who_has_not_checked_in': return this.whoHasNotCheckedIn(organizationId, userId, undefined);
       case 'what_i_said_i_would_do': return this.myCommitments(organizationId, personId);
       case 'next_check_in': return rules('when_is_my_next_check_in', text(await whenIsMyNextCheckIn(this.prisma, organizationId, userId)));
-      case 'my_check_in_for': return rules('what_my_check_in_is_for', text(await whatMyCheckInIsFor(this.prisma, organizationId, userId)));
+      case 'my_check_in_for': return rules('what_my_check_in_is_for', text(await whatMyCheckInIsFor(this.prisma, organizationId, userId, this.theTeamsGoalsAsTheirBoardShowsThem(userId))));
       case 'company_priorities': return rules('company_priorities', text(await theCompanysPriorities(this.prisma, this.grounds, await this.readerOfTheCompany(organizationId, userId))));
       /* The team's goal, from the record every reader's question is answered from: the goal rows, as this reader may read them (theGoalsOnRecord). */
       case 'the_team_goal': return userId ? this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, null, message) : null;
