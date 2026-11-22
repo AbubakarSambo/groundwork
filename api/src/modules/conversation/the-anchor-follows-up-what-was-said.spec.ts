@@ -43,8 +43,9 @@ function aWorld(w: World = {}) {
     ground: { findUnique: jest.fn(async () => ground), findFirst: jest.fn(async () => ground) },
     platformSetting: { findUnique: jest.fn(async () => (w.switchOn ? { value: { on: true } } : { value: { on: false } })) },
     checkIn: {
+      /* Their own earlier sessions (theirOwnSessionNumber, 22 November): a person in session 2 has their session-1 row, as in the database. */
       findUnique: jest.fn(async () => checkIn),
-      findMany: jest.fn(async () => []),
+      findMany: jest.fn(async (a: any) => (a?.distinct?.includes?.('sessionNumber') && a?.where?.sessionNumber?.lt ? Array.from({ length: a.where.sessionNumber.lt - 1 }, (_, i) => ({ sessionNumber: i + 1 })) : [])),
       findFirst: jest.fn(async () => ({ id: 'ci1', completedAt: new Date(Date.now() - 7 * 86_400_000) })),
       count: jest.fn(async () => 0),
       update: jest.fn(async () => ({})),
