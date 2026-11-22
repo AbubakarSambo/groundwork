@@ -878,8 +878,14 @@ export async function sendTheDirectMorningTo(
   /* Built from her boards as she is served them: with no way to read them there is nothing to say, and the summary below goes. */
   if (!deps.board) return 'nothing';
   const zone = (await theOrganisationsZone(prisma, lead.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE;
-  /* By seven where the organisation is: the early sweep sends it in the quarter hour from seven; the 9am sweep only if it has not gone. */
-  if (opts.onlyAt7 && theHourIn(now, zone) !== 7) return 'not-now';
+  /*
+   * By seven where the organisation is: the early sweep sends it from seven, once a day (the day's key below), and the 9am sweep only if it
+   * has not gone. MISSED AT SEVEN IS SENT AT THE NEXT SWEEP THAT MORNING (release test, 22 November 2026, bug 34). The sweep sent it only in
+   * the hour from seven, so a sweep that did not run in that hour (a restart, a clock moved on) held Wairimu's morning in Nairobi until 9am
+   * in Lagos, eleven o'clock for her, or never. Still one morning a day, from seven, and never after midday.
+   */
+  const hour = theHourIn(now, zone);
+  if (opts.onlyAt7 && (hour < 7 || hour >= 12)) return 'not-now';
   const key = theDirectMorningsKey(lead.userId, theDayIn7(now, zone));
   if (await hasBeenToldOnce(prisma, key)) return 'not-now';
   const mornings: TheDirectMorning[] = [];
