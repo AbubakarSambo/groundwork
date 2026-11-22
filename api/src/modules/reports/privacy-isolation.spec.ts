@@ -246,7 +246,14 @@ describe('GW-PRI-05: release() is scoped to the requesting org', () => {
         findUnique: jest.fn(async () => ground),
       },
       report: { update: jest.fn(async () => ({ releasedAt: new Date() })) },
-      checkIn: { aggregate: jest.fn(async () => ({ _max: { sessionNumber: 1 } })) },
+      /*
+       * Added 22 November 2026: only people who joined are told a report is ready (fix plan 16 November, group 6), read from their
+       * check-ins. Both people here answered session 1, so both are owed the mail; none closed quietly having said nothing.
+       */
+      checkIn: {
+        aggregate: jest.fn(async () => ({ _max: { sessionNumber: 1 } })),
+        findMany: jest.fn(async ({ where }: any) => (where?.status === 'COMPLETED' ? [] : ground.participants.map((p: any) => ({ participantId: p.id, status: 'COMPLETED' })))),
+      },
       reportNotice: { findMany: jest.fn(async () => []), create: jest.fn(async () => ({})), deleteMany: jest.fn(async () => ({})) },
     };
     const email: any = { sendReportReady: jest.fn(async () => undefined) };

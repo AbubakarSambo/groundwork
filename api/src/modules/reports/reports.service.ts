@@ -4425,7 +4425,14 @@ Close the report by framing - neutrally, without recommending one - the choice n
   async rounds(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const served = await this.roundsAsBuilt(groundId, requestingUserId, requestingUserOrgId);
-    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
+    const walled: any = await this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
+    /*
+     * WHAT EACH ROUND LED WITH IS READ FROM THE ROUNDS AS THIS READER IS SERVED THEM (privacy sweep, decision 75 item 14). It was read from the
+     * stored pictures before the wall, so Kwame, in a cohort where people do not see each other, read "One hire (inbound) is closing deals ..."
+     * in `moved` while the same paragraph was taken out of `rounds`. Read from the served rounds, it can say nothing they do not.
+     */
+    if (!Array.isArray(walled?.rounds)) return walled;
+    return { ...walled, moved: howThisHasMoved(walled.rounds.map((r: any) => ({ ...r, round: r.sessionNumber }))).map((m: any) => ({ ...m, says: typeof m.says === 'string' ? notTheWordParty(m.says) : m.says })) };
   }
 
   private async roundsAsBuilt(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
@@ -4495,10 +4502,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
     /* The table calls it sessionNumber and the sequence reads `round`: without this every movement
        came back with no session number, and the page printed "At the end of session undefined"
        (request 59). */
-    const moved = howThisHasMoved(cleaned.map((r: any) => ({ ...r, round: r.sessionNumber }))).map((m: any) => ({
-      ...m,
-      says: typeof m.says === 'string' ? notTheWordParty(m.says) : m.says,
-    }));
     /*
      * WHAT EACH ROUND LED WITH, AS THAT ROUND'S PICTURE SAID IT, FOR EVERY READER. Screens request 66.
      *
@@ -4510,7 +4513,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * every reader of this check-in already reads in `rounds[].sharedPicture`, and its labels are
      * turned into a name, or into "you", for each reader on the way out (whatTheLeadHasNotShared).
      */
-    return { rounds: cleaned, moved };
+    return { rounds: cleaned };
   }
 
   /**
