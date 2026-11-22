@@ -163,6 +163,6 @@ describe('Wanjiru, who runs it and checks in herself, reads her own count beside
     ;(groundsApi.peopleAndSetup as any).mockResolvedValue({ ...SERVED_TO_WANJIRU, sessions: '1 of 12 sessions done. Sessions already done are never removed.', teamSessionsDone: 1 })
     renderPage(props({ mySessionsDone: 3, plannedSessions: 12 }))
     await waitFor(() => expect(screen.getByText('1 of 12 sessions done. Sessions already done are never removed.')).toBeTruthy(), { timeout: 5000 })
-    expect(screen.getByText('3 of 12 check-ins are done. The team has finished 1.')).toBeTruthy()
+    expect(screen.getByText('You have checked in for 3 of the 12 sessions. The team has finished 1.')).toBeTruthy()
   })
 })
