@@ -64,8 +64,15 @@ export function theReadBackFrom(a: TheAssessment | null): { text: string; lines:
    */
   const insideAnother = (x: (typeof theirs)[number], i: number) => theirs.some((y, j) => j !== i && y.key.includes(x.key)
     && (y.key.length > x.key.length || (!!y.f.saidBack && !x.f.saidBack) || (!!y.f.saidBack === !!x.f.saidBack && j < i)));
-  const lines: ALineReadBack[] = theirs
-    .filter((x, i) => !insideAnother(x, i))
+  /*
+   * ONLY WHAT THE ASSESSMENT SAID AS A SENTENCE, WHERE IT SAID ANY (final run, 22 November 2026). An item the model gave no sentence for
+   * was said as their quoted words, and those were the fragments still read back ("You said “mercy in procurement says friday”."). Where
+   * the assessment wrote sentences, those are the read-back; the other items stay on the record and can be put right through the same
+   * "Is anything wrong?". Their own words are quoted only for a conversation the assessment wrote no sentence for at all.
+   */
+  const kept = theirs.filter((x, i) => !insideAnother(x, i));
+  const withSentences = kept.filter(({ f }) => !!f.saidBack);
+  const lines: ALineReadBack[] = (withSentences.length ? withSentences : kept)
     .map(({ f }) => ({ id: `${f.checkInId}#${f.itemId}`, says: aLineAsTheyReadIt(f) }));
   if (!lines.length) return null;
   return { text: [THE_READ_BACK_OPENS, ...lines.map((l) => l.says), THE_READ_BACK_ASKS].join('\n'), lines };

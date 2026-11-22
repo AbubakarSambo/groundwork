@@ -151,3 +151,19 @@ describe('pieces of one message are read back once, as the item that holds them 
     ].join('\n'));
   });
 });
+
+describe('where the assessment wrote sentences, a bare fragment is not read back (final run, 22 November 2026)', () => {
+  const said3 = new Map<number, string>([[1, 'mercy in procurement says friday'], [2, 'I sent the margin sheet to Fatuma on Wednesday.']]);
+  const parts3 = thePartsFrom({
+    summary: 'Chidi waits on Fatuma.', nothingToRecord: [],
+    dates: [{ words: 'mercy in procurement says friday', from: [1], when: 'Friday' }],
+    blockers: [{ words: 'I sent the margin sheet to Fatuma on Wednesday.', from: [2], what: 'pricing approval for Naivas', onName: 'Fatuma' }],
+    saidBack: [{ words: 'I sent the margin sheet to Fatuma on Wednesday.', says: 'You sent the margin sheet to Fatuma on Wednesday, and you are waiting on her pricing approval for Naivas.' }],
+  }, said3, { hasSetup: false, previous: null, givenRole: null, read: 1, isTheLead: false });
+  const a3: any = { kind: 'assessment', version: 1, about: { checkInId: 'c-c', groundId: 'g', participantId: 'p-c', who: 'Chidi Okeke', isTheLead: false, sessionNumber: 3, endedAt: '2026-11-22T05:00:00Z' }, messages: [{ n: 1, turnId: 't1', where: 'check-in', at: null }, { n: 2, turnId: 't2', where: 'check-in', at: null }], ...parts3 };
+  it('Chidi reads the sentence, and not "You said “mercy in procurement says friday”."', () => {
+    const text = theReadBackFrom(a3)!.text;
+    expect(text).toContain('You sent the margin sheet to Fatuma on Wednesday, and you are waiting on her pricing approval for Naivas.');
+    expect(text).not.toMatch(/You said “/);
+  });
+});
