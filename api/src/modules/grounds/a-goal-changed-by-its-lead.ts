@@ -91,10 +91,11 @@ const lowerFirst = (s: string, names: readonly string[]) => {
  * are out of stock. Before that, the goal was that Amani sells 10 freezers a week." `names` are the first names on the check-in, so
  * a name keeps its capital inside the sentence.
  */
-export function theChangeAsASentence(c: AGoalChange, names: readonly string[] = []): string {
+/* `whatItWas` only for whoever runs the check-in: the old goals may be other people's numbers, which a team member does not read. */
+export function theChangeAsASentence(c: AGoalChange, names: readonly string[] = [], whatItWas = true): string {
   const low = (x: string) => lowerFirst(x, names);
   const why = c.because ? `, because ${low(c.because.replace(/[.!?\s]+$/, ''))}` : '';
   const before = (c.fromNames ?? []).map((n) => n.replace(/[.!?\s]+$/, '')).filter(Boolean);
   const was = before.length === 1 ? ` Before that, the goal was ${before[0]}.` : before.length > 1 ? ` Before that, the goals were ${before.slice(0, -1).join(', ')} and ${before[before.length - 1]}.` : '';
-  return ended(`On ${theDay(c.at)} the goal changed${why}`) + was;
+  return ended(`On ${theDay(c.at)} the goal changed${why}`) + (whatItWas ? was : '');
 }

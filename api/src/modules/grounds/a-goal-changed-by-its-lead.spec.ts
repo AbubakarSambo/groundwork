@@ -48,6 +48,8 @@ describe('a goal changed by its lead', () => {
     const said = theChangeAsASentence(theChangeThatMadeThisGoal(changes, 'o-amani')!, ['Wairimu', 'Amani', 'Chidi']);
     expect(said).toBe('On 22 November the goal changed, because freezers are out of stock. Before that, the goals were Amani’s “Sell 10 freezers a week” and Chidi’s “Sell 10 freezers a week”.');
     expect(said).not.toContain(':');
+    /* A team member is not read the old goals, which may be other people's numbers. */
+    expect(theChangeAsASentence(theChangeThatMadeThisGoal(changes, 'o-amani')!, ['Amani'], false)).toBe('On 22 November the goal changed, because freezers are out of stock.');
   });
 
   it('the lead\'s read names a goal she changed by its id, and only with her yes', () => {

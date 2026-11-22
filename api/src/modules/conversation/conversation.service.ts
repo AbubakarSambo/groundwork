@@ -778,7 +778,7 @@ export class ConversationService {
       target: o.target ?? null,
       direction: asADirection(o.direction),
       /* Only where its lead changed it: every other goal is served exactly as before. */
-      ...(() => { const c = o.id ? theChangeThatMadeThisGoal(changes, o.id) : null; return c ? { changed: theChangeAsASentence(c, firstNames) } : {}; })(),
+      ...(() => { const c = o.id ? theChangeThatMadeThisGoal(changes, o.id) : null; return c ? { changed: theChangeAsASentence(c, firstNames, reader?.partyType === PartyType.INITIATOR) } : {}; })(),
     }));
   }
 
