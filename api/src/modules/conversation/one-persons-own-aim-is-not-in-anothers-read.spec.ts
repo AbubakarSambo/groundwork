@@ -50,6 +50,11 @@ describe('the aims a person\'s read is given', () => {
 
   it('the lead\'s read does not carry a person\'s share into the team\'s aims either', async () => {
     const text = await whatTheModelIsGivenFor('p-lucy', 'INITIATOR', 'Lucy');
-    expect(text).not.toContain('Mary is aiming');
+    const priorities = text.split("THE TEAM'S PRIORITIES:")[1]?.split('\n\n')[0] ?? '';
+    expect(priorities).toContain('The team is aiming to sell 120 units.');
+    expect(priorities).not.toContain('Mary is aiming');
+    /* Since 22 November the lead's read is also given every goal on record by id, with whose it is, so a goal she changes is named
+       (a-goal-changed-by-its-lead). The lead may see Mary's share; it is listed as Mary's, never as the team's. */
+    expect(text).toMatch(/THE GOALS ON RECORD[^\n]*\n(?:  \[[^\n]*\n)*  \[[^\]]*\] Mary is aiming to sell 35 units\./);
   });
 });

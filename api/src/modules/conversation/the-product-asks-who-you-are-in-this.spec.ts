@@ -36,7 +36,8 @@ describe('the product asks who you are in this', () => {
     const at = SERVICE.indexOf('const startsSomething = STARTING_SCENARIOS.has(');
     expect(SERVICE.slice(at, at + 120)).toContain('ground?.scenario');
     expect(SERVICE.slice(at, at + 120)).not.toContain('checkIn as any).ground');
-    expect(SERVICE).toContain('const firstSession = checkIn.sessionNumber === 1;');
+    /* Their own first session (22 November, 0987cfdf1), so somebody added while the team is on session 3 is still asked. */
+    expect(SERVICE).toContain('const firstSession = (await theirOwnSessionNumber(this.prisma, checkIn)) === 1;');
     expect(SERVICE).toMatch(/startsSomething && notTheLead && firstSession/);
   });
 

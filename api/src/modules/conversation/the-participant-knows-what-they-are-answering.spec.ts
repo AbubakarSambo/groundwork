@@ -35,7 +35,8 @@ describe('opening a check-in returns what it is about', () => {
     expect(shape).toMatch(/label: true/);
     /* Gained isADecisionAboutAPerson (decision 46, 29 September 2026) alongside the rest. */
     /* And who set each target and which way it goes (decision 69, 1 October 2026). */
-    expect(shape).toMatch(/objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true \}/);
+    /* And each goal's id (22 November, acba3e110), so a goal the lead changes is named by its id. */
+    expect(shape).toMatch(/objectives: \{ select: \{ id: true, name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true \}/);
   });
 
   it('BOTH return paths carry the brief, not just a first open', () => {

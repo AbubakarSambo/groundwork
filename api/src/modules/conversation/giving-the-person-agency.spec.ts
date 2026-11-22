@@ -150,7 +150,8 @@ function aWeek(o: { answer: string; turns: { role: string; content: string }[]; 
   const seed: Record<string, any> = {
     ground: { findUnique: jest.fn(async () => ground), findFirst: jest.fn(async () => ground) },
     platformSetting: { findUnique: jest.fn(async () => (o.switchOn === false ? { value: { on: false } } : { value: { on: true } })) },
-    checkIn: { findUnique: jest.fn(async () => checkIn), findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null), count: jest.fn(async () => 0), update: jest.fn(async () => ({})) },
+    /* Their own earlier sessions (theirOwnSessionNumber, 22 November): a person in session 2 has their session-1 row, as in the database. */
+    checkIn: { findUnique: jest.fn(async () => checkIn), findMany: jest.fn(async (a: any) => (a?.distinct?.includes?.('sessionNumber') && a?.where?.sessionNumber?.lt ? Array.from({ length: a.where.sessionNumber.lt - 1 }, (_, i) => ({ sessionNumber: i + 1 })) : [])), findFirst: jest.fn(async () => null), count: jest.fn(async () => 0), update: jest.fn(async () => ({})) },
     groundCommitment: {
       findMany: jest.fn(async () => []),
       create: jest.fn(async (a: any) => { if (o.failWrite) throw new Error('down'); created.push(a.data); return { id: 'c1', ...a.data }; }),
