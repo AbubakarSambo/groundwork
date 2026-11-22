@@ -62,9 +62,16 @@ describe('a sales organisation\'s goals ported from the prototype, as Mira reads
     const { container } = renderIt(true)
     await screen.findByText('Where each target stands', undefined, { timeout: 30000 })
     const text = container.textContent ?? ''
-    const order = ['Where each target stands', 'Every sale, and what shows it', 'The team today', 'By team', 'Who checked in', 'Blockers', 'What keeps coming up', 'Every session', 'Where this is heading', 'On course']
+    /* Changed 22 November 2026: the goals board is its own port (TheGoalsBoardAsPictured), every section of salesorg.txt in its order. */
+    const order = ['Where each target stands', 'Every sale, and what shows it', 'The team today', 'Reported vs criteria met', 'By team', 'Who checked in', 'Blockers',
+      'What keeps coming up', 'Each person’s own, the team’s once shared, and a weekly one', 'Your own report', 'Only you see it', 'This week', 'Patterns, once they’ve held for two weeks',
+      'Every session', 'Where this is heading', 'On course']
     for (let i = 1; i < order.length; i++) expect(at(text, order[i - 1]), `${order[i - 1]} before ${order[i]}`).toBeLessThan(at(text, order[i]))
     expect(text).toContain('No sales are on record yet.')
+    expect(text).toContain('Each person sees what’s about them, and can answer it in their own words.')
+    expect(container.querySelector('.gw-proto details.overtime summary')?.textContent).toContain('Over time')
+    /* Never the prototype's example numbers or people. */
+    expect(text).not.toMatch(/Kamau|Gikomba|KES 8 million|87 of the 100/)
     const team = [...container.querySelectorAll('.gw-proto .row > b')].map((x) => x.textContent)
     expect(team).not.toContain('One')
     expect(team).not.toContain('Another')

@@ -174,6 +174,7 @@ import { useTheDesignPass } from '@/lib/the-design-pass'
 import { TheSalesBoardAsPictured } from './prototype/TheSalesBoardAsPictured'
 import { TheNewHireBoardAsPictured } from './prototype/TheNewHireBoardAsPictured'
 import { TheNewProjectBoardAsPictured } from './prototype/TheNewProjectBoardAsPictured'
+import { TheGoalsBoardAsPictured } from './prototype/TheGoalsBoardAsPictured'
 import { KindOfWorkBanner, WorkRecordsSections, YourOwnRecordsSections, sectionHeading } from './WorkRecords'
 import {
   RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockersSection,
@@ -2792,9 +2793,28 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * is prototype/TheSalesBoardAsPictured.tsx, header and all, for whoever runs it. With the switch off, nothing here runs.
    */
   /* A new project, ported from the prototype's own markup (engineering-release-as-lead.html, "Get a new project off to a good start"), for whoever runs it. */
-  /* And a sales organisation's goals (sales-org-as-lead.html, "set goals"), drawn the same way with its words for sales and its "By team". */
-  const portedGoals = designPass && (b as any).kindOfWork === 'sales org' && b.scenario === 'OKR_ALIGNMENT'
-  if (designPass && (b.scenario === 'NEW_PROJECT' || portedGoals) && !groundId && !theWholeBoard && viewerRunsThisCheckIn && !isParticipantView) {
+  /* A sales organisation's goals, ported from the prototype's own markup (sales-org-as-lead.html, salesorg.txt), for whoever runs it. */
+  if (designPass && (b as any).kindOfWork === 'sales org' && b.scenario === 'OKR_ALIGNMENT' && !groundId && !theWholeBoard && viewerRunsThisCheckIn && !isParticipantView) {
+    return (
+      <Page>
+        <PartBoundary>
+          <TheGoalsBoardAsPictured
+            b={b}
+            ground={groundForSignals}
+            groundId={id!}
+            sessionRows={sessionRows as any[]}
+            tabs={headerTabs}
+            addSomething={!groundEnded ? <AddSomething groundId={id!} /> : null}
+            renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
+            showAsk={showAsk}
+            askWith={(q) => useAskStore.getState().showWith(q)}
+            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
+          />
+        </PartBoundary>
+      </Page>
+    )
+  }
+  if (designPass && b.scenario === 'NEW_PROJECT' && !groundId && !theWholeBoard && viewerRunsThisCheckIn && !isParticipantView) {
     return (
       <Page>
         <PartBoundary>
@@ -2809,7 +2829,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             showAsk={showAsk}
             askWith={(q) => useAskStore.getState().showWith(q)}
             onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
-            goals={portedGoals}
           />
         </PartBoundary>
       </Page>

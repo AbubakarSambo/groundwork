@@ -31,11 +31,6 @@ export interface TheNewProjectBoardAsPicturedProps {
   showAsk: () => void
   askWith: (q: string) => void
   onRecordTheDecision: () => void
-  /**
-   * The goals board (sales-org-as-lead.html, "set goals") is drawn the same way, with the prototype's words for a sale ("Every sale, and
-   * what shows it", "Deal", "Rep") and its "By team" part. Without this, the new project's words.
-   */
-  goals?: boolean
 }
 
 /** What shows a record, in the prototype's words ("The engineer’s word", "Proof shows it"). */
@@ -46,9 +41,9 @@ export function TheNewProjectBoardAsPictured(p: TheNewProjectBoardAsPicturedProp
   const today = isoDay(new Date())
   const records = ((b.workRecords ?? []) as Any[]).find((s) => s.state === 'filled' && (s.rows ?? []).length) ?? null
   const rows: Any[] = records?.rows ?? []
-  const many: string = p.goals ? 'sales' : records?.holds ?? 'tasks' /* the prototype's own word where the server names none */
-  const firstHeader = p.goals ? 'Deal' : capital(many.replace(/s$/, ''))
-  const ownerHeader = p.goals ? 'Rep' : 'Owner'
+  const many: string = records?.holds ?? 'tasks' /* the prototype's own word where the server names none */
+  const firstHeader = capital(many.replace(/s$/, ''))
+  const ownerHeader = 'Owner'
   const [openId, setOpenId] = useState<string | null>(null)
   const open = rows.find((r) => r.id === openId) ?? rows[0] ?? null
   const needs = useWhatNeedsYou({ b, groundId, deals: null, sessionRows: p.sessionRows })
@@ -160,12 +155,6 @@ export function TheNewProjectBoardAsPictured(p: TheNewProjectBoardAsPicturedProp
                   )
                 })}
               </div>
-            </section>
-          )}
-          {p.goals && (
-            <section className="sec">
-              <div className="sec-h"><h2 className="t-h2">By team</h2></div>
-              <div className="panel pad"><p className="t-small">Nothing on record says which team each person is in yet, so the work cannot be shown by team.</p></div>
             </section>
           )}
           {gridRows.length > 0 && (
