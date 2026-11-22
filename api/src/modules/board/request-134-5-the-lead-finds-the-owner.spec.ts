@@ -32,6 +32,16 @@ describe('request 134 (5): the lead is asked to find the owner', () => {
     expect(neema.ask).not.toMatch(/by name/);
   });
 
+  /* With the review's own rows, unchanged: Neema has not answered session 2, and her wait on the warehouse is still open, so her row still says it (22 November 2026). */
+  it.each([
+    ['Rukia, who runs it', RUKIA_RUNS_IT],
+    ['Grace, the admin who set it up', GRACE_SET_IT_UP],
+  ])('%s reads that Neema has not checked in yet, and still reads what she is waiting for', async (_who, reader) => {
+    const neema = rowOf(await boardAs(review5(), reader[0], reader[1]), 'p-neema');
+    expect(neema.says).toMatch(/^Neema Achieng has not checked in yet, and (?:has been|is) waiting .*Naivas Karen.*\.$/);
+    expect(neema.ask).toBe('Ask Neema Achieng to check in.');
+  });
+
   it.each([['Amani', AMANI], ['Baraka', BARAKA_M], ['Neema', NEEMA]])('%s, who checks in, is sent no rows about the team, so no ask either', async (_who, reader) => {
     const b = await boardAs(review5(), reader[0], reader[1]);
     expect(b.eachPerson ?? []).toEqual([]);
