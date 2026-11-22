@@ -6,7 +6,7 @@ import { SubjectsService } from '../subjects/subjects.service';
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
 import { theCheckInsThatFeedAPriority } from './what-a-check-in-feeds';
 import { refuseAnOutsider } from './company.service';
-import { thePeopleHere } from '../suites/the-people-and-their-lines';
+import { thePeopleHere, type APersonHere } from '../suites/the-people-and-their-lines';
 import { withTheirSignIns } from '../suites/a-roster-entry-and-its-sign-in';
 import { theirOwnRosterEntry } from '../ask/their-own-roster-entry';
 import {
@@ -208,7 +208,7 @@ export class TheGoalsOnTheDeskService {
   private async whoAGoalMayBeFor(organizationId: string): Promise<{ id: string; name: string }[]> {
     const directory = await this.theDirectory(organizationId);
     const inIt = new Set(directory.map((p) => p.userId).filter(Boolean));
-    const here = (await thePeopleHere(this.prisma, organizationId).catch(() => [])).filter((p) => !inIt.has(p.userId));
+    const here = (await thePeopleHere(this.prisma, organizationId).catch(() => [] as APersonHere[])).filter((p) => !inIt.has(p.userId));
     return [...directory.map(({ id, name }) => ({ id, name })), ...here.map((p) => ({ id: `${A_MEMBER}${p.userId}`, name: p.name }))]
       .filter((p) => p.name)
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -229,7 +229,7 @@ export class TheGoalsOnTheDeskService {
     if (!ownerId) return null;
     if (ownerId.startsWith(A_MEMBER)) {
       const userId = ownerId.slice(A_MEMBER.length);
-      const isHere = (await thePeopleHere(this.prisma, reader.organizationId).catch(() => [])).some((p) => p.userId === userId);
+      const isHere = (await thePeopleHere(this.prisma, reader.organizationId).catch(() => [] as APersonHere[])).some((p) => p.userId === userId);
       const entry = isHere ? await theirEntry(userId) : null;
       if (!entry) throw new BadRequestException(NOT_SOMEBODY_HERE);
       return entry;

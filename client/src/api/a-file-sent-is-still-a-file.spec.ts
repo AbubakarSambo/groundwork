@@ -13,7 +13,7 @@ async function whatIsSent(data: unknown): Promise<{ body: unknown; contentType: 
   await apiClient.post('/person-details/u-amani/cv', data, {
     adapter: async (config) => { seen = config; return { data: {}, status: 200, statusText: 'OK', headers: {}, config } },
   })
-  return { body: seen!.data, contentType: seen!.headers.getContentType() as string | undefined }
+  return { body: seen!.data, contentType: String(seen!.headers.getContentType() ?? '') || undefined }
 }
 
 describe('what the client sends', () => {
