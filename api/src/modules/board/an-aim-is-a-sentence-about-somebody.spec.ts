@@ -200,3 +200,19 @@ describe('a thing to do is what it counts, whatever the doing word', () => {
     expect(aThingToDoIsWhatItCounts('Bring in 5 new clients')).toBe('5 new clients');
   });
 });
+
+/* FINAL TEST, 22 NOVEMBER 2026: "The team is aiming for 4 each agent activates 4 points a week." A sentence that says its own number is
+   the sentence, whatever its verb, for every reader. */
+describe('a sentence that says its own number is kept, whatever its verb', () => {
+  const said = (name: string, target: number, holder: string | null = null) => anAimAsASentence(name, { speaker: 'Pat Lead', holder, target });
+  it('keeps a full sentence with a verb in no list', () => {
+    expect(said('Each agent activates 4 points a week.', 4)).toBe('Each agent activates 4 points a week.');
+    expect(said('Each of the four regions lands 50 new accounts.', 50)).toBe('Each of the four regions lands 50 new accounts.');
+    expect(said('The teams hit a total revenue target of 12 million for the quarter.', 12_000_000)).toBe('The teams hit a total revenue target of 12 million for the quarter.');
+  });
+  it('still gives a name that only says what is counted its holder and its number', () => {
+    expect(said('Spending on field visits.', 180_000)).toBe('The team is aiming for 180,000 spending on field visits.');
+    expect(said('10,000 units', 10_000)).toBe('The team is aiming for 10,000 units.');
+    expect(said('Activate 4 points a week', 4, 'Brian Otieno')).toBe('Brian Otieno is aiming for 4 points a week.');
+  });
+});

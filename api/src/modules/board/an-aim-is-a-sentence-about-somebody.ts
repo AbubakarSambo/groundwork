@@ -1,3 +1,4 @@
+import { numbersIn } from './what-the-record-says-a-number-is';
 /**
  * AN AIM IS A SENTENCE ABOUT SOMEBODY, BY NAME (review of 1 October 2026).
  *
@@ -355,6 +356,17 @@ export function aThingToDoIsWhatItCounts(t: string): string {
   return t.slice(m[0].length);
 }
 
+/*
+ * A SENTENCE THAT SAYS ITS OWN NUMBER IS ALREADY ONE (final test, 22 November 2026). "Each agent activates 4 points a week." has its
+ * number said by somebody doing something, so it is the sentence, whatever its verb. Read as only naming what is counted, because
+ * "activates" is in no list, it became "The team is aiming for 4 each agent activates 4 points a week.". A name that starts with words,
+ * ends as a sentence and holds its own number, at any scale ("12 million" for 12,000,000), is kept as it is. A name that starts with
+ * its number ("10,000 units") or has no full stop ("KES 600,000 in sales") still only names what is counted.
+ */
+function saysItsOwnNumber(t: string, target: number | null): boolean {
+  return typeof target === 'number' && /^\p{Lu}/u.test(t) && /[.!?]$/.test(t) && numbersIn(t).has(target);
+}
+
 export function anAimAsASentence(name: string, who: WhoAnAimIsAbout): string {
   let t = aThingToDoIsWhatItCounts(theNumbersPeopleCanRead((name ?? '').trim()));
   if (!t) return t;
@@ -367,7 +379,7 @@ export function anAimAsASentence(name: string, who: WhoAnAimIsAbout): string {
     const said = `${aim}${inTheirWords(whoSaidIt, theirs)}`;
     return said.charAt(0).toUpperCase() + said.slice(1);
   }
-  if (onlySaysWhatIsCounted(t)) {
+  if (onlySaysWhatIsCounted(t) && !saysItsOwnNumber(t, who.target)) {
     const holder = who.holder ?? 'the team';
     /* "Aisha’s sales" held by Aisha is "sales": the holder is already said. A first word is made lower
        case only where it is an ordinary word ("Sales", "Contracts"), not part of a name ("Equity Bank"). */

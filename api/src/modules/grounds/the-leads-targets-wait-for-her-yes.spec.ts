@@ -63,8 +63,10 @@ describe('Grace\'s targets, read from her check-in', () => {
     ]);
     expect(held[0].fromThePlan).toBe('The team is aiming to sell 120 water dispensers by 30 October.');
     expect(held[1].fromThePlan).toBe('Kevin, Mercy and Joseph each sell 40.');
-    expect(held[0].says).toBe('The team’s target is 120 water dispensers sold by 30 October.');
-    expect(held[1].says).toBe('Kevin sells 40 water dispensers by 30 October. The number is 40.');
+    /* Changed 22 November: the card reads each target the way the board does (one sentence-maker, anAimAsASentence), so "The team’s
+       target is" is now "The team is aiming for", and a sentence that already says its number is not followed by "The number is 40.". */
+    expect(held[0].says).toBe('The team is aiming for 120 water dispensers sold by 30 October.');
+    expect(held[1].says).toBe('Kevin sells 40 water dispensers by 30 October.');
   });
   it('and the same targets said again are not held twice', async () => {
     const { svc, held } = theWriter(true);
@@ -114,8 +116,8 @@ describe('the card, as Grace reads it and answers it', () => {
     const stored = row();
     const { svc } = thePlans(stored);
     const got = await svc.edit('g1', 'u-grace', 'h1', { fields: { what: 'water dispensers sold by 30 October', number: 45 } as any });
-    expect(got.says).toBe('Kevin Omondi’s target is 45 water dispensers sold by 30 October.');
-    expect(stored.fromThePlan).toBe('Kevin Omondi’s target is 45 water dispensers sold by 30 October.');
+    expect(got.says).toBe('Kevin Omondi is aiming for 45 water dispensers sold by 30 October.');
+    expect(stored.fromThePlan).toBe('Kevin Omondi is aiming for 45 water dispensers sold by 30 October.');
   });
   it('her yes puts the target on record, as the board writes one', async () => {
     const { svc, made } = thePlans(row());
@@ -129,12 +131,32 @@ describe('the words underneath', () => {
     expect(theWordsItCameFrom({ name: 'New leads this week', target: 30, ownerParticipantId: null, personName: null }, ['We open 30 new leads every week. Each rep sells 40.'])).toBe('We open 30 new leads every week.');
     expect(theWordsItCameFrom({ name: 'New leads this week', target: 30, ownerParticipantId: null, personName: null }, ['Each rep sells 40.'])).toBeNull();
   });
-  it('a target already said as a sentence keeps the sentence, and says its number', () => {
+  /* Changed 22 November: the sentence already says its number, so it is not said again after it (one sentence-maker for card and board). */
+  it('a target already said as a sentence keeps the sentence', () => {
     expect(theTargetAsALine({ name: 'The team is aiming for each rep to open 10 new leads each week', target: 10, ownerParticipantId: null, personName: null }))
-      .toBe('The team is aiming for each rep to open 10 new leads each week. The number is 10.');
+      .toBe('The team is aiming for each rep to open 10 new leads each week.');
   });
   it('a target said as a thing to do reads as what it counts, its number said once (Drop Access re-read, 22 November)', () => {
-    expect(theTargetAsALine({ name: 'Sell 8 freezers per week', target: 8, ownerParticipantId: 'p-brian', personName: 'Brian Otieno' })).toBe('Brian Otieno’s target is 8 freezers per week.');
-    expect(theTargetAsALine({ name: 'Activate 4 Drop Access points per week', target: 4, ownerParticipantId: 'p-brian', personName: 'Brian Otieno' })).toBe('Brian Otieno’s target is 4 Drop Access points per week.');
+    expect(theTargetAsALine({ name: 'Sell 8 freezers per week', target: 8, ownerParticipantId: 'p-brian', personName: 'Brian Otieno' })).toBe('Brian Otieno is aiming for 8 freezers per week.');
+    expect(theTargetAsALine({ name: 'Activate 4 Drop Access points per week', target: 4, ownerParticipantId: 'p-brian', personName: 'Brian Otieno' })).toBe('Brian Otieno is aiming for 4 Drop Access points per week.');
+  });
+});
+
+/* FINAL TEST, 22 NOVEMBER 2026: the card read "The team’s target is 12,000,000 the teams hit a total revenue target of 12 million for the quarter.". */
+describe('the card reads a target as one plain sentence, whatever shape its name has', () => {
+  const card = (name: string, target: number | null, personName: string | null = null) => theTargetAsALine({ name, target, ownerParticipantId: personName ? 'p' : null, personName });
+  it('a full sentence that says its number, at any scale, is kept as it is', () => {
+    expect(card('The teams hit a total revenue target of 12 million for the quarter.', 12_000_000)).toBe('The teams hit a total revenue target of 12 million for the quarter.');
+    expect(card('Each agent activates 4 points a week.', 4)).toBe('Each agent activates 4 points a week.');
+    expect(card('The team is aiming for 50 new accounts per region in Q1.', 50)).toBe('The team is aiming for 50 new accounts per region in Q1.');
+  });
+  it('a thing to do is what it counts, said once', () => {
+    expect(card('Activate 4 points a week', 4)).toBe('The team is aiming for 4 points a week.');
+    expect(card('Sell 8 freezers a week', 8, 'Amani Wekesa')).toBe('Amani Wekesa is aiming for 8 freezers a week.');
+  });
+  it('only what is counted gets its holder and its number', () => {
+    expect(card('new accounts per region', 50)).toBe('The team is aiming for 50 new accounts per region.');
+    expect(card('Revenue this quarter', 12_000_000)).toBe('The team is aiming for 12 million revenue this quarter.');
+    expect(card('10,000 units', 10_000)).toBe('The team is aiming for 10,000 units.');
   });
 });
