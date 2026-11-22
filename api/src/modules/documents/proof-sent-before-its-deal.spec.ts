@@ -20,12 +20,15 @@ describe('proof sent before its deal was on record is filed on it once it is', (
       { id: 'w-kilele', kind: 'deal', name: 'Kilele Hotel', ownerParticipantId: 'p-kevin', fields: { Units: '40' } },
       { id: 'w-green', kind: 'deal', name: 'Greenfield Supermarket', ownerParticipantId: 'p-mercy', fields: {} },
     ]);
-    expect(await fileProofThatWasFiledOnNothing(prisma, 'g')).toBe(1);
+    expect(await fileProofThatWasFiledOnNothing(prisma, { extract: async () => ({ itemId: 'w-kilele' }) }, 'g')).toBe(1);
     expect(evidence[0]).toMatchObject({ workItemId: 'w-kilele', itemName: 'Kilele Hotel' });
   });
   it('with no deal its words name, it stays on nothing', async () => {
     const { prisma, evidence } = setup([{ id: 'w-green', kind: 'deal', name: 'Greenfield Supermarket', ownerParticipantId: 'p-mercy', fields: {} }]);
-    expect(await fileProofThatWasFiledOnNothing(prisma, 'g')).toBe(0);
+    /* Greenfield is Mercy's, not Kevin's: his slip is never filed on it, and the model is not even asked (bug 16, 22 November 2026). */
+    const model = { extract: jest.fn(async () => ({ itemId: 'w-green' })) };
+    expect(await fileProofThatWasFiledOnNothing(prisma, model, 'g')).toBe(0);
+    expect(model.extract).not.toHaveBeenCalled();
     expect(evidence[0].workItemId).toBeNull();
   });
 });

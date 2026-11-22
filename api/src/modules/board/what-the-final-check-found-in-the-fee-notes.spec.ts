@@ -21,7 +21,7 @@ async function theFeeNotesWithTheSlipFiled() {
   };
   const doc = FC.fees.documents[0];
   /* As the check-in that acknowledged it now files it (documentReceived), or a web upload from the check-in does. */
-  const filed = await fileTheProofOnItsItem(db, { id: doc.id, groundId: doc.groundId, participantId: doc.participantId, fileName: doc.fileName, mimeType: doc.mimeType, uploaderNote: doc.uploaderNote, content: doc.content }, new Date(doc.createdAt));
+  const filed = await fileTheProofOnItsItem(db, null, { id: doc.id, groundId: doc.groundId, participantId: doc.participantId, fileName: doc.fileName, mimeType: doc.mimeType, uploaderNote: doc.uploaderNote, content: doc.content }, new Date(doc.createdAt));
   return { db, filed };
 }
 

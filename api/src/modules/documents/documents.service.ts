@@ -95,11 +95,19 @@ function isPlainTextMime(mime: string): boolean {
   return TEXT_EXTRACTABLE.includes(mime) || mime.startsWith('text/');
 }
 
-const ASSESSMENT_PROMPT = `You are Groundwork, reviewing a document a party just uploaded to add context to their record.
+/*
+ * WHAT A DOCUMENT IS, NEVER WHO ADDED IT (release test, 22 November 2026, evening, bug 16). Amani, a sales rep, added Mama Njeri Duka's
+ * signed order form in her check-in, and the card read "It looks like you run a shop called Mama Njeri Duka in Kilimani" and "We will use
+ * this to verify your trading address". The model was told only that "a party" uploaded it "to their record", so it read the person who
+ * added it as the business on it, and it was asked what Groundwork will do without being told what Groundwork does, so it made that up.
+ */
+const ASSESSMENT_PROMPT = `You are Groundwork. A person on a team just added this document, often in their check-in, as context or as proof for their work. You speak to that person as "you".
+
+A document is often about somebody else: a customer, a client, a supplier or another business. Never take the person who added it to be the business, shop or person the document names, and never say "you run" or "your business" about what it names.
 
 Read the document content below and produce a short assessment in two parts:
-1. "suggests": 2-4 bullet points on what this document suggests or reveals - concrete things it tells us, not a summary of its contents. Each bullet is one plain sentence.
-2. "willDo": 1-3 bullet points on what Groundwork will do with this document - e.g. "hold this as evidence for the standards you described", "use this to check what the guide actually says", "keep this on record as the source for X". Be concrete and specific to this document, not generic.
+1. "suggests": 2-4 points. The first says what the document is and who it is from or about, for example "This is a signed order from Juja Hardware for 30 water dispensers.". The rest say the concrete things it shows, not a summary of its contents. Each point is one plain sentence.
+2. "willDo": 1-3 points on what Groundwork will do with it, only from what Groundwork does with a document: keep it on record beside what you said, check what you said against it, and, where it is an order, a payment or a quote, keep it as proof for the sale or the work it is about. Never say it will do anything else, such as verify an address or a relationship.
 
 Rules: no verdicts on the document's quality. No dashes of any kind. Straight quotes only. If the document is empty, unreadable, or irrelevant, say so plainly in "suggests" and leave "willDo" as a single item explaining nothing further will be done with it.`;
 
@@ -554,11 +562,11 @@ export class DocumentsService {
     /*
      * PROOF ADDED IN A CHECK-IN, FILED ON ITS ITEM (Release 1B, pull request 2 of 3). Only a file added in a check-in (the web
      * check-in says so; a file sent on WhatsApp during one is), only while the organisation's Release 1B switch is on, and from
-     * the words just taken out of it, with no model call. Awaited, so the check-in's next turn can say where it was filed; a
+     * the words just taken out of it: on one of her own items, which the model reads from them. Awaited, so the check-in's next turn can say where it was filed; a
      * failure here is never why somebody could not attach a file. See proof-filed-on-its-item.ts.
      */
     const filed = (opts.fromTheCheckIn || opts.sharedWithTheCheckIn)
-      ? await fileTheProofOnItsItem(this.prisma as any, { id: doc.id, groundId, participantId: participant.id, fileName: doc.fileName, mimeType: doc.mimeType, uploaderNote: (doc as any).uploaderNote ?? null, content })
+      ? await fileTheProofOnItsItem(this.prisma as any, this.anthropic, { id: doc.id, groundId, participantId: participant.id, fileName: doc.fileName, mimeType: doc.mimeType, uploaderNote: (doc as any).uploaderNote ?? null, content })
         .catch((err: any) => { this.logger?.warn?.(`Could not file ${doc.fileName} as evidence: ${err?.message}`); return null; })
       : null;
 

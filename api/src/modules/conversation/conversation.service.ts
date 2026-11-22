@@ -11874,7 +11874,7 @@ ${told}` : '';
      * once, by the same rule as an upload from the check-in (proof-filed-on-its-item.ts).
      */
     if (doc && !(await this.prisma.itemEvidence?.findFirst?.({ where: { documentId: doc.id }, select: { id: true } }).catch(() => null))) {
-      await fileTheProofOnItsItem(this.prisma as any, { id: doc.id, groundId: checkIn.groundId, participantId: checkIn.participantId, fileName: doc.fileName, mimeType: doc.mimeType, uploaderNote: (doc as any).uploaderNote ?? null, content: doc.content })
+      await fileTheProofOnItsItem(this.prisma as any, this.anthropic, { id: doc.id, groundId: checkIn.groundId, participantId: checkIn.participantId, fileName: doc.fileName, mimeType: doc.mimeType, uploaderNote: (doc as any).uploaderNote ?? null, content: doc.content })
         .catch((err: any) => this.logger.warn(`Could not file ${doc.fileName} as evidence from check-in ${checkIn.id}: ${err?.message ?? err}`));
     }
 

@@ -307,7 +307,7 @@ export class BoardListener {
       }
       this.logger.log(`Kept ${kept.length} record(s) of ${kind} from check-in ${e.checkInId}.`);
       /* Proof sent before its deal was on record is filed on it now (proof-filed-on-its-item.ts, polish round 1). */
-      await fileProofThatWasFiledOnNothing(this.prisma, e.groundId).catch(() => 0);
+      await fileProofThatWasFiledOnNothing(this.prisma, this.anthropic, e.groundId).catch(() => 0);
       if (isASalesKind(kind)) await this.fileTheBuyingDatesSaid(e.groundId, lines, saidIn);
     } catch (err: any) {
       this.logger.warn(`Reading the records for check-in ${e.checkInId} failed: ${err?.message}`);
