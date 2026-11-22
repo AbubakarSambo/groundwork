@@ -7,7 +7,10 @@ import { join } from 'path';
  *   1. a model is reached in one file, and only reads: it is never handed a way to send, write or approve;
  *   2. everything goes out through the one mail door and the one WhatsApp gate;
  *   3. the private help is only ever WRITTEN to the person's own history here, and read by nothing in this folder;
- *   4. what is read of what was sent is read for one person's batch or one person's messages, never her own material.
+ *   4. what is read of what was sent is read for one person's batch or one person's messages, never her own material,
+ *      except one named allowance (Hafsah, 21 November 2026: "Yes, allow it"): the files other team members sent are read
+ *      in what-their-reply-says.ts, only to check whether one of them shows a result a person claims. Only the files
+ *      team members sent, never what she forwarded herself, and the person is never told about them.
  */
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const here = __dirname;
@@ -46,5 +49,14 @@ describe('the team loop', () => {
     expect(mind).toMatch(/isTheirOwnWords\(c\.text, text\)/);
     expect(mind).toMatch(/isTheirOwnWords\(o\.text, text\)/);
     expect(mind).toMatch(/isTheirOwnWords\(b\.text, text\)/);
+  });
+
+  it('reads other team members\' files in one place only, to check a claimed result, and only files team members sent (Hafsah, 21 November 2026)', () => {
+    /* Every read of principal material that is not tied to one contact or one batch is the one named allowance. */
+    const crossReads = own.filter((f) => /principalMaterial[\s\S]{0,80}findMany[\s\S]{0,200}startsWith:\s*'contact:'/.test(read(f)));
+    expect(crossReads).toEqual(['what-their-reply-says.ts']);
+    const reply = read('what-their-reply-says.ts');
+    /* Only kept files that team members sent: never what she forwarded, never messages. */
+    expect(reply).toMatch(/principalMaterial[\s\S]{0,80}findMany\?\.\(\{ where: \{ principalUserId: contact\.principalUserId, state: 'kept', kind: 'file', fromUserId: \{ startsWith: 'contact:' \} \}/);
   });
 });

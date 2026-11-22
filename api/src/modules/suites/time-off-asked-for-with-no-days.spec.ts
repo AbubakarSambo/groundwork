@@ -15,7 +15,7 @@ describe('time off asked for with no days', () => {
   /* Changed with Batch S (20 November 2026): Ask's model-led reading replaced the time_off kind. "I want to apply for leave" is now read as wants, with the guide's key for asking for leave, and Ask asks for the days the same way. */
   it('the model can say so, and nothing else it says is read', () => {
     expect(UNDERSTAND_SCHEMA.input_schema.properties.kind.enum).toContain('wants');
-    expect(UNDERSTAND_PROMPT).toMatch(/- wants: they want one of the things in the list below done for them now, in any words \("I want to apply for leave", "can I get 3 days off\?"/);
+    expect(UNDERSTAND_PROMPT).toMatch(/- wants: they want one of the things in the list below done for them now, in any words, however short \("I want to apply for leave", "can I get 3 days off\?"/);
     expect(whatTheModelSaid({ kind: 'send_the_leave' })?.kind).toBe('other');
   });
 

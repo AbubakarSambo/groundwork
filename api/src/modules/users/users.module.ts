@@ -9,6 +9,8 @@ import { WhoIsWaitingAtTheDoorService } from '../participants/who-is-waiting-at-
 import { EmailModule } from '../email/email.module';
 import { TheOrganisationInviteLinkService } from './the-organisation-invite-link.service';
 import { TheOrganisationInviteLinkController } from './the-organisation-invite-link.controller';
+import { PersonDetailsController } from './person-details.controller';
+import { PersonDetailsService } from './person-details.service';
 
 @Module({
   /*
@@ -19,10 +21,10 @@ import { TheOrganisationInviteLinkController } from './the-organisation-invite-l
   /* GroundsModule for releasing a held invitation - it owns the participant row and the invite.
      Circular by nature (grounds reads users), so both ends use forwardRef. */
   imports: [BillingModule, forwardRef(() => AuthModule), EmailModule, forwardRef(() => GroundsModule)],
-  controllers: [UsersController, TheOrganisationInviteLinkController],
+  controllers: [UsersController, TheOrganisationInviteLinkController, PersonDetailsController],
   /* The door service is registered here rather than exported from a participants module: it is
      used by this controller only, and the accept path writes the queue itself. */
-  providers: [UsersService, MyOwnRecordService, WhoIsWaitingAtTheDoorService, TheOrganisationInviteLinkService],
+  providers: [UsersService, MyOwnRecordService, WhoIsWaitingAtTheDoorService, TheOrganisationInviteLinkService, PersonDetailsService],
   exports: [UsersService],
 })
 export class UsersModule {}

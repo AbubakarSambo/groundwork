@@ -47,11 +47,12 @@ function getAs(userId: string, role: string, over: any = {}) {
     .get('g-1', 'org-1', userId) as Promise<any>;
 }
 
+/* Changed 22 November 2026 (Hafsah, "Yes, move it on"): session 2 has begun, so it is the team's session, and Zawadi's unanswered
+   session 1 no longer holds it at 1. Before: "Check-in 1 of 12." with "Check-in 2 has started for some people, while check-in 1 is still open." */
 const THE_CLOCK = {
-  currentSession: 1,
+  currentSession: 2,
   plannedSessions: 12,
-  says: 'Check-in 1 of 12.',
-  whileOpen: 'Check-in 2 has started for some people, while check-in 1 is still open.',
+  says: 'Check-in 2 of 12.',
 };
 
 describe('request 101 (f): the check-in\'s header counts with the board\'s clock', () => {
@@ -76,12 +77,12 @@ describe('request 101 (f): the check-in\'s header counts with the board\'s clock
     const board = await boardAs({ people: [...PEOPLE, ZAWADI], checkIns: CHECK_INS, clock: { timelineDays: 84, cadence: 'WEEKLY' } } as any, ...AMINA);
     expect(board.phaseSpine.currentSession).toBe(THE_CLOCK.currentSession);
     expect(board.phaseSpine.plannedSessions).toBe(THE_CLOCK.plannedSessions);
-    expect(board.phaseSpine.sessions.find((s: any) => s.n === 2).says).toBe(THE_CLOCK.whileOpen);
+    expect(board.phaseSpine.sessions.find((s: any) => s.n === 2).says).toMatch(/^Check-in 2 (opened on .*, and it is still open|is open now)\.$/);
   });
 
-  it('once Zawadi has done session 1, the header moves on and the second line goes', async () => {
+  it('once Zawadi has done session 1, the header reads the same', async () => {
     const caughtUp = CHECK_INS.map((c) => (c.participantId === 'p-zawadi' ? row('p-zawadi', 1, 'COMPLETED', '30') : c));
     const got = await getAs(LEAD, 'MEMBER', { checkIns: caughtUp });
-    expect(got.sessionClock).toEqual({ currentSession: 2, plannedSessions: 12, says: 'Check-in 2 of 12.', whileOpen: null });
+    expect(got.sessionClock).toEqual(THE_CLOCK);
   });
 });

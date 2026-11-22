@@ -98,12 +98,18 @@ export function anchorDaySentence(cadence: GroundCadence, anchorDay: number | nu
   return ''
 }
 
+/*
+ * THE READER'S OWN SESSIONS, SAID AS THEIRS (release test, 21 November 2026). "2 of 12 check-ins are done" sat on the same page as the
+ * check-in's "1 of 12 sessions done", and read as a second count of the same thing. It is how many the reader checked in for, so it says so.
+ */
 export function yourSessionsSentence(done: number, planned: number | null): string {
-  if (planned == null) return `${done} check-in${done === 1 ? '' : 's'} done so far.`
+  if (planned == null) return done === 0 ? 'You have not checked in yet.' : `You have checked in ${done === 1 ? 'once' : `${done} times`} so far.`
   /* B-012: "9 of 6 sessions are done" is not a possible count. However it is counted, how many are
      done can never be more than how many are planned. */
   const clamped = Math.min(done, planned)
-  return `${clamped} of ${planned} check-in${planned === 1 ? ' is' : 's are'} done.`
+  if (clamped === 0) return planned === 1 ? 'You have not checked in for it yet.' : `You have not checked in for any of the ${planned} sessions yet.`
+  if (planned === 1) return 'You have checked in for it.'
+  return `You have checked in for ${clamped} of the ${planned} sessions.`
 }
 
 export function settingsChangeSentence(c: { changedAt: string; by: 'you' | 'lead' | 'admin'; weeks: { from: number | null; to: number } | null; cadence: { from: GroundCadence | null; to: GroundCadence } | null }): string {

@@ -15,7 +15,7 @@ import { sayMoney, sayTotals, totalsByCurrency, toDecimalText, fromDecimal } fro
 import { lineKeyOf, payeeKey, readTheTrackerReadingItsHeadings, referenceKey, type AHeadingReader, type ATrackerLine } from './the-payments-tracker';
 import { hasProof, isPaidWithProof, SOUNDS_LIKE_AN_APPROVAL, SOUNDS_LIKE_PROOF, theDiscrepancies, type ADiscrepancy, type ALineOnRecord, type ALinks, type ARef } from './the-payments-reconcile';
 import { anAskKey, giveTheAskBack, queueTheAsk, theAskWent, theQuestionsOnRecordFor } from '../executive-onboarding/information-gaps';
-import { materialThatMentions, theTeamSheNamed, type ABatchForWork, type AMaterialItem } from '../executive-onboarding/the-material-for-work';
+import { herMaterialToSearch, theTeamSheNamed, type ABatchForWork, type AMaterialItem } from '../executive-onboarding/the-material-for-work';
 import { dayWords } from '../year-end/the-year-end-content';
 
 /* ------------------------------------------------------------------ what a person reads */
@@ -120,7 +120,7 @@ export async function keepTheLines(prisma: any, a: { organizationId: string; pri
 }
 
 /** What the record holds against one payment: the spend request, the approval and proof she was sent, and the obligation on her check-ins. */
-async function theLinksOf(prisma: any, a: { organizationId: string; principalUserId: string; line: ALineOnRecord; trackerFiles: string[]; spends: any[]; obligations: any[] }): Promise<ALinks> {
+function theLinksOf(a: { line: ALineOnRecord; mentioning: (terms: string[]) => AMaterialItem[]; spends: any[]; obligations: any[] }): ALinks {
   const { line } = a;
   const names = [payeeKey(line.payee), referenceKey(line.reference)].filter((x) => x.length >= 3);
   const squash = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -129,7 +129,7 @@ async function theLinksOf(prisma: any, a: { organizationId: string; principalUse
   const spend = about.find((s) => { const m = fromDecimal(s.amount, line.amount?.currency ?? null); return !!m && !!line.amount && m.minor === line.amount.minor; }) ?? about[0];
   const spendOnRecord = spend ? { id: spend.id, amount: fromDecimal(spend.amount, line.amount?.currency ?? null) ?? { minor: 0, currency: null }, status: String(spend.status), paidOn: spend.paidOn ? new Date(spend.paidOn) : null, evidenceGiven: Array.isArray(spend.evidenceGiven) ? spend.evidenceGiven : [] } : null;
   const terms = [payeeKey(line.payee), line.reference ?? '', line.evidence ?? ''].filter((x) => x.length >= 3);
-  const mentions = await materialThatMentions(prisma, { principalUserId: a.principalUserId, terms, exceptFiles: a.trackerFiles });
+  const mentions = a.mentioning(terms);
   const refs = (xs: AMaterialItem[]): ARef[] => xs.map((m) => ({ id: m.id, fileName: m.fileName }));
   const approvalMail = refs(mentions.filter((m) => SOUNDS_LIKE_AN_APPROVAL.test(`${m.fileName}\n${m.text ?? ''}`)));
   const proofDocs = refs(mentions.filter((m) => SOUNDS_LIKE_PROOF.test(`${m.fileName}\n${m.text ?? ''}`) && m.kind !== 'message'));
@@ -145,10 +145,11 @@ export async function thePaymentsNow(prisma: any, a: { organizationId: string; p
   const obligations: any[] = grounds.length ? (await prisma.obligation?.findMany?.({ where: { groundId: { in: grounds.map((g) => g.id) } } }).catch(() => [])) ?? [] : [];
   const spends: any[] = lines.length ? (await prisma.spendRequest?.findMany?.({ where: { organizationId: a.organizationId } }).catch(() => [])) ?? [] : [];
   const trackerFiles = [...new Set(lines.map((l) => l.fileName))];
+  const mentioning = lines.length ? await herMaterialToSearch(prisma, { principalUserId: a.principalUserId, exceptFiles: trackerFiles }) : () => [];
   const linkMap = new Map<string, ALinks>();
   for (const l of lines) if (!linkMap.has(l.paymentKey)) {
     const latest = [...lines].filter((x) => x.paymentKey === l.paymentKey).sort((x, y) => x.receivedAt.getTime() - y.receivedAt.getTime() || x.rowNumber - y.rowNumber).pop()!;
-    linkMap.set(l.paymentKey, await theLinksOf(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, line: latest, trackerFiles, spends, obligations }));
+    linkMap.set(l.paymentKey, theLinksOf({ line: latest, mentioning, spends, obligations }));
   }
   const linksOf = (k: string) => linkMap.get(k) ?? { spend: null, approvalMail: [], proofDocs: [], obligation: null, confirmation: null };
   return { lines, linksOf, discrepancies: theDiscrepancies(lines, linksOf) };

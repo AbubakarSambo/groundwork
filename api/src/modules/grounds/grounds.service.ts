@@ -1,3 +1,5 @@
+import { yourTurnIn } from './what-needs-you';
+import { theQuietHoursNow } from '../../common/the-clock';
 import { whoARoundWaitsFor } from './who-a-round-waits-for';
 import { thePlannedSessionsOf } from './this-sessions-count';
 import { thePromisesOf, thePromisesCounted, whatHappenedToThePromises } from './the-promises-counted-once';
@@ -1578,6 +1580,8 @@ export class GroundsService {
        You leaves them out (isNotLetInYet), and named apart from "N of M" for whoever runs it. Never missed. */
     const notJoinedOnTheList = new Map<string, Set<string>>();
     for (const g of [...orgGrounds, ...participantGrounds] as any[]) {
+      /* Named as the board and the check-in's page name them, so the list's count says who, never "one person" (release test, 21 November 2026). */
+      await withTheirNamesFromTheOrganisation(this.prisma as any, g.organizationId, (g.participants ?? []) as any);
       const notJoined = await whoHasNotJoinedYet(this.prisma, g.participants ?? []).catch(() => new Set<string>());
       if (!notJoined.size) continue;
       notJoinedOnTheList.set(g.id, notJoined);
@@ -1598,13 +1602,8 @@ export class GroundsService {
       const found = await Promise.resolve((this.prisma as any).user?.findMany?.({ where: { id: { in: [...adminLeadIds] } }, select: { id: true, isActive: true, firstName: true, lastName: true } })).catch(() => []);
       for (const l of found ?? []) leadAccounts.set(l.id, l);
     }
-    /* Whether each organisation reads Release 1's clock (a finished round hands the count on), as the board and the page read it. One read per organisation. */
-    const handsOnIn = new Map<string, boolean>();
-    for (const orgId of new Set([...orgGrounds, ...participantGrounds].map((g: any) => g.organizationId).filter(Boolean))) {
-      handsOnIn.set(orgId as string, await theReleaseOneSalesBoardIsOn(this.prisma, orgId as string));
-    }
     /* When each organisation paused, if it is paused now: the one owner of when a round could be answered reads it (a-round-that-could-be-answered.ts). */
-    const pausedOn = await whenTheseOrganisationsPaused(this.prisma, [...handsOnIn.keys()], new Date()).catch(() => new Map<string, Date>());
+    const pausedOn = await whenTheseOrganisationsPaused(this.prisma, [...new Set([...orgGrounds, ...participantGrounds].map((g: any) => g.organizationId as string).filter(Boolean))], new Date()).catch(() => new Map<string, Date>());
     const setupFor = (g: any) => {
       if (userId && g.initiatorId === userId) return { leadHasLeft: false, mayChangeSetup: true };
       const lead = g.initiatorId && g.organizationId === organizationId && mayAdminHere(g) ? leadAccounts.get(g.initiatorId) : null;
@@ -1683,7 +1682,7 @@ export class GroundsService {
           participants: listedPeople, checkIns: checkIns as any, scenario: (rest as any).scenario ?? null,
           timelineDays: (rest as any).timelineDays ?? null, cadence: (rest as any).cadence ?? null, cadenceDays: (rest as any).cadenceDays ?? null, runsUntilEnded: !!(rest as any).runsUntilEnded,
         /* By name, as the check-in's page asks it: the sentence is served only to a reader shown the others (theCountAsServed). */
-        }, { handOn: handsOnIn.get((rest as any).organizationId) === true, leave: leaveOnTheList, names: { readerUserId: userId ?? null }, pausedFrom: pausedOn.get((rest as any).organizationId) ?? null });
+        }, { leave: leaveOnTheList, names: { readerUserId: userId ?? null }, pausedFrom: pausedOn.get((rest as any).organizationId) ?? null });
         const going = howACheckInIsGoing({
           /* The session the check-in's clock names, the one the board, the page and Ask count (this-sessions-count.ts). The people
              here are already marked for who has not joined and who is not let in, above. */
@@ -1850,6 +1849,11 @@ export class GroundsService {
               }
             : {}),
           checkIns: checkInsShown,
+          /* Whether it is the reader's turn here, by the one rule Today reads (yourTurnIn), with the same facts Today reads: whether an
+             admin has let them in, whether Groundwork is paused, and the one clock. The list never guesses it in the browser again. */
+          yourTurn: userId ? yourTurnIn({ ...(rest as any), status: (rest as any).status, participants: allParticipants ?? [], checkIns: checkIns as any } as any, {
+            userId, notLetIn: !!(myRowHere as any)?.user?.awaitingOrgApproval, pausedFrom: pausedOn.get((rest as any).organizationId) ?? null,
+          }, theQuietHoursNow()) : null,
           /* The one count (the-count-as-served.ts): who has answered each session, over the people this reader may see, and the clock's
              session said, to whoever is shown the others. */
           theCount: theCountAsServed({ session: listedCount.clock.currentSession, said: listedCount.count, planned: listedCount.clock.plannedSessions }, listedCount.bySession, { onlyThese: hidePeers ? shown : null }),
@@ -2153,8 +2157,6 @@ export class GroundsService {
         runsUntilEnded: noEnd,
       },
       {
-        /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
-        handOn: await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId),
         leave: await leaveOfThePeopleOn(this.prisma as any, [id]).catch(() => undefined),
         /* By name, for the reader the count is served to (thisSession is withheld from a reader walled from the others). */
         names: { readerUserId: requestingUserId ?? null },

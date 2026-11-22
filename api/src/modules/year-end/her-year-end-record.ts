@@ -21,6 +21,9 @@ import { whoThisPersonActsFor } from '../outstanding/a-delegate-acts-for-a-princ
 import { latestDraft, type TheDraftRow } from './the-year-end-versions';
 import { dayWords, MONTHS, STATUS_PLAIN, type Claim, type EvidenceItem, type YearEndContent } from './the-year-end-content';
 import { reportBlocks, slidesOf, whatMattersMost, theYearInWords } from './the-year-end-files';
+import { thePaymentCounts, thePaymentsNow } from '../principal-work/the-payments-work';
+import { hasProof, isPaidWithProof } from '../principal-work/the-payments-reconcile';
+import { sayMoney } from '../principal-work/the-money';
 
 /** Whose year-end work this person reads: their own, and that of each senior person they act for. */
 async function theYearEndsTheyRead(prisma: any, organizationId: string, userId: string): Promise<string[]> {
@@ -43,9 +46,17 @@ async function hasYearEndWork(prisma: any, organizationId: string, principalUser
  * draft, and its own steps answer their words about it. False for everybody else, who keeps "a report on request" exactly as before.
  */
 export async function theirReportIsTheYearEndDraft(prisma: any, organizationId: string, userId: string | null | undefined): Promise<boolean> {
-  if (!userId) return false;
-  for (const id of await theYearEndsTheyRead(prisma, organizationId, userId)) if (await hasYearEndWork(prisma, organizationId, id)) return true;
-  return false;
+  const theirs = await theYearEndWorkTheyRead(prisma, organizationId, userId);
+  return theirs.own || theirs.forSomebody;
+}
+
+/** Whose year-end work they read, from the same test: their own, and that of somebody they act for. Ask gives it to the model as who they are. */
+export async function theYearEndWorkTheyRead(prisma: any, organizationId: string, userId: string | null | undefined): Promise<{ own: boolean; forSomebody: boolean }> {
+  if (!userId) return { own: false, forSomebody: false };
+  const own = await hasYearEndWork(prisma, organizationId, userId);
+  let forSomebody = false;
+  for (const id of await theYearEndsTheyRead(prisma, organizationId, userId)) if (id !== userId && (await hasYearEndWork(prisma, organizationId, id))) { forSomebody = true; break; }
+  return { own, forSomebody };
 }
 
 /* ------------------------------------------------------------------ the pages Ask reads */
@@ -82,7 +93,7 @@ const aLine = (c: YearEndContent, cl: Claim): string =>
   `- ${clip(cl.text, 300)} [${STANDING_OF_A_LINE[cl.status] ?? cl.status}; ${whereItComesFrom(c, cl.refs)}]${cl.note ? ` ${c.principalFirstName} said beside it “${clip(cl.note, 160)}”.` : ''}`;
 
 /** The pages, each kept short enough to read, most decisive first. Nothing is added that the draft does not hold. */
-export function thePagesOfHerRecord(row: TheDraftRow, reader: 'own' | 'delegate'): APageOfHerRecord[] {
+export function thePagesOfHerRecord(row: TheDraftRow, reader: 'own' | 'delegate', question = ''): APageOfHerRecord[] {
   const c = row.content;
   const whose = reader === 'own' ? 'your' : `${c.principalFirstName}'s`;
   const status = row.status === 'final' || row.status === 'approved' ? row.status : 'a draft waiting for approval';
@@ -108,11 +119,16 @@ export function thePagesOfHerRecord(row: TheDraftRow, reader: 'own' | 'delegate'
     lines.push(`${(s.title || month).toUpperCase()}:`);
     for (const cl of s.claims) lines.push(aLine(c, cl));
   }
-  pages.push(page(`the lines of ${whose} year, with how far each is proven`, lines.length ? lines : ['Nothing is on the record for the year yet.']));
+  /* Each page is named for what she has, the way she knows it, so an answer that names where it comes from names something real (Batch F, F3; N3: "in your year, line by line"). */
+  pages.push(page(`${whose} year-end report for ${c.year}, in full`, lines.length ? lines : ['Nothing is on the record for the year yet.']));
 
   /* The outstanding register: what is still to be delivered, who owns it, by when, and what it waits on. Owners are named; nothing judges them. */
-  const open = c.register.filter((r) => r.status !== 'completed' && r.status !== 'cancelled');
-  pages.push(page(`${whose} outstanding register, who owns each matter and when it was due`, [
+  /* What the question names comes first, so a long list is never cut before it (Batch F, F-7: "What has Ahmed failed to deliver?" read that nothing was found, and
+     Ahmed's lines were past the end of the page). The order changes; what is on the page does not. */
+  const asked = new Set(String(question).toLowerCase().match(/[a-z][a-z-]{2,}/g) ?? []);
+  const bears = (r: { owner: string; item: string }) => `${r.owner} ${r.item}`.toLowerCase().split(/[^a-z-]+/).filter((w) => w.length > 2 && asked.has(w)).length;
+  const open = c.register.filter((r) => r.status !== 'completed' && r.status !== 'cancelled').map((r, i) => ({ r, i, n: bears(r) })).sort((x, y) => y.n - x.n || x.i - y.i).map((x) => x.r);
+  pages.push(page(`${whose} outstanding list`, [
     `${open.length} ${open.length === 1 ? 'matter is' : 'matters are'} still outstanding. Each line says who owns it, when it was due, and what it rests on. It says what is outstanding, never how well anybody works.`,
     ...open.map((r) => `- ${clip(r.item, 220)}. Owner ${r.owner === 'unconfirmed' ? 'not confirmed' : r.owner === 'you' ? c.principalFirstName : r.owner}. ${STATUS_PLAIN[r.status] ?? r.status}.${r.dueOn ? ` It was due on ${dayWords(r.dueOn)}${r.dueInferred ? ', a date worked out from what was said' : ''}.` : ' No date was given.'}${r.decision ? ` The decision needed is ${clip(r.decision, 160)}.` : ''}${r.dependency ? ` It waits on ${clip(r.dependency, 120)}.` : ''}${r.disputed ? ' Somebody said it is not backed up.' : ''} [${whereItComesFrom(c, r.refs)}]`),
   ]));
@@ -126,7 +142,7 @@ export function thePagesOfHerRecord(row: TheDraftRow, reader: 'own' | 'delegate'
 
   /* The records the lines rest on, newest first, with the day each arrived. */
   const evidence = [...c.evidence].sort((a, b) => String(b.at).localeCompare(String(a.at)));
-  pages.push(page(`the records ${whose} year-end report rests on`, evidence.map((e) => `- ${e.title ? `“${clip(e.title, 80)}”, ` : ''}${e.label}, ${dayWords(e.at)}.`)));
+  pages.push(page(`the evidence index of ${whose} year-end report`, evidence.map((e) => `- ${e.title ? `“${clip(e.title, 80)}”, ` : ''}${e.label}, ${dayWords(e.at)}.`)));
   return pages;
 }
 
@@ -134,7 +150,7 @@ export function thePagesOfHerRecord(row: TheDraftRow, reader: 'own' | 'delegate'
  * THE RECORD ASK READS FOR HER (R2). The latest version of each year-end draft this person may read: her own, or the one of each senior person she acts
  * for. Empty for everybody else, so their Ask reads exactly what it read before.
  */
-export async function herYearEndRecordForAsk(prisma: any, a: { organizationId: string; userId: string; now?: Date }): Promise<APageOfHerRecord[]> {
+export async function herYearEndRecordForAsk(prisma: any, a: { organizationId: string; userId: string; now?: Date; /** The question, so what it names is read first. */ question?: string }): Promise<APageOfHerRecord[]> {
   const year = (a.now ?? new Date()).getUTCFullYear();
   const out: APageOfHerRecord[] = [];
   for (const principalUserId of await theYearEndsTheyRead(prisma, a.organizationId, a.userId)) {
@@ -142,9 +158,31 @@ export async function herYearEndRecordForAsk(prisma: any, a: { organizationId: s
     const own = principalUserId === a.userId;
     const row = (await latestDraft(prisma, { organizationId: a.organizationId, principalUserId, year }).catch(() => null))
       ?? (await latestDraft(prisma, { organizationId: a.organizationId, principalUserId, year: year - 1 }).catch(() => null));
-    if (row?.content) out.push(...thePagesOfHerRecord(row, own ? 'own' : 'delegate'));
+    const pages = row?.content ? thePagesOfHerRecord(row, own ? 'own' : 'delegate', a.question ?? '') : [];
+    const pay = await thePaymentsPage(prisma, { organizationId: a.organizationId, principalUserId, whose: own ? 'your' : `${row?.content?.principalFirstName ?? 'her'}'s` }).catch(() => null);
+    /* Right after the briefing, so it is read whenever a question is about money: Ask reads the pages in order until its room is used (Batch E run: last, it was cut). */
+    out.push(...pages.slice(0, 1), ...(pay ? [pay] : []), ...pages.slice(1));
   }
   return out;
+}
+
+/**
+ * HER PAYMENTS, AS TODAY AND THE REPORT COUNT THEM (Dangote rerun, N9: Ask said nothing on record showed whether the August payments were paid, while the sheets
+ * and their bank confirmations were on the record). One line for each payment, from the one count (principal-work/the-payments-work.ts): the payee, the
+ * reference, the amount, the day it was due, what the sheet says, and whether a bank confirmation or a document shows it.
+ */
+async function thePaymentsPage(prisma: any, a: { organizationId: string; principalUserId: string; whose: string }): Promise<APageOfHerRecord | null> {
+  const now = await thePaymentsNow(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId });
+  const counts = thePaymentCounts(now);
+  if (!counts.payments) return null;
+  /* What is said to be paid with no proof leads, then the newest first: the page is cut to what Ask can read, and those are what she is asked about (Batch E run: oldest first, August was cut). */
+  const saidOnly = (l: (typeof counts.latest)[number]) => (l.statedStatus === 'paid' && !hasProof(now.linksOf(l.paymentKey)) ? 0 : 1);
+  const lines = [...counts.latest].sort((x, y) => saidOnly(x) - saidOnly(y) || (y.dueOn?.getTime() ?? 0) - (x.dueOn?.getTime() ?? 0)).map((l) => {
+    const links = now.linksOf(l.paymentKey);
+    const standing = isPaidWithProof(l, links) ? `PROVEN paid${links.confirmation ? `, bank confirmation ${links.confirmation}` : ''}` : l.statedStatus === 'paid' && !hasProof(links) ? 'SAID to be paid, with no proof yet' : `the sheet says ${l.statedStatus ?? 'nothing about whether it was paid'}`;
+    return `- ${l.payee}${l.reference ? `, reference ${l.reference}` : ''}, ${l.amount ? sayMoney(l.amount) : 'amount not readable'}${l.dueOn ? `, due on ${dayWords(l.dueOn)}` : ''}. [${standing}; from the payments sheet ${l.fileName}, row ${l.rowNumber}]`;
+  });
+  return { fileName: `${a.whose} payments`, content: [`${counts.payments} ${counts.payments === 1 ? 'payment is' : 'payments are'} on the record. ${counts.paidWithProof} ${counts.paidWithProof === 1 ? 'is' : 'are'} paid, with proof. ${counts.saidPaidNoProof} ${counts.saidPaidNoProof === 1 ? 'payment is' : 'payments are'} said to be paid, with no proof yet.`, ...lines].join('\n').slice(0, AT_MOST_ON_A_PAGE) };
 }
 
 /* ------------------------------------------------------------------ the structure, asked for */

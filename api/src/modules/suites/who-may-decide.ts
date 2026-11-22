@@ -308,6 +308,21 @@ export function everyStepFor(suite: 'spend', answers: { thresholds?: AThreshold[
 // -------------------------------------------------------------------------------------------------
 
 /**
+ * THE ASKER'S DIRECT REPORTS, BY SIGN-IN, FROM THE ROLE MAP: a membership's `reportsToUserId`, and the roster's `managerExternalId` where that person signs in.
+ * The one reading of "reports to you" for every lane that gives a view of a person (the documents answer, and a person's history by asking), so the two
+ * cannot disagree about who is yours. Never the asker.
+ */
+export async function theDirectReportsOf(prisma: any, a: { organizationId: string; userId: string }): Promise<{ userIds: string[]; unsigned: string[] }> {
+  const reports: any[] = (await Promise.resolve(prisma.organizationMembership?.findMany?.({ where: { organizationId: a.organizationId, reportsToUserId: a.userId }, select: { userId: true } })).catch(() => [])) ?? [];
+  const me: any = await Promise.resolve(prisma.person?.findFirst?.({ where: { organizationId: a.organizationId, linkedUserId: a.userId }, select: { externalId: true } })).catch(() => null);
+  const onTheRoster: any[] = me?.externalId ? (await Promise.resolve(prisma.person?.findMany?.({ where: { organizationId: a.organizationId, managerExternalId: me.externalId }, select: { displayName: true, givenName: true, familyName: true, linkedUserId: true } })).catch(() => [])) ?? [] : [];
+  const userIds = [...new Set([...reports.map((r) => r.userId), ...onTheRoster.map((p) => p.linkedUserId)].filter((x) => x && x !== a.userId))];
+  /* Somebody on the roster who does not sign in yet is still theirs, by name. */
+  const unsigned = onTheRoster.filter((p) => !p.linkedUserId).map((p) => p.displayName || [p.givenName, p.familyName].filter(Boolean).join(' '));
+  return { userIds, unsigned };
+}
+
+/**
  * WHO SOMEBODY REPORTS TO (Batch S, S2 and round 2, T7): the line an admin set on the People page or by chat ("Chidi reports to
  * Bola", the membership's reporting line), or else the manager the staff directory names, when that manager signs in here. The
  * People page shows the same line (the-people-and-their-lines.ts), so the two never disagree. Whatever their

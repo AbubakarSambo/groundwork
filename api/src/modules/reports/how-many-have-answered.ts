@@ -84,6 +84,9 @@ export function whoHasAnswered<T extends SomebodyWhoMightAnswer>(people: T[], se
   const out: WhoHasAnswered = { sessionNumber, onTheCheckIn: [], answered: [], notYet: [], notJoined: [], declined: [], away: {}, notLetIn: [] };
   for (const p of people ?? []) {
     const did = theyAnswered(p, sessionNumber);
+    /* Not on the check-in yet in this session: somebody added later, whose first session (in the team's numbering, inTheTeamsNumbering)
+       comes after it. Olu, added in session 3, read "Juma, Neema and Olu haven't started yet" about session 2 (release test, 22 November). */
+    if (!did && (p.checkIns ?? []).length > 0 && (p.checkIns ?? []).every((c) => (c.sessionNumber ?? sessionNumber) > sessionNumber)) continue;
     if (p.managingOnly && theLeadOnlyAsks) continue;
     if (checksInOnlyWhenTheyChoose(p) && !did) continue;
     if (isHeldAtTheDoor(p) && !did) { out.notLetIn.push(p.id); continue; }

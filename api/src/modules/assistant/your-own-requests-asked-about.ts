@@ -11,6 +11,7 @@
  */
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { saidAsADay } from '../suites/who-is-away';
+import { aPromiseAsASentence } from './a-promise-as-a-sentence';
 
 /* ------------------------------------------------------------------ what the router sees */
 
@@ -172,6 +173,8 @@ export function whoApprovesSaid(f: WhoApprovesFacts): string {
 export interface DueFacts {
   commitments: { text: string; dueAt: Date | null; dueSaid: string | null }[];
   toDos: { text: string; dueAt: Date | null; dueSaid: string | null }[];
+  /** What they said they would do in their check-ins and is still open, as My work lists it (thePromisesOf), with the day in their own words. */
+  saidInCheckIns?: { text: string; whenSaid: string | null; checkIn: string | null }[];
   waitingToDecide: number;
   now: Date;
 }
@@ -188,6 +191,7 @@ export function whatIsDueSaid(f: DueFacts): string {
   ].sort((a, b) => +a.dueAt! - +b.dueAt!);
   for (const c of passed) lines.push(`You said you would do ${quoted(c.text)} by ${whenItWas(c.dueAt, 'dayAndMonthLong')}, and that date has passed.`);
   for (const c of coming.slice(0, 6)) lines.push(`${c.kind === 'commitment' ? `You said you would do ${quoted(c.text)}` : `Your to-do ${quoted(c.text)} is on your list`} by ${whenItWas(c.dueAt, 'dayAndMonthLong')}.`);
+  for (const c of f.saidInCheckIns ?? []) lines.push(aPromiseAsASentence(c.text, c.whenSaid, c.checkIn));
   const undated = f.commitments.filter((c) => !dated(c)).length + f.toDos.filter((t) => !dated(t)).length;
   if (f.waitingToDecide > 0) lines.push(`${f.waitingToDecide === 1 ? 'One request is' : `${f.waitingToDecide} requests are`} waiting for you to approve or decline.`);
   if (!lines.length && !undated) return 'Nothing is due. You have no open commitments or to-dos with a date, and nothing is waiting for you to decide.';

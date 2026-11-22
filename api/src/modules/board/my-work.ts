@@ -1,3 +1,6 @@
+import { A_SESSION_OF_THEIRS } from '../grounds/the-sessions-done';
+import { theCheckInsSaid } from './a-day-they-checked-in';
+import { theQuietHoursNow } from '../../common/the-clock';
 import { theirWordsAsSaid, theWordsAlone, mayBeQuoted } from '../conversation/their-words-as-said';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { aWaitSomebodyElseChases } from './a-wait-somebody-else-chases';
@@ -22,6 +25,7 @@ import { theRecordInWords, acrossTheirCheckIns, type TheRecordInWords } from './
 import { thePraiseFromYourLead } from './the-praise-from-your-lead';
 import { withTheirCountNow } from './an-aim-is-counted-now';
 import { thePromisesOf, thePromisesCounted } from '../grounds/the-promises-counted-once';
+import { theDirectReportsOf } from '../suites/who-may-decide';
 import { theCheckInsCounted } from './a-day-they-checked-in';
 import { aRoundIsCounted, whenACheckInBegan } from '../grounds/a-round-that-could-be-answered';
 import { whenTheseOrganisationsPaused } from '../billing/the-trial-grace';
@@ -423,8 +427,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
            One missed check-in in four is not "Needs work" here while their record does not coach on it. */
         const fellShort = due.length - counted.filter((x) => x.done && x.onTime && x.specific).length;
         const strong = fellShort < 2 || (done.length / due.length >= 0.8 && onTime.length / due.length >= 0.7 && (done.length ? specific.length / done.length : 0) >= 0.7);
-        const timing = onTime.length === done.length ? ' on time' : `, ${onTime.length} of them on time`;
-        const happened = `${You} did ${done.length} of ${plural(due.length, 'check-in')}${timing}. ${specific.length} of ${done.length} ${specific.length === 1 ? 'was' : 'were'} specific.`;
+        const happened = theCheckInsSaid(You, { done: done.length, due: due.length, onTime: onTime.length, specific: specific.length });
         return read(b.key, strong ? 'Strength' : 'Needs work', happened, plural(due.length, 'check-in'));
       }
     }
@@ -697,22 +700,33 @@ const fullName = (p: any) => [p?.user?.firstName, p?.user?.lastName].filter(Bool
 export async function readMyWork(
   prisma: any,
   board: ABoardReader | null,
-  input: { groundId: string; userId: string; personId?: string | null },
-  now: Date = new Date(),
+  /**
+   * `asTheirManager`: read by Ask, for somebody who reports to the reader on the role map (decision O-15, Hafsah, 21 November 2026). Checked here
+   * against the role map, never taken on trust; the My work screen never asks it, so the screen is read as before.
+   */
+  input: { groundId: string; userId: string; personId?: string | null; asTheirManager?: boolean },
+  now: Date = theQuietHoursNow(),
 ): Promise<MyWork> {
   const ground = await prisma.ground.findFirst({ where: { id: input.groundId }, select: GROUND_SELECT });
   if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
-  const isLead = ground.initiatorId === input.userId;
   const participants: any[] = ground.participants ?? [];
   const mine = participants.find((p) => p.userId === input.userId) ?? null;
-  if (!isLead && !mine) throw new ForbiddenException('My work is for each person in this check-in and the person who runs it.');
+  /* Their manager reads the one person who reports to them as the lead reads them, without the lead's own note (below). */
+  const managed = input.asTheirManager && input.personId && ground.initiatorId !== input.userId
+    ? participants.find((p) => p.id === input.personId && p.userId && p.id !== mine?.id) ?? null
+    : null;
+  const asTheirManager = !!managed && (await theDirectReportsOf(prisma, { organizationId: ground.organizationId, userId: input.userId }).catch(() => ({ userIds: [] as string[] }))).userIds.includes(managed.userId);
+  const isLead = ground.initiatorId === input.userId;
+  if (!isLead && !mine && !asTheirManager) throw new ForbiddenException('My work is for each person in this check-in and the person who runs it.');
 
   /* Whose page: a person only ever their own; the lead anybody's who takes part. Refused before anything about them is read. */
   const checksIn = (p: any) => !p.managingOnly;
   const people = participants.filter((p) => checksIn(p) && (p.userId !== ground.initiatorId || p.id === mine?.id));
   let person: any;
-  if (!isLead) {
+  if (asTheirManager) {
+    person = managed;
+  } else if (!isLead) {
     if (input.personId && input.personId !== mine.id) throw new ForbiddenException('You can open your own My work, and nobody else’s.');
     person = mine;
   } else {
@@ -754,7 +768,7 @@ export async function readMyWork(
     prisma.groundDependency?.findMany?.({ where: { groundId: ground.id, OR: [{ fromParticipantId: pid }, { onParticipantId: pid }] }, orderBy: { createdAt: 'asc' } }).catch(() => []) ?? [],
     prisma.workMention?.findMany?.({ where: { groundId: ground.id, aboutParticipantId: pid, kind: 'CREDIT' }, select: { sourceParticipantId: true, checkInId: true } }).catch(() => []) ?? [],
     prisma.checkIn?.findMany?.({
-      where: { participantId: pid, groundId: ground.id, isSetup: false, isSelfCorrection: false, isClarification: false, isPostSignOff: false, optional: false },
+      where: { participantId: pid, groundId: ground.id, ...A_SESSION_OF_THEIRS },
       select: {
         id: true, sessionNumber: true, status: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true, specificityDimensions: true, closedReason: true,
         /* Their own answers in it, to count what actually happened (a-day-they-checked-in.ts). */
@@ -811,7 +825,7 @@ export async function readMyWork(
       }, []))
     : [];
 
-  const helpWith = (reader === 'lead' || THE_LEADS_NOTE_SHOWS_ON_THEIR_OWN_MY_WORK)
+  const helpWith = !asTheirManager && (reader === 'lead' || THE_LEADS_NOTE_SHOWS_ON_THEIR_OWN_MY_WORK)
     ? [...(lines as any[])].reverse().find((l) => l.kind === 'HELP_WITH' && l.aboutParticipantId === pid && String(l.text ?? '').trim())?.text ?? null
     : null;
   /* The person's own target, through the one rule for whose number is whose: the lead reads every one, a person their own. */

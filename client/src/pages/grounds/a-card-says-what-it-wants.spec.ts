@@ -51,13 +51,14 @@ describe('a card says what it wants', () => {
   })
 
   it('an open round of mine reads as my turn', () => {
-    const a = railAttention(ground({ checkIns: [openFor('p-me')] }) as any, 'u-me')
+    /* As the list serves it: the server's turn on the row (yourTurnIn). */
+    const a = railAttention({ ...ground({ checkIns: [openFor('p-me')] }), yourTurn: { checkInId: 'c1', sessionNumber: 1, openedAt: null } } as any, 'u-me')
     expect(a.kind).toBe('yours')
   })
 
   it('one past its date reads as late, and says how late', () => {
     const twelveDaysAgo = new Date(Date.now() - 12 * 86_400_000).toISOString()
-    const a = railAttention(ground({ checkIns: [openFor('p-me', 1, twelveDaysAgo)] }) as any, 'u-me')
+    const a = railAttention({ ...ground({ checkIns: [openFor('p-me', 1, twelveDaysAgo)] }), yourTurn: { checkInId: 'c1', sessionNumber: 1, openedAt: twelveDaysAgo } } as any, 'u-me')
     expect(a.kind).toBe('overdue')
     if (a.kind === 'overdue') expect(a.daysLate).toBeGreaterThan(0)
   })

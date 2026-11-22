@@ -7,6 +7,9 @@
  * ask stands, and the cycle that would have asked them counts them as asked. A person who has written since is free to be asked again. A message that was
  * only held (WhatsApp that Meta has not approved) was never read by anybody, so it counts for nothing.
  */
+import { theirRoutineMessagesToday } from '../engagement/one-routine-message-a-day';
+import { insideTheServiceWindow } from '../whatsapp/a-message-outside-the-window';
+
 const DAY = 86_400_000;
 export const ASKED_FOR_THIS_LONG = 3 * DAY;
 
@@ -29,4 +32,24 @@ export async function whenWereTheyLastAsked(prisma: any, a: { principalUserId: s
   /* Anything they have sent since is an answer, whatever it was. */
   const wrote: any[] = (await prisma.principalMaterial?.findMany?.({ where: { principalUserId: a.principalUserId, fromUserId: `contact:${contact.id}` } }).catch(() => [])) ?? [];
   return wrote.some((m) => new Date(m.receivedAt).getTime() > asked.getTime()) ? null : asked;
+}
+
+/**
+ * HOW, AND WHETHER, THEY CAN BE WRITTEN TO TODAY (Dangote rerun, N1). Fatima read that 64 people would be written to. Three of them had already had the day's one routine
+ * message (the year-end mail at seven), WhatsApp could not take the ask outside the 24 hours, the email was held back by the day's count, and the ask was
+ * dropped with nothing on the record to tell her; and 55 she was told would get WhatsApp got an email. One owner now answers before anything is promised: the
+ * say-back reads it, and so does the ask. Null is "not today".
+ *
+ * Inside the 24 hours on WhatsApp the ask goes as a reply, whatever the day's count. Otherwise it goes by email, and the mail door sends one routine message a
+ * person a day (engagement/one-routine-message-a-day.ts, read here the same way the door reads it). With no email, WhatsApp's door decides, as before.
+ */
+export async function howTheyCanBeWrittenToToday(prisma: any, contact: any, now: Date): Promise<'WhatsApp' | 'email' | null> {
+  if (!contact.email && !contact.phone) return null;
+  if (contact.phone) {
+    const person: any = contact.personId ? await prisma.person?.findFirst?.({ where: { id: contact.personId }, select: { whatsappLastInboundAt: true } }).catch(() => null) : null;
+    if (insideTheServiceWindow(person?.whatsappLastInboundAt, now)) return 'WhatsApp';
+    if (!contact.email) return 'WhatsApp';
+  }
+  const had = await theirRoutineMessagesToday(prisma, { email: contact.email, phone: contact.phone }, now);
+  return had.email + had.whatsapp === 0 ? 'email' : null;
 }

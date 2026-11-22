@@ -3,9 +3,9 @@ import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-or
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
 import { theBriefAsTheLeadReadsIt, theirOwnFirstNameAsYour } from '../grounds/what-a-participant-is-told-about-this';
-import { askName } from './ask-name';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whoCanReadWhatYouSay } from '../grounds/who-may-read-this-check-in';
+import { whatSomeoneWhoDoesNotRunItReads } from '../grounds/what-someone-who-does-not-run-it-reads';
 import { readTheCompanyPage, NOT_YOUR_COMPANY } from '../grounds/company.service';
 
 /**
@@ -97,7 +97,8 @@ export async function whatMyCheckInIsFor(prisma: any, organizationId: string, us
     const runsIt = g.initiatorId === userId;
     const leads = (g.initiator?.firstName ?? '').trim();
     /* What the lead wrote is the lead's; a person taking part is told what the product wrote for them. */
-    const forWhat = ((runsIt ? theBriefAsTheLeadReadsIt(g.brief) : theirOwnFirstNameAsYour(g.toldToParticipants as string | null, myFirstName)) ?? '').trim();
+    /* What somebody who does not run it reads is the one rule every route serves (what-someone-who-does-not-run-it-reads.ts), so Ask says what their check-in page says. */
+    const forWhat = ((runsIt ? theBriefAsTheLeadReadsIt(g.brief) : theirOwnFirstNameAsYour(whatSomeoneWhoDoesNotRunItReads(g), myFirstName)) ?? '').trim();
     const what = forWhat ? `This is what "${g.label}" is for. ${forWhat.replace(/[.!?]*$/, '.')}` : `"${g.label}" has no description of what it is for yet.`;
     const reads = runsIt
       ? 'You run it, so you read its report.'
@@ -128,7 +129,7 @@ export async function isTheStrategyMoving(prisma: any, grounds: any, reader: { u
   if (!priorities.length) return 'The company has not set any priorities here yet, so there is no strategy to say anything about.';
   const read = priorities.filter((p) => p.reading?.says);
   if (!read.length) {
-    return `Nothing has been written yet about how ${inWords(priorities.map((p) => `"${p.title}"`))} ${priorities.length === 1 ? 'is' : 'are'} moving, or what is there rests on check-ins you cannot open. The Company page shows each priority as soon as there is something you may read about it.`;
+    return `Nothing you can read says yet how ${inWords(priorities.map((p) => `"${p.title}"`))} ${priorities.length === 1 ? 'is' : 'are'} moving. The Desk shows each priority as soon as there is something you may read about it.`;
   }
   const lines = read.map((p) => `Priority ${p.number}, "${p.title}". ${String(p.reading.says).trim()}`);
   const notReaching = (page.notReaching ?? []).length;
@@ -154,11 +155,10 @@ export function howToAskForLeaveOrSpending(on: { leave: boolean; spend: boolean 
  * read the board and the reports. Where people do not see each other, it says so; on an evaluation check-in it does not say admins read it.
  */
 export function whoReadsWhatAMemberSays(g: { label: string; scenario?: any; peersVisibleToEachOther?: boolean | null; organization?: { name?: string | null } | null }, leadsFirstName: string): string {
-  const ask = askName(g.organization?.name ?? null);
   const lead = (leadsFirstName ?? '').trim();
   const admins = !g.scenario || isEvaluationCheckIn(g.scenario) ? '' : ' Admins can read its board and reports.';
   /* Who reads what you say is one sentence with one owner (grounds/who-may-read-this-check-in.ts). */
-  return `${whoCanReadWhatYouSay(g, lead)}${admins} Your questions to ${ask} stay private.`;
+  return `${whoCanReadWhatYouSay(g, lead)}${admins}`;
 }
 
 

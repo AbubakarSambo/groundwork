@@ -19,6 +19,7 @@
  * it decides something about a person, it belongs here where it can be checked.
  */
 import { CheckInStatus, DependencyStatus } from '@prisma/client';
+import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import {
   CoverageKind,
   CoverageRead,
@@ -46,7 +47,15 @@ export type ReadCheckIn = {
   participantId: string;
   sessionNumber: number;
   status: CheckInStatus;
+  isSetup?: boolean | null;
+  closedReason?: string | null;
+  turns?: unknown[] | null;
 };
+
+/* A check-in they gave an account in: finished, not the set-up, and not one the clock closed with nothing from them (the one rule the
+   session count reads, an-answer-includes-a-refusal.ts). The row and the count beside it read this, so a row never says "has not checked
+   in yet" beside a count that has them in, or the other way round (release test, 21 November 2026). */
+const gaveAnAccount = (c: ReadCheckIn): boolean => c.status === CheckInStatus.COMPLETED && !c.isSetup && !wasAQuietClose(c);
 
 export type ReadEntry = {
   participantId: string;
@@ -619,7 +628,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         p.detectedFunctionConfirmedAt ? new Date(p.detectedFunctionConfirmedAt) : null,
       );
       const mine = input.checkIns.filter((c) => c.participantId === p.id);
-      const completed = mine.filter((c) => c.status === CheckInStatus.COMPLETED).length;
+      const completed = mine.filter(gaveAnAccount).length;
 
       /*
        * NOBODY GETS A READ ON ANSWERS THEY NEVER GAVE (request 116 c). Faraji Odhiambo had never
@@ -935,7 +944,7 @@ export function buildCoverage(input: ReadInput, nameOf: NameOf): CoverageResult 
     const pct = denom === 0 ? 0 : Math.round((leakingOut.length / denom) * 100);
 
     const myCheckIns = input.checkIns.filter((c) => c.participantId === p.id);
-    const completedCount = myCheckIns.filter((c) => c.status === CheckInStatus.COMPLETED).length;
+    const completedCount = myCheckIns.filter(gaveAnAccount).length;
     /* NOBODY IS READ BEFORE THEY HAVE SAID ANYTHING. Hafsah, 22 Sep 2026, a session report on a live
        team: "Participant A and Participant B: the role was never clearly defined, so there is no
        boundary to measure work against" - about the two people who had not answered yet. Where their

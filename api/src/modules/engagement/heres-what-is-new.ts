@@ -6,7 +6,6 @@ import { isAlreadyHeld } from './a-message-sent-once';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { theSessionAndItsCount, withWhoHasNotJoinedMarked, theCountSaid } from '../grounds/this-sessions-count';
-import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { aNumberInWords } from './a-number-in-words';
 import { nameToCall, aNameToList } from './a-name-to-call-them';
 
@@ -113,7 +112,7 @@ export async function theOpenSession(prisma: any, groundId: string, leadUserId: 
   const people = marked.map(({ checkIns: _own, ...p }: any) => p);
   const { count } = theSessionAndItsCount(
     { participants: people, checkIns: g.checkIns, scenario: g.scenario, timelineDays: g.timelineDays, cadence: g.cadence, cadenceDays: g.cadenceDays, runsUntilEnded: g.runsUntilEnded },
-    { handOn: g.organizationId ? await theReleaseOneSalesBoardIsOn(prisma, g.organizationId).catch(() => true) : true, names: { readerUserId: leadUserId } },
+    { names: { readerUserId: leadUserId } },
   );
   if (!count.ofPeople) return null;
   const byId = new Map(people.map((p: any) => [p.id, p]));

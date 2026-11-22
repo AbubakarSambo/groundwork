@@ -75,9 +75,10 @@ describe('what each reader reads in answer', () => {
     expect(textOf(reply)).toMatch(/^Your next check-in in "Sales team, Q4" opens on [A-Z][a-z]+day \d{1,2} [A-Z][a-z]+ at \d{1,2}(:\d{2})?[ap]m\.$/);
   });
 
+  /* Changed 22 November 2026 (release test of 21 November, Ask #28; the standards: no privacy notes in messages): "Your questions to Ask stay private" is not part of who reads a check-in. */
   it('Amina is told what it is for, and who can see what she says in it (privacy sweep, 7 October)', async () => {
     const reply: any = await as('u-amina').service.respond('org-a', 'p1', 'What is my check-in for, and who reads it?');
-    expect(textOf(reply)).toBe('This is what "Sales team, Q4" is for. This check-in is about how the Q4 sales target is going. You see your own report straight away. Wanjiku shares a team report when it is ready. Nobody else reads your conversation. Admins can read its board and reports. Your questions to Ask Baridi stay private.');
+    expect(textOf(reply)).toBe('This is what "Sales team, Q4" is for. This check-in is about how the Q4 sales target is going. You see your own report straight away. Wanjiku shares a team report when it is ready. Nobody else reads your conversation. Admins can read its board and reports.');
   });
 
   it('Amina never reads what the lead wrote as a brief', async () => {
@@ -251,10 +252,10 @@ describe('"What did I say about ...?" finds what she said in her own check-ins',
 describe('who can see what a member says, said for each kind of check-in', () => {
   const g = { label: 'Sales team, Q4', organization: null as any, scenario: 'OKR_ALIGNMENT' };
   it('where people see each other', () => {
-    expect(whoReadsWhatAMemberSays({ ...g, peersVisibleToEachOther: true }, 'Wairimu')).toBe('You see your own report straight away. Wairimu shares a team report when it is ready. Nobody else reads your conversation. Admins can read its board and reports. Your questions to Ask Groundwork stay private.');
+    expect(whoReadsWhatAMemberSays({ ...g, peersVisibleToEachOther: true }, 'Wairimu')).toBe('You see your own report straight away. Wairimu shares a team report when it is ready. Nobody else reads your conversation. Admins can read its board and reports.');
   });
   it('where they do not, it says so', () => {
-    expect(whoReadsWhatAMemberSays({ ...g, peersVisibleToEachOther: false }, 'Wairimu')).toBe('You see your own report straight away. Wairimu reads it too. Nobody else reads your conversation. Admins can read its board and reports. Your questions to Ask Groundwork stay private.');
+    expect(whoReadsWhatAMemberSays({ ...g, peersVisibleToEachOther: false }, 'Wairimu')).toBe('You see your own report straight away. Wairimu reads it too. Nobody else reads your conversation. Admins can read its board and reports.');
   });
   it('on an evaluation check-in it does not say that admins read it', () => {
     expect(whoReadsWhatAMemberSays({ ...g, scenario: EVALUATION_SCENARIOS[0], peersVisibleToEachOther: false }, 'Wairimu')).not.toContain('Admins');

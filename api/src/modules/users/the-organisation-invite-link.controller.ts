@@ -1,12 +1,14 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { IsBoolean } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional } from 'class-validator';
 import { CurrentUser, CurrentUserData, Public, Roles, Role } from '../../common';
 import { TheOrganisationInviteLinkService } from './the-organisation-invite-link.service';
 
 class InviteLinkDto {
-  @IsBoolean() on!: boolean;
+  @IsOptional() @IsBoolean() on?: boolean;
+  /** The role joining through it gives: "MEMBER" ("Takes part") or "GUEST" (Hafsah, 21 November 2026). */
+  @IsOptional() @IsIn(['MEMBER', 'GUEST'], { message: 'role must be MEMBER or GUEST.' }) role?: 'MEMBER' | 'GUEST';
 }
 
 /** The organisation's own invite link (U.3): the admin's switch, the public page, and joining. */
@@ -28,7 +30,8 @@ export class TheOrganisationInviteLinkController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Turn the invite link on (a new link) or off (the old one stops working)' })
   async set(@CurrentUser('organizationId') organizationId: string, @CurrentUser('id') userId: string, @Body() dto: InviteLinkDto) {
-    return this.link.set(organizationId, userId, dto.on);
+    if (dto.role !== undefined) await this.link.setRole(organizationId, dto.role);
+    return dto.on !== undefined ? this.link.set(organizationId, userId, dto.on) : this.link.state(organizationId);
   }
 
   @Public()
@@ -43,7 +46,7 @@ export class TheOrganisationInviteLinkController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @Throttle({ global: { limit: 10, ttl: 60_000 } })
-  @ApiOperation({ summary: 'Join the organisation through its invite link, as "Takes part"' })
+  @ApiOperation({ summary: 'Join the organisation through its invite link, as the role the link gives' })
   async join(@Param('code') code: string, @CurrentUser() user: CurrentUserData) {
     return this.link.join(code, user.id, (user.signedInVia as any) ?? 'password');
   }

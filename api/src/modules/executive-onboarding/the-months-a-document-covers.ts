@@ -59,6 +59,23 @@ export async function theMessagesSheKept(prisma: any, a: { principalUserId: stri
   return rows.filter((r) => r.state === 'kept' && r.kind === 'message' && String(r.text ?? '').trim()).map((r) => ({ id: r.id, receivedAt: new Date(r.receivedAt), text: String(r.text), subject: r.subject ?? null, channel: r.channel ?? null }));
 }
 
+/**
+ * THE WORDS OF THE LAST FEW WEEKS, FOR THE YEAR-END WRITER (Batch F, F1). What her team sent in messages and voice notes, with who sent it, and her own words to
+ * her assistant, never what she forwarded. The year-end writer reads them under its one allowance (nothing-forwarded-reaches-a-model-or-a-provider.spec.ts) to
+ * find what only she can decide; nothing here goes to a model by itself.
+ */
+export async function theRecentWordsOnHerRecord(prisma: any, a: { principalUserId: string; since: Date; until: Date }): Promise<{ team: { id: string; receivedAt: Date; text: string; contact: { name: string; personId: string | null } }[]; hers: { receivedAt: Date; text: string }[] }> {
+  const rows: any[] = (await prisma.principalMaterial?.findMany?.({ where: { principalUserId: a.principalUserId, state: 'kept', kind: { in: ['message', 'voice'] }, receivedAt: { gte: a.since, lte: a.until } }, orderBy: { receivedAt: 'desc' }, take: 400 }).catch(() => [])) ?? [];
+  const recent = rows.filter((r) => r.state === 'kept' && (r.kind === 'message' || r.kind === 'voice') && String(r.text ?? '').trim() && new Date(r.receivedAt) >= a.since && new Date(r.receivedAt) <= a.until)
+    .sort((x, y) => new Date(y.receivedAt).getTime() - new Date(x.receivedAt).getTime());
+  const contacts: any[] = (await prisma.outreachContact?.findMany?.({ where: { principalUserId: a.principalUserId } }).catch(() => [])) ?? [];
+  const contactOf = (from: string) => contacts.find((c) => `contact:${c.id}` === from) ?? null;
+  return {
+    team: recent.filter((r) => contactOf(String(r.fromUserId ?? ''))).map((r) => { const c = contactOf(r.fromUserId); return { id: r.id, receivedAt: new Date(r.receivedAt), text: String(r.text), contact: { name: String(c.name ?? 'a member of the team'), personId: c.personId ?? null } }; }),
+    hers: recent.filter((r) => r.fromUserId === a.principalUserId && !/^-{3,}\s*forwarded/i.test(String(r.text).trim())).map((r) => ({ receivedAt: new Date(r.receivedAt), text: String(r.text) })),
+  };
+}
+
 /** The files she (or somebody for her, or her team) sent that are kept, whether or not they say which month they are about. */
 export async function theFilesSheKept(prisma: any, a: { principalUserId: string }): Promise<{ id: string; fileName: string; receivedAt: Date; text: string | null; subject: string | null }[]> {
   const rows: any[] = (await prisma.principalMaterial?.findMany?.({ where: { principalUserId: a.principalUserId } }).catch(() => [])) ?? [];

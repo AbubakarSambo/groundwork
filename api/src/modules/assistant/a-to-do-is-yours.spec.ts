@@ -34,7 +34,8 @@ describe('ticking off never closes on a guess', () => {
     expect(whichToDo('zebra', open)).toEqual({ none: true });
     expect(whichToDo('the zebra', open)).toEqual({ none: true });
   });
-  it('the list is theirs and says so when empty', () => {
-    expect(listToDos([])).toContain('nobody else reads it');
+  it('an empty list says how to add to it', () => {
+    /* Changed 21 November 2026 (Batch E, N13): no privacy note in a message. Nobody else is served the list: that is the backend's rule. */
+    expect(listToDos([])).toBe('Nothing on your list. Say "add X to my to-do list" and it goes here.');
   });
 });

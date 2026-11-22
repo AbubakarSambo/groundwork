@@ -1,6 +1,6 @@
 import { Inject, forwardRef, Controller, BadRequestException, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { HowCheckInsWorkDto } from './dto/how-check-ins-work.dto';
-import { aRoleToInviteAs } from './the-role-an-invitation-gives';
+import { HowPeopleAreAddedDto } from './dto/how-people-are-added.dto';
 import { GroundsService } from '../grounds/grounds.service';
 import { isASubject } from './what-a-call-is-about';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -216,6 +216,32 @@ export class UsersController {
     return this.usersService.setTheWordForTheBill(organizationId, body?.word ?? null);
   }
 
+  /**
+   * HOW PEOPLE ARE ADDED HERE (Hafsah, 21 November 2026): guests joining the organisation, and who can add people. Anybody
+   * here may read it, with the roles they themselves may give, so People shows a member "Invite a colleague" only when the
+   * server would let them; only an admin changes it.
+   */
+  @Get('organization/adding-people')
+  @ApiOperation({ summary: 'Whether guests can join, who can add people, and the roles you may invite somebody as' })
+  async howPeopleAreAdded(@CurrentUser() user: CurrentUserData) {
+    return this.usersService.howPeopleAreAdded(user.organizationId, user.id);
+  }
+
+  @Patch('organization/adding-people')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Let guests join or not, and choose who can add people' })
+  async setHowPeopleAreAdded(@CurrentUser() user: CurrentUserData, @Body() body: HowPeopleAreAddedDto) {
+    return this.usersService.setHowPeopleAreAdded(user.organizationId, user.id, body);
+  }
+
+  /** THE TEAMS HERE (Hafsah, 21 November 2026): the team names in use, one spelling each, for the Team picker. Anybody who may set a team or invite. */
+  @Get('organization/teams')
+  @ApiOperation({ summary: 'The teams in this organisation, one spelling each, with how many people are on each' })
+  async theTeams(@CurrentUser() user: CurrentUserData) {
+    if (user.role === 'GUEST') return [];
+    return this.usersService.theTeams(user.organizationId);
+  }
+
   @Get('organization/check-ins')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Who may open a check-in here, and whether one waits for approval' })
@@ -405,16 +431,20 @@ export class UsersController {
     return this.usersService.welcomeCardSeen(userId);
   }
 
+  /**
+   * NOT ADMIN-ONLY BY DECORATOR ANY MORE (Hafsah, 21 November 2026): who may add people is the organisation's own setting,
+   * "Only admins" by default. `theRoleTheyMayGive` asks it, and refuses a member or a guest while it is "Only admins".
+   */
   @Post('invitations')
-  @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Invite many people at once, or preview what would happen' })
   async inviteMany(
     @CurrentUser() user: CurrentUserData,
-    @Body() body: { pasted?: string; preview?: boolean; role?: string },
+    @Body() body: { pasted?: string; preview?: boolean; role?: string; team?: string },
   ) {
+    const role = await this.usersService.theRoleTheyMayGive(user.organizationId, user.id, body?.role);
     const org = await this.usersService.organisationName(user.organizationId);
-    return this.usersService.inviteMany(user.organizationId, org, body?.pasted ?? '', body?.preview === true, aRoleToInviteAs(body?.role));
+    return this.usersService.inviteMany(user.organizationId, org, body?.pasted ?? '', body?.preview === true, role, body?.team ?? null, user.role === 'ADMIN');
   }
 
   @Get(':id')
@@ -428,8 +458,10 @@ export class UsersController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Invite a user to the organization' })
   @ApiResponse({ status: 201, description: 'User invited' })
-  async create(@CurrentUser('organizationId') organizationId: string, @Body() dto: CreateUserDto) {
-    return this.usersService.create(organizationId, dto);
+  async create(@CurrentUser() user: CurrentUserData, @Body() dto: CreateUserDto) {
+    /* The same rule as every invite route: a guest only while guests may join (Hafsah, 21 November 2026). */
+    const role = await this.usersService.theRoleTheyMayGive(user.organizationId, user.id, dto.role);
+    return this.usersService.create(user.organizationId, { ...dto, role: role as any });
   }
 
   @Patch(':id')

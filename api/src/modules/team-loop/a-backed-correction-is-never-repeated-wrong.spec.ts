@@ -46,7 +46,8 @@ describe('a team member corrects what the record holds', () => {
     expect(reg.rows.find((r) => r.item.includes('Kilele letter'))).toMatchObject({ owner: 'Amina Yusuf', status: 'completed' });
     const update = await theUpdateForHer(x.prisma, null, { organizationId: 'org-1', principalUserId: 'u-fatima', first: 'Fatima', contacts: await theTeamSheMayAsk(x.prisma, 'u-fatima'), since: new Date(x.now.getTime() - 86_400_000), now: x.now, lead: 'week', asks: [] });
     console.log(`WHAT FATIMA READS NOW\n${update}`);
-    expect(update).toMatch(/Amina sent “Kilele letter\.txt” as the proof for “send the Kilele letter on Monday”, and it is counted as done\./);
+    /* Changed 21 November 2026 (Batch E, N5): material is named by one namer, a file with its name and the day it came. */
+    expect(update).toMatch(/Amina sent the file “Kilele letter\.txt” from \d+ \w+ as the proof for “send the Kilele letter on Monday”, and it is counted as done\./);
     expect(update).not.toMatch(/said they will send the Kilele letter/);
     const ports = { whatsapp: { send: async () => ({ sent: true }) }, email: { send: async () => undefined } };
     const later = await nudgeWhereItHelps(x.prisma, ports as any, new Date(x.now.getTime() + 10 * 86_400_000));

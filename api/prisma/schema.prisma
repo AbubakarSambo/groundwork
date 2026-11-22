@@ -664,11 +664,22 @@ model Organization {
   timeZone String? @map("time_zone")
 
   /// THE ORGANISATION'S OWN INVITE LINK (U.3): /j/<code>, where the code is the organisation's name
-  /// with a random part, such as "baridi-7k2p". Joining through it gives "Takes part". Null while an
+  /// with a random part, such as "baridi-7k2p". Joining through it gives `inviteLinkRole`. Null while an
   /// admin has it off; turning it on again makes a new code, so an old link stops working.
   inviteLinkCode     String? @unique @map("invite_link_code")
   /// The admin who turned it on, named on the link's page as the prototype does.
   inviteLinkByUserId String? @map("invite_link_by_user_id")
+  /// The role joining through the link gives: "MEMBER" ("Takes part"), or "GUEST" while `guestsMayJoin` is on
+  /// (users/who-may-add-people.ts, theRoleTheLinkGives).
+  inviteLinkRole     String  @default("MEMBER") @map("invite_link_role")
+
+  /// GUESTS CAN JOIN THE ORGANISATION (Hafsah, 21 November 2026). Off by default. On: an admin can invite somebody
+  /// as a guest, and the invite link can give "Guest". A guest sees only the check-ins they are added to, the same
+  /// GUEST role a lead's guest on one check-in holds.
+  guestsMayJoin      Boolean @default(false) @map("guests_may_join")
+  /// WHO CAN ADD PEOPLE (Hafsah, 21 November 2026): "ADMINS" (the default) or "ANYONE". With "ANYONE", anybody here
+  /// who is not a guest may invite people as "Takes part", within the plan's seats. Read by users/who-may-add-people.ts.
+  whoMayAddPeople    String  @default("ADMINS") @map("who_may_add_people")
 
   /// WHAT THE PERSON WHO CREATED IT SAID ABOUT ITS SIZE, on "Create an organisation" (U.3): "fewer"
   /// or "more" than `teamSizeLine` people, the free trial's team size they were shown. Only asked
@@ -9657,4 +9668,38 @@ model ReportMaterial {
   @@unique([requestId, contentHash])
   @@index([requestId])
   @@map("report_materials")
+}
+
+/// A PERSON'S CV HERE (Hafsah, 21 November 2026): a PDF or a Word file, its bytes kept as `PrincipalMaterial` keeps an original
+/// file. Read by the person, an admin and the person's own manager; changed by the person or an admin. Read and written only by
+/// users/person-details.service.ts, through users/who-reads-a-persons-details.ts. Its own table, so no list of people carries it.
+model PersonCv {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  userId           String   @map("user_id")
+  fileName         String   @map("file_name")
+  mimeType         String   @map("mime_type")
+  bytes            Bytes
+  size             Int
+  uploadedByUserId String   @map("uploaded_by_user_id")
+  uploadedAt       DateTime @default(now()) @map("uploaded_at")
+
+  @@unique([organizationId, userId])
+  @@map("person_cvs")
+}
+
+/// WHO TO CALL IN AN EMERGENCY (Hafsah, 21 November 2026): a name, how they are related, and a phone number. Read and changed by
+/// the person and an admin here only, never their manager or a colleague. Only users/person-details.service.ts reads it.
+model EmergencyContact {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  userId          String   @map("user_id")
+  name            String
+  relationship    String?
+  phone           String
+  updatedByUserId String   @map("updated_by_user_id")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([organizationId, userId])
+  @@map("emergency_contacts")
 }

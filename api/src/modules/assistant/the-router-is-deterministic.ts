@@ -26,6 +26,9 @@ import { WHAT_IS_DUE_PATTERNS, WHO_APPROVES_PATTERNS, WHO_IS_AWAY_PATTERNS, YOUR
 /** A sentence that asks one named person something. Shares its reading with the lane that acts on it. */
 const ASKS_A_PERSON = { exec: (m: string): RegExpExecArray | null => (parseAskAPerson(m) ? (['ask'] as unknown as RegExpExecArray) : null) } as unknown as RegExp;
 
+/** The three questions asked of a senior person's outstanding register (below), which are hers to have answered and never an instruction to her team. */
+export const THE_REGISTER_QUESTIONS: ReadonlySet<string> = new Set(['what_can_the_team_close', 'what_needs_my_decision', 'what_is_outstanding']);
+
 export type Lane =
   | 'what_you_can_see'
   | 'what_am_i_on'
@@ -548,6 +551,7 @@ const RULES = [
     /^\s*strategy\s*[:\-]\s*.{2,400}$/i,
     /^\s*way\s+of\s+working\s*[:\-]\s*.{2,400}$/i,
     /^\s*decision\s*[:\-]\s*.{2,400}$/i,
+    /^\s*(?:still\s+)?to\s+decide\s*[:\-]\s*.{2,400}$/i,
     /^\s*unsettled\s*[:\-]\s*.{2,400}$/i,
     /^\s*context\s+note\s*[:\-]\s*.{2,400}$/i,
     /* A statement and then "please add that to my check-in", or "add a line to my check-in: ..." (reviewer, 14 October). */

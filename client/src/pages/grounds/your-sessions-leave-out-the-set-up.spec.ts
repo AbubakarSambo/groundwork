@@ -8,10 +8,10 @@ import { yourSessionsSentence } from './CheckInPeopleAndSetup'
  */
 describe("the lead's own sessions, as said", () => {
   it('on day one, with only the set-up done, are none', () => {
-    expect(yourSessionsSentence(0, 4)).toBe('0 of 4 check-ins are done.')
+    expect(yourSessionsSentence(0, 4)).toBe('You have not checked in for any of the 4 sessions yet.')
   })
   it('say one real session once, and never more than were planned', () => {
-    expect(yourSessionsSentence(1, 4)).toBe('1 of 4 check-ins are done.')
-    expect(yourSessionsSentence(9, 6)).toBe('6 of 6 check-ins are done.')
+    expect(yourSessionsSentence(1, 4)).toBe('You have checked in for 1 of the 4 sessions.')
+    expect(yourSessionsSentence(9, 6)).toBe('You have checked in for 6 of the 6 sessions.')
   })
 })

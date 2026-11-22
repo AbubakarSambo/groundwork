@@ -40,6 +40,7 @@ function open(billing: any = { people: { count: 27, cap: 100 }, subscription: { 
     if (url === '/users/organization/check-ins') return { data: { whoMayOpen: 'NAMED_LEADS', needsApproval: false } } as any
     if (url === '/users/organization/joining') return { data: { on: false, domain: 'baridi.co.ke', whyNot: null } } as any
     if (url === '/users/organization/invite-link') return { data: { on: false, code: null } } as any
+    if (url === '/users/organization/adding-people') return { data: { guestsMayJoin: false, whoMayAddPeople: me.mayAddPeople ? 'ANYONE' : 'ADMINS', rolesYouMayGive: me.role === 'ADMIN' ? ['MEMBER', 'LEAD', 'ADMIN'] : ['MEMBER'] } } as any
     return { data: [] } as any
   })
   vi.spyOn(authApi, 'whoIsWaiting').mockResolvedValue([
@@ -399,12 +400,26 @@ describe('the rest of the page, in the prototype\'s order and words', () => {
   })
 })
 
-describe('anybody who is not an admin', () => {
-  it('is told they need admin access, and nothing is read', () => {
-    me = { id: 'miriam', role: 'MEMBER', organizationName: 'Baridi Appliances' }
-    open()
-    expect(screen.getByText('You need admin access to manage team members.')).toBeTruthy()
+/*
+ * CHANGED (Hafsah, 21 November 2026): a member reaches People only when the organisation lets anyone add people, and the door
+ * itself is at the route (App.tsx, `WhoMayAddPeople`, the same `ADoorYouCannotOpen` every admin page uses), which says who to
+ * ask. So this page no longer carries its own "You need admin access" line; what is checked is what a member reads here.
+ */
+describe('a member the organisation lets add people', () => {
+  it('reads "Invite a colleague" and the form, and nothing that is an admin\'s', async () => {
+    me = { id: 'miriam', role: 'MEMBER', organizationName: 'Baridi Appliances', mayAddPeople: true }
+    const { container } = open()
+    fireEvent.click(screen.getByRole('button', { name: 'Invite a colleague' }))
+    expect(await screen.findByRole('heading', { name: 'Invite people' })).toBeTruthy()
+    expect(await screen.findByText('They will join as “Takes part”.')).toBeTruthy()
+    expect(screen.queryByLabelText('Role')).toBeNull()
     expect(screen.queryByText('Everyone at Baridi Appliances')).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Who can join' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Who can open a check-in' })).toBeNull()
+    expect(container.textContent).not.toMatch(/Miriam Wanjiku|Peter Ouma/)
+    /* Nothing an admin reads is even asked for. */
+    const asked = (apiClient.get as any).mock.calls.map((c: any[]) => c[0])
+    expect(asked.some((u: string) => u.startsWith('/users?') || u === '/users/organization/owner' || u === '/users/organization/joining')).toBe(false)
   })
 })
 

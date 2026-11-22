@@ -115,9 +115,17 @@ describe('"How do I...?"', () => {
     expect(r.text).toBe('Only an admin can invite somebody to your organisation here, so ask one of your admins to do it.');
   });
 
+  it('a member where anyone may add people reads the steps, not that an admin does it (Hafsah, 21 November 2026)', async () => {
+    const m = asReader('MEMBER', false, howTo('invite_someone'));
+    m.prisma.organization.findUnique = jest.fn(async () => ({ name: 'Baridi', guestsMayJoin: false, whoMayAddPeople: 'ANYONE' }));
+    const r = await m.say('How do I add someone to Groundwork?');
+    expect(r.text).toBe('Open People in the menu and press Invite a colleague. Paste their email addresses or upload a list, choose their role, and press Send their invitations. If you are not an admin, there is no role to choose, and they join as “Takes part”.');
+  });
+
+  /* The steps gained one sentence (Hafsah, 21 November 2026): a member the organisation lets add people reads the same steps, and has no role to choose. */
   it('an admin asking the same reads the People page steps', async () => {
     const r = await asReader('ADMIN', false, howTo('invite_someone')).say('How do I add someone to Groundwork?');
-    expect(r.text).toBe('Open People in the menu and press Invite a colleague. Paste their email addresses or upload a list, choose their role, and press Send their invitations.');
+    expect(r.text).toBe('Open People in the menu and press Invite a colleague. Paste their email addresses or upload a list, choose their role, and press Send their invitations. If you are not an admin, there is no role to choose, and they join as “Takes part”.');
   });
 
   it('a lead asking how to set up a check-in is offered it, and on a yes the setup asks its first question', async () => {

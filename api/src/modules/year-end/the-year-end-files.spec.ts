@@ -44,7 +44,7 @@ describe('the files are valid, and open with the readers the product already has
     expect(text).toContain('Prepared for Fatima Bello. This is version 2, a revised draft');
     expect(text).toContain('This is a draft. It is not final until Fatima approves it.');
     expect(text).toContain('What was achieved, with proof');
-    expect(text).toContain('Send the ministry the revised brief. Amina Yusuf had it, and it was settled on the record on');
+    expect(text).toContain('Revised brief to the ministry. Amina Yusuf had it, and it was settled on the record on');
     expect(text).toContain('Ibrahim Sule said it was done, and nothing on the record shows it yet, so it is not counted as achieved. It is part of National Assembly reporting.');
     expect(text).toContain('Nobody has confirmed who owns it');
     expect(text).toContain('Nothing in the record covers January, February, March, April, May, June, July, August and September 2026. That does not mean nothing happened. Nobody has been asked for it yet. It is unverified, because no record backs it yet.');
@@ -74,7 +74,7 @@ describe('the files are valid, and open with the readers the product already has
     expect(slides.length).toBeLessThanOrEqual(8);
     expect(slides[1]).toContain('The year in one slide');
     expect(slides[1]).toContain("Fatima's record for 2026 has 1 matter settled with proof");
-    expect(slides.join(' ')).toContain('Send the ministry the revised brief.');
+    expect(slides.join(' ')).toContain('Revised brief to the ministry.');
     expect(slides.join(' ')).not.toMatch(/\b[CDOTQRF]-[0-9a-z]{6,8}\b/);
     expect(slides.slice(-2)[0]).toContain('What is open and carried into 2027');
     expect(slides.slice(-1)[0]).toContain('What needs a decision');

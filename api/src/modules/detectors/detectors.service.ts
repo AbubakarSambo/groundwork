@@ -1,3 +1,4 @@
+import { aDaySaidInFull } from '../board/a-day-said-in-full';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { Injectable, Logger } from '@nestjs/common';
 import { CheckInStatus, DependencyStatus } from '@prisma/client';
@@ -226,8 +227,8 @@ export class DetectorsService {
       if (last && last > cutoff) continue;
 
       const says = last
-        ? `Nobody has mentioned ${r.title} to me since ${new Date(last).toDateString()}. If it is still live, it is worth a word; if it is not, it is worth closing.`
-        : `${r.title} has been on the books since ${r.createdAt.toDateString()} and nobody has mentioned it to me at all. That may mean it is being worked on somewhere I cannot see.`;
+        ? `Nobody has mentioned ${r.title} to me since ${aDaySaidInFull(new Date(last))}. If it is still live, it is worth a word; if it is not, it is worth closing.`
+        : `${r.title} has been on the books since ${aDaySaidInFull(r.createdAt)} and nobody has mentioned it to me at all. That may mean it is being worked on somewhere I cannot see.`;
 
       const existing = await this.prisma.detectorResult.findFirst({
         where: { organizationId, key: 'objective_unmentioned', resolvedAt: null, subjectExternalId: r.externalId },

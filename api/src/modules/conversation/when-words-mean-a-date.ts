@@ -148,7 +148,8 @@ export function whenTheyMeant(said: string | null | undefined, on: Date): Date |
    */
   const weekday = t.match(/^(?:by |on |this |next )?([a-z]+)$/);
   if (weekday) {
-    const wi = WEEKDAYS.indexOf(weekday[1]);
+    /* A day typed short ("fri", "tues", "thurs") is the same day: at least three letters that begin exactly one weekday. */
+    const wi = WEEKDAYS.indexOf(weekday[1]) !== -1 ? WEEKDAYS.indexOf(weekday[1]) : weekday[1].length >= 3 ? WEEKDAYS.findIndex((w) => w.startsWith(weekday[1])) : -1;
     if (wi !== -1) {
       const ahead = ((wi - on.getUTCDay() + 7) % 7) || 7;
       return day(y, m, d + ahead);

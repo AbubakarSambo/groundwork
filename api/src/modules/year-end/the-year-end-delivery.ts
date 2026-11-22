@@ -98,7 +98,8 @@ export async function sendTheDraftOnRequest(prisma: any, ports: ThePorts, a: { o
   const sent = await sendTheDraft(prisma, ports, { ...a, day });
   const o = sent[0]?.outcome;
   const subject = draftReadyEmail(a.row.content, a.row.version).subject;
-  if (o === 'sent') return `I have emailed version ${a.row.version} of the report and presentation to ${a.toName}, with the files attached.`;
+  /* This reply is the message that says it went: the WhatsApp line for the version is not sent as well (Batch F, F4; E-1). */
+  if (o === 'sent') { await markItToldOnWhatsApp(prisma, { ...a, kind: 'draft' }); return `I have emailed version ${a.row.version} of the report and presentation to ${a.toName}, with the files attached.`; }
   if (o === 'held') return `Version ${a.row.version} is ready and waiting to go to ${a.toName}. It has not been sent yet, and it goes in the morning.`;
   /* "Already" only when the record says it went: a claim that is only waiting to go is said as waiting (D15). */
   const went = o === 'already' && !!(await prisma.yearEndLog.findFirst({ where: { principalUserId: a.principalUserId, kind: 'sent', subject: sendKeyOf({ principalUserId: a.principalUserId, year: a.row.year, version: a.row.version, kind: 'draft', recipient: sent[0].to, day }) } }).catch(() => null));
@@ -123,6 +124,11 @@ export async function tellHerOnWhatsApp(prisma: any, ports: ThePorts, a: { organ
   const res = await ports.whatsapp.send({ organizationId: a.organizationId, phone: me.phone, text, kind: a.kind === 'draft' ? 'year-end-draft-ready' : 'year-end-final' }).catch(() => ({ sent: false }));
   if (!res.sent) await prisma.yearEndLog.deleteMany({ where: { principalUserId: a.principalUserId, kind: 'told', subject: `${a.kind}-ready:${a.row.year}:v${a.row.version}:whatsapp` } }).catch(() => undefined);
   return !!res.sent;
+}
+
+/** She was told in the reply to her own request, so the WhatsApp line for this version is not sent as well (Batch F, F4: one message for one version). */
+export async function markItToldOnWhatsApp(prisma: any, a: { organizationId: string; principalUserId: string; row: TheDraftRow; kind: 'draft' | 'final'; now: Date }): Promise<void> {
+  await writeItOnce(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, kind: 'told', subject: `${a.kind}-ready:${a.row.year}:v${a.row.version}:whatsapp`, version: a.row.version, at: a.now }).catch(() => false);
 }
 
 export const NOT_APPROVED_YET = (version: number) => `Version ${version} has not been approved, so I have not sent a final. Nothing is sent as final until you approve it.`;
@@ -158,5 +164,5 @@ export async function sendTheRegister(prisma: any, ports: ThePorts, a: { organiz
   const toName = a.toName ?? 'you';
   /* "Already" is said only when the record says the mail went; a claim that is only queued is waiting, and is said so. */
   const went = o === 'already' && !!out[0] && !!(await prisma.yearEndLog.findFirst({ where: { principalUserId: a.principalUserId, kind: 'sent', subject: sendKeyOf({ principalUserId: a.principalUserId, year: a.row.year, version: a.row.version, kind: 'register', recipient: out[0].to, day: a.now.toISOString().slice(0, 10) }) } }).catch(() => null));
-  return { said: o === 'sent' ? `I have emailed the outstanding list from version ${a.row.version} to ${toName}.` : o === 'held' || o === 'already' && !went ? `The outstanding list from version ${a.row.version} is ready and waiting to go to ${toName}. It has not been sent yet.` : o === 'already' ? `I already emailed the outstanding list for version ${a.row.version} to ${toName} today, and nothing has changed since.` : !out.length ? `I have no email address for ${toName}, so there is nowhere to send the outstanding list.` : 'I could not send the outstanding list just now.' };
+  return { said: o === 'sent' ? `I have emailed the outstanding list from version ${a.row.version} to ${toName}.` : o === 'held' || o === 'already' && !went ? `The outstanding list from version ${a.row.version} is ready and waiting to go to ${toName}. It has not been sent yet.` : o === 'already' ? `I already emailed the outstanding list for version ${a.row.version} to ${toName} today.` : !out.length ? `I have no email address for ${toName}, so there is nowhere to send the outstanding list.` : 'I could not send the outstanding list just now.' };
 }

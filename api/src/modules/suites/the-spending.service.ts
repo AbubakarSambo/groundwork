@@ -12,7 +12,7 @@ import { loadLookups, type Lookups } from './the-lookups';
 import { oneAtATime } from './the-same-request-at-once';
 import { NOBODY_ELSE_CAN_DECIDE, nobodyElseCanDecide, couldBeNamed, decidesIt, everyStepFor, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { whyPassOn } from './a-request-waits-too-long';
-import { aRequestsHistory, recordIt, saidAsADate } from './a-request-is-recorded';
+import { aRequestsHistory, recordIt, saidAsADate, whyItWentOn } from './a-request-is-recorded';
 import { claimIt, theyGotThereFirst, whereItIsNow } from './a-request-is-answered-once';
 import { readDuties } from './who-holds-each-duty';
 import type { ADecisionHow, PassedOn } from './the-leave-board.service';
@@ -767,7 +767,8 @@ export class SpendingService {
       const by = (await firstNamesOf(this.prisma, [r.verifiedById], readerUserId))[0];
       return `${where} ${by ? `${by.charAt(0).toUpperCase()}${by.slice(1)} in finance has` : 'Finance has'} checked it, and it is waiting to be paid.`;
     }
-    return where;
+    const why = await whyItWentOn(this.prisma, r.organizationId, 'spend', r, readerUserId).catch(() => null);
+    return why ? `${where} ${why}` : where;
   }
 
   /** The questions asked on these requests, oldest first. A test built by hand may have no table. */

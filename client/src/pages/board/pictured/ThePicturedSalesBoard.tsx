@@ -413,8 +413,6 @@ function theLastSixWeeks(r: Any, today: string): ('proof' | 'said' | 'none')[] {
 }
 
 export function EveryDealDayByDay({ b, section, now, groundId, heading = 'Every deal, day by day', note = 'Select a deal for its detail.', ownTag = null }: { b: Any; section: Any; now: Date; groundId: string; heading?: string; note?: string; ownTag?: string | null }) {
-  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
-  const direct = useTheDirectMorning()
   const rows: Any[] = (section?.rows ?? []).filter((r: Any) => r.kind === 'deal')
   const [openId, setOpenId] = useState<string | null>(null)
   const today = isoDay(now)
@@ -427,7 +425,7 @@ export function EveryDealDayByDay({ b, section, now, groundId, heading = 'Every 
   const lost: Any[] = Array.isArray(section.lost) ? section.lost : []
   return (
     <>
-    <Section heading={heading} note={direct && note === 'Only yours' ? undefined : note}>
+    <Section heading={heading} note={note}>
       <TheDealsCanBeChanged groundId={groundId} section={section} participants={(b.participants ?? []).map((x: Any) => ({ id: x.id, name: x.name }))} canEdit={!!b.canEditFrame}>
       {(api) => (<>
       {rows.length === 0 ? (
@@ -1236,6 +1234,6 @@ export function ThePicturedOwnDeals({ b, groundId, myFirstName }: { b: Any; grou
   const section = (b.workRecords ?? []).find((s: Any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: Any) => r.kind === 'deal'))
   if (!section) return null
   const mine = { ...section, rows: (section.rows ?? []).filter((r: Any) => r.kind !== 'deal' || !r.ownerParticipantId || r.ownerParticipantId === b.myParticipantId) }
-  return <EveryDealDayByDay b={b} section={mine} now={now} groundId={groundId} heading="Your deals, day by day" note="Only yours" ownTag={myFirstName ? 'Your deal' : null} />
+  return <EveryDealDayByDay b={b} section={mine} now={now} groundId={groundId} heading="Your deals, day by day" note="" ownTag={myFirstName ? 'Your deal' : null} />
 }
 

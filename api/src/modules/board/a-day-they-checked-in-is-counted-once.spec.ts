@@ -75,7 +75,7 @@ describe('Kevin, who answered every working day, as Grace reads his record and a
   });
 
   it('his own page reads the same', () => {
-    expect(theirOwnPage(KEVIN, FRIDAY_EVENING, 'Kevin').happened).toBe('You did 5 of 5 check-ins on time. 5 of 5 were specific.');
+    expect(theirOwnPage(KEVIN, FRIDAY_EVENING, 'Kevin').happened).toBe('You did 5 of 5 check-ins, all on time. 5 of them named the item, what changed and the day.');
   });
 });
 
@@ -94,7 +94,7 @@ describe('Peter, who answered on Monday 12 and Thursday 15 only', () => {
 
   it('his own page no longer reads "4 of 5 check-ins on time"', () => {
     const b = theirOwnPage(PETER, MONDAY_MORNING, 'Peter');
-    expect(b.happened).toBe('You did 2 of 5 check-ins on time. 2 of 2 were specific.');
+    expect(b.happened).toBe('You did 2 of 5 check-ins, all on time. 2 of them named the item, what changed and the day.');
     expect(b.verdict).toBe('Needs work');
   });
 });

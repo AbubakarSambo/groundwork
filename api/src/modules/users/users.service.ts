@@ -1,4 +1,5 @@
-import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
+import { organisationsThatTurnedWhatsAppOn, whatsAppIsOnFor } from '../whatsapp/only-where-whatsapp-is-turned-on';
+import { canTheyCheckInOnWhatsApp, theirPhoneLine, itAsksOnWhatsApp } from '../whatsapp/can-they-check-in-on-whatsapp';
 import { theWordForTheBill, aWordForTheBillMayBe } from '../grounds/collect-whats-owed';
 import { theOpeningsGoToANumberJustSaved } from '../grounds/the-lead-adds-a-whatsapp-number';
 import { whereTheyAreOnWhatsApp, WHERE_ON_WHATSAPP_SAYS, type WhereOnWhatsApp } from '../whatsapp/where-they-are-on-whatsapp';
@@ -31,7 +32,9 @@ import { mayChange, mayHandOver } from './the-person-who-set-this-up';
 import { colleaguesOf, A_COLLEAGUE_WITH_NO_NAME } from '../../common/colleagues';
 import { theNumberEachPersonIsReachedOn } from '../../common/the-number-each-person-is-reached-on';
 import { theInvitationsWaiting, keepThemWaiting, stopWaiting, type AnInvitationWaiting } from './invitations-waiting-for-a-seat';
+import { theRoleThisPersonMayGive, theRolesTheyMayGive, howPeopleJoinHere, type AnInvitedRole } from './the-role-an-invitation-gives';
 import { aLineOrNothing, NOT_IN_THIS_ORGANISATION } from './where-they-sit';
+import { theTeamsHere, theSpellingToKeep } from './the-teams-here';
 import { aReportingLineToWrite } from './who-they-report-to';
 import { thePeopleHere } from '../suites/the-people-and-their-lines';
 import { groundsAViewerMayList } from '../grounds/who-may-read-this-check-in';
@@ -284,6 +287,45 @@ export class UsersService {
     };
   }
 
+  /** The one check every invite route makes (the-role-an-invitation-gives.ts): the role this person may give here, or a refusal. */
+  theRoleTheyMayGive(organizationId: string, inviterId: string, role: string | undefined | null): Promise<AnInvitedRole> {
+    return theRoleThisPersonMayGive(this.prisma as any, organizationId, inviterId, role);
+  }
+
+  /**
+   * HOW PEOPLE ARE ADDED HERE (Hafsah, 21 November 2026): whether guests can join the organisation, who can add people, and
+   * the roles the reader may give, from the one rule. Read by anybody here, so People can show a member "Invite a colleague"
+   * only when they may; changed by an admin only.
+   */
+  async howPeopleAreAdded(organizationId: string, readerId: string) {
+    const [org, membership] = await Promise.all([
+      this.prisma.organization.findUnique({ where: { id: organizationId }, select: { guestsMayJoin: true, whoMayAddPeople: true } }),
+      this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId: readerId, organizationId } }, select: { role: true } }),
+    ]);
+    const how = howPeopleJoinHere(org);
+    return { ...how, rolesYouMayGive: theRolesTheyMayGive(membership?.role ?? null, how) };
+  }
+
+  async setHowPeopleAreAdded(organizationId: string, adminId: string, body: { guestsMayJoin?: boolean; whoMayAddPeople?: string }) {
+    if (body.whoMayAddPeople !== undefined && !['ADMINS', 'ANYONE'].includes(body.whoMayAddPeople)) {
+      throw new BadRequestException('Choose who can add people, either only admins or anyone here.');
+    }
+    await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: {
+        ...(body.whoMayAddPeople !== undefined && { whoMayAddPeople: body.whoMayAddPeople }),
+        /* Turning guests off also sets the invite link back to "Takes part", so turning them on again never reopens a guest link unasked. */
+        ...(body.guestsMayJoin !== undefined && { guestsMayJoin: body.guestsMayJoin, ...(body.guestsMayJoin ? {} : { inviteLinkRole: 'MEMBER' }) }),
+      },
+    });
+    return this.howPeopleAreAdded(organizationId, adminId);
+  }
+
+  /** The teams here, one spelling each, for the Team picker on People and on invitations (the-teams-here.ts). */
+  theTeams(organizationId: string) {
+    return theTeamsHere(this.prisma as any, organizationId);
+  }
+
   /** How check-ins work here, in the shape the rule reads. */
   async howCheckInsWork(organizationId: string) {
     const org = await this.prisma.organization.findUnique({
@@ -390,7 +432,7 @@ export class UsersService {
     return org?.name ?? 'your team';
   }
 
-  async inviteMany(organizationId: string, orgName: string, pasted: string, preview: boolean, role: 'ADMIN' | 'LEAD' | 'MEMBER' = 'MEMBER') {
+  async inviteMany(organizationId: string, orgName: string, pasted: string, preview: boolean, role: AnInvitedRole = 'MEMBER', team: string | null = null, byAnAdmin = true) {
     const addresses = addressesIn(pasted);
     if (addresses.length > MOST_IN_ONE_PASTE) {
       throw new BadRequestException(
@@ -428,12 +470,17 @@ export class UsersService {
      * an admin gets one answer per person.
      */
     const names = namesIn(pasted);
+    /* The team chosen for the list, picked from the teams here (the-teams-here.ts), one spelling each. */
+    const theTeam = theSpellingToKeep(team, await theTeamsHere(this.prisma as any, organizationId));
     const sent: Row[] = [];
     for (const row of rows) {
       if (row.result !== 'invited') { sent.push(row); continue; }
+      /* A new paid seat is an admin's yes (Hafsah, 21 November 2026): somebody else's invitation that would add one waits for a seat, for an admin to send. */
+      if (!byAnAdmin && (await this.billing.theNextSeat(organizationId)).needsAYes) { sent.push({ email: row.email, result: 'no seat' }); continue; }
       try {
         /* The role chosen on the page, and the name typed beside the address (U.4). */
         await this.auth.teamInvite(orgName, row.email, organizationId, { role, name: names.get(row.email) ?? null });
+        if (theTeam) await this.prisma.organizationMembership.updateMany({ where: { organizationId, user: { email: row.email } }, data: { team: theTeam } });
         /* Their phone number, typed on the same line, saved the one way a number is saved on People (Hafsah, 30 October 2026). A
            number that does not save leaves the invitation as it went, and says so on the row. */
         if (row.phone) {
@@ -582,7 +629,7 @@ export class UsersService {
         },
         select: {
           userId: true, email: true, createdAt: true, partyType: true,
-          ground: { select: { id: true, label: true } },
+          ground: { select: { id: true, label: true, status: true, overWhatsApp: true } },
           checkIns: { where: { status: 'COMPLETED' }, select: { id: true }, take: 1 },
         },
       })
@@ -591,6 +638,9 @@ export class UsersService {
     const answeredCount = new Map<string, number>();
     const notOpenedCount = new Map<string, number>();
     const theirCheckIns = new Map<string, { id: string; label: string | null; runsIt: boolean }[]>();
+    /* The check-ins that ask on WhatsApp, for the WhatsApp line (can-they-check-in-on-whatsapp.ts). The line names them out of the
+       same list the Check-ins column shows (namedFor, below), so the two never disagree. */
+    const asksOnWhatsApp = new Set<string>();
     for (const m of memberships) {
       const who = m.userId ?? idByEmail.get((m.email ?? '').toLowerCase());
       if (!who) continue;
@@ -600,6 +650,7 @@ export class UsersService {
       const list = theirCheckIns.get(who) ?? [];
       if (!list.some((c) => c.id === m.ground.id)) list.push({ id: m.ground.id, label: m.ground.label, runsIt: m.partyType === 'INITIATOR' });
       theirCheckIns.set(who, list);
+      if (itAsksOnWhatsApp(m.ground as any)) asksOnWhatsApp.add(m.ground.id);
     }
     /*
      * "WAITING TO BE LET IN" READS UNTRUE ONCE AN ADMIN HAS SAID NO.
@@ -780,9 +831,20 @@ export class UsersService {
     const onWhatsApp = new Map<string, WhereOnWhatsApp>();
     await Promise.all(users.map(async (u) => onWhatsApp.set(u.id, await whereTheyAreOnWhatsApp(this.prisma, u.phoneNumber).catch(() => (u.phoneNumber ? 'not-connected' : 'no-number') as WhereOnWhatsApp))));
 
+    const theOrg = await Promise.resolve().then(() => this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true, whatsappAddOnOn: true, whatsappFreeUntil: true } })).catch(() => null);
+    const theRecordFor = (u: any) => ({
+      organisationName: theOrg?.name ?? 'your organisation',
+      whatsappIsOn: whatsAppIsOnFor(theOrg as any),
+      phone: u.phoneNumber ?? null,
+      where: onWhatsApp.get(u.id) ?? 'no-number',
+      checkInsOnWhatsApp: namedFor(theirCheckIns.get(u.id) ?? []).checkIns.filter((c) => asksOnWhatsApp.has(c.id) && c.label).map((c) => c.label!),
+    });
     return {
       data: [...users.map((u) => ({
         ...u,
+        whatsappCheckInSays: canTheyCheckInOnWhatsApp(theRecordFor(u)),
+        /* The number, whether it is connected, and WhatsApp, as one line for the row on People. */
+        phoneLine: theirPhoneLine(theRecordFor(u)),
         whatsapp: onWhatsApp.get(u.id) ?? 'no-number',
         whatsappSays: WHERE_ON_WHATSAPP_SAYS[onWhatsApp.get(u.id) ?? 'no-number'],
         /* The name to put in the list (B-030): theirs, else a plain stand-in, so no screen has to put the address where a name goes (decision 115). */
@@ -881,7 +943,8 @@ export class UsersService {
 
     const data: { level?: string | null; team?: string | null; reportsToUserId?: string | null } = {};
     if (dto.level !== undefined) data.level = aLineOrNothing(dto.level);
-    if (dto.team !== undefined) data.team = aLineOrNothing(dto.team);
+    /* One spelling per team (the-teams-here.ts): "sales" typed where "Sales" is in use is kept as "Sales". */
+    if (dto.team !== undefined) data.team = theSpellingToKeep(dto.team, await theTeamsHere(this.prisma as any, organizationId));
     /* The one writer of a reporting line (who-they-report-to.ts), the same checks Ask's "Amina reports to Joseph" goes through. */
     if (dto.reportsToUserId !== undefined) data.reportsToUserId = await aReportingLineToWrite(this.prisma, organizationId, userId, aLineOrNothing(dto.reportsToUserId));
     await this.prisma.organizationMembership.update({ where: { id: membership.id }, data });

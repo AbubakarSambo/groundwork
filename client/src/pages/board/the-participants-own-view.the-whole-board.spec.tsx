@@ -134,7 +134,8 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     // prototype's own heading (board-as-participant.txt: "Your deals, day by day" - board fix,
     // sales B, item 3b, not "Your own deals, day by day").
     const ownSection = screen.getByText('Your deals, day by day').closest('section') as HTMLElement
-    expect(within(ownSection).getByText('Only yours.')).toBeTruthy()
+    // Changed 21 November 2026 (Batch E, N13): no "Only yours." note, a privacy note the standards forbid. The section still holds only her deals.
+    expect(within(ownSection).queryByText(/Only yours/)).toBeNull()
     expect(within(ownSection).getByText('Westgate Deli')).toBeTruthy()
     expect(within(ownSection).queryByText('Greenhill Mart')).toBeNull()
 

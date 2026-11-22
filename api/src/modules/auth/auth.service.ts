@@ -1,4 +1,5 @@
 import { aPersonWhoWasRemoved, REMOVED_FROM_THE_CHECK_IN_AT_SIGN_IN, REMOVED_FROM_THE_CHECK_IN_BY_LINK } from '../participants/held-for-a-seat';
+import { theRoleThisPersonMayGive, theRolesTheyMayGive, howPeopleJoinHere, type AnInvitedRole } from '../users/the-role-an-invitation-gives';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { TheWaysToStopMail } from '../engagement/the-ways-to-stop-mail';
 import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
@@ -73,7 +74,11 @@ type UserWithOrg = {
     /* The two settings the open-a-check-in rule reads. See `who-may-open-a-check-in.ts`. */
     whoMayOpenCheckIns?: string;
     checkInsNeedApproval?: boolean;
+    /* The two settings the add-people rule reads. See `users/the-role-an-invitation-gives.ts`. */
+    guestsMayJoin?: boolean;
+    whoMayAddPeople?: string;
   };
+  awaitingOrgApproval?: boolean;
 };
 
 import { whereTheyBelong, ROLE_FOR_SOMEBODY_EXPECTED } from './they-are-already-on-somebodys-roster';
@@ -991,6 +996,17 @@ export class AuthService {
     return { message, email: lower, ...(draftToken ? { draftToken } : user ? theSameShapeAsANewAddress(draft) : {}), ...(passwordKey ? { passwordKey } : {}) };
   }
 
+  /** The one check every invite route makes (users/the-role-an-invitation-gives.ts): the role this person may give here, or a refusal. */
+  theRoleTheyMayGive(organizationId: string, inviterId: string, role: string | undefined | null): Promise<AnInvitedRole> {
+    return theRoleThisPersonMayGive(this.prisma as any, organizationId, inviterId, role);
+  }
+
+  /** A new paid seat is an admin's yes (Hafsah, 21 November 2026): anybody else is told who can add it. */
+  async onlyAnAdminAddsAPaidSeat(organizationId: string): Promise<void> {
+    const next = await this.billing.theNextSeat(organizationId).catch(() => null);
+    if (next?.needsAYes) throw new ForbiddenException('This needs a new seat, and only an admin can add one. Ask an admin to invite them.');
+  }
+
   async teamInvite(
     inviterOrgName: string,
     inviteeEmail: string,
@@ -1000,7 +1016,7 @@ export class AuthService {
      * and the name typed beside the address. Both optional: every other caller invites a member, and
      * a missing name is still made from the address.
      */
-    how: { role?: 'ADMIN' | 'LEAD' | 'MEMBER'; name?: string | null } = {},
+    how: { role?: AnInvitedRole; name?: string | null } = {},
   ): Promise<{ message: string }> {
     const lower = inviteeEmail.toLowerCase();
     const role = how.role ?? 'MEMBER';
@@ -1535,6 +1551,12 @@ export class AuthService {
             needsApproval: user.organization.checkInsNeedApproval ?? HOW_A_NEW_ORG_WORKS.needsApproval,
           },
         ).may,
+        /**
+         * WHETHER THIS PERSON MAY ADD PEOPLE HERE (Hafsah, 21 November 2026), from the same rule every invite route asks
+         * (users/the-role-an-invitation-gives.ts), so People and its "Invite a colleague" show only to who the server lets in.
+         * A convenience for the screen, never a permission.
+         */
+        mayAddPeople: !user.awaitingOrgApproval && theRolesTheyMayGive(user.role, howPeopleJoinHere(user.organization)).length > 0,
         /**
          * WHETHER THIS PERSON STILL HAS TO SET THEIR ORGANISATION UP, DECIDED HERE.
          *

@@ -86,7 +86,9 @@ describe('a person’s history, asked for by name', () => {
     expect(r.lane).toBe('performance_history');
     expect(r.said).toContain('This is Mercy’s history in "Sales team, Q4"');
     expect(r.said).toMatch(/Mercy has done 5 of \d+ check-ins, \d+ on time and \d+ with specific answers\./);
-    expect(r.said).toContain('This is the same page you see under My work for this check-in, and only you can read it here.');
+    /* Changed 21 November 2026 (Batch E, N13): the closing no longer carries a privacy note (it had already been taken out of the words, and this test still pinned it). */
+    expect(r.said).toContain('This is the same page you see under My work for this check-in.');
+    expect(r.said).not.toContain('only you can read it');
     expect(r.said).not.toContain('Kevin');
     expect(r.said).not.toMatch(/\b(PIP|at risk|low performer|rating)\b/i);
   });
@@ -94,7 +96,7 @@ describe('a person’s history, asked for by name', () => {
   it('Grace is told the same sentence for a person who is not in anything she runs, whether or not that person exists', async () => {
     const nia = await ask(theAssistant('lead-1'), 'How has Nia been performing?');
     const nobody = await ask(theAssistant('lead-1'), 'How has Zuri been performing?');
-    expect(nia.said).toBe('I can give the history of people in the check-ins you run, and I cannot find Nia in any of them. If you lead Nia, ask me about a name as it is on your check-in.');
+    expect(nia.said).toBe('I can give the history of people in the check-ins you run and of the people who report to you, and I cannot find Nia among them. If you lead Nia, ask me about a name as it is on your check-in.');
     expect(nobody.said).toBe(nia.said.replace('Nia', 'Zuri').replace('Nia', 'Zuri'));
     expect(nia.said).not.toContain('Support, Q4');
   });
@@ -108,19 +110,21 @@ describe('a person’s history, asked for by name', () => {
   it('a member asking about a colleague is told what an outsider is told, and reads nothing of the colleague', async () => {
     const r = await ask(theAssistant('u-mercy'), 'How has Kevin been performing?');
     expect(r.lane).toBe('performance_history');
-    expect(r.said).toBe('I can give the history of people in the check-ins you run, and I cannot find Kevin in any of them. If you lead Kevin, ask me about a name as it is on your check-in.');
+    expect(r.said).toBe('I can give the history of people in the check-ins you run and of the people who report to you, and I cannot find Kevin among them. If you lead Kevin, ask me about a name as it is on your check-in.');
   });
 
   it('an admin who runs nothing is not handed a team’s history through the chat', async () => {
     const r = await ask(theAssistant('u-admin', 'ADMIN'), 'How has Mercy been performing?');
-    expect(r.said).toContain('I cannot find Mercy in any of them');
+    expect(r.said).toContain('I cannot find Mercy among them');
   });
 
   it('Mercy asking about herself reads her own page, in the second person', async () => {
     const r = await ask(theAssistant('u-mercy'), 'Show me the performance history for myself');
     expect(r.said).toContain('This is your history in "Sales team, Q4"');
     expect(r.said).toContain('You have done 5 of');
-    expect(r.said).toContain('nobody else reads it through me');
+    /* Changed 21 November 2026 (Batch E, N13): no privacy note in a message. */
+    expect(r.said).toContain('This is the same page you see under My work.');
+    expect(r.said).not.toContain('nobody else reads it');
     expect(r.said).not.toContain('what you have told me about them');
   });
 

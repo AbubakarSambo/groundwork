@@ -23,8 +23,8 @@ describe('naming somebody to act for you is done by talking, said back first, an
     expect(await o.says('u-fatima', 'yes')).toBe('Done. Amina Yusuf can now act for you. To end it, tell me that Amina Yusuf can no longer act for you.');
     expect(o.tables.delegate.rows).toHaveLength(1);
     expect(o.tables.delegate.rows[0]).toMatchObject({ principalUserId: 'u-fatima', delegateEmail: 'amina@example.com', createdVia: 'chat', revokedAt: null });
-    /* Created with the grant: the principal never asked for the two standing jobs by form. */
-    expect(o.tables.persistentJob.rows.map((j: any) => j.title).sort()).toEqual(['2026 annual report and presentation', '2026 outstanding matters and 2027 carry-forward register']);
+    /* Changed 22 November 2026 (release test of 21 November, Ask #71): asking Ask, or letting somebody act for you, never makes the two standing jobs. Only an admin adding a senior person does (executive-onboarding/onboard-an-executive.ts), so a lead who names an assistant is never sent a year-end report. */
+    expect(o.tables.persistentJob.rows).toEqual([]);
   });
 
   it('a no leaves everything as it was', async () => {

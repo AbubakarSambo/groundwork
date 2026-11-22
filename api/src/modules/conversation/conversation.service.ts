@@ -7320,7 +7320,7 @@ ${told}` : '';
       sessionNumber: row.sessionNumber,
       source: 'auto-close' as const,
     } satisfies CheckInCompletedEvent);
-    await recordRoundCompletion(this.prisma, this.events, row.groundId, row.sessionNumber);
+    await recordRoundCompletion(this.prisma, this.events, row.groundId, row.sessionNumber, row.participantId);
     return true;
   }
 
@@ -7660,7 +7660,7 @@ ${told}` : '';
      * session reporting itself complete before the round row exists would let a reader see a round
      * as open that has in fact closed. Two queries and an insert that usually does nothing.
      */
-    await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber);
+    await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber, checkIn.participantId);
 
     /* Only where there is something true to say. An empty block on the screen after somebody has
        just finished is worse than no block, and a session with nothing in its notes has nothing to
@@ -11887,7 +11887,7 @@ ${told}` : '';
       this.assessAndThenRead(checkIn, { howItEnded: 'declined', closedAt: new Date() })
         .catch((err: any) => this.logger.warn(`The assessment of the declined check-in ${checkIn.id} failed: ${err?.message ?? err}`));
     }
-    await this.closeTheRoundIfThisWasTheLastAnswer(checkIn.groundId, checkIn.sessionNumber);
+    await this.closeTheRoundIfThisWasTheLastAnswer(checkIn.groundId, checkIn.sessionNumber, checkIn.participantId);
     return { status: 'declined' };
   }
 
@@ -11910,8 +11910,8 @@ ${told}` : '';
    * "a round closed without its report" everywhere that listens. That keeps the admin's "X has
    * checked in" notice suppressed, which is right: nobody checked in.
    */
-  private async closeTheRoundIfThisWasTheLastAnswer(groundId: string, sessionNumber: number): Promise<void> {
-    const roundJustClosed = await recordRoundCompletion(this.prisma, this.events, groundId, sessionNumber);
+  private async closeTheRoundIfThisWasTheLastAnswer(groundId: string, sessionNumber: number, whose?: string | null): Promise<void> {
+    const roundJustClosed = await recordRoundCompletion(this.prisma, this.events, groundId, sessionNumber, whose);
     if (!roundJustClosed) return;
 
     const taken = await this.prisma.reportRound.findUnique({

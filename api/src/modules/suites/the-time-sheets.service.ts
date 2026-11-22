@@ -18,7 +18,7 @@ import { anHoursRequest, whereItIsOnTheBoard, whereYourRequestIs, type WhereItSt
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
 import { saidAsADay } from './who-is-away';
 import { readDuties } from './who-holds-each-duty';
-import { anyTimeRule, isAskedForHours, isBillable, lagosMonday, readTimeRules, stillNeedsHours, whereYouStand, aboveTheDaysLimit, isTheWeekLocked, type TimeRules } from './the-time-sheet-rules';
+import { anyTimeRule, isAskedForHours, isBillable, lagosMonday, readTimeRules, stillNeedsHours, whereYouStand, theHoursRecordedSaid, aboveTheDaysLimit, isTheWeekLocked, type TimeRules } from './the-time-sheet-rules';
 import { draftTheWeek, readTheWeeksRecord, type AWeekDrafted } from './a-week-drafted-from-the-record';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const XLSX = require('xlsx') as typeof import('xlsx');
@@ -473,20 +473,22 @@ export class TimeSheetsService {
    * `mine`, Today and Ask Groundwork. It says the hours they gave and what is asked, never how much
    * they work (decision 10).
    */
-  async standing(reader: Reader, today = new Date(), knownRole?: string | null): Promise<{ said: string | null; stillNeeds: boolean }> {
+  async standing(reader: Reader, today = new Date(), knownRole?: string | null): Promise<{ said: string | null; stillNeeds: boolean; recorded: string }> {
     await this.suiteAnswers(reader.organizationId);
-    const rules = await this.theirTimeRules(reader);
-    if (!anyTimeRule(rules)) return { said: null, stillNeeds: false };
-    const role = knownRole !== undefined ? knownRole : await this.roleOf(reader);
-    const me = await theirRosterEntry(this.prisma, reader.organizationId, reader.userId, { department: true }).catch(() => null);
-    if (!isAskedForHours(rules, { userId: reader.userId, team: (me?.department as string | null) ?? null, role })) return { said: null, stillNeeds: false };
     const monday = atMidnight(lagosMonday(today));
     const entries = await this.prisma.timeEntry.findMany({
       where: { organizationId: reader.organizationId, userId: reader.userId, onDay: { gte: monday, lt: new Date(monday.getTime() + 7 * DAY) } },
       select: { minutes: true },
     });
     const minutes = entries.reduce((n, e) => n + e.minutes, 0);
-    return { said: whereYouStand(rules, minutes, today), stillNeeds: stillNeedsHours(rules, minutes) };
+    /* What they gave this week is said even where no rule asks for hours: "how many hours did I do this week" has an answer (release test of 22 November 2026, #51). */
+    const recorded = theHoursRecordedSaid(minutes);
+    const rules = await this.theirTimeRules(reader);
+    if (!anyTimeRule(rules)) return { said: null, stillNeeds: false, recorded };
+    const role = knownRole !== undefined ? knownRole : await this.roleOf(reader);
+    const me = await theirRosterEntry(this.prisma, reader.organizationId, reader.userId, { department: true }).catch(() => null);
+    if (!isAskedForHours(rules, { userId: reader.userId, team: (me?.department as string | null) ?? null, role })) return { said: null, stillNeeds: false, recorded };
+    return { said: whereYouStand(rules, minutes, today), stillNeeds: stillNeedsHours(rules, minutes), recorded };
   }
 
   /** The time sheet rules as they hold for this person: the hours a week are theirs (who-a-rule-is-for.ts, `theRuleFor`). */

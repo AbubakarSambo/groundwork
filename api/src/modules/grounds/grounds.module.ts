@@ -15,6 +15,8 @@ import { CompanyController } from './company.controller';
 import { DirectionController } from '../direction/direction.controller';
 import { DirectionService } from '../direction/direction.service';
 import { CompanyService } from './company.service';
+import { TheGoalsOnTheDeskService } from './the-goals-on-the-desk.service';
+import { SubjectsService } from '../subjects/subjects.service';
 import { CompanyPictureService } from './the-company-picture.service';
 import { APlanIsManyProposalsService } from './a-plan-is-many-proposals.service';
 import { RecommendedCheckInsController } from './recommended-check-ins.controller';
@@ -41,7 +43,7 @@ import { DocumentsModule } from '../documents/documents.module';
   /* KnowledgeModule and DocumentsModule for the Desk (S7): a document added there is read and kept the one way every document is. */
   imports: [BillingModule, PatternsModule, UsageModule, ConversationModule, SuggestionsModule, SuitesModule, KnowledgeModule, forwardRef(() => DocumentsModule)],
   controllers: [GroundsController, ParticipantRequestsController, AskingForMoreTimeController, TodayController, YouController, CompanyController, DirectionController, CheckInLinksController, RecommendedCheckInsController],
-  providers: [GroundsService, GroundsCron, AskingForMoreTimeService, WhatNeedsYouService, YourBoardService, CompanyService, DirectionService, CompanyPictureService, CheckInLinksService, APlanIsManyProposalsService, RecommendedCheckInsService],
+  providers: [GroundsService, GroundsCron, AskingForMoreTimeService, WhatNeedsYouService, YourBoardService, CompanyService, TheGoalsOnTheDeskService, SubjectsService, DirectionService, CompanyPictureService, CheckInLinksService, APlanIsManyProposalsService, RecommendedCheckInsService],
   exports: [GroundsService, WhatNeedsYouService],
 })
 export class GroundsModule {}

@@ -54,6 +54,9 @@ export const WHICH_REQUEST_TO_ASK_ABOUT = (rs: AWaitingRequest[]) => {
   const list = rs.length === 2 ? `One is ${things[0]}, and the other is ${things[1]}.` : `They are ${things.slice(0, -1).join(', ')} and ${things[things.length - 1]}.`;
   return `More than one request is waiting for you. ${list} Which one is your question about? You can write, for example, "question for ${rs[0].firstName || 'Amina'} about ${rs[0].kind === 'spend' ? 'spending' : rs[0].kind}: ..." with your question after the colon.`;
 };
+/** They said they have a question about one request, and not yet what it is (release test of 22 November 2026, #56). */
+export const WHAT_IS_YOUR_QUESTION = (r: AWaitingRequest) =>
+  `${r.thing.charAt(0).toUpperCase()}${r.thing.slice(1)} is waiting for you. What would you like to ask ${r.firstName || 'them'} about it? Write "question for ${r.firstName || 'them'} about ${r.kind === 'spend' ? 'spending' : r.kind}:" and then your question, and I will say it back to you before anything is sent.`;
 export const NOTHING_TO_ASK_ABOUT = 'Nothing is waiting for you to decide right now, so there is no request to ask a question about.';
 export const HOURS_TAKE_NO_QUESTION = (firstName: string) =>
   `Groundwork cannot send a question about hours. If something in ${firstName ? `${firstName}'s` : 'their'} hours needs explaining, please ask ${firstName || 'them'} directly.`;
