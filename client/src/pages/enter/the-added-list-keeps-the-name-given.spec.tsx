@@ -61,6 +61,9 @@ describe('the added list and the waiting sentence keep the name given', () => {
   it('asks nobody "What do they do" while adding, and the name given goes with the save', async () => {
     seedClosedAnchorSession()
     renderPage()
+    /* 22 November 2026: the people step is on the setup page, behind Change. */
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
     await addThroughTheTeamBox('Musa Bello, musa@anchor.test')
     saveWithMyEmail()
@@ -74,6 +77,9 @@ describe('the added list and the waiting sentence keep the name given', () => {
   it('names the person, not just the address, in "is waiting to be invited"', async () => {
     seedClosedAnchorSession()
     renderPage()
+    /* 22 November 2026: the people step is on the setup page, behind Change. */
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
     await addThroughTheTeamBox('Musa Bello, musa@anchor.test')
     saveWithMyEmail()
@@ -85,6 +91,9 @@ describe('the added list and the waiting sentence keep the name given', () => {
   it('an email added with no name still shows the address alone', async () => {
     seedClosedAnchorSession()
     renderPage()
+    /* 22 November 2026: the people step is on the setup page, behind Change. */
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
     await addThroughTheTeamBox('bello@example.test')
     saveWithMyEmail()
@@ -112,22 +121,12 @@ describe('the added list and the waiting sentence keep the name given', () => {
     const { authApi } = await import('@/api/auth')
     vi.mocked(authApi.entrySave).mockResolvedValue({ draftToken: 'd-token-new-hire' } as any)
     renderPage()
-    fireEvent.click(await screen.findByText(/Invite and finish/))
-    const emailInput = screen.getByPlaceholderText('your@email.com')
-    /* The save step asks "Your name" now (local test of staging, 15 October). */
-    { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
-    fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
-    fireEvent.submit(emailInput.closest('form')!)
-    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
-    await screen.findByText('Invite people')
-
-    /* The team box is filled with Imani, named in the conversation; the lead adds her email on her line. */
-    expect((screen.getByLabelText('Your team, one per line') as HTMLTextAreaElement).value).toBe('Imani')
-    /* UPDATED again (Hafsah's blocker, 31 October 2026): after the email is sent, "Done" takes the box's lines onto the list. */
+    /* Changed 22 November 2026: the box is on the setup page, behind Change, and Add puts each line on the list as a row of its own. */
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
     await addThroughTheTeamBox('Imani Wekesa, imani@walk2.test')
-    fireEvent.click(screen.getByText('Done'))
-
-    await waitFor(() => expect(screen.getByText('✓ Imani Wekesa (imani@walk2.test).')).toBeTruthy())
-    expect(screen.queryByText('✓ imani@walk2.test.')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+    expect(await screen.findByText('Imani Wekesa')).toBeTruthy()
+    expect(screen.getByText('imani@walk2.test')).toBeTruthy()
+    void authApi
   })
 })

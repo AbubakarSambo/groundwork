@@ -81,21 +81,18 @@ describe('a lead who added her team on People first', () => {
     expect(screen.queryByText(/This was not saved/)).toBeNull()
   })
 
-  it('a colleague picked from the list goes into the same box, kept with the setup, and is saved with the rest', async () => {
+  /* Changed 22 November 2026: the tick-list with its own Add (PeoplePicker) is gone; colleagues are suggested in the one box as a name is
+     typed (setup.txt's one input), and a pick is a row of its own on the list. */
+  it('a colleague picked as her name is typed goes on the list, and is saved with the rest', async () => {
     seedHerSetup()
     open()
-    /* Changed in F5 (stage 5): the full setup, with the picker, opens from Change beside the name. */
-    fireEvent.click((await screen.findAllByRole('button', { name: 'Change' }))[0])
-    /* Waits for exactly one: while the setup panel swaps in, a slow runner briefly has two boxes with this name, and
-       findBy would fail on "multiple elements" instead of retrying. */
-    let box!: HTMLTextAreaElement
-    await waitFor(() => { box = screen.getByLabelText('Your team, one per line') as HTMLTextAreaElement })
-    fireEvent.click(await screen.findByRole('checkbox', { name: 'Karanja Mumbi' }))
-    const picker = screen.getByRole('listbox').closest('div')!.parentElement as HTMLElement
-    fireEvent.click(within(picker).getByRole('button', { name: /^Add/ }))
-
-    await waitFor(() => expect(box.value.split('\n')).toEqual(['Ben Juma', 'Diana Omondi', 'Karanja Mumbi']))
-    expect(JSON.parse(localStorage.getItem('gw_entry_session')!).teamText.split('\n')).toContain('Karanja Mumbi')
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
+    const box = (await screen.findByLabelText('Your team, one per line')) as HTMLTextAreaElement
+    await waitFor(() => expect(screen.getByText('Ben Juma')).toBeTruthy())
+    fireEvent.change(box, { target: { value: 'Kar', selectionStart: 3 } })
+    fireEvent.mouseDown(await screen.findByRole('option', { name: /Karanja Mumbi/ }))
+    expect(await screen.findByText('Karanja Mumbi')).toBeTruthy()
+    expect(screen.queryAllByRole('checkbox')).toEqual([])
     await pressTheSave()
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0] as any

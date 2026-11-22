@@ -47,7 +47,7 @@ describe('the panel, after the team is given in the chat', () => {
   it('says who is in it, with their emails, once the chat has given them', () => {
     const namesFirst = withTheNamedAdded('', ['Brian Otieno', 'Aisha Mohamed', 'David Kiprop'].map((name) => aLineFor({ name })))
     const first = render(<FillsInAsYouTalk {...nothingYet} {...asThePageReadsIt(namesFirst)} />)
-    expect(first.container.textContent).toContain('Add their emails here when you have them.')
+    expect(first.container.textContent).toContain('Add their emails in the chat.')
     first.unmount()
 
     const withEmails = withTheNamedAdded(namesFirst, [

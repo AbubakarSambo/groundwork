@@ -73,28 +73,33 @@ describe('the law firm lead, while she is still talking', () => {
     seedHerSetup()
     open()
     const panel = (await screen.findByText('Who’s in it')).closest('aside') as HTMLElement
-    expect(within(panel).getByText('You mentioned David Ochieng, Fatima Kariuki, Joseph Muthama and Esther Wanjiru. Add their emails here when you have them.')).toBeTruthy()
+    expect(within(panel).getByText('You mentioned David Ochieng, Fatima Kariuki, Joseph Muthama and Esther Wanjiru. Add their emails in the chat.')).toBeTruthy()
     expect(within(panel).queryByLabelText('Your team, one per line')).toBeNull()
-    fireEvent.click(within(panel).getByRole('button', { name: 'Change' }))
-    const box = within(panel).getByLabelText('Your team, one per line') as HTMLTextAreaElement
-    expect(box.value.split('\n')).toEqual(NAMED)
+    /* Changed 22 November 2026: Change opens the setup page (setup.txt) in place of the chat, with the one box. */
+    fireEvent.click(within(panel).getByRole('button', { name: 'Change who’s in it' }))
+    const box = (await screen.findByLabelText('Your team, one per line')) as HTMLTextAreaElement
+    await waitFor(() => expect(box.value.split('\n')).toEqual(NAMED))
 
     const lines = NAMED.map((n) => `${n}, ${n.split(' ')[0].toLowerCase()}@law.test`).join('\n')
     fireEvent.change(box, { target: { value: lines } })
     expect(JSON.parse(localStorage.getItem('gw_entry_session')!).teamText).toBe(lines)
-    expect(within(panel).getByText('4 people')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'New check-in' }))
+    const back = (await screen.findByText('Who’s in it')).closest('aside') as HTMLElement
+    expect(within(back).getByText('4 people')).toBeTruthy()
   })
 
-  it('and once she ends the setup, the save card has the same lines in its box', async () => {
+  /* Changed 22 November 2026: there is no End check-in and no save card; what she writes is still there when she comes back to it. */
+  it('and when she opens the setup page again, the box has the same lines', async () => {
     seedHerSetup()
     open()
-    const panel = (await screen.findByText('Who’s in it')).closest('aside') as HTMLElement
-    fireEvent.click(within(panel).getByRole('button', { name: 'Change' }))
-    const lines = NAMED.map((n) => `${n}, ${n.split(' ')[0].toLowerCase()}@law.test`).join('\n')
-    fireEvent.change(within(panel).getByLabelText('Your team, one per line'), { target: { value: lines } })
-    fireEvent.click(screen.getByRole('button', { name: 'End check-in' }))
-    await waitFor(() => expect(screen.getAllByLabelText('Your team, one per line').length).toBeGreaterThan(0))
-    for (const box of screen.getAllByLabelText('Your team, one per line')) expect((box as HTMLTextAreaElement).value).toBe(lines)
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
+    const lines = NAMED.map((n) => `${n}, ${n.split(' ')[0].toLowerCase()}`).join('\n')
+    const box = (await screen.findByLabelText('Your team, one per line')) as HTMLTextAreaElement
+    await waitFor(() => expect(box.value.split('\n')).toEqual(NAMED))
+    fireEvent.change(box, { target: { value: lines } })
+    fireEvent.click(screen.getByRole('button', { name: 'New check-in' }))
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
+    await waitFor(() => expect((screen.getByLabelText('Your team, one per line') as HTMLTextAreaElement).value).toBe(lines))
   })
 })
 
@@ -112,21 +117,17 @@ describe('the law firm lead on the save card', () => {
     expect(screen.queryByText(/This was not saved/)).toBeNull()
   })
 
-  it('a correction she makes is saved with the setup, and the report made before it is not sent', async () => {
+  /* Changed 22 November 2026: the report and its correction box are no longer part of setup. A correction is said in the chat, and
+     what is saved is the whole conversation; no report made on the page is sent, the server makes it from what was said. */
+  it('saves the whole conversation, and no report made on the page', async () => {
     seedHerSetup()
     open()
-    fireEvent.click(await screen.findByText('This isn’t right, correct it'.replace('’', "'")))
-    fireEvent.change(screen.getByPlaceholderText('e.g. The deadline is not May - it is March 1.'), { target: { value: 'Esther is my finance officer in charge of billing.' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
-    await waitFor(() => expect(entryApi.chat).toHaveBeenCalled())
-
-    fireEvent.change(screen.getByLabelText('Your team, one per line'), { target: { value: '' } })
     await pressTheSave()
-    /* Her four are named and the box is empty: one press saves without them and says so (changed in the team-skip hotfix; it used to need a second press). */
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0] as any
-    expect(payload.history.map((t: any) => t.content).join(' ')).toContain('Esther is my finance officer in charge of billing.')
+    expect(payload.history.some((t: any) => t.role === 'user')).toBe(true)
     expect(payload.reportSummary).toBeUndefined()
+    expect(screen.queryByText("This isn't right, correct it")).toBeNull()
   })
 })
 
@@ -155,16 +156,17 @@ describe('the law firm lead on a phone, 375px wide, while she is still talking',
     expect(line.closest('.gwui-ec-messages')).toBeNull()
     expect(document.querySelector('.gw-fills-in')).toBeNull()
     fireEvent.click(line)
-    fireEvent.click(screen.getByRole('button', { name: 'Change' }))
-    const boxes = screen.getAllByLabelText('Your team, one per line')
-    expect(boxes).toHaveLength(1)
-    const box = boxes[0] as HTMLTextAreaElement
-    expect(box.value.split('\n')).toEqual(NAMED)
+    fireEvent.click(screen.getAllByRole('button', { name: /^Change/ })[0])
+    /* Changed 22 November 2026: Change opens the setup page in place of the chat, with the one box. */
+    await waitFor(() => expect(screen.getAllByLabelText('Your team, one per line')).toHaveLength(1))
+    const box = screen.getByLabelText('Your team, one per line') as HTMLTextAreaElement
+    await waitFor(() => expect(box.value.split('\n')).toEqual(NAMED))
     const lines = NAMED.map((n) => `${n}, ${n.split(' ')[0].toLowerCase()}@law.test`).join('\n')
     fireEvent.change(box, { target: { value: lines } })
     expect(JSON.parse(localStorage.getItem('gw_entry_session')!).teamText).toBe(lines)
-    expect(line.textContent).toMatch(/^4 people/)
-    /* The conversation goes on below it. */
-    expect(screen.getByPlaceholderText('Type your answer')).toBeTruthy()
+    /* And back to the conversation, which goes on, with the one line counting her four. */
+    fireEvent.click(screen.getByRole('button', { name: 'New check-in' }))
+    expect(await screen.findByPlaceholderText('Type your answer')).toBeTruthy()
+    expect((document.querySelector('details.gwui-ec-panel-line > summary') as HTMLElement).textContent).toMatch(/^4 people/)
   })
 })

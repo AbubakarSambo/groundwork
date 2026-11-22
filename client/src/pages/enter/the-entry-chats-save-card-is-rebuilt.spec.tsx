@@ -126,7 +126,7 @@ describe('the save card, anonymous, before saving', () => {
     /* The card sits behind "Invite and finish" until opened - the same closed-session bar this
        page has always shown, untouched by this part. Opening it is a fold, not a save or a send:
        it reveals a section, it does not submit anything. */
-    fireEvent.click(await screen.findByText(/Invite and finish/))
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
     expect(screen.getByPlaceholderText('your@email.com')).toBeTruthy()
     expect(screen.getAllByText('Daniel, the next six weeks').length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Save my check-in' })).toBeTruthy()
@@ -140,7 +140,7 @@ describe('the save card, anonymous, before saving', () => {
     vi.mocked(authApi.entrySave).mockResolvedValue({ draftToken: 'd-token' } as any)
     seedClosedSession()
     const { container } = renderPage()
-    fireEvent.click(await screen.findByText(/Invite and finish/))
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
     const emailInput = screen.getByPlaceholderText('your@email.com')
     /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
@@ -162,7 +162,7 @@ describe('the save card asks the lead her name, once (local test of staging, 15 
     vi.mocked(authApi.entrySave).mockResolvedValue({ draftToken: 'd-token' } as any)
     seedClosedSession()
     renderPage()
-    fireEvent.click(await screen.findByText(/Invite and finish/))
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
     const emailInput = screen.getByPlaceholderText('your@email.com')
     fireEvent.change(emailInput, { target: { value: 'hjumare+local@example.test' } })
     fireEvent.submit(emailInput.closest('form')!)
@@ -182,7 +182,7 @@ describe('the save card, already signed in', () => {
     const { authApi } = await import('@/api/auth')
     seedClosedSession()
     const { container } = renderPage()
-    fireEvent.click(await screen.findByText(/Invite and finish/))
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
     expect(screen.getByRole('button', { name: 'Save this' })).toBeTruthy()
     /* FAULT E (reviewer, third round): "Saving to rukia@example.test. No confirmation needed,
        you are already signed in." read like a log line. One plain sentence instead.
@@ -202,7 +202,7 @@ describe('the save card, already signed in', () => {
     authedUser = { id: 'u1', email: 'rukia@example.test' }
     seedClosedSession()
     renderPage()
-    fireEvent.click(await screen.findByText(/Invite and finish/))
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
     expect(screen.getByText('We save this for you.')).toBeTruthy()
     expect(screen.queryByText(/rukia@example\.test/)).toBeNull()
   })
@@ -225,7 +225,7 @@ describe('the save card, already signed in', () => {
     ] as any)
     seedClosedSession()
     renderPage()
-    fireEvent.click(await screen.findByText(/Invite and finish/))
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
     const danielCheckbox = await screen.findByRole('checkbox', { name: 'Daniel Park' })
     fireEvent.click(danielCheckbox)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Grace Achieng' }))
@@ -257,7 +257,7 @@ describe('the save card, already signed in', () => {
     const { entryApi } = await import('@/api/entry')
     seedClosedSession()
     renderPage()
-    fireEvent.click(await screen.findByText(/Invite and finish/))
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
     await addThroughTheTeamBox('Priya Shah, priya@suites.test\nTomas Berg, tomas@suites.test')
     expect(screen.queryByText('What do you want them to focus on or cover?')).toBeNull()
     await pressTheSave()
@@ -294,7 +294,7 @@ describe('which day it lands on, end to end (nothing-removed-screens.md item 2)'
     const { entryApi } = await import('@/api/entry')
     seedClosedSession({ cadence: 'WEEKLY', cadenceChosen: true })
     renderPage()
-    fireEvent.click(await screen.findByText(/Invite and finish/))
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
     /* Setup page review: "On which day" is the shared Choices now, one radio per day. */
     const mon = await screen.findByRole('radio', { name: 'Mon' })
     fireEvent.click(mon)
@@ -309,7 +309,7 @@ describe('which day it lands on, end to end (nothing-removed-screens.md item 2)'
     const { entryApi } = await import('@/api/entry')
     seedClosedSession({ cadence: 'MONTHLY', cadenceChosen: true })
     renderPage()
-    fireEvent.click(await screen.findByText(/Invite and finish/))
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
     const select = await screen.findByRole('combobox')
     fireEvent.change(select, { target: { value: '15' } })
     await pressTheSave()
@@ -323,7 +323,7 @@ describe('which day it lands on, end to end (nothing-removed-screens.md item 2)'
     const { entryApi } = await import('@/api/entry')
     seedClosedSession({ cadence: 'WEEKLY', cadenceChosen: true })
     renderPage()
-    fireEvent.click(await screen.findByText(/Invite and finish/))
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
     await pressTheSave()
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0]
@@ -385,7 +385,7 @@ describe('a mentioned person keeps her name when added after the email is given 
       }),
     })
     renderPage()
-    fireEvent.click(await screen.findByText(/Invite and finish/))
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
     const emailInput = screen.getByPlaceholderText('your@email.com')
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })

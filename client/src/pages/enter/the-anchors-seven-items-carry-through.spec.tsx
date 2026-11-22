@@ -245,6 +245,7 @@ describe('the people step’s Name field, for an anchor draft', () => {
   it('is sent as displayName on commit, beside the email it belongs to', async () => {
     localStorage.setItem('gw_entry_session', closedAnchorSession())
     renderPage('/start')
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
 
     /* UPDATED (Hafsah, 31 October 2026): the name is given on the same line as the email, in the one team box. */
@@ -265,6 +266,7 @@ describe('the people step’s Name field, for an anchor draft', () => {
   it('is optional: an email added without a name carries no displayName', async () => {
     localStorage.setItem('gw_entry_session', closedAnchorSession())
     renderPage('/start')
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
 
     await addThroughTheTeamBox('bello@example.test')

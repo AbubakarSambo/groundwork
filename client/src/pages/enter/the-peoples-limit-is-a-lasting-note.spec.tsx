@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
@@ -62,6 +62,7 @@ describe('the people step keeps the limit sentence on screen, and adds nobody pa
   it('says nothing about the limit before it is reached', async () => {
     seedClosedAnchorSession()
     renderPage()
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
     expect(screen.queryByText(LIMIT_SENTENCE)).toBeNull()
   })
@@ -70,6 +71,7 @@ describe('the people step keeps the limit sentence on screen, and adds nobody pa
   it('keeps the limit sentence on screen as a Note once mayAdd is reached, not only a toast', async () => {
     seedClosedAnchorSession()
     renderPage()
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
     await addThroughTheTeamBox('person0@example.test')
     expect(screen.queryByText(LIMIT_SENTENCE)).toBeNull()
@@ -83,6 +85,7 @@ describe('the people step keeps the limit sentence on screen, and adds nobody pa
   it('past the limit, the save stops and saves nobody, and the limit stays said on screen', async () => {
     seedClosedAnchorSession()
     renderPage()
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
     await addThroughTheTeamBox('person0@example.test\nperson1@example.test\nperson2@example.test')
     saveWithMyEmail()

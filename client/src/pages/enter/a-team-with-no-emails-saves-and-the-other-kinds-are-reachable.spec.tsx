@@ -57,8 +57,9 @@ function open() {
   )
 }
 
+/* Changed 22 November 2026: the box is on the setup page, behind Change in the panel. */
 async function toTheSaveCard() {
-  fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
+  fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
   await screen.findByLabelText('Your team, one per line')
 }
 

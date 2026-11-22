@@ -115,6 +115,7 @@ describe('an anchor draft at ready', () => {
     expect(screen.queryByText(/Once they check in, everyone gets the shared report/)).toBeNull()
 
     // And then the people step, on the same screen.
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
 
     // No second conversation was ever started: nothing re-asks her opening question.

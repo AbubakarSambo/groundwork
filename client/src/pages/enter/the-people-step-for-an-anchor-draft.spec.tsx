@@ -93,6 +93,7 @@ async function openInviteBlock(anchor: boolean) {
   localStorage.setItem('gw_entry_session', closedSession(anchor))
   renderPage()
   if (anchor) {
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
     return
   }

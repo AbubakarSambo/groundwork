@@ -81,15 +81,17 @@ describe('a lead opens /start on a device that has nothing kept', () => {
     /* Changed in F5 (stage 5): setup ends in the panel, with his four listed and one button; the box opens from Change. */
     expect(await screen.findByRole('button', { name: 'Send 4 invitations' })).toBeTruthy()
     expect(screen.getByText('David Mutebi, david@startup.test')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Change' }))
-    const box = (await screen.findByLabelText('Your team, one per line')) as HTMLTextAreaElement
-    expect(box.value).toBe(HIS_TEAM)
+    fireEvent.click(screen.getAllByRole('button', { name: /^Change/ })[0])
+    /* Changed 22 November 2026: the setup page puts each of his people on the list, a row each, so nothing is asked again. */
+    await screen.findByLabelText('Your team, one per line')
+    for (const name of ['David Mutebi', 'Aisha Nakato', 'Robert Okello']) expect(await screen.findByText(name)).toBeTruthy()
+    expect(screen.getByText('david@startup.test')).toBeTruthy()
   })
 
   it('keeps what he writes in the box on the server as he writes it', async () => {
     vi.mocked(entryApi.unfinished).mockResolvedValue({ ...ENDED_WITH_HIS_TEAM_TYPED, teamText: '' } as any)
     open()
-    fireEvent.click(await screen.findByText(/Invite and finish/))
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
     const box = await screen.findByLabelText('Your team, one per line')
     fireEvent.change(box, { target: { value: HIS_TEAM } })
     await waitFor(() => {

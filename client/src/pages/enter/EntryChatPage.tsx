@@ -3421,6 +3421,7 @@ export function EntryChatPage() {
       <Stack gap={6}>
         <SubHeading>Check your email</SubHeading>
         <Note>{`I sent a link to ${email}. Open it to save this check-in. ${whatOpeningTheLinkDoes(peopleOnTheList, startsLater ? checkInBy : null)}`}</Note>
+        {inviteAdded.length > 0 && <Note>{whoIsWaitingSentence(inviteAdded.map((e) => shownAs(e.split(' - ')[0])))}</Note>}
       </Stack>
     </section>
   ) : (
@@ -3628,7 +3629,7 @@ export function EntryChatPage() {
       <div className="gwui-ec-main">
 
         {/* PHASE: ONBOARDING (AI-driven) */}
-        {phase === 'onboarding' && settingUp && theSetupPage}
+        {settingUp && theSetupPage}
         {phase === 'onboarding' && !settingUp && (
           /* Once the conversation has begun (not at the door, which draws its own card), it sits in one card with the reply row at its
              foot, and the side panel is a card beside it (start-chat.jpg; Hafsah, 22 November). */
@@ -3880,7 +3881,7 @@ export function EntryChatPage() {
         )}
 
         {/* PHASE: CHECK-IN (AI-driven, message 15+) */}
-        {phase === 'checkin' && (
+        {phase === 'checkin' && !settingUp && (
           <div className="gwui-ec-checkin">
             {/* Not-signed-up reminder: the entry user has no account until they save. */}
             {!user && (
@@ -3923,7 +3924,14 @@ export function EntryChatPage() {
 
             {/* Input bar / save CTA */}
             {closed ? (
-              <div className="gwui-ec-invite-bar">{theSaveBlock}</div>
+              <div className="gwui-ec-invite-bar">
+                <Stack gap={8}>
+                  {/* An older check-in, closed before setup ended in the panel: the same one save, and the setup page behind Change. */}
+                  {theTeamNow.people.length > 0 && <div>{theTeamNow.people.map((l) => <span key={l} className="gwui-setrow-value gwui-setrow-value-name">{l}</span>)}</div>}
+                  <button type="button" className="gwui-plain-link" onClick={() => { void openTheSetup() }}>Change</button>
+                  {theSaveBlock}
+                </Stack>
+              </div>
             ) : !closed && (
               <div className="gwui-ec-checkin-composer-wrap">
                 <Composer

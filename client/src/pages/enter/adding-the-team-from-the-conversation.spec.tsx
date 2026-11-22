@@ -59,7 +59,7 @@ async function openTheSaveCard() {
       <MemoryRouter initialEntries={['/start']}><EntryChatPage /></MemoryRouter>
     </QueryClientProvider>,
   )
-  fireEvent.click(await screen.findByText(/Invite and finish/))
+  fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: no card; the setup page is behind Change */
   return (await screen.findByLabelText('Your team, one per line')) as HTMLTextAreaElement
 }
 
@@ -73,7 +73,8 @@ describe('a lead who named four people in the setup conversation presses Save', 
     expect(screen.queryByText('Add everyone')).toBeNull()
     /* What the people block says now counts the box: four are on it, not "You have not added anybody else yet". */
     expect(screen.queryByText(/You have not added anybody else yet/)).toBeNull()
-    expect(screen.getByText(/^Everyone in the box above is on the check-in when you save it\. Nobody is invited before you save this check-in\. How many people you can add depends on your plan, not on the check-in\.$/)).toBeTruthy()
+    /* Changed 22 November 2026: the setup page's own words for the block (setup.txt), in place of the save card's three paragraphs. */
+    expect(screen.getByText('Adding someone sends their invitation when it starts.')).toBeTruthy()
   })
 
   /* Changed in the team-skip hotfix (live pilot): this pinned "the save stops naming the two and nothing is saved". Skipping is always
@@ -122,7 +123,8 @@ describe('a lead who named four people in the setup conversation presses Save', 
 
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
     expect(box.disabled).toBe(true)
-    expect(screen.getByRole('button', { name: 'Saving…' })).toBeTruthy()
+    /* The setup page's start says so while it runs (22 November 2026: "Start it and invite N people"). */
+    expect(screen.getByRole('button', { name: 'Starting…' })).toBeTruthy()
     finish({ groundId: 'g-created' })
   })
 })

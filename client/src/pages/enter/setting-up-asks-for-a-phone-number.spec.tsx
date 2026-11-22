@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -47,6 +47,7 @@ describe('the people step of the setup', () => {
     whatsappOn = false
     seedClosedAnchorSession()
     renderPage()
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
     expect(screen.getByText(/One per line: a name, an email and a phone number\./)).toBeTruthy()
     expect(screen.queryByText(/With a phone number, their check-ins can also reach them on WhatsApp/)).toBeNull()
@@ -56,6 +57,7 @@ describe('the people step of the setup', () => {
     whatsappOn = true
     seedClosedAnchorSession()
     renderPage()
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
     expect(screen.getByText(/With a phone number, their check-ins can also reach them on WhatsApp\./)).toBeTruthy()
   })
@@ -74,6 +76,7 @@ describe('saving without being signed in', () => {
     whatsappOn = false
     seedClosedAnchorSession()
     renderPage()
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
     await addThroughTheTeamBox('Musa Bello, musa@anchor.test, +254 712 345 678\nAda Obi, ada@anchor.test')
     saveWithMyEmail()
