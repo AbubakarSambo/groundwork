@@ -1093,7 +1093,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 /* The prototype's selected check-in (.ci-row.on): a light blue tint and bold, no box around it. */
 .gw-ci-row.on { background: var(--gw-blue-bg); font-weight: 700; }
 .gw-ci-row.closed { color: var(--gw-sub); }
-.gw-ci-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin: 6px 6px 0; /* centred in the 20px the page icons take, so a check-in's name starts on the same line as Today */ background: var(--gw-rule-2); }
+.gw-ci-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 4px; background: var(--gw-rule-2); }
 .gw-ci-dot-turn { background: var(--gw-green-t); }
 .gw-ci-dot-late { background: var(--gw-red-t); }
 /* Long names wrap rather than being cut off: a name that loses its end is a different name. */
