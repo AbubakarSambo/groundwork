@@ -1,3 +1,5 @@
+import { A_SESSION_OF_THEIRS } from '../grounds/the-sessions-done';
+import { theQuietHoursNow } from '../../common/the-clock';
 import { theirWordsAsSaid, theWordsAlone, mayBeQuoted } from '../conversation/their-words-as-said';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { aWaitSomebodyElseChases } from './a-wait-somebody-else-chases';
@@ -698,7 +700,7 @@ export async function readMyWork(
   prisma: any,
   board: ABoardReader | null,
   input: { groundId: string; userId: string; personId?: string | null },
-  now: Date = new Date(),
+  now: Date = theQuietHoursNow(),
 ): Promise<MyWork> {
   const ground = await prisma.ground.findFirst({ where: { id: input.groundId }, select: GROUND_SELECT });
   if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
@@ -754,7 +756,7 @@ export async function readMyWork(
     prisma.groundDependency?.findMany?.({ where: { groundId: ground.id, OR: [{ fromParticipantId: pid }, { onParticipantId: pid }] }, orderBy: { createdAt: 'asc' } }).catch(() => []) ?? [],
     prisma.workMention?.findMany?.({ where: { groundId: ground.id, aboutParticipantId: pid, kind: 'CREDIT' }, select: { sourceParticipantId: true, checkInId: true } }).catch(() => []) ?? [],
     prisma.checkIn?.findMany?.({
-      where: { participantId: pid, groundId: ground.id, isSetup: false, isSelfCorrection: false, isClarification: false, isPostSignOff: false, optional: false },
+      where: { participantId: pid, groundId: ground.id, ...A_SESSION_OF_THEIRS },
       select: {
         id: true, sessionNumber: true, status: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true, specificityDimensions: true, closedReason: true,
         /* Their own answers in it, to count what actually happened (a-day-they-checked-in.ts). */

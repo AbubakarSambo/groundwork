@@ -1,3 +1,5 @@
+import { A_SESSION_OF_THEIRS } from '../grounds/the-sessions-done';
+import { theQuietHoursNow } from '../../common/the-clock';
 import { workingDaysOf } from '../grounds/which-days-this-team-works';
 import { aRoundCouldHaveBeenAnswered, whenACheckInBegan } from '../grounds/a-round-that-could-be-answered';
 /**
@@ -300,13 +302,13 @@ export const mayBeNudged = (d: TheirDay) => d.dueToday && !d.answeredToday && (d
  * ON THEIR OWN PAGE (their own report): "You checked in on time today, 5 days running." For the person whose report it is, read by
  * nobody else (the route serves a session's report to its owner alone). Null with nothing to credit, or with the direct morning off.
  */
-export async function onTimeForThemselves(prisma: any, groundId: string | null | undefined, participantId: string, now: Date = new Date()): Promise<string | null> {
+export async function onTimeForThemselves(prisma: any, groundId: string | null | undefined, participantId: string, now: Date = theQuietHoursNow()): Promise<string | null> {
   try {
     if (!groundId) return null;
     const g = await prisma?.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true, cadence: true, cadenceDays: true, workingDays: true } });
     const zone = (g?.organizationId ? await theOrganisationsZone(prisma, g.organizationId).catch(() => null) : null) ?? THE_PRODUCTS_OWN_ZONE;
     const sessions: ASessionOnRecord[] = (await prisma?.checkIn?.findMany?.({
-      where: { groundId, participantId },
+      where: { groundId, participantId, ...A_SESSION_OF_THEIRS },
       select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } },
     })) ?? [];
     /* Whether it opens each working day, read the same way as the lead's morning (the-direct-morning.ts). */

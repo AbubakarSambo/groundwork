@@ -1,3 +1,5 @@
+import { inTheTeamsNumbering } from '../board/which-round-is-open';
+import { theSessionClock } from '../board/one-count-for-the-sessions';
 import { whenACheckInBegan } from '../grounds/a-round-that-could-be-answered';
 import { whenTheseOrganisationsPaused, thePausesThatAreOver } from '../billing/the-trial-grace';
 import { rebuildThePersonsRecords } from '../board/the-persons-record-store';
@@ -415,16 +417,20 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   /* Approved leave is no miss, as in every other count of misses (missed-check-ins.ts): the letter counted it as one (N48). */
   const leave = await leaveOfThePeopleOn(prisma, [g.id]).catch(() => new Map<string, Stretch[]>());
   const pausesOver = (await thePausesThatAreOver(prisma, [g.organizationId ?? null])).get(g.organizationId ?? '') ?? null;
+  /* Every session in the team's numbering and against the check-in's own clock (theSessionClock over everybody counted), never one person's
+     own: "Zawadi missed one of one" was read off her own rows (release test, 21 November 2026). */
+  const numbered = inTheTeamsNumbering((Array.isArray(sessions) ? sessions : []) as any[]);
+  const theClocksSession = theSessionClock(numbered.filter((c) => c.participantId) as any, countedIds, null, now).currentSession;
   let checkInsDue = 0;
   let checkInsMade = 0;
   const missedBy: { name: string; missed: number; of: number }[] = [];
   for (const p of counted) {
     if (p.userId && p.userId === g.initiatorId) continue;
-    const theirs = (Array.isArray(sessions) ? sessions : []).filter((c) => c.participantId === p.id);
+    const theirs = numbered.filter((c) => c.participantId === p.id);
     const inTheWeek = new Set(theirs.filter((c) => { const at = new Date(c.availableFrom ?? c.createdAt); return at >= since && at <= now; }).map((c) => c.sessionNumber));
     /* On a check-in that opens each working day, a quiet session on a day they answered another is no miss: "Kevin missed one of six" (polish round 15). */
     /* The same conditions as every other reader of a miss (grounds/a-round-that-could-be-answered): not before they joined or before anybody had said anything, and not in a pause. */
-    const closed = theirClosedSessions(theirs, leave.get(p.id) ?? [], now, { opensDaily: String(g.cadence ?? '').toUpperCase() === 'DAILY', pausedFrom: pausedFrom ?? null, pausesOver, joinedAt: (p as any).joinedAt ?? null, checkInBeganAt }).filter((c) => inTheWeek.has(c.sessionNumber));
+    const closed = theirClosedSessions(theirs, leave.get(p.id) ?? [], now, { opensDaily: String(g.cadence ?? '').toUpperCase() === 'DAILY', theClocksSession, pausedFrom: pausedFrom ?? null, pausesOver, joinedAt: (p as any).joinedAt ?? null, checkInBeganAt }).filter((c) => inTheWeek.has(c.sessionNumber));
     const missed = closed.filter((c) => c.missed).length;
     checkInsDue += closed.length;
     checkInsMade += closed.length - missed;

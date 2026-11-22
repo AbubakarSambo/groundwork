@@ -1,3 +1,4 @@
+import { A_SESSION_OF_THEIRS } from '../grounds/the-sessions-done';
 import { withoutTheOldEnding } from '../reports/what-people-said-differently-about';
 import { howManyReadsAreStillToCome } from '../conversation/the-read-is-owed';
 import { workingDaysOf } from '../grounds/which-days-this-team-works';
@@ -981,7 +982,7 @@ export async function theDirectMorningFor(
     managingOnly: !!p.managingOnly, left: !!p.leftAt, isTheLead: p.userId === opts.leadUserId || p.partyType === 'INITIATOR', userId: p.userId,
   }));
   const hers = new Set(people.filter((p) => p.isTheLead).map((p) => p.id));
-  const checkIns: any[] = ((await Promise.resolve(prisma?.checkIn?.findMany?.({ where: { groundId: ground.id }, select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } } })).catch(() => [])) ?? []) as any[];
+  const checkIns: any[] = ((await Promise.resolve(prisma?.checkIn?.findMany?.({ where: { groundId: ground.id, ...A_SESSION_OF_THEIRS }, select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } } })).catch(() => [])) ?? []) as any[];
   const lastCheckIn: Record<string, Date | null> = {};
   const firstOpened: Record<string, Date | null> = {};
   for (const c of checkIns) {

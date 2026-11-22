@@ -1,3 +1,4 @@
+import { A_SESSION_OF_THEIRS } from '../grounds/the-sessions-done';
 import { createHash } from 'crypto';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { theDealsOnRecord } from './a-sales-aim-is-counted-from-the-deals';
@@ -64,7 +65,7 @@ export async function readTheInputs(prisma: any, groundId: string, now: Date = n
 
   const [checkIns, rows, commitments, deps, turns, workItems, evidence] = await Promise.all([
     safe<any[]>(prisma.checkIn?.findMany?.({
-      where: { groundId, participantId: { in: ids }, isSetup: false, isSelfCorrection: false, isClarification: false, isPostSignOff: false, optional: false },
+      where: { groundId, participantId: { in: ids }, ...A_SESSION_OF_THEIRS },
       select: { id: true, participantId: true, sessionNumber: true, status: true, closedReason: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true, specificityDimensions: true, _count: { select: { turns: { where: { role: 'PERSON' } } } } },
     }), []),
     safe<any[]>(prisma.recordEntry?.findMany?.({
