@@ -49,7 +49,16 @@ export const THE_INSTRUCTION_IS_UNCLEAR = (first: string, matter: string | null,
 };
 export const THE_INSTRUCTION_IS_ON = 'Done. I will do it as I said, and I will tell you if anything stops me.';
 export const THE_INSTRUCTION_IS_OFF = 'All right. I have not asked anybody anything.';
-export const NO_ONE_TO_ASK = (first: string) => `${first}, I would do that, but nobody in your team has told me they are happy to hear from me yet. Please send me their names and contacts first.`;
+/**
+ * NOBODY TO WRITE TO, SAID FROM WHO IS ON HER RECORD (release test 21 November, 81). It read "nobody in your team has told me they are happy to hear from me",
+ * which nobody is ever asked, to a senior person who had given no names at all.
+ */
+export const NO_ONE_TO_ASK = (first: string, a: { notIntroducedYet: number; namedButNotOnIt: string[] }) =>
+  a.namedButNotOnIt.length
+    ? `${first}, I would do that, but ${nameList(a.namedButNotOnIt)} ${a.namedButNotOnIt.length === 1 ? 'is' : 'are'} not among the people in your team I can write to. Send me ${a.namedButNotOnIt.length === 1 ? 'their' : 'each one\'s'} phone number or email address, and I will introduce myself first.`
+    : a.notIntroducedYet
+      ? `${first}, I would do that, but I have not been able to introduce myself to anybody in your team yet, so there is nobody I can write to. I will tell you as soon as I can.`
+      : `${first}, I would do that, but you have not given me anybody in your team to write to yet. Send me their names with a phone number or an email address, and I will introduce myself to them first.`;
 /** Her own name, never a fixed one (it read "Only Fatima" in every organisation). */
 export const ONLY_SHE_CAN_GIVE_ONE = (principalFirst: string) => `Only ${principalFirst} can give me an instruction like that.`;
 

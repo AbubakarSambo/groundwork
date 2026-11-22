@@ -94,14 +94,31 @@ const theWords = (about: string): string => {
   return `“${cut}”`;
 };
 
-export interface TheirCheckIn { /** What was read from each thing they sent, for the reply to be written from. */ readings?: WhatTheySaid[]; reply: string | null; wrote: { commitments: number; kept: number; blockers: number; answered: string[] }; asked: string | null }
+export interface TheirCheckIn { /** What was read from each thing they sent, for the reply to be written from. */ readings?: WhatTheySaid[]; reply: string | null; /** `unproven`: the results kept as only their word, with nothing on the record to show them. */ wrote: { commitments: number; kept: number; unproven?: number; blockers: number; answered: string[] }; asked: string | null }
 
 export async function turnTheirReplyIntoTheirCheckIn(prisma: any, mind: TheTeamMind | null | undefined, a: { contact: any; items: AnItemTheySent[]; now: Date; since?: Date | null; /** The conversation so far (the-conversation-so-far.ts). */ recent?: string }): Promise<TheirCheckIn> {
   const { contact, now } = a;
   const since = a.since ?? null;
   const { work, externalId } = await theirWorkNow(prisma, contact);
   const first = work.first;
-  const wrote = { commitments: 0, kept: 0, blockers: 0, answered: [] as string[] };
+  const wrote = { commitments: 0, kept: 0, unproven: 0, blockers: 0, answered: [] as string[] };
+  /*
+   * WHAT THE TEAM HAS ALREADY SENT TO HER RECORD CAN SHOW A RESULT (Batch F, F5; D13). The documents a member of her team sent are read once, only when a result
+   * has no proof in what this person sent, and only the ones that share most of its words; the same reader as for their own documents decides. What she forwarded
+   * herself is never read here, and nothing about the document, or who sent it, is told to the person.
+   */
+  let theTeamsDocuments: { materialId: string; text: string }[] | null = null;
+  const shownOnHerRecord = async (thing: string): Promise<{ materialId: string } | null> => {
+    if (!mind?.whichShowsIt) return null;
+    theTeamsDocuments = theTeamsDocuments ?? (((await Promise.resolve(prisma.principalMaterial?.findMany?.({ where: { principalUserId: contact.principalUserId, state: 'kept', kind: 'file', fromUserId: { startsWith: 'contact:' } }, select: { id: true, text: true, fromUserId: true } })).catch(() => [])) ?? []) as any[])
+      .filter((m) => String(m.fromUserId ?? '').startsWith('contact:') && String(m.text ?? '').trim() && !a.items.some((i) => i.materialId === m.id))
+      .map((m) => ({ materialId: m.id as string, text: String(m.text) }));
+    const words = [...new Set(thing.toLowerCase().match(/[a-z0-9][a-z0-9.,-]{3,}/g) ?? [])];
+    const near = theTeamsDocuments.map((d) => ({ d, n: words.filter((w) => d.text.toLowerCase().includes(w)).length })).filter((x) => x.n >= 2).sort((x, y) => y.n - x.n).slice(0, 5).map((x) => x.d);
+    if (!near.length) return null;
+    const id = await mind.whichShowsIt({ thing, by: first, documents: near.map((d) => ({ id: d.materialId, name: 'a document on the record', text: d.text.slice(0, 3000) })) }).catch(() => null);
+    return near.find((d) => d.materialId === id) ?? null;
+  };
   let keptEarlier = 0;
   let asked: string | null = null;
   /* The documents they sent. None of them proves anything by arriving with a claim: each outcome is matched to the document that shows it (which-document-shows-it.ts). */
@@ -163,13 +180,6 @@ export async function turnTheirReplyIntoTheirCheckIn(prisma: any, mind: TheTeamM
       const reopen = u.notFinished && row.state === 'KEPT' && !String(row.provenBy ?? '').startsWith('material:');
       await prisma.commitment.update({ where: { id: row.id }, data: { ...(u.whenSaid ? { dueSaid: u.whenSaid } : {}), ...(u.waitingOn ? { waitingOn: u.waitingOn } : {}), ...(reopen ? { state: 'OPEN', resolvedAt: null } : {}) } });
     }
-    /* A matter that now needs her decision is written where the register reads a decision (Dangote rerun, N7). It is theirs to raise and hers to decide: nothing is decided here. */
-    for (const d of said.decisions ?? []) {
-      const row: any = d.commitmentId ? (await have()).find((c) => c.id === d.commitmentId) : await put(d.about, null, item.at ?? now);
-      if (!row || !prisma.registerNote?.upsert) continue;
-      const where = { principalUserId_sourceKind_sourceId: { principalUserId: contact.principalUserId, sourceKind: 'commitment', sourceId: row.id } };
-      await prisma.registerNote.upsert({ where, create: { organizationId: contact.organizationId, principalUserId: contact.principalUserId, sourceKind: 'commitment', sourceId: row.id, awaiting: 'decision', decisionQuestion: d.question }, update: { awaiting: 'decision', decisionQuestion: d.question } }).catch(() => undefined);
-    }
     for (const o of said.outcomes) {
       /* A result read out of a document is that document's claim: nothing shows it unless another document does, and the person who forwarded it is not asked to prove it. */
       const fromADocument = item.isDocument;
@@ -179,7 +189,9 @@ export async function turnTheirReplyIntoTheirCheckIn(prisma: any, mind: TheTeamM
       /* A document that shows THIS, and did not carry it, is what shows it. Their word alone, a document about something else, or the document that made the claim is kept as their word: the register calls that "unverified". */
       const others = documents.filter((d) => d.materialId !== item.materialId);
       const shownBy = others.length && mind?.whichShowsIt ? await mind.whichShowsIt({ thing: target.text, by: first, documents: others.map((d) => ({ id: d.materialId!, name: 'a document they sent', text: d.text })) }).catch(() => null) : null;
-      const proof = shownBy ? others.find((d) => d.materialId === shownBy) ?? null : null;
+      const proofHere = shownBy ? others.find((d) => d.materialId === shownBy) ?? null : null;
+      /* Nothing they sent shows it: what the team has already sent to her record may (Batch F, F5; D13: Toyin was asked for proof of a payment the Treasury bank advice already showed). */
+      const proof = proofHere ?? (!fromADocument ? await shownOnHerRecord(target.text) : null);
       /* A promise already counted as done is counted again only when this brings its first proof; a proof it has stands (D14: an outcome can now be tied to a promise already counted). */
       if (target.state === 'KEPT' && (!proof || String(target.provenBy ?? '').startsWith('material:'))) continue;
       /* A claim somebody disputed stays open until something independent shows it. */
@@ -188,6 +200,7 @@ export async function turnTheirReplyIntoTheirCheckIn(prisma: any, mind: TheTeamM
       await prisma.commitment.update({ where: { id: target.id }, data: { provenBy: proof ? `material:${proof.materialId}` : null } });
       wrote.kept += 1;
       if (o.commitmentId) keptEarlier += 1;
+      if (!proof) wrote.unproven += 1;
       if (!proof && !fromADocument && !asked && (await mayAskOnce(prisma, contact, 'q:result', now, since))) asked = THE_ONE_QUESTION.done(first, theWords(target.text));
     }
     for (const ans of said.answers) {

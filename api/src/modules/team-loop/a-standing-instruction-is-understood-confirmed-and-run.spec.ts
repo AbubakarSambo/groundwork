@@ -41,6 +41,26 @@ describe('a standing instruction is understood and repeated back before anything
     expect(x.t.persistentJob.rows.filter((j: any) => j.kind.startsWith('standing:'))).toHaveLength(0);
   });
 
+  /* Release test 21 November, 81: "What can the team close this week" was read as an instruction and answered "nobody in your team has told me they are happy to hear from me yet". */
+  it('a question asked of her register is not an instruction, even when the model would read it as one', async () => {
+    const x = await aTeamLoopWorld({ mind: aScriptedMind({ instruction: { kind: 'handle_with_team', matter: 'what the team can close this week' } }), now: at(11, '10:00') });
+    expect(await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'What can the team close this week' })).toBeNull();
+    expect(x.t.persistentJob.rows.filter((j: any) => j.kind.startsWith('standing:'))).toHaveLength(0);
+  });
+
+  it('with nobody to write to, she is told what is true of her record: nobody given, or nobody introduced yet', async () => {
+    const x = await aTeamLoopWorld({ mind: aScriptedMind({ instruction: { kind: 'handle_with_team', matter: 'their recap' } }), now: at(11, '10:00') });
+    const words = 'Write to my team now and ask each of them for their recap';
+    for (const c of x.t.outreachContact.rows) c.state = 'proposed';
+    const notYet = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: words });
+    x.t.outreachContact.rows.length = 0;
+    const nobody = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: words });
+    console.log(`FATIMA READS\n${notYet}\n${nobody}`);
+    expect(notYet).toBe('Fatima, I would do that, but I have not been able to introduce myself to anybody in your team yet, so there is nobody I can write to. I will tell you as soon as I can.');
+    expect(nobody).toBe('Fatima, I would do that, but you have not given me anybody in your team to write to yet. Send me their names with a phone number or an email address, and I will introduce myself to them first.');
+    expect(`${notYet} ${nobody}`).not.toMatch(/happy to hear from me/);
+  });
+
   it('reads it with no model at all, plainly, and still repeats it back', async () => {
     const x = await aTeamLoopWorld({ mind: aScriptedMind(), now: at(11, '10:00') });
     (x.service as any).mind = { ...aScriptedMind(), readAnInstruction: async () => null };

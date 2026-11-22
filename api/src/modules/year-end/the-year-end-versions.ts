@@ -21,8 +21,9 @@ import { dayWords, MONTHS, monthWords, theMonthsWithANote, type AnEdit, type The
 import { coverageOf } from '../outstanding/the-persistent-jobs';
 import { buildTheRegister } from '../outstanding/the-outstanding-register';
 import { writeItOnce } from './the-year-end-log';
-import { buildTheContentWithTheNarrative, type TheNarrator } from './the-year-end-narrative';
-import { theFilesSheKept, theMessagesSheKept, whatHerMaterialCovers } from '../executive-onboarding/the-months-a-document-covers';
+import { buildTheContentWithTheNarrative, theNarratorThatIsRunning, type TheNarrator } from './the-year-end-narrative';
+import { readTheRecordWhole, THE_WEEKS_READ } from '../outstanding/the-record-read-whole';
+import { theFilesSheKept, theMessagesSheKept, theRecentWordsOnHerRecord, whatHerMaterialCovers } from '../executive-onboarding/the-months-a-document-covers';
 
 export type TheStatus = 'draft' | 'revised' | 'approved' | 'final';
 export interface TheDraftRow { id: string; organizationId: string; principalUserId: string; year: number; version: number; status: TheStatus; content: YearEndContent; parentId: string | null; approvedAt: Date | null; createdAt: Date }
@@ -30,11 +31,17 @@ export interface TheDraftRow { id: string; organizationId: string; principalUser
 /* ------------------------------------------------------------------ the record */
 
 /** The record for one principal and one year. A delegate's reading, always: her own private to-do list never goes into a file that can be sent on. */
-export async function loadTheRecord(prisma: any, a: { organizationId: string; principalUserId: string; now: Date }): Promise<TheRecordForTheYear> {
+export async function loadTheRecord(prisma: any, a: { organizationId: string; principalUserId: string; now: Date; narrator?: TheNarrator | null }): Promise<TheRecordForTheYear> {
   const year = a.now.getUTCFullYear();
   const user: any = await prisma.user.findUnique({ where: { id: a.principalUserId }, select: { firstName: true, lastName: true } }).catch(() => null);
   const principalName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'the principal';
-  const register = await buildTheRegister(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, now: a.now, forADelegate: true });
+  const theRegisterNow = () => buildTheRegister(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, now: a.now, forADelegate: true });
+  let register = await theRegisterNow();
+  /* What only she can decide, and which said claims a proven line settles, read from the record whole before anything is built from it (Batch F, F1). */
+  const narrator = a.narrator === undefined ? theNarratorThatIsRunning() : a.narrator;
+  const recent = narrator?.readTheRecordWhole ? await theRecentWordsOnHerRecord(prisma, { principalUserId: a.principalUserId, since: new Date(a.now.getTime() - THE_WEEKS_READ * 86_400_000), until: a.now }).catch(() => null) : null;
+  const read = recent ? await readTheRecordWhole(prisma, (x) => narrator!.readTheRecordWhole!(x), { organizationId: a.organizationId, principalUserId: a.principalUserId, now: a.now, register, principalName, recent }).catch(() => null) : null;
+  if (read) register = await theRegisterNow();
   const grounds: any[] = (await prisma.ground.findMany({ where: { organizationId: a.organizationId, initiatorId: a.principalUserId }, select: { id: true, label: true } })) ?? [];
   const ids = grounds.map((g) => g.id);
   const labelOf = new Map<string, string>(grounds.map((g) => [g.id, g.label]));
@@ -144,6 +151,22 @@ export async function makeTheFirstDraft(prisma: any, a: { organizationId: string
 
 export interface TheReviser { userId: string; isPrincipal: boolean }
 
+/**
+ * THE VERSION BEING BUILT, IF ANY (Batch F, F4; E-1). A build reads the record and the model and can take minutes. "Send me the draft" asked in that time sent the
+ * version before again. While one is being built for her, a request to be sent the draft is told it is coming, and nothing is sent twice. Kept in this process:
+ * a build is one call, and one that died long ago is not said to be running.
+ */
+const BEING_BUILT = new Map<string, { version: number; since: number }>();
+const A_BUILD_IS_OVER_AFTER = 30 * 60_000;
+export function theVersionBeingBuilt(principalUserId: string): number | null {
+  const b = BEING_BUILT.get(principalUserId);
+  return b && Date.now() - b.since < A_BUILD_IS_OVER_AFTER ? b.version : null;
+}
+async function whileItIsBuilt<T>(principalUserId: string, version: number, build: () => Promise<T>): Promise<T> {
+  BEING_BUILT.set(principalUserId, { version, since: Date.now() });
+  try { return await build(); } finally { BEING_BUILT.delete(principalUserId); }
+}
+
 export const NO_DRAFT_YET = 'There is no draft yet to change. I am still collecting, and I will tell you when the first one is ready.';
 
 /**
@@ -161,7 +184,7 @@ export async function reviseTheDraft(
   if (!latest) return { said: NO_DRAFT_YET, version: 0 };
   const edit = { id: randomUUID(), by: a.by.userId, at: a.now.toISOString(), channel: a.channel, ...change } as AnEdit;
   const edits = [...(latest.content.edits ?? []), edit];
-  const content = await buildTheContentWithTheNarrative(await loadTheRecord(prisma, a), edits, { narrator: a.narrator, previous: latest.content.narrative, reusePrevious: change.kind === 'shorten', previousOutcomes: latest.content.outcomes });
+  const content = await whileItIsBuilt(a.principalUserId, latest.version + 1, async () => buildTheContentWithTheNarrative(await loadTheRecord(prisma, a), edits, { narrator: a.narrator, previous: latest.content.narrative, reusePrevious: change.kind === 'shorten', previousOutcomes: latest.content.outcomes }));
   const first = content.principalFirstName;
   const row = await writeAVersion(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, content, status: 'revised', note: noteFor(change, first), by: a.by.userId, channel: a.channel, parent: latest, now: a.now });
   return { said: saidBack(change, row.version, latest, content), version: row.version };
@@ -172,7 +195,7 @@ export async function refreshTheDraft(prisma: any, a: { organizationId: string; 
   const year = a.now.getUTCFullYear();
   const latest = await latestDraft(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, year });
   if (!latest) return { said: NO_DRAFT_YET, version: 0 };
-  const content = await buildTheContentWithTheNarrative(await loadTheRecord(prisma, a), latest.content.edits ?? [], { narrator: a.narrator, previous: latest.content.narrative, previousOutcomes: latest.content.outcomes });
+  const content = await whileItIsBuilt(a.principalUserId, latest.version + 1, async () => buildTheContentWithTheNarrative(await loadTheRecord(prisma, a), latest.content.edits ?? [], { narrator: a.narrator, previous: latest.content.narrative, previousOutcomes: latest.content.outcomes }));
   if (JSON.stringify({ ...content, builtAt: 0 }) === JSON.stringify({ ...latest.content, builtAt: 0 })) return { said: `Version ${latest.version} already has everything in the record, so I have not made a new one.`, version: latest.version };
   const row = await writeAVersion(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, content, status: 'revised', note: 'Built again from the record, with later evidence.', by: a.by.userId, channel: a.channel, parent: latest, now: a.now });
   return { said: `I have made version ${row.version} from the record as it is now. ${keptLine(latest)}`, version: row.version };

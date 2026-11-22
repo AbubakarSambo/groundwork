@@ -119,7 +119,7 @@ Who: **M** member, **L** lead (runs a check-in), **A** admin, **H** HR or financ
 | 69 | Ask what is still outstanding, who has it and when it is due | L, P, D | "What is outstanding?" | The web and WhatsApp | Yes, by answering |
 | 70 | Ask what waits for your decision | L, P, D | "What needs my decision?" | The web and WhatsApp | Yes, by answering |
 | 71 | Let somebody, such as your executive assistant, act for you | P, L, A | "My executive assistant is Amina Yusuf, she can act for me." | The web and WhatsApp | Yes, said back first and done on your yes |
-| 72 | End the right of somebody to act for you | P | "Amina no longer acts for me" | The web and WhatsApp | Yes, said back first and done on your yes |
+| 72 | End the right of somebody to act for you | P, L, A | "Amina no longer acts for me" | The web and WhatsApp | Yes, said back first and done on your yes |
 | 73 | Ask what the team can close this week | P, D | "what can the team close" | The web and WhatsApp | Yes, by answering |
 | 74 | Change, add to or approve the year-end draft | P | "add March" | The web and WhatsApp | Yes, said back first and done on your yes |
 | 75 | Set yourself up by talking, at your own pace | P | "slow down" | The web and WhatsApp | Yes, said back first and done on your yes |

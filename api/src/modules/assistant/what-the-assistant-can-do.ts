@@ -710,7 +710,7 @@ export const THE_GUIDE: Guide[] = [
   { key: 'switch_a_suite', doneByTellingMe: true, section: 6, who: ['admin'], notOffered: true, does: 'switch onboarding, leaving, the role map, to-dos, customers or equipment on or off', example: 'turn on onboarding' },
   { key: 'the_role_interview', section: 6, who: ['member'], notOffered: true, does: 'answer the role questions an admin sent you', example: '(answers the role questions)' },
   { key: 'a_question_the_desk_answers', section: 7, who: ['member'], notOffered: true, does: 'ask a question the company\u2019s documents answer, and be told which document', example: 'how many sick days do we get' },
-  { key: 'stop_a_delegate', doneByTellingMe: true, section: 9, who: ['principal'], notOffered: true, does: 'end the right of somebody to act for you', example: 'Amina no longer acts for me' },
+  { key: 'stop_a_delegate', doneByTellingMe: true, section: 9, who: ['principal', 'lead', 'admin'], notOffered: true, does: 'end the right of somebody to act for you', example: 'Amina no longer acts for me' },
   { key: 'what_can_the_team_close', section: 9, who: ['principal', 'delegate'], notOffered: true, does: 'ask what the team can close this week', example: 'what can the team close' },
   { key: 'the_year_end_draft', doneByTellingMe: true, section: 9, who: ['principal'], notOffered: true, does: 'change, add to or approve the year-end draft', example: 'add March' },
   { key: 'her_setup', doneByTellingMe: true, section: 9, who: ['principal'], notOffered: true, does: 'set yourself up by talking, at your own pace', example: 'slow down' },
@@ -754,7 +754,12 @@ export function whatFitsThisReader(r: TheReader): Guide[] {
 /** The reader's role, said as the model reads it. */
 export function theirRoleSaid(r: TheReader): string {
   const role = theirRole(r);
-  return role === 'everyone' ? 'a guest' : role === 'admin' ? 'an admin of the organisation' : role === 'hr' ? 'the person who looks after HR' : role === 'lead' ? 'a lead who runs a check-in' : 'a member of the organisation';
+  const said = role === 'everyone' ? 'a guest' : role === 'admin' ? 'an admin of the organisation' : role === 'hr' ? 'the person who looks after HR' : role === 'lead' ? 'a lead who runs a check-in' : 'a member of the organisation';
+  /* Whose year-end record they read is part of who they are, so the model reads a question about it as one: no lane below answers it, her record does (Batch F, F3; release test 21 November, 69). */
+  const record = 'what was achieved, which claims are proven and which are only said, who has delivered, what is still open and what leadership may ask';
+  if (r.isAPrincipal) return `${said}, and a senior person whose year-end report Groundwork prepares from her record. A question about that record (${record}) is a question that none of the things below answers`;
+  if (r.actsForSomebody) return `${said}, and the person who acts for a senior person whose year-end report Groundwork prepares from her record. A question about that record (${record}) is a question that none of the things below answers`;
+  return said;
 }
 
 /**

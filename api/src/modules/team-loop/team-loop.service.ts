@@ -127,9 +127,8 @@ export class TeamLoopService {
     if (readings.some((r) => (r.disputed?.length ?? 0) > 0 || r.disputesWhatWasForwarded)) mustSay.push('They say a figure or a claim is not backed up. Say plainly that you have put that flag on the record and that it is not counted as done or as true until something shows it. Ask only for the one figure or document that would settle it. Never ask them for their findings, and never repeat their own sentence back to them as a question.');
     if (a.items.some((i) => i.isDocument)) mustSay.push('Order the reply this way: first what you recorded or did with what they sent, then in plain words what the document shows, and last the one thing still missing, if there is one. Say only what a document itself states: its payee, reference, amount, date. If you cannot tell from it whether something was paid in full, paid at all, or approved, say "I cannot tell from this whether ..." and do not guess.');
     const hasDocuments = a.items.some((i) => i.isDocument);
-    /* Only a claim the record does not already count is said to be only their word, with what would show it (Dangote rerun, D13: people were asked for what was on record). */
-    const counted = new Set((work.settled ?? []).filter((x) => x.proven).map((x) => x.id));
-    if (!hasDocuments && readings.some((r) => r.outcomes.some((o) => !o.commitmentId || !counted.has(o.commitmentId)))) mustSay.push('They say something is done. Nothing shows it yet, so it is only their word. Say that kindly, without doubting them, and say what would show it, such as the message or the document.');
+    /* Only a result the reader kept with nothing to show it is said to be only their word (Batch F, F5; D13): what code decided, read from what it wrote, not decided again here. */
+    if (!hasDocuments && (a.done.wrote.unproven ?? 0) > 0) mustSay.push('They say something is done. Nothing shows it yet, so it is only their word. Say that kindly, without doubting them, and say what would show it, such as the message or the document.');
     if (readings.some((r) => r.blockers.length)) {
       /* Whoever owns something that waits on an approval is never asked to chase the approver: Groundwork asks the approver (a-nudge-that-helps.ts), and the owner is told so. */
       const waitingOn = readings.flatMap((r) => r.blockers.map((b) => b.waitingOn).filter((x): x is string => !!x));

@@ -57,10 +57,10 @@ describe('the weekly report, forwarded two weeks running', () => {
     expect(m).toMatchObject({ via: 'reply', to: 'fatima@example.com', subject: 'The National Assembly briefing for 30 October 2026' });
     expect(m.text).toContain('What the report says\n1. Senate committee on Works held a hearing on the Federal Ministry of Works 2026 budget performance. From NASS weekly 30 Oct.txt, dated 30 October 2026.');
     expect(m.text).toContain('I have no earlier week from the National Assembly to compare with yet. I will compare from the next report.');
-    expect(m.text).toContain('It touches "Send the ministry the revised brief", which is done and owned by Amina Yusuf.');
+    expect(m.text).toContain('It touches "Revised brief to the ministry", which is done and owned by Amina Yusuf.');
     expect(m.text).toContain('What the office has done\nThis briefing says what the National Assembly\'s report says. It does not say what the office has done. From the record, ');
     expect(m.text).toContain('What I suggest, and have not done\n- Check where "Get the ministry’s reply on the budget" stands, because the report says "Senate committee on Works held a hearing on the Federal Ministry of Works 2026 budget performance".\nThese are only suggestions until you confirm them.');
-    expect(m.text).not.toContain('Check where "Send the ministry the revised brief"');
+    expect(m.text).not.toContain('Check where "Revised brief to the ministry"');
     expect(m.text).toContain('These are only suggestions until you confirm them.');
     expect((m.text.match(/\?/g) ?? []).length).toBe(1);
     expect(m.text).toMatch(/Does the office need to follow ".+", or can I leave it out of the briefings from now on\?$/);
