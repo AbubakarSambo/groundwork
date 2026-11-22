@@ -26,6 +26,7 @@
  */
 import { THE_BRIEF_IS_CONTEXT_ONLY } from './the-leads-brief-is-never-quoted-to-them';
 import type { RoleMap } from '../board/role-maps';
+import { theSituationsGuide } from './prompt-library';
 import { sayWhatHasBeenCovered, whatThisSessionHasCovered, type ATurnInSession } from './what-this-session-has-covered';
 
 export interface ThePlan {
@@ -148,7 +149,7 @@ export function theBriefForThePlanner(w: WhatThePlannerGets): string {
   }
   if (w.coachingStep) parts.push(`THE COACHING STEP IN PLAY: ${w.coachingStep}`);
   if (w.howTheyAnswer) parts.push(`HOW THEY HAVE ANSWERED BEFORE: ${w.howTheyAnswer}`);
-  parts.push(`THE SCENARIO'S OWN GUIDANCE:\n${clip(w.pack, 3500)}`);
+  if (w.pack?.trim()) parts.push(theSituationsGuide(clip(w.pack, 3500)));
   return parts.join('\n\n');
 }
 

@@ -4003,6 +4003,21 @@ function selectPathwayNumber(
   }
 }
 
+/**
+ * THE SITUATION'S GUIDE, GIVEN AS A GUIDE (release test, 22 November 2026, bug N3). Every pack is written as labelled notes for the model
+ * ("MOMENT: Setting goals and keeping track of how the work is going. PURPOSE: ..."), and it was given bare, straight after "open with one
+ * sentence that names what this ground is for". So the model took the pack's first line as that sentence, label and all, and Sade read
+ * "Moment: Setting goals and keeping track of how the work is going." The pack is now handed over as what it is: notes for the model, whose
+ * labels are never said. One wrapper, used wherever a pack reaches a model (the conversation and the session's planner), and it holds for a
+ * pack stored as a PromptVersion row as much as for one in this file.
+ */
+export function theSituationsGuide(pack: string): string {
+  const p = String(pack ?? '').trim();
+  return p
+    ? `THE GUIDE TO THIS SITUATION. These are notes for you, not words to say. The capital-letter labels in them, such as MOMENT, PURPOSE and OPENING, name the parts of the notes and are never said to the person. Say what you need from them in your own plain words.\n\n${p}`
+    : '';
+}
+
 function buildActivePathway(ctx: PromptContext): string {
   const { scenario, partyType, lowSpecificityMultiDim } = ctx;
   /* How this person's conversation opens is about their own conversations; the stage of the run is the team's. */
@@ -4025,8 +4040,8 @@ function buildActivePathway(ctx: PromptContext): string {
    * sessions keep their continuity opening - that block carries the PRIOR_SESSION mechanics and
    * nothing here replaces it - and the pack follows underneath as what the conversation is about.
    */
-  const pack = ctx.scenarioPackOverride
-    ?? buildScenarioPackForParty(scenario, partyType, ctx.moment, whichStage(ctx.sessionNumber, ctx.totalSessions));
+  const pack = theSituationsGuide(ctx.scenarioPackOverride
+    ?? buildScenarioPackForParty(scenario, partyType, ctx.moment, whichStage(ctx.sessionNumber, ctx.totalSessions)) ?? '');
 
   /* The continuity block leads, because it sets the opening. The pack says what to talk about. */
   const withTheScenarioUnderneath = (continuity: string): string =>
