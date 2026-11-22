@@ -212,7 +212,7 @@ export function eachDealInItsGroup(
   kind: KindOfWork | null, sections: AServedSection[] | null | undefined, end: Date | null, now: Date,
   /* Whether the deals count into what is sold (Release 1's sales board, switched on per organisation; release-one-sales-board). */
   /* `stallDays`: the lead's own stall rule (the-stall-rule), null where she set none, so no deal is Cold (standing decision 4). */
-  opts: { countedFromTheDeals?: boolean; contactedWhenSpokenOf?: boolean; byBuyingDate?: boolean; criteria?: TheCriteriaOpts | null; stallDays?: number | null } = {},
+  opts: { countedFromTheDeals?: boolean; byBuyingDate?: boolean; criteria?: TheCriteriaOpts | null; stallDays?: number | null } = {},
 ): AServedSection[] | null | undefined {
   if (!isASalesKind(kind) || !Array.isArray(sections)) return sections;
   const endKey = end ? dayKey(end) : null;
@@ -226,9 +226,10 @@ export function eachDealInItsGroup(
       /*
        * A DEAL SPOKEN OF IS AT LEAST CONTACTED (Hafsah's point 7, 17 October; switchboard.md, "Contacted: a named customer, and a
        * contact on a date"). "No stage said yet" is not one of the kit's six stages, and a customer somebody named in a check-in,
-       * or whose person they dealt with is on record, has been contacted. Release 1's sales board only; off, the row reads as before.
+       * or whose person they dealt with is on record, has been contacted. For every organisation (release test, 22 November 2026, bug 17):
+       * behind Release 1's switch only, Kilimani Fresh read "Not contacted yet" beside its last contact, today.
        */
-      if (opts.contactedWhenSpokenOf && !r.stage && stages.length && aContactIsOnRecord(r)) r = { ...r, stage: stages[0], stageFromTheContact: true };
+      if (!r.stage && stages.length && aContactIsOnRecord(r)) r = { ...r, stage: stages[0], stageFromTheContact: true };
       const f = theFacts(r, lastStage, now, !!opts.byBuyingDate, opts.criteria, opts.stallDays);
       const group = theGroup(f, endKey);
       /*

@@ -3462,7 +3462,7 @@ export class BoardService {
       /* What to coach each rep this week, one line about the work, to whoever runs it (Q6; what-to-coach-this-week). */
       if (releaseOne && runsIt && judged && isASalesKind((ground as any).kindOfWork) && Array.isArray(out.eachPersonToday) && Array.isArray(out.workRecords)) {
         const dealRows = (out.workRecords as any[]).flatMap((sec: any) => (sec?.rows ?? []) as any[]).filter((r: any) => r?.kind === 'deal');
-        const crit = (r: any) => (eachDealInItsGroup('sales org', [{ section: 'Deal grid', stages: theSalesStages((ground as any).workStages), rows: [r] }] as any, deadlineOf(ground as any), now, { countedFromTheDeals: true, contactedWhenSpokenOf: true, byBuyingDate: true, criteria: criteriaFor(), stallDays }) as any[])?.[0]?.rows?.[0]?.criteria ?? [];
+        const crit = (r: any) => (eachDealInItsGroup('sales org', [{ section: 'Deal grid', stages: theSalesStages((ground as any).workStages), rows: [r] }] as any, deadlineOf(ground as any), now, { countedFromTheDeals: true, byBuyingDate: true, criteria: criteriaFor(), stallDays }) as any[])?.[0]?.rows?.[0]?.criteria ?? [];
         const owners = [...new Set(dealRows.map((r: any) => r.ownerParticipantId).filter(Boolean))] as string[];
         const said = owners.length
           ? ((((await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, participantId: { in: owners } } as any, select: { text: true, type: true, participantId: true, createdAt: true } as any }) as Promise<any[]>).catch(() => [] as any[])) ?? []) as any[])
@@ -3590,7 +3590,7 @@ export class BoardService {
         /* What the deals under "Likely" hold, for an aim counted from the deals: the prototype's "and 2 more are likely". From the same rows and groups as the deal grid. */
         const salesHere = isASalesKind((ground as any).kindOfWork);
         const likelyDeals = salesHere && countedFromTheDeals.size
-          ? ((eachDealInItsGroup('sales org', out.workRecords as any, deadlineOf(ground as any), now, { countedFromTheDeals: releaseOne, contactedWhenSpokenOf: releaseOne, byBuyingDate: releaseOne, criteria: criteriaFor(), stallDays }) ?? []) as any[]).flatMap((sec) => (sec.rows ?? []) as any[]).filter((r) => r.kind === 'deal' && r.group === 'likely')
+          ? ((eachDealInItsGroup('sales org', out.workRecords as any, deadlineOf(ground as any), now, { countedFromTheDeals: releaseOne, byBuyingDate: releaseOne, criteria: criteriaFor(), stallDays }) ?? []) as any[]).flatMap((sec) => (sec.rows ?? []) as any[]).filter((r) => r.kind === 'deal' && r.group === 'likely')
           : [];
         out.objectives = (out.objectives as any[]).map((o) => {
           const row = stored.get(o.id);
@@ -3953,7 +3953,7 @@ export class BoardService {
        */
       if (Array.isArray(walled.workRecords) && oneOfTheKinds((ground as any).kindOfWork)) {
         /* Each deal in its group, with why, from the rows this reader is served (request 112 a). See each-deal-in-its-group. */
-        walled.workRecords = eachDealInItsGroup(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, deadlineOf(ground as any), now, { countedFromTheDeals: releaseOne, contactedWhenSpokenOf: releaseOne, byBuyingDate: releaseOne, criteria: criteriaFor(), stallDays });
+        walled.workRecords = eachDealInItsGroup(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, deadlineOf(ground as any), now, { countedFromTheDeals: releaseOne, byBuyingDate: releaseOne, criteria: criteriaFor(), stallDays });
         walled.byArea = theWorkByArea(walled.workRecords);
         /* RELEASE 5: a funded project's board (release-5-projects), from the same records this reader is served. Off, nothing new. */
         if (isAProject((ground as any).kindOfWork) && (await theRelease5ProjectsIsOn(this.prisma, (ground as any).organizationId))) {
