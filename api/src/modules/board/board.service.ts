@@ -66,7 +66,7 @@ import { theDealWasDropped, theLostDeal } from './a-deal-that-was-dropped';
 import { theStartOfATargetFromTheDeals } from './where-a-target-from-the-deals-started';
 import { theDealsThePromisesAreAbout } from './the-deal-a-promise-is-about';
 import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
-import { theWordsNameTheDeal, theDepositFor, aDepositSaid, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, withTheSaleEachCodeAnswered, theTurnsBehindTheCodes, theSaleAsItsPaymentShowsIt, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
+import { theWordsNameTheDeal, theMarkForTheDeal, theDepositFor, aDepositSaid, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, withTheSaleEachCodeAnswered, theTurnsBehindTheCodes, theSaleAsItsPaymentShowsIt, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
 import { withTheValueWorkedOut, withOnlyTheNumbersSaid, theBuyingDateOf, theBuyingDateTheySaid, BUYING_DATE, aLineIsAbout } from './a-deals-value-and-buying-date';
 import { theirLine, theirCheckInToday, HAS_NOT_CHECKED_IN_TODAY, CHECKED_IN_TODAY } from './each-persons-line-today';
 import { withoutADealsFigure } from './a-deals-units-are-not-a-target';
@@ -2780,10 +2780,14 @@ export class BoardService {
         const by = full ? theShortNameOf(full) : aColleagueMidSentence;
         return { saidBy: by, saidByParticipantId: p.id, saidByLine: `In ${by}'s words,` };
       };
+      /* The documents behind the lines the records came from, so a deal's own line proves it only where its document is about it. */
+      const sourceDocs = await theBackingDocuments(this.prisma, sources as any[]).catch(() => new Map<string, ABackingDocument>());
       const rows: AServedRecord[] = [];
       for (const i of items as any[]) {
         const line = i.sourceEntryId ? lineOf.get(i.sourceEntryId) : null;
         if (i.sourceEntryId && (!line || line.disputedAt)) continue;
+        const lineMark = line ? theMarkOf({ ...line, text: cleanText(line.text) }, whoAddedTheirs) : null;
+        const itsMark = line && i.kind === 'deal' ? theMarkForTheDeal(lineMark, theDocumentBehind(line.anchoredDocumentId, sourceDocs).documentWords, { name: String(i.name ?? ''), fields: plainFields(i.fields) }) : lineMark;
         /* A record is always owned by the person who said it (run-26), whatever an older row stored. */
         const ownerId: string | null = (line?.participantId as string | undefined) ?? i.ownerParticipantId ?? null;
         rows.push({
@@ -2814,12 +2818,9 @@ export class BoardService {
           from: i.sourceEntryId ? 'said' : 'lead',
           ...(line ? { said: cleanText(line.text) } : {}),
           ...(line ? whoSaidIt(line.participantId) : { saidBy: null, saidByParticipantId: null, saidByLine: null }),
-          ...howARecordIsKnown(
-            line ? theMarkOf({ ...line, text: cleanText(line.text) }, whoAddedTheirs) : null,
-            !!i.addedByUserId && i.addedByUserId === requestingUserId,
-          ),
+          ...howARecordIsKnown(itsMark as any, !!i.addedByUserId && i.addedByUserId === requestingUserId),
           /* The proof mark the screens' ProofMark reads (request 108 c), from the line it came from, never upgraded. */
-          mark: theRecordsMark(line ? theMarkOf({ ...line, text: cleanText(line.text) }, whoAddedTheirs) : null),
+          mark: theRecordsMark(itsMark as any),
           /* The lead's own promise ("Be following up more closely with each rep on ... Kilele Hotel, Greenfield Supermarket and Mama Pima Stores") is hers, never a deal's next step (Drop Access short run, item 5; Release 1's sales board). */
           ...whatHappensNext(i, openPromises.filter((c) => !(releaseOne && i.kind === 'deal' && !!theLeadsRow && c.participantId === theLeadsRow && ownerId !== theLeadsRow)).filter((c) => runsIt || c.participantId === me?.id || (!!ownerId && c.participantId === ownerId && c.participantId !== theLeadsRow)), (pid) => {
             if (pid && pid === me?.id) return 'You';
@@ -2846,7 +2847,8 @@ export class BoardService {
         /* The documents behind the lines, so proof counts only for the customer it is about, on the day it came in (a-deals-proof-is-about-that-deal). */
         const docOf = await theBackingDocuments(this.prisma, readableRows).catch(() => new Map<string, ABackingDocument>());
         const readable = readableRows
-          .map((l) => ({ id: l.id, participantId: l.participantId, text: cleanText(l.text ?? ''), createdAt: l.createdAt, mark: theRecordsMark(theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAddedEach)) as string, documentBy: l.anchoredDocumentId ? (whoAddedEach.get(l.anchoredDocumentId) ?? null) : null, ...(releaseOne ? theDocumentBehind(l.anchoredDocumentId, docOf) : {}) }));
+          .map((l) => ({ id: l.id, participantId: l.participantId, text: cleanText(l.text ?? ''), createdAt: l.createdAt, mark: theRecordsMark(theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAddedEach)) as string, documentBy: l.anchoredDocumentId ? (whoAddedEach.get(l.anchoredDocumentId) ?? null) : null, ...theDocumentBehind(l.anchoredDocumentId, docOf) }));
+        /* Read for every organisation, not only behind Release 1's switch: a document is about the customers it names, for everyone (release test, 21 November 2026). */
         const owners = [...new Set(rows.filter((r) => r.kind === 'deal' && mayReadTheWordsOf(r.ownerParticipantId)).map((r) => r.ownerParticipantId as string))];
         const ownersCheckIns = (checkIns as any[]).filter((c) => owners.includes(c.participantId)).map((c) => c.id);
         const turns = ownersCheckIns.length

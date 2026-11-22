@@ -7,7 +7,7 @@ import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theStagesKept, type AStageOnRecord } from './a-deals-stages-are-kept';
 import { theDealWasDropped, type ADroppedDeal } from './a-deal-that-was-dropped';
 import { thePeopleAtEachCustomer } from './a-deal-that-has-stalled';
-import { theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, theDepositFor, aDepositSaid, theTurnsBehindTheCodes, withTheSaleEachCodeAnswered, theSaleAsItsPaymentShowsIt, type ABackingDocument, type ADeposit } from './a-deals-proof-is-about-that-deal';
+import { theBackingDocuments, theDocumentBehind, theMarkForTheDeal, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, theDepositFor, aDepositSaid, theTurnsBehindTheCodes, withTheSaleEachCodeAnswered, theSaleAsItsPaymentShowsIt, type ABackingDocument, type ADeposit } from './a-deals-proof-is-about-that-deal';
 import { aLineIsAbout } from './a-deals-value-and-buying-date';
 import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
 import { aDaySaidInFull } from './a-day-said-in-full';
@@ -540,7 +540,8 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
     if (i.sourceEntryId && !line) continue;
     if (isADispatchNotADeal({ name: i.name, said: line ? cleanText(line.text ?? '') : '' } as any)) continue;
     const owner: string | null = line?.participantId ?? i.ownerParticipantId ?? null;
-    const sourceMark = line ? theMarkOf({ ...line, text: cleanText(line.text ?? '') }, whoAdded) : null;
+    /* The line's proof counts for this deal only where its document is about this deal (theMarkForTheDeal). */
+    const sourceMark = line ? theMarkForTheDeal(theMarkOf({ ...line, text: cleanText(line.text ?? '') }, whoAdded), theDocumentBehind(line.anchoredDocumentId, docOf).documentWords, { name: i.name, fields: plainFields(i.fields) }) : null;
     const paymentFiled = filedOn(i.id, 'A payment');
     const orderFiled = filedOn(i.id, 'A signed order');
     const proven = sourceMark === 'proven' || proofNamesTheDeal(i.name, marked, owner) || paymentFiled.length > 0 || orderFiled.length > 0;
