@@ -119,13 +119,26 @@ describe('Wanjiru reads her teams, Muchemi & Co (test)', () => {
   });
 
   /*
-   * Changed 22 November: since run 7 (landed 20 November) the coaching "name the item, what changed and the day" is judged only on that, never on being on time, and a check-in he missed is not proof it failed (fix plan 16 November, group 5). One of his three check-ins up to Wednesday did it, and one of the two he did since did, so it got better. So it is coaching, with the evidence, and no longer a hard conversation.
+   * Changed in polish round 15 (a-day-they-checked-in.ts). Each working day now counts once, from what happened that day. David answered
+   * nothing on Tuesday 13 and Monday 19 October, and answered a day late on Wednesday, Thursday and Friday. The old reading counted his
+   * sessions instead, so it said "On Friday 16 October, the check-in was not done" though he answered that Friday, and it never counted
+   * Tuesday. Read by the day, his record showed check-ins falling short on Wednesday evening, so the coaching came after that check-in,
+   * and two check-ins since got worse: by Groundwork's own rule that is a hard conversation, with the evidence beside it.
    */
-  it('on the litigation team, David\'s check-ins got better since his coaching: coaching, with the evidence, not a hard conversation', async () => {
+  /*
+   * Changed 22 November 2026. Since Batch S (e35c4cbdb, on staging, run 7), a coaching to "name the item, what changed and the day" is read again by
+   * whether they named it, not by whether they were on time, which is not what it asked. David named it in one of his three check-ins before it and
+   * one of the two after (Thursday, not Friday), so it worked by its own measure, and he is not a hard conversation. What still falls short, missed
+   * and late check-ins, is coached next, with the facts. This test still held the old reading and has failed on staging since.
+   */
+  it('on the litigation team, David named the item more often after his coaching, so he is coached next on checking in every time and on time, with the evidence', async () => {
     const t: any = await teamOf('lit');
     const d = personOf(t, 'David');
     expect(d.whereTheyStand.says).toBe('David needs coaching on checking in every time, checking in on time and naming the item, what changed and the day.');
-    expect(d.whereTheyStand.evidence).toEqual(['David did four of six check-ins, one of them on time. Two of them named the item, what changed and the day.']);
+    expect(d.whereTheyStand.evidence).toEqual([
+      'David did four of six check-ins, one of them on time. Two of them named the item, what changed and the day.',
+    ]);
+    expect(d.whereTheyStand.says).not.toMatch(/hard conversation/);
     expect(d.actions[3].label).toBe('Reassign work');
   });
 });
