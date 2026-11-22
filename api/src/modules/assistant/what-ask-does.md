@@ -34,106 +34,107 @@ Who: **M** member, **L** lead (runs a check-in), **A** admin, **H** HR or financ
 | 19 | Think a decision through, with two to four options | All | "help me think thru the Q4 target" | The web and WhatsApp | Yes, by answering |
 | 20 | Draft an objective, with what it measures and the number | L, A | "set a goal for onboarding" | The web and WhatsApp | Yes, said back first and done on your yes |
 | 21 | Ask which objectives you own or share | All | "what am i on" | The web and WhatsApp | Yes, by answering |
-| 22 | Ask what you said before, in your own words | All | "what did i say about pricing" | The web and WhatsApp | Yes, by answering |
-| 23 | Ask how you are doing, and read the coaching step waiting for you | All | "how am i doing" | The web and WhatsApp | Yes, by answering |
-| 24 | Ask where you are up to in your first weeks | New starter | "am I set up" | The web and WhatsApp | Yes, by answering |
-| 25 | Ask what to talk about, and say yes or no to one | All | "what should we talk about" | The web and WhatsApp | Yes, by answering |
-| 26 | Correct me, and have it checked against the record and fixed everywhere when it holds | All | "thats wrong I sent the Kilele proof monday" | The web and WhatsApp | Yes, said back first and done on your yes |
-| 27 | Tell me an update, and be told where it belongs | All | "sold 12 today" | The web and WhatsApp | Yes, by answering |
+| 22 | Ask what a team you are in is aiming for now, and when and why its goal changed | All | "whats the team goal now?" | The web and WhatsApp | Yes, by answering |
+| 23 | Ask what you said before, in your own words | All | "what did i say about pricing" | The web and WhatsApp | Yes, by answering |
+| 24 | Ask how you are doing, and read the coaching step waiting for you | All | "how am i doing" | The web and WhatsApp | Yes, by answering |
+| 25 | Ask where you are up to in your first weeks | New starter | "am I set up" | The web and WhatsApp | Yes, by answering |
+| 26 | Ask what to talk about, and say yes or no to one | All | "what should we talk about" | The web and WhatsApp | Yes, by answering |
+| 27 | Correct me, and have it checked against the record and fixed everywhere when it holds | All | "thats wrong I sent the Kilele proof monday" | The web and WhatsApp | Yes, said back first and done on your yes |
+| 28 | Tell me an update, and be told where it belongs | All | "sold 12 today" | The web and WhatsApp | Yes, by answering |
 
 ## 3. Check-ins
 
 | # | Use case | Who | Example | Where it works | Ask can do it |
 | --- | --- | --- | --- | --- | --- |
-| 28 | Ask what your check-in is for and who reads it | All | "What is my check-in for, and who reads it?" | The web and WhatsApp | Yes, by answering |
-| 29 | Ask when your next check-in opens | All | "When is my next check-in?" | The web and WhatsApp | Yes, by answering |
-| 30 | Set up a check-in | L, A, All | "Get updates from my team on deals, payments and visits." | The web and WhatsApp | Yes, it offers to start it for you |
-| 31 | Add a document or a rule to a check-in you run | L | "Add our price list to my check-in." | The web and WhatsApp | No, it shows you the steps |
-| 32 | Add people to a check-in you run | L | "How do I add someone to my check-in?" | The web and WhatsApp | No, it shows you the steps |
-| 33 | Start a check-in that is waiting for you | All | "start my check in" | The web and WhatsApp | Yes, by answering |
-| 34 | Say done or finish with nothing open, and be told when the next one opens | All | "finish" | The web and WhatsApp | Yes, by answering |
-| 35 | Ask what came of the last round | Participants | "what did we agree" | The web and WhatsApp | Yes, by answering |
-| 36 | Put one line straight onto a check-in’s context | L | "decision: we drop the pilot" | The web and WhatsApp | Yes, said back first and done on your yes |
-| 37 | Change how long a check-in runs or how often people check in | L | "make the Q4 one fortnightly" | The web and WhatsApp | Yes, said back first and done on your yes |
-| 38 | Keep a private note about a check-in or one person, and share it on your yes | L | "private note: Dayo misses fridays" | The web and WhatsApp | Yes, said back first and done on your yes |
-| 39 | Read the questions waiting for somebody, and confirm or drop one | L | "questions for Ben" | The web and WhatsApp | Yes, said back first and done on your yes |
+| 29 | Ask what your check-in is for and who reads it | All | "What is my check-in for, and who reads it?" | The web and WhatsApp | Yes, by answering |
+| 30 | Ask when your next check-in opens | All | "When is my next check-in?" | The web and WhatsApp | Yes, by answering |
+| 31 | Set up a check-in | L, A, All | "Get updates from my team on deals, payments and visits." | The web and WhatsApp | Yes, it offers to start it for you |
+| 32 | Add a document or a rule to a check-in you run | L | "Add our price list to my check-in." | The web and WhatsApp | No, it shows you the steps |
+| 33 | Add people to a check-in you run | L | "How do I add someone to my check-in?" | The web and WhatsApp | No, it shows you the steps |
+| 34 | Start a check-in that is waiting for you | All | "start my check in" | The web and WhatsApp | Yes, by answering |
+| 35 | Say done or finish with nothing open, and be told when the next one opens | All | "finish" | The web and WhatsApp | Yes, by answering |
+| 36 | Ask what came of the last round | Participants | "what did we agree" | The web and WhatsApp | Yes, by answering |
+| 37 | Put one line straight onto a check-in’s context | L | "decision: we drop the pilot" | The web and WhatsApp | Yes, said back first and done on your yes |
+| 38 | Change how long a check-in runs or how often people check in | L | "make the Q4 one fortnightly" | The web and WhatsApp | Yes, said back first and done on your yes |
+| 39 | Keep a private note about a check-in or one person, and share it on your yes | L | "private note: Dayo misses fridays" | The web and WhatsApp | Yes, said back first and done on your yes |
+| 40 | Read the questions waiting for somebody, and confirm or drop one | L | "questions for Ben" | The web and WhatsApp | Yes, said back first and done on your yes |
 
 ## 4. The team and the company
 
 | # | Use case | Who | Example | Where it works | Ask can do it |
 | --- | --- | --- | --- | --- | --- |
-| 40 | Ask what the company is working on | All | "What are the company's priorities right now?" | The web and WhatsApp | Yes, by answering |
-| 41 | Ask who is off | All | "Who is off next week?" | The web and WhatsApp | Yes, by answering |
-| 42 | Ask how your team is doing | L | "How is my team doing?" | The web and WhatsApp | Yes, by answering |
-| 43 | Ask who has not checked in yet | L | "Who has not checked in?" | The web and WhatsApp | Yes, by answering |
-| 44 | Ask what is stuck, and who is waiting | All | "whats stuck" | The web and WhatsApp | Yes, by answering |
-| 45 | Ask what a colleague said, only as much as you may already read | All | "what did Femi say last week" | The web and WhatsApp | Yes, by answering |
-| 46 | Ask who somebody is on the roster | All | "who is Sam" | The web and WhatsApp | Yes, by answering |
-| 47 | Read how one person you lead or manage is doing, with the evidence | L or manager of that person | "how has Joseph been doing" | The web and WhatsApp | Yes, by answering |
-| 48 | Ask whether the strategy is moving | All | "is the strategy working" | The web and WhatsApp | Yes, by answering |
+| 41 | Ask what the company is working on | All | "What are the company's priorities right now?" | The web and WhatsApp | Yes, by answering |
+| 42 | Ask who is off | All | "Who is off next week?" | The web and WhatsApp | Yes, by answering |
+| 43 | Ask how your team is doing | L | "How is my team doing?" | The web and WhatsApp | Yes, by answering |
+| 44 | Ask who has not checked in yet | L | "Who has not checked in?" | The web and WhatsApp | Yes, by answering |
+| 45 | Ask what is stuck, and who is waiting | All | "whats stuck" | The web and WhatsApp | Yes, by answering |
+| 46 | Ask what a colleague said, only as much as you may already read | All | "what did Femi say last week" | The web and WhatsApp | Yes, by answering |
+| 47 | Ask who somebody is on the roster | All | "who is Sam" | The web and WhatsApp | Yes, by answering |
+| 48 | Read how one person you lead or manage is doing, with the evidence | L or manager of that person | "how has Joseph been doing" | The web and WhatsApp | Yes, by answering |
+| 49 | Ask whether the strategy is moving | All | "is the strategy working" | The web and WhatsApp | Yes, by answering |
 
 ## 5. Requests: leave, spending, hours
 
 | # | Use case | Who | Example | Where it works | Ask can do it |
 | --- | --- | --- | --- | --- | --- |
-| 49 | Ask for leave | All | "I would like leave on 20 and 21 October." | The web and WhatsApp | Yes, it offers to start it for you |
-| 50 | Ask to spend money | All | "I need 12,000 shillings for fuel for the Nakuru visit." | The web and WhatsApp | Yes, it offers to start it for you |
-| 51 | Tell me the hours you worked | All | "I did 6 hours on Atlas today." | The web and WhatsApp | Yes, it offers to start it for you |
-| 52 | Approve or decline a request that waits for you | Approvers | "Approve Amina's leave." | The web and WhatsApp | Yes, it offers to start it for you |
-| 53 | Ask how many leave days you have left | All | "how many days left" | The web and WhatsApp | Yes, by answering |
-| 54 | Ask where your own requests are | All | "has my leave been approved" | The web and WhatsApp | Yes, by answering |
-| 55 | Ask who approves your leave, hours or spending | All | "who approves my leave" | The web and WhatsApp | Yes, by answering |
-| 56 | Ask the person a question about their request before you decide | Approvers | "question for Amina: who covers?" | The web and WhatsApp | Yes, said back first and done on your yes |
+| 50 | Ask for leave | All | "I would like leave on 20 and 21 October." | The web and WhatsApp | Yes, it offers to start it for you |
+| 51 | Ask to spend money | All | "I need 12,000 shillings for fuel for the Nakuru visit." | The web and WhatsApp | Yes, it offers to start it for you |
+| 52 | Tell me the hours you worked | All | "I did 6 hours on Atlas today." | The web and WhatsApp | Yes, it offers to start it for you |
+| 53 | Approve or decline a request that waits for you | Approvers | "Approve Amina's leave." | The web and WhatsApp | Yes, it offers to start it for you |
+| 54 | Ask how many leave days you have left | All | "how many days left" | The web and WhatsApp | Yes, by answering |
+| 55 | Ask where your own requests are | All | "has my leave been approved" | The web and WhatsApp | Yes, by answering |
+| 56 | Ask who approves your leave, hours or spending | All | "who approves my leave" | The web and WhatsApp | Yes, by answering |
+| 57 | Ask the person a question about their request before you decide | Approvers | "question for Amina: who covers?" | The web and WhatsApp | Yes, said back first and done on your yes |
 
 ## 6. Admin: setting things up
 
 | # | Use case | Who | Example | Where it works | Ask can do it |
 | --- | --- | --- | --- | --- | --- |
-| 57 | Set up how leave, spending, time sheets or reviews work | A, H | "Set up our leave process." | The web and WhatsApp | Yes, it offers to start it for you |
-| 58 | Start a performance review for somebody you lead, written first from their check-ins and their record | L, A, H | "I want to review how Joseph and Amina are doing." | The web and WhatsApp | No, it shows you the steps |
-| 59 | Invite somebody to your organisation | A, and M where anyone may add people | "How do I add someone to Groundwork?" | The web and WhatsApp | No, it shows you the steps |
-| 60 | Let guests join your organisation, or let anyone here add people | A | "How do I let anyone add people?" | The web and WhatsApp | No, it shows you the steps |
-| 61 | Change somebody’s role | A | "How do I make someone an admin?" | The web and WhatsApp | No, it shows you the steps |
-| 62 | Connect Slack, Teams or WhatsApp | A | "Connect WhatsApp." | The web and WhatsApp | Yes, it offers to start it for you |
-| 63 | Read the role map | A | "Show me the role map." | The web and WhatsApp | Yes, it offers to start it for you |
-| 64 | Switch onboarding, leaving, the role map, to-dos, customers or equipment on or off | A | "turn on onboarding" | The web and WhatsApp | Yes, said back first and done on your yes |
-| 65 | Answer the role questions an admin sent you | All | (answers the role questions) | The web and WhatsApp | Yes, by answering |
+| 58 | Set up how leave, spending, time sheets or reviews work | A, H | "Set up our leave process." | The web and WhatsApp | Yes, it offers to start it for you |
+| 59 | Start a performance review for somebody you lead, written first from their check-ins and their record | L, A, H | "I want to review how Joseph and Amina are doing." | The web and WhatsApp | No, it shows you the steps |
+| 60 | Invite somebody to your organisation | A, and M where anyone may add people | "How do I add someone to Groundwork?" | The web and WhatsApp | No, it shows you the steps |
+| 61 | Let guests join your organisation, or let anyone here add people | A | "How do I let anyone add people?" | The web and WhatsApp | No, it shows you the steps |
+| 62 | Change somebody’s role | A | "How do I make someone an admin?" | The web and WhatsApp | No, it shows you the steps |
+| 63 | Connect Slack, Teams or WhatsApp | A | "Connect WhatsApp." | The web and WhatsApp | Yes, it offers to start it for you |
+| 64 | Read the role map | A | "Show me the role map." | The web and WhatsApp | Yes, it offers to start it for you |
+| 65 | Switch onboarding, leaving, the role map, to-dos, customers or equipment on or off | A | "turn on onboarding" | The web and WhatsApp | Yes, said back first and done on your yes |
+| 66 | Answer the role questions an admin sent you | All | (answers the role questions) | The web and WhatsApp | Yes, by answering |
 
 ## 7. The Desk and company context
 
 | # | Use case | Who | Example | Where it works | Ask can do it |
 | --- | --- | --- | --- | --- | --- |
-| 66 | Add a document for the whole organisation | A | "Add our staff handbook for everyone." | The web and WhatsApp | Yes, by answering |
-| 67 | Ask a question the company’s documents answer, and be told which document | All | "how many sick days do we get" | The web and WhatsApp | Yes, by answering |
+| 67 | Add a document for the whole organisation | A | "Add our staff handbook for everyone." | The web and WhatsApp | Yes, by answering |
+| 68 | Ask a question the company’s documents answer, and be told which document | All | "how many sick days do we get" | The web and WhatsApp | Yes, by answering |
 
 ## 8. Reports
 
 | # | Use case | Who | Example | Where it works | Ask can do it |
 | --- | --- | --- | --- | --- | --- |
-| 68 | Get a quarterly or an annual report | L, A | "Get me a quarterly report." | The web and WhatsApp | Yes, it offers to start it for you |
+| 69 | Get a quarterly or an annual report | L, A | "Get me a quarterly report." | The web and WhatsApp | Yes, it offers to start it for you |
 
 ## 9. A senior person and the person who acts for her
 
 | # | Use case | Who | Example | Where it works | Ask can do it |
 | --- | --- | --- | --- | --- | --- |
-| 69 | Ask what is still outstanding, who has it and when it is due | L, P, D | "What is outstanding?" | The web and WhatsApp | Yes, by answering |
-| 70 | Ask what waits for your decision | L, P, D | "What needs my decision?" | The web and WhatsApp | Yes, by answering |
-| 71 | Let somebody, such as your executive assistant, act for you | P, L, A | "My executive assistant is Amina Yusuf, she can act for me." | The web and WhatsApp | Yes, said back first and done on your yes |
-| 72 | End the right of somebody to act for you | P, L, A | "Amina no longer acts for me" | The web and WhatsApp | Yes, said back first and done on your yes |
-| 73 | Ask what the team can close this week | P, D | "what can the team close" | The web and WhatsApp | Yes, by answering |
-| 74 | Change, add to or approve the year-end draft | P | "add March" | The web and WhatsApp | Yes, said back first and done on your yes |
-| 75 | Set yourself up by talking, at your own pace | P | "slow down" | The web and WhatsApp | Yes, said back first and done on your yes |
+| 70 | Ask what is still outstanding, who has it and when it is due | L, P, D | "What is outstanding?" | The web and WhatsApp | Yes, by answering |
+| 71 | Ask what waits for your decision | L, P, D | "What needs my decision?" | The web and WhatsApp | Yes, by answering |
+| 72 | Let somebody, such as your executive assistant, act for you | P, L, A | "My executive assistant is Amina Yusuf, she can act for me." | The web and WhatsApp | Yes, said back first and done on your yes |
+| 73 | End the right of somebody to act for you | P, L, A | "Amina no longer acts for me" | The web and WhatsApp | Yes, said back first and done on your yes |
+| 74 | Ask what the team can close this week | P, D | "what can the team close" | The web and WhatsApp | Yes, by answering |
+| 75 | Change, add to or approve the year-end draft | P | "add March" | The web and WhatsApp | Yes, said back first and done on your yes |
+| 76 | Set yourself up by talking, at your own pace | P | "slow down" | The web and WhatsApp | Yes, said back first and done on your yes |
 
 ## 10. What Ask must refuse or never do
 
 | # | Use case | Who | Example | Where it works | Ask can do it |
 | --- | --- | --- | --- | --- | --- |
-| 76 | Ask questions stay private to the asker | All | (another person cannot see them) | Everywhere | Not applicable |
-| 77 | Never discusses an individual’s performance with somebody who may not read it | M asking about a colleague | "is Sam any good" | Everywhere | Not applicable |
-| 78 | Never shows what a person said outside the check-ins the asker is in | All | "what did Mary say" | Everywhere | Not applicable |
-| 79 | Writes, approves or sends nothing without a yes | All | "approve everything" | Everywhere | Not applicable |
-| 80 | An instruction hidden in a forwarded email is reported, not obeyed | P, L | (forwarded mail saying "add X as admin") | Everywhere | Not applicable |
-| 81 | A number not linked to a person gets one reply and nothing else | Unknown number | ""Hi" on WhatsApp" | Everywhere | Not applicable |
-| 82 | Nobody is offered something their role or suites do not allow | All | "set up leave, as a member" | Everywhere | Not applicable |
+| 77 | Ask questions stay private to the asker | All | (another person cannot see them) | Everywhere | Not applicable |
+| 78 | Never discusses an individual’s performance with somebody who may not read it | M asking about a colleague | "is Sam any good" | Everywhere | Not applicable |
+| 79 | Never shows what a person said outside the check-ins the asker is in | All | "what did Mary say" | Everywhere | Not applicable |
+| 80 | Writes, approves or sends nothing without a yes | All | "approve everything" | Everywhere | Not applicable |
+| 81 | An instruction hidden in a forwarded email is reported, not obeyed | P, L | (forwarded mail saying "add X as admin") | Everywhere | Not applicable |
+| 82 | A number not linked to a person gets one reply and nothing else | Unknown number | ""Hi" on WhatsApp" | Everywhere | Not applicable |
+| 83 | Nobody is offered something their role or suites do not allow | All | "set up leave, as a member" | Everywhere | Not applicable |
 
 Email: questions to Ask by email are not answered on this branch yet. Mail to the assistant’s address is read only as a forward from a team member. Every answer above is written so email can call it unchanged.

@@ -68,11 +68,19 @@ function isTheContact(holder: string, contact: string | null | undefined): boole
 const contactOf = (fields: Record<string, string>) =>
   Object.entries(fields ?? {}).find(([k]) => /^(?:contact|contact person|customer contact)$/i.test(k.trim()))?.[1] ?? null;
 
-/** The deal a wait is on, where it is waiting on that deal's customer; null where it is not. */
-export function theDealTheWaitIsOn<D extends ADealACustomerWaitCanBeOn>(wait: AWaitToPlace, deals: D[], theirOwnWords: readonly string[] = []): D | null {
+/**
+ * The deal a wait is on, where it is waiting on that deal's customer; null where it is not.
+ *
+ * A COLLEAGUE IS NEVER A CUSTOMER (release test, 22 November evening, bug 26). Amani was waiting on Baraka, who works at Msingi Foods
+ * but is not in her check-in, for the Mama Njeri delivery date. The deal was kept with Baraka as its contact, so the wait was read as
+ * a customer's and went on the deal. Her board, her lead's morning and "where am I needed?" then said nothing about it. Somebody on the
+ * organisation's own roster (`colleagues`, their names) holds the wait as a colleague, so it stays the team's.
+ */
+export function theDealTheWaitIsOn<D extends ADealACustomerWaitCanBeOn>(wait: AWaitToPlace, deals: D[], theirOwnWords: readonly string[] = [], colleagues: readonly string[] = []): D | null {
   if (wait.onParticipantId) return null;
   const holder = String(wait.onLabel ?? '').trim();
   if (!holder) return null;
+  if (colleagues.some((name) => isTheContact(holder, name))) return null;
   const theirsFirst = [
     ...deals.filter((d) => !!wait.fromParticipantId && d.ownerParticipantId === wait.fromParticipantId),
     ...deals.filter((d) => !wait.fromParticipantId || d.ownerParticipantId !== wait.fromParticipantId),
@@ -108,9 +116,19 @@ export function itStopsTheDeal(wait: AWaitToPlace): boolean {
 }
 
 /** A wait that goes on its deal and not under Blockers: on a customer of a deal, and not said to stop it. */
-export function aWaitOnACustomerOfADeal<D extends ADealACustomerWaitCanBeOn>(wait: AWaitToPlace, deals: D[], theirOwnWords: readonly string[] = []): D | null {
+export function aWaitOnACustomerOfADeal<D extends ADealACustomerWaitCanBeOn>(wait: AWaitToPlace, deals: D[], theirOwnWords: readonly string[] = [], colleagues: readonly string[] = []): D | null {
   if (itStopsTheDeal(wait)) return null;
-  return theDealTheWaitIsOn(wait, deals, theirOwnWords);
+  return theDealTheWaitIsOn(wait, deals, theirOwnWords, colleagues);
+}
+
+/** The names of the people on the roster of the organisations these check-ins belong to, for telling a colleague from a customer. Read only. */
+export async function theColleaguesOf(prisma: any, groundIds: readonly string[]): Promise<string[]> {
+  if (!groundIds.length) return [];
+  const orgs = ((await Promise.resolve().then(() => prisma?.ground?.findMany?.({ where: { id: { in: [...groundIds] } }, select: { organizationId: true } })).catch(() => [])) ?? []) as any[];
+  const ids = [...new Set(orgs.map((g) => g?.organizationId).filter(Boolean))];
+  if (!ids.length) return [];
+  const people = ((await Promise.resolve().then(() => prisma?.person?.findMany?.({ where: { organizationId: { in: ids } }, select: { displayName: true, givenName: true, familyName: true } })).catch(() => [])) ?? []) as any[];
+  return people.map((p) => String(p?.displayName ?? '').trim() || [p?.givenName, p?.familyName].filter((x: any) => String(x ?? '').trim()).join(' ').trim()).filter(Boolean);
 }
 
 /**
@@ -144,12 +162,13 @@ export function theWaitsOnCustomersApart<W extends AWaitToPlace & { status?: str
   waits: W[],
   deals: D[],
   theirOwnAnswers: Map<string, string[]> = new Map(),
+  colleagues: readonly string[] = [],
 ): { team: W[]; onDeals: (W & { dealId: string })[] } {
   const team: W[] = [];
   const onDeals: (W & { dealId: string })[] = [];
   for (const w of waits) {
     const open = String(w.status ?? '').toUpperCase() !== 'CLEARED' && !w.clearedAt;
-    const deal = open ? aWaitOnACustomerOfADeal(w, deals, theirOwnAnswers.get(String(w.sourceCheckInId ?? '')) ?? []) : null;
+    const deal = open ? aWaitOnACustomerOfADeal(w, deals, theirOwnAnswers.get(String(w.sourceCheckInId ?? '')) ?? [], colleagues) : null;
     if (deal) onDeals.push({ ...w, dealId: deal.id });
     else team.push(w);
   }
@@ -183,8 +202,9 @@ export async function withoutTheWaitsOnCustomers<W extends AWaitToPlace & { grou
     byGround.set(r.groundId, list);
   }
   const answers = await theirOwnAnswersWhereTheWaitsWereSaid(prisma, waits).catch(() => new Map<string, string[]>());
+  const colleagues = await theColleaguesOf(prisma, ids).catch(() => [] as string[]);
   return waits.filter((w) => {
     const open = String(w.status ?? '').toUpperCase() !== 'CLEARED' && !w.clearedAt;
-    return !(open && w.groundId && aWaitOnACustomerOfADeal(w, byGround.get(w.groundId) ?? [], answers.get(String(w.sourceCheckInId ?? '')) ?? []));
+    return !(open && w.groundId && aWaitOnACustomerOfADeal(w, byGround.get(w.groundId) ?? [], answers.get(String(w.sourceCheckInId ?? '')) ?? [], colleagues));
   });
 }

@@ -85,13 +85,20 @@ export async function whenIsMyNextCheckIn(prisma: any, organizationId: string, u
   return lines.join('\n');
 }
 
-export async function whatMyCheckInIsFor(prisma: any, organizationId: string, userId: string | null): Promise<string> {
+/**
+ * WHAT A CHECK-IN IS FOR, WITH WHAT THE TEAM IS AIMING FOR NOW (release test, 22 November evening, bug 28). Amani read the check-in's
+ * description and not the waitlist goal her lead had set. `theTeamsGoals` gives the team's goals as this person's own board serves
+ * them (BoardService.get, as them), so Ask names what their board shows and nothing it does not.
+ */
+export async function whatMyCheckInIsFor(prisma: any, organizationId: string, userId: string | null, theTeamsGoals?: (groundId: string) => Promise<string[]>): Promise<string> {
   const none = 'You are not in a check-in that is still running, so there is nothing to say about what one is for.';
   if (!userId) return none;
   const mine = await theirCheckIns(prisma, organizationId, userId);
   if (!mine.length) return none;
   /* "Zawadi's first weeks" is "your first weeks" to Zawadi here too, as on her check-in page (6ae83da4): only the possessive of her own first name. */
   const myFirstName: string | null = (await prisma.user?.findUnique?.({ where: { id: userId }, select: { firstName: true } })?.catch?.(() => null))?.firstName ?? null;
+  const goals = new Map<string, string[]>();
+  for (const g of mine.slice(0, 3)) if (!g.noSeatYet && theTeamsGoals) goals.set(g.id, await theTeamsGoals(g.id).catch(() => [] as string[]));
   const lines = mine.slice(0, 3).map((g: any) => {
     if (g.noSeatYet) return noSeatYetSays(g.label);
     const runsIt = g.initiatorId === userId;
@@ -100,10 +107,12 @@ export async function whatMyCheckInIsFor(prisma: any, organizationId: string, us
     /* What somebody who does not run it reads is the one rule every route serves (what-someone-who-does-not-run-it-reads.ts), so Ask says what their check-in page says. */
     const forWhat = ((runsIt ? theBriefAsTheLeadReadsIt(g.brief) : theirOwnFirstNameAsYour(whatSomeoneWhoDoesNotRunItReads(g), myFirstName)) ?? '').trim();
     const what = forWhat ? `This is what "${g.label}" is for. ${forWhat.replace(/[.!?]*$/, '.')}` : `"${g.label}" has no description of what it is for yet.`;
+    const aims = (goals.get(g.id) ?? []).map((n) => String(n ?? '').trim().replace(/[.!?\s]*$/, '.')).filter((n) => n.length > 1);
+    const aimingFor = aims.length ? ` ${aims.length === 1 ? 'The team’s goal now, as your board shows it, is this.' : 'The team’s goals now, as your board shows them, are these.'} ${aims.join(' ')}` : '';
     const reads = runsIt
       ? 'You run it, so you read its report.'
       : whoReadsWhatAMemberSays(g, leads);
-    return `${what} ${reads}`;
+    return `${what}${aimingFor} ${reads}`;
   });
   if (mine.length > 3) lines.push(`You are in ${mine.length - 3} more, and I can tell you about any of them if you name it.`);
   return lines.join('\n');
