@@ -1,3 +1,5 @@
+import { yourTurnIn } from './what-needs-you';
+import { theQuietHoursNow } from '../../common/the-clock';
 import { whoARoundWaitsFor } from './who-a-round-waits-for';
 import { thePlannedSessionsOf } from './this-sessions-count';
 import { thePromisesOf, thePromisesCounted, whatHappenedToThePromises } from './the-promises-counted-once';
@@ -1852,6 +1854,11 @@ export class GroundsService {
               }
             : {}),
           checkIns: checkInsShown,
+          /* Whether it is the reader's turn here, by the one rule Today reads (yourTurnIn), with the same facts Today reads: whether an
+             admin has let them in, whether Groundwork is paused, and the one clock. The list never guesses it in the browser again. */
+          yourTurn: userId ? yourTurnIn({ ...(rest as any), status: (rest as any).status, participants: allParticipants ?? [], checkIns: checkIns as any } as any, {
+            userId, notLetIn: !!(myRowHere as any)?.user?.awaitingOrgApproval, pausedFrom: pausedOn.get((rest as any).organizationId) ?? null,
+          }, theQuietHoursNow()) : null,
           /* The one count (the-count-as-served.ts): who has answered each session, over the people this reader may see, and the clock's
              session said, to whoever is shown the others. */
           theCount: theCountAsServed({ session: listedCount.clock.currentSession, said: listedCount.count, planned: listedCount.clock.plannedSessions }, listedCount.bySession, { onlyThese: hidePeers ? shown : null }),

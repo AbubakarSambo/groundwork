@@ -18,6 +18,8 @@ const aGround = (status: string) => ({
   status,
   participants: [{ id: 'p1', userId: 'u1' }],
   checkIns: [{ participantId: 'p1', sessionNumber: 1, status: 'NOT_STARTED', availableFrom: twelveDaysAgo }],
+  /* Your turn is served by the server's one rule (yourTurnIn), which already says none on a shut check-in; the rail still refuses one too. */
+  yourTurn: { checkInId: 'c1', sessionNumber: 1, openedAt: twelveDaysAgo },
 })
 
 describe('what the rail says about a check-in you cannot add to', () => {

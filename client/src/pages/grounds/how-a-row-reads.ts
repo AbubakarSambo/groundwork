@@ -25,6 +25,8 @@ import type { TagTone } from '@/components/gw/kit'
  */
 
 export interface ListRow {
+  /** The reader's own check-in waiting for them, as the server serves it on the row (yourTurnIn, what-needs-you.ts). */
+  yourTurn?: { checkInId: string; sessionNumber: number; openedAt: string | null } | null
   id: string
   label: string
   status?: string | null

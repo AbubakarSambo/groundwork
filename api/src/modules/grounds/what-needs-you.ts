@@ -127,6 +127,8 @@ export interface ListedCheckIn {
   whoDiffers?: string | null;
   /** How many invitations the lead holds ready until she sends them; served only to whoever runs it. */
   readyToSend?: number | null;
+  /** The reader's own check-in waiting for them here (yourTurnIn), as the list serves it. */
+  yourTurn?: YourTurn | null;
   participants?: { id: string; userId?: string | null; notLetIn?: boolean; user?: { firstName?: string | null } | null }[];
   checkIns?: {
     id: string;
@@ -193,6 +195,28 @@ function isOver(g: ListedCheckIn) {
 
 function sessionsOf(g: ListedCheckIn) {
   return (g.checkIns ?? []).filter((c) => !c.isSetup);
+}
+
+/** The reader's own check-in waiting for them on one check-in: which one, and the day it opened. */
+export interface YourTurn { checkInId: string; sessionNumber: number; openedAt: string | null }
+
+/**
+ * IS IT YOUR TURN HERE, ONCE, ON THE SERVER (release test, 21 November 2026: Olu's check-ins list said "Your turn" while his Today said
+ * "Nothing needs you right now", because the list guessed in the browser and Today asked this). The earliest session of the reader's own
+ * that has opened and that they have not answered (a decline is an answer), on a check-in that is not over, while Groundwork is not paused
+ * and the reader has been let in. Being two behind is one thing to do. The list serves it on each row (`yourTurn`) and Today reads it.
+ */
+export function yourTurnIn(g: ListedCheckIn, reader: Pick<Reader, 'userId' | 'notLetIn' | 'pausedFrom'>, now: Date): YourTurn | null {
+  if (isOver(g) || reader.notLetIn || reader.pausedFrom) return null;
+  const me = (g.participants ?? []).find((p) => p.userId && p.userId === reader.userId);
+  if (!me) return null;
+  const at = now.getTime();
+  const next = sessionsOf(g)
+    .filter((c) => c.participantId === me.id && !(AN_ANSWER as string[]).includes(c.status) && hasOpened(c, at))
+    .sort((a, b) => a.sessionNumber - b.sessionNumber)[0];
+  if (!next) return null;
+  const opened = time(next.availableFrom);
+  return { checkInId: next.id, sessionNumber: next.sessionNumber, openedAt: opened ? new Date(opened).toISOString() : null };
 }
 
 /**
@@ -304,13 +328,11 @@ export function whatNeedsYou(
       otherTurns.push({ key: `paused-${g.id}`, kind: 'look', title: CHECK_INS_ARE_PAUSED, detail: null, action: { label: 'Read what is kept', to: `/grounds/${g.id}` }, ...base });
     }
 
-    /* Your turn: the earliest open session of yours that is not done. Being two behind is one thing to do. */
+    /* Your turn: served on the row by the one rule (yourTurnIn), which the check-ins list reads too. */
     let aTurnOfMineIsOpenHere = false;
-    if (!over && me && !heldFromMyOwn && !paused) {
-      const next = sessions
-        /* Not one they have answered, a decline included (AN_ANSWER): a declined session from August read "Your next check-in ... It opened on 29 August." */
-        .filter((c) => c.participantId === me.id && !(AN_ANSWER as string[]).includes(c.status) && hasOpened(c, at))
-        .sort((a, b) => a.sessionNumber - b.sessionNumber)[0];
+    {
+      const turn = yourTurnIn(g, reader, now);
+      const next = turn ? { id: turn.checkInId, sessionNumber: turn.sessionNumber, availableFrom: turn.openedAt } : null;
       if (next) {
         const opened = time(next.availableFrom);
         const days = opened ? Math.floor((at - opened) / DAY) : 0;
