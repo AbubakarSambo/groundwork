@@ -126,6 +126,10 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
      * wrote "My own aim is 35." as theirs, and the board and Today then said Mary, Sam and Asha aim for 35, though the invitation promises
      * that only she and the lead see her share. Said once here, where the read's material is made, so no later page has to hide it.
      */
+    /* The lead's read is given every goal on record by id, so a goal she changes, with her yes, is named (a-goal-changed-by-its-lead). */
+    const goalsOnRecord = row.participant?.partyType === 'INITIATOR'
+      ? (((await deps.prisma.groundObjective?.findMany?.({ where: { groundId: row.groundId }, select: { id: true, name: true, target: true }, orderBy: { sortOrder: 'asc' } })?.catch?.(() => [])) ?? []) as any[])
+      : [];
     const priorities = (((await deps.prisma.groundObjective?.findMany?.({ where: { groundId: row.groundId }, select: { name: true, ownerParticipantId: true } })?.catch?.(() => [])) ?? []) as any[])
       .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === row.participantId)
       .map((o) => String(o.name ?? '').trim()).filter(Boolean);
@@ -154,7 +158,7 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
     const openOnce = oneOfEach(openPromises);
     const material: TheMaterial = {
       who, speaking: theSpeakerLine(row.participant), isTheLead, theLead: isTheLead ? null : fullName(row.ground?.initiator, null), checkIn: row.ground?.label ?? null,
-      on: isoOf(row.startedAt ?? row.completedAt ?? how.closedAt)?.slice(0, 10) ?? null, givenRole, priorities, turns, setup, documents,
+      on: isoOf(row.startedAt ?? row.completedAt ?? how.closedAt)?.slice(0, 10) ?? null, givenRole, priorities, goalsOnRecord, turns, setup, documents,
       draft: {
         claims: (((row.whatWeHave as any)?.claims ?? []) as any[]).map((c) => [c.said, c.number && `(${c.number}${c.measure ? ` ${c.measure}` : ''})`, c.date && `by ${c.date}`].filter(Boolean).join(' ')).filter(Boolean),
         /* The end card's lines are read from this assessment now, so they are not handed back to it as a draft. */

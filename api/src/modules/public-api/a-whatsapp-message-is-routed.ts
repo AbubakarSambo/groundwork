@@ -1,3 +1,4 @@
+import { withoutRepeats } from '../engagement/a-sentence-said-twice';
 /**
  * HOW A WHATSAPP MESSAGE FINDS ITS CHECK-IN, AND HOW A REPORT READS AS A TEXT.
  *
@@ -150,14 +151,23 @@ export function whereThingsStandDirectly(report: any, label: string): string {
 export function reportAsText(report: any, label: string): string {
   const lines: string[] = [`Your report for ${label} is ready.`];
   const d = whereThingsStandDirectly(report, label);
-  if (d) lines.push(d);
   const glance = (report?.atAGlance ?? []) as { label: string; value: string; sub?: string }[];
   /* Each read is its own sentence, not "Label: value (note)". The note is already a sentence; without one, the label and value make one. */
   const sentence = (t: string) => { const x = t.trim().replace(/\s+/g, ' '); return `${x.charAt(0).toUpperCase()}${x.slice(1)}${/[.!?]$/.test(x) ? '' : '.'}`; };
   const lower = (t: string) => `${t.charAt(0).toLowerCase()}${t.slice(1)}`;
   const reads = glance.map((g) => (g.sub?.trim() ? sentence(g.sub) : g.value?.trim() ? sentence(`${g.label} is ${lower(g.value.trim())}`) : '')).filter(Boolean);
-  if (reads.length) lines.push(reads.join(' '));
-  if (report?.theConversationWorthHaving) lines.push(String(report.theConversationWorthHaving));
+  const talk = report?.theConversationWorthHaving ? String(report.theConversationWorthHaving) : '';
+  /*
+   * EACH THING ONCE, BY THE MAIL'S OWN RULE (release test, 21 November 2026, bug 38). The report often writes its one finding in where things
+   * stand, in a glance note and in the conversation worth having, and the WhatsApp message said all three, so the lead read the same
+   * sentence three times. The mail already keeps a line only if none before it says the same (a-sentence-said-twice.ts); this reads the
+   * same rule, so the phone and the mail say it once.
+   */
+  const once = withoutRepeats([d, ...reads, talk].filter((x): x is string => !!x && !!x.trim()));
+  if (d && once.includes(d)) lines.push(d);
+  const readsKept = reads.filter((r) => once.includes(r));
+  if (readsKept.length) lines.push(readsKept.join(' '));
+  if (talk && once.includes(talk)) lines.push(talk);
   const whole = lines.join('\n\n');
   /* Where the whole report would not fit in one WhatsApp message, one short line, and the app for the rest. */
   return whole.length <= A_TEXT_MESSAGE_LIMIT ? whole : `${reportAsOneLine(report, label)} Open Groundwork to read it.`;

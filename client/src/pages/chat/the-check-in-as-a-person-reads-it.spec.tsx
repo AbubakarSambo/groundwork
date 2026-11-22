@@ -283,7 +283,7 @@ describe('the + button', () => {
     fireEvent.change(screen.getByLabelText('What does it show?'), { target: { value: 'The quote I sent' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add to check-in' }))
     await waitFor(() => expect(documentsApi.upload).toHaveBeenCalledWith('g1', photo, false, 'The quote I sent', { fromTheCheckIn: true }))
-    expect(await findByText('You added “green-mart-quote.heic”. Only you can open it.', {}, { timeout: 5000 })).toBeTruthy()
+    expect(await findByText(/* Changed 22 November 2026: no privacy note on screen; it says what happened to the file. */ 'You added “green-mart-quote.heic”, and it is kept with this check-in.', {}, { timeout: 5000 })).toBeTruthy()
   })
 })
 

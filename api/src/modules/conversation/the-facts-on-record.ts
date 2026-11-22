@@ -63,8 +63,8 @@ export interface AFact {
   saidWordForWord: boolean;
   /** True where it was said while setting the check-in up, not in a check-in. */
   inSetup: boolean;
-  /** How many of their messages it was read from: more than one where the record joined answers into it. */
-  fromMessages?: number;
+  /** The item as one whole plain sentence to the person, written by the assessment for the read-back; null when it has none or was corrected. */
+  saidBack?: string | null;
 }
 
 /* What judges a person: read only by the lead, and only while the switch is on. */
@@ -164,7 +164,6 @@ export function theFactsIn(a: TheAssessment, reader: TheReader, whoSeesTargets: 
       const kept = out.find((f) => `${f.words.toLowerCase()}|${f.section.startsWith('setup.') ? f.section : ''}` === key);
       if (kept && detail && !(kept.detail ?? '').toLowerCase().includes(detail.toLowerCase())) {
         kept.detail = kept.detail ? `${kept.detail}, and ${detail.charAt(0).toLowerCase()}${detail.slice(1)}` : detail;
-        kept.fromMessages = Math.max(kept.fromMessages ?? 0, (item.from ?? []).length);
       }
       continue;
     }
@@ -178,7 +177,7 @@ export function theFactsIn(a: TheAssessment, reader: TheReader, whoSeesTargets: 
       standing,
       saidWordForWord: !corrected && item.saidWordForWord === true,
       inSetup,
-      fromMessages: (item.from ?? []).length,
+      saidBack: !corrected && typeof item.saidBack === 'string' && item.saidBack.trim() ? item.saidBack.trim() : null,
     });
   }
   return out;

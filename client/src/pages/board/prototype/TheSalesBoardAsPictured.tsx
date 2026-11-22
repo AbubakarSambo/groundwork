@@ -26,7 +26,7 @@ import { whenTheBoardLastChanged } from '../when-the-board-last-changed'
 import { TheNudgeButton } from '../pictured/TheNudgeButton'
 import { CORRECT_IT_HERE } from '../pictured/TheBar'
 import {
-  dealsByGroup, theScheduleInWords, aShortDay, isoDay, lastContactIn, lastTen, aTagForTheWork, useWhatNeedsYou, soldAndProven,
+  dealsByGroup, theScheduleInWords, aShortDay, isoDay, lastContactIn, lastTen, aTagForTheWork, useWhatNeedsYou, soldAndProven, TheGoalAsItStands,
   theLastSessionThisWeek, weekNumberOf, OUTCOME_WORDS, OUTCOME_ORDER, ISSUE_STEPS, NOTHING_BOOKED,
 } from '../pictured/ThePicturedSalesBoard'
 import { css, DOT, DOT_FILL } from './the-prototype-markup'
@@ -287,6 +287,7 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
                   <div style={css('display:flex;flex-direction:column;gap:14px')}>
                     {b.headline?.question && <span className="t-small mut">{b.headline.question}</span>}
                     {b.headline?.answer && <p className="t-title" style={css('font-size:32px')}>{b.headline.answer}</p>}
+                    <TheGoalAsItStands b={b} aim={aim} cls={{ label: 't-small mut', goal: 't-title', said: 't-body' }} />
                     {target != null && done != null && (
                       <div style={css('display:flex;height:14px;border-radius:7px;overflow:hidden;' + DOT_FILL.empty)} role="img" aria-label={`${done} of ${target} done, ${likely} more likely.`}>
                         <i style={css(`width:${pct(proven ?? done)};background:var(--rec);display:block`)} />

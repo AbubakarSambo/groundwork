@@ -125,15 +125,20 @@ describe('Wanjiru reads her teams, Muchemi & Co (test)', () => {
    * Tuesday. Read by the day, his record showed check-ins falling short on Wednesday evening, so the coaching came after that check-in,
    * and two check-ins since got worse: by Groundwork's own rule that is a hard conversation, with the evidence beside it.
    */
-  it('on the litigation team, David’s check-ins got worse in the two check-ins since his coaching: a hard conversation, with the evidence', async () => {
+  /*
+   * Changed 22 November 2026. Since Batch S (e35c4cbdb, on staging, run 7), a coaching to "name the item, what changed and the day" is read again by
+   * whether they named it, not by whether they were on time, which is not what it asked. David named it in one of his three check-ins before it and
+   * one of the two after (Thursday, not Friday), so it worked by its own measure, and he is not a hard conversation. What still falls short, missed
+   * and late check-ins, is coached next, with the facts. This test still held the old reading and has failed on staging since.
+   */
+  it('on the litigation team, David named the item more often after his coaching, so he is coached next on checking in every time and on time, with the evidence', async () => {
     const t: any = await teamOf('lit');
     const d = personOf(t, 'David');
-    expect(d.whereTheyStand.says).toBe('David needs a hard conversation about check-ins that were missed, late or vague.');
+    expect(d.whereTheyStand.says).toBe('David needs coaching on checking in every time, checking in on time and naming the item, what changed and the day.');
     expect(d.whereTheyStand.evidence).toEqual([
       'David did four of six check-ins, one of them on time. Two of them named the item, what changed and the day.',
-      'After David’s check-in on Wednesday 14 October, Groundwork told David “Name the item, what changed and the day, every time.”',
-      'How specific and on time David’s check-ins are has got worse since then.',
     ]);
+    expect(d.whereTheyStand.says).not.toMatch(/hard conversation/);
     expect(d.actions[3].label).toBe('Reassign work');
   });
 });

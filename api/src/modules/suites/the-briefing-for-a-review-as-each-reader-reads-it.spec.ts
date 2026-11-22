@@ -57,8 +57,9 @@ describe('Wairimu, who writes the review, reads her briefing', () => {
         key: 'slipping-promises', participantId: 'pa-sales', kind: 'needs work', state: 'holds', who: 'Aisha',
         saying: 'Aisha has let 2 promised days pass without the work done.',
         instances: [
-          { checkInId: 'c2', sessionNumber: 2, on: '2026-05-18', item: 'the price list', words: ['I have not sent the price list yet.'] },
-          { checkInId: 'c3', sessionNumber: 3, on: '2026-06-01', item: 'the Naivas call', words: ['I still have not called Naivas.'] },
+          { checkInId: 'c2', sessionNumber: 2, on: '2026-05-18', item: 'the price list', words: ['I have not sent the price list yet.'], saidWordForWord: true },
+          { checkInId: 'c3', sessionNumber: 3, on: '2026-06-01', item: 'the Naivas call', words: ['I still have not called Naivas.'], saidWordForWord: true },
+          /* Marked as said word for word (added 22 November 2026): only such words are quoted, by the rule of the fix plan's group 3 (the-next-step-for-each-pattern.ts). */
         ],
       }],
       role: null, focus: null, toAskNextTime: [],
@@ -70,7 +71,8 @@ describe('Wairimu, who writes the review, reads her briefing', () => {
     const { id } = await x.svc.start(x.as('u-wairimu'), 'd-aisha');
     expect(((await x.svc.one(x.as('u-wairimu'), id)) as any).briefing.patterns).toEqual([{
       heading: 'Aisha has let 2 promised days pass without the work done.',
-      whatHappened: 'On 18 May, the words were "I have not sent the price list yet." On 1 June, the words were "I still have not called Naivas."',
+      /* Their words in the product's one quotation form (their-words-as-said.ts), not straight marks. */
+      whatHappened: 'On 18 May, the words were “I have not sent the price list yet”. On 1 June, the words were “I still have not called Naivas”.',
       howOften: 'This rests on 2 separate things from 2 check-ins.',
       checkIn: expect.any(String),
       nextStep: 'Talk with Aisha about it. Aisha has let 2 promised days pass without the work done.',

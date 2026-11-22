@@ -115,14 +115,9 @@ describe('the summary she is sent, with the switch on', () => {
     expect(first.length).toBeLessThanOrEqual(800);
     expect(first).toMatch(/^Good morning Grace\. Here is today's summary of your check-ins\. Target: 75 of 120 sold, 47 paid, 45 short, and the open deals cover 40\./);
     expect(first).toContain(`${BASE}/grounds/${DROP}/board`);
-    /* Inside the 24 hours: the same four parts, each on its own lines. */
-    expect(text).toBe([
-      'Good morning Grace.',
-      'Will we reach 120 units sold by 30 October?\n75 of 120 sold, 47 paid, 45 short, and the open deals cover 40.',
-      'What needs you today\nJuja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph.\nPeter has been waiting on you since Thursday for a specific area to focus on.\nPeter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will.',
-      'Your team today\nJoseph said 3 times that something was sold or paid with nothing on file, and took 2 back later. Groundwork asked for the proof and has coached Joseph since Monday 12 October, and nothing has changed, so call Joseph.',
-      `Your board is here ${BASE}/grounds/${DROP}/board`,
-    ].join('\n\n'));
+    /* Changed 22 November 2026 (release test, bugs 86 and 34): inside the 24 hours it is the same approved paragraph as the template, so
+       the lead reads "Target: / Needs you today: / Your team:" either way, never the email's headings. */
+    expect(text).toBe(TEMPLATES['lead-summary'].body.replace('{{1}}', 'Grace').replace('{{2}}', ctx.params[1]).replace('{{3}}', ctx.params[2]));
     /* Once a day: the 9am sweep does not send it again. */
     const again = await sendTheLeadsDailyNudges(d.deps, new Date('2026-10-20T08:00:00Z'));
     expect(again.tried).toBe(0);
@@ -149,6 +144,28 @@ describe('the summary she is sent, with the switch on', () => {
     expect((await sendTheLeadsDailyNudges(d.deps, new Date('2026-10-20T03:30:00Z'), { onlyTheDirectMorningAt7: true })).tried).toBe(0);
     expect(d.sent).toHaveLength(0);
   });
+
+  it('missed at seven, it goes by email at the next sweep that morning, once, with the approved headings; never after midday (bug 34)', async () => {
+    /* Wairimu's case: no WhatsApp for her, and the first sweep after seven in Nairobi ran at half past nine. */
+    const d = await doors('drop', true);
+    d.deps.whatsapp.isEnabled = async () => false;
+    expect((await sendTheLeadsDailyNudges(d.deps, new Date('2026-10-20T06:30:00Z'), { onlyTheDirectMorningAt7: true })).tried).toBe(1);
+    expect(d.sent).toHaveLength(0);
+    expect(d.mails.map((m) => m.kind)).toEqual(['direct']);
+    const [, subject, first, parts, label] = d.mails[0].a;
+    expect(subject).toBe('Grace: 45 short of 120, and Joseph needs your yes on Juja Hardware');
+    expect(first).toBe('Grace');
+    expect(parts[0]).toEqual({ heading: 'Will we reach 120 units sold by 30 October?', lines: ['75 of 120 sold, 47 paid, 45 short, and the open deals cover 40.'] });
+    expect(parts[1].heading).toBe('What needs you today');
+    expect(parts[1].lines[0]).toBe('Juja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph.');
+    expect(label).toBe('Open your board');
+    /* Once a day: the next sweep and the 9am sweep send nothing more. */
+    expect((await sendTheLeadsDailyNudges(d.deps, new Date('2026-10-20T06:45:00Z'), { onlyTheDirectMorningAt7: true })).tried).toBe(0);
+    expect((await sendTheLeadsDailyNudges(d.deps, new Date('2026-10-20T08:00:00Z'))).tried).toBe(0);
+    expect(d.mails).toHaveLength(1);
+    const late = await doors('drop', true);
+    expect((await sendTheLeadsDailyNudges(late.deps, new Date('2026-10-20T09:15:00Z'), { onlyTheDirectMorningAt7: true })).tried).toBe(0);
+  });
 });
 
 describe('Wanjiru’s direct morning, Muchemi & Co (test): fee notes and the litigation team in one message', () => {
@@ -174,15 +191,13 @@ describe('Wanjiru’s direct morning, Muchemi & Co (test): fee notes and the lit
         'People said different things about the current status of the Kasarani Foods reply, so settle it with them.',
       ] },
       /*
-       * Changed in polish round 15 (a-day-they-checked-in.ts): each working day now counts once, from what happened that day. David answered
-       * nothing on Tuesday 13 and Monday 19 October and answered a day late on Wednesday to Friday. Read by the day, the coaching came after his
-       * Wednesday check-in and two check-ins since got worse, so by Groundwork's own rule it is Wanjiru's now. The old reading counted sessions,
-       * said Friday was not done though he answered that Friday, and never counted Tuesday.
+       * Changed 22 November: David is no longer in "Your team today". The coaching he was given after his Wednesday check-in was "name the
+       * item, what changed and the day", and since run 7 (landed 20 November) it is judged only on that, never on whether he was on time; a
+       * check-in he missed is not proof it failed (fix plan 16 November, group 5). One of his three check-ins up to Wednesday did it, and one of
+       * the two he did since (Thursday) did, so it got better, and the morning does not tell Wanjiru to call him. This spec pinned the rule
+       * from before, where his late Thursday and Friday read as worse.
        */
-      { heading: 'Your team today, in Litigation team daily', lines: [
-        'David did 4 of 6 check-ins, 1 of them on time, and 2 named the item, what changed and the day. Groundwork has coached David on it since Wednesday 14 October, and it has got worse, so call David.',
-      ] },
-    ]);
+        ]);
     expect(theSubject('Wanjiru', [fees!, lit!])).toBe('Wanjiru: KES 850,000 owed, and Nyota Logistics disputes FN-008');
   });
 });

@@ -14,13 +14,13 @@ function setup(memberships: { organizationId: string; role: string }[] = [], opt
       {
         id: `g-${org}`, label: `Check-in in ${org}`, status: 'ACTIVE', organizationId: org, initiatorId: 'someone-else',
         participants: [{ id: 'p-me', userId: 'me' }],
-        checkIns: [{ id: `c-${org}`, participantId: 'p-me', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: null }],
+        checkIns: [{ id: `c-${org}-1`, participantId: 'p-me', sessionNumber: 1, status: 'COMPLETED', availableFrom: null }, { id: `c-${org}`, participantId: 'p-me', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: null }],
       },
       /* A check-in in another organisation that the list also carries, because the reader is in it. */
       {
         id: 'g-elsewhere', label: 'Elsewhere', status: 'ACTIVE', organizationId: 'org-other', initiatorId: 'x',
         participants: [{ id: 'p-me2', userId: 'me' }],
-        checkIns: [{ id: 'c-else', participantId: 'p-me2', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: null }],
+        checkIns: [{ id: 'c-else-1', participantId: 'p-me2', sessionNumber: 1, status: 'COMPLETED', availableFrom: null }, { id: 'c-else', participantId: 'p-me2', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: null }],
       },
     ]),
     listAwaitingApproval: jest.fn(async () => [{ id: 'g-wait', label: 'Supplier review', createdBy: 'Omar Ali' }]),
@@ -39,6 +39,17 @@ describe('the read behind Today', () => {
     expect(grounds.listAwaitingApproval).not.toHaveBeenCalled();
     expect(grounds.list).toHaveBeenCalledWith('org-a', 'me', 'me@x.test', 'MEMBER');
     expect(r.needs.map((n) => n.title)).toEqual(['Your next check-in for Check-in in org-a']);
+  });
+
+  it('somebody added while the team is on session 3 reads "Your first check-in", not "Your next check-in"', async () => {
+    const { svc, grounds } = setup();
+    grounds.list.mockImplementationOnce(async (org: string) => [{
+      id: `g-${org}`, label: `Check-in in ${org}`, status: 'ACTIVE', organizationId: org, initiatorId: 'someone-else',
+      participants: [{ id: 'p-me', userId: 'me' }],
+      checkIns: [{ id: 'c-3', participantId: 'p-me', sessionNumber: 3, status: 'NOT_STARTED', availableFrom: null }],
+    }]);
+    const r = await svc.forReader('me', 'me@x.test', 'org-a', 'MEMBER');
+    expect(r.needs.map((n) => n.title)).toEqual(['Your first check-in for Check-in in org-a']);
   });
 
   it('Today and its count hold only this organisation\'s needs; another organisation\'s are its "N new"', async () => {

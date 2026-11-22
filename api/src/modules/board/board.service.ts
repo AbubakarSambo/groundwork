@@ -1,3 +1,5 @@
+import { theQuietHoursNow } from '../../common/the-clock';
+import { theGoalChangesOn, theChangeThatMadeThisGoal, theChangeAsASentence } from '../grounds/a-goal-changed-by-its-lead';
 import { aRoundIsCounted, sessionsAPauseOpened } from '../grounds/a-round-that-could-be-answered';
 import { whenTheseOrganisationsPaused, thePausesThatAreOver } from '../billing/the-trial-grace';
 import { thePlannedSessionsOf } from '../grounds/this-sessions-count';
@@ -66,7 +68,7 @@ import { theDealWasDropped, theLostDeal } from './a-deal-that-was-dropped';
 import { theStartOfATargetFromTheDeals } from './where-a-target-from-the-deals-started';
 import { theDealsThePromisesAreAbout } from './the-deal-a-promise-is-about';
 import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
-import { theWordsNameTheDeal, theDepositFor, aDepositSaid, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, withTheSaleEachCodeAnswered, theTurnsBehindTheCodes, theSaleAsItsPaymentShowsIt, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
+import { theWordsNameTheDeal, theMarkForTheDeal, theDepositFor, aDepositSaid, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, withTheSaleEachCodeAnswered, theTurnsBehindTheCodes, theSaleAsItsPaymentShowsIt, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
 import { withTheValueWorkedOut, withOnlyTheNumbersSaid, theBuyingDateOf, theBuyingDateTheySaid, BUYING_DATE, aLineIsAbout } from './a-deals-value-and-buying-date';
 import { theirLine, theirCheckInToday, HAS_NOT_CHECKED_IN_TODAY, CHECKED_IN_TODAY } from './each-persons-line-today';
 import { withoutADealsFigure } from './a-deals-units-are-not-a-target';
@@ -212,7 +214,7 @@ import { type ToLookAt } from './the-same-thing-for-three-check-ins';
 import { theSameThingFromTheRows } from './the-same-thing-read-from-the-record';
 import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
 import { whatTheLeadShouldKnow, targetsFor } from './whose-number-is-whose-business';
-import { whichRoundIsOpen, theTeamsOpenRound } from './which-round-is-open';
+import { whichRoundIsOpen, theTeamsOpenRound, inTheTeamsNumbering } from './which-round-is-open';
 import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-splits-by-what-people-did';
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
@@ -454,7 +456,8 @@ export class BoardService {
     /* `now`: the board's clock. Dates it writes leave out the year only where it is this clock's year. */
     opts: { mayWordNewLines?: boolean; now?: Date } = {},
   ) {
-    const now = opts.now ?? new Date();
+    /* The one clock Today, the list and the sweeps read (common/the-clock.ts), so the board counts the same sessions as open. */
+    const now = opts.now ?? theQuietHoursNow();
     /* Nobody held for a seat reads the board (finding 3). */
     await refuseSomeoneHeldForASeat(this.prisma as any, groundId, requestingUserId);
     const ground = await this.prisma.ground.findUnique({
@@ -479,7 +482,7 @@ export class BoardService {
         /* participantId too: the glance counts who has answered this round by it, and without it the board read
            "0 of 2 answered this round" to a woman who had just answered (Hafsah, 21 Sep 2026). */
         /* With the close reason and the person's first turn, so the glance does not count a session the clock closed with nothing said as answered. */
-        checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true, availableFrom: true, closedReason: true, turns: SAID } },
+        checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true, availableFrom: true, createdAt: true, closedReason: true, turns: SAID } },
         reportRounds: { select: { sharedPicture: true, sessionNumber: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
         poll: { include: { options: { orderBy: { sortOrder: 'asc' } } } },
       },
@@ -850,7 +853,7 @@ export class BoardService {
     /* Decision 133: the round's clock is the team's; the lead checks in when they choose. */
     const givers = whoHoldsTheClock(ground.participants as any[]);
     const mine = checkIns.filter((c) => givers.has(c.participantId));
-    const openRound = mine.length ? whichRoundIsOpen(mine as any) : maxSession;
+    const openRound = mine.length ? whichRoundIsOpen(mine as any, now) : maxSession;
     /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the
        board runs the same engines over all of them, so the two share a vocabulary and differ only in
        scope. Same tiles, same settled-and-open, same question engine. */
@@ -1032,7 +1035,7 @@ export class BoardService {
       cadenceDays: (ground as any).cadenceDays ?? null,
       runsUntilEnded: !!(ground as any).runsUntilEnded,
     /* By name for whoever is served the count (theCount, below): "You and Aisha have checked in. David has started and not finished yet." */
-    }, { now, handOn: releaseOne, leave: theLeave, names: { readerUserId: requestingUserId }, pausedFrom: whenItPaused });
+    }, { now, leave: theLeave, names: { readerUserId: requestingUserId }, pausedFrom: whenItPaused });
     /* The switchboard's pick, once: its type decides which board the screen draws, and the screen reads it (kindOfWork below). */
     const theSwitchboardsPicked = await this.theSwitchboardsPick(ground as any);
     const out: Record<string, any> = {
@@ -1334,6 +1337,17 @@ export class BoardService {
       };
     }
 
+    /*
+     * WHAT STOPS THE TEAM'S WORK, SAID AT THE TOP OF THE BOARD (Drop Access, 22 November). "Freezers are out of stock" is not one
+     * person's wait on another, so no wait row holds it, and the glance read "Nothing is in the way." over a team whose goal it had
+     * just changed. The newest goal change whose reason stops the work is said here, with its day and what it changed, from the one
+     * log of goal changes (a-goal-changed-by-its-lead), to whoever reads the board's goals.
+     */
+    if (out.howItIsGoing?.glance?.inTheWay) {
+      const stopped = theGoalChangesOn((ground as any).groundAuditLog).filter((c) => c.stopsTheWork && c.toName).pop();
+      if (stopped) out.howItIsGoing.glance.inTheWay = { ...out.howItIsGoing.glance.inTheWay, stopped: theChangeAsASentence(stopped, (ground.participants as any[]).map((p) => String(p?.user?.firstName ?? p?.nameGiven ?? '').trim()).filter(Boolean), runsThisGround) };
+    }
+
     if (has('phaseSpine')) {
       /*
        * ONE COUNT, FROM THE BOARD'S OWN CLOCK (request 107 e). The header and every session's line are
@@ -1360,7 +1374,7 @@ export class BoardService {
              next sessions will start" (Hafsah, 22 Sep 2026); the pill said "Session 2" and nothing else.
              The earliest availableFrom across that session's check-ins is the day it opens. */
           const opens = forSession.map((c: any) => c.availableFrom).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
-          const line = whatEachSessionSays(n, mine as any[], theRound, now, releaseOne);
+          const line = whatEachSessionSays(n, inTheTeamsNumbering(mine as any[]) as any[], theRound, now);
           /* A session somebody has already checked in to, or started, is open, never "upcoming" (request 115 g):
              session 2 read as upcoming while two people had answered it, because session 1 was still open. */
           const somebodyIsIn = forSession.some((c) => c.status !== CheckInStatus.NOT_STARTED);
@@ -1538,6 +1552,8 @@ export class BoardService {
           .filter((x) => (theyRunIt || x.participantId === me?.id) && (ground.participants as any[]).some((p) => p.id === x.participantId))
           .map((x) => ({ participantId: x.participantId, name: nameOf(x.participantId), count: x.count, said: x.said, atSession: x.sessionNumber })),
         delta: theFirstCount(o) ? 0 : o.count - o.prevCount,
+        /* When and why its lead changed this goal, from the one log of changes, to whoever may read the goal (a-goal-changed-by-its-lead). */
+        changed: (() => { const c = theChangeThatMadeThisGoal(theGoalChangesOn((ground as any).groundAuditLog), o.id); return c ? theChangeAsASentence(c, (ground.participants as any[]).map((p) => String(p?.user?.firstName ?? p?.nameGiven ?? '').trim()).filter(Boolean), runsThisGround) : null; })(),
         isNew: o.addedAtSession != null && o.addedAtSession >= maxSession,
         /* The model's suggested count is not a source of a figure any more (batch 2, group 2; staging S1): none is served. A figure
            is the record's, and the line it came from is served only where it landed (suggestedSaid with no suggestedCount). */
@@ -1822,7 +1838,7 @@ export class BoardService {
       const heldAtTheDoor = new Set(ground.participants.filter((p: any) => isNotLetInYet(p)).map((p: any) => p.id));
       const roundRows = checkIns.filter((c) => !heldAtTheDoor.has(c.participantId) || c.status === CheckInStatus.COMPLETED || c.status === CheckInStatus.DECLINED);
       /* And never set by the lead's own extra check-in (journey test, 12 October): theTeamsOpenRound. */
-      const openRound = theTeamsOpenRound((roundRows.length ? roundRows : checkIns) as any, ground.participants as any);
+      const openRound = theTeamsOpenRound((roundRows.length ? roundRows : checkIns) as any, ground.participants as any, now);
       /*
        * WHAT EACH CHECK-IN PUT ON THE RECORD, so the board can say whether anything a person has said can be checked. The whole
        * record, not this round alone (Hafsah, 2 November 2026: silence is never a finding): proof from any check-in counts.
@@ -2788,10 +2804,14 @@ export class BoardService {
         const by = full ? theShortNameOf(full) : aColleagueMidSentence;
         return { saidBy: by, saidByParticipantId: p.id, saidByLine: `In ${by}'s words,` };
       };
+      /* The documents behind the lines the records came from, so a deal's own line proves it only where its document is about it. */
+      const sourceDocs = await theBackingDocuments(this.prisma, sources as any[]).catch(() => new Map<string, ABackingDocument>());
       const rows: AServedRecord[] = [];
       for (const i of items as any[]) {
         const line = i.sourceEntryId ? lineOf.get(i.sourceEntryId) : null;
         if (i.sourceEntryId && (!line || line.disputedAt)) continue;
+        const lineMark = line ? theMarkOf({ ...line, text: cleanText(line.text) }, whoAddedTheirs) : null;
+        const itsMark = line && i.kind === 'deal' ? theMarkForTheDeal(lineMark, theDocumentBehind(line.anchoredDocumentId, sourceDocs).documentWords, { name: String(i.name ?? ''), fields: plainFields(i.fields) }) : lineMark;
         /* A record is always owned by the person who said it (run-26), whatever an older row stored. */
         const ownerId: string | null = (line?.participantId as string | undefined) ?? i.ownerParticipantId ?? null;
         rows.push({
@@ -2822,12 +2842,9 @@ export class BoardService {
           from: i.sourceEntryId ? 'said' : 'lead',
           ...(line ? { said: cleanText(line.text) } : {}),
           ...(line ? whoSaidIt(line.participantId) : { saidBy: null, saidByParticipantId: null, saidByLine: null }),
-          ...howARecordIsKnown(
-            line ? theMarkOf({ ...line, text: cleanText(line.text) }, whoAddedTheirs) : null,
-            !!i.addedByUserId && i.addedByUserId === requestingUserId,
-          ),
+          ...howARecordIsKnown(itsMark as any, !!i.addedByUserId && i.addedByUserId === requestingUserId),
           /* The proof mark the screens' ProofMark reads (request 108 c), from the line it came from, never upgraded. */
-          mark: theRecordsMark(line ? theMarkOf({ ...line, text: cleanText(line.text) }, whoAddedTheirs) : null),
+          mark: theRecordsMark(itsMark as any),
           /* The lead's own promise ("Be following up more closely with each rep on ... Kilele Hotel, Greenfield Supermarket and Mama Pima Stores") is hers, never a deal's next step (Drop Access short run, item 5; Release 1's sales board). */
           ...whatHappensNext(i, openPromises.filter((c) => !(releaseOne && i.kind === 'deal' && !!theLeadsRow && c.participantId === theLeadsRow && ownerId !== theLeadsRow)).filter((c) => runsIt || c.participantId === me?.id || (!!ownerId && c.participantId === ownerId && c.participantId !== theLeadsRow)), (pid) => {
             if (pid && pid === me?.id) return 'You';
@@ -2854,7 +2871,8 @@ export class BoardService {
         /* The documents behind the lines, so proof counts only for the customer it is about, on the day it came in (a-deals-proof-is-about-that-deal). */
         const docOf = await theBackingDocuments(this.prisma, readableRows).catch(() => new Map<string, ABackingDocument>());
         const readable = readableRows
-          .map((l) => ({ id: l.id, participantId: l.participantId, text: cleanText(l.text ?? ''), createdAt: l.createdAt, mark: theRecordsMark(theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAddedEach)) as string, documentBy: l.anchoredDocumentId ? (whoAddedEach.get(l.anchoredDocumentId) ?? null) : null, ...(releaseOne ? theDocumentBehind(l.anchoredDocumentId, docOf) : {}) }));
+          .map((l) => ({ id: l.id, participantId: l.participantId, text: cleanText(l.text ?? ''), createdAt: l.createdAt, mark: theRecordsMark(theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAddedEach)) as string, documentBy: l.anchoredDocumentId ? (whoAddedEach.get(l.anchoredDocumentId) ?? null) : null, ...theDocumentBehind(l.anchoredDocumentId, docOf) }));
+        /* Read for every organisation, not only behind Release 1's switch: a document is about the customers it names, for everyone (release test, 21 November 2026). */
         const owners = [...new Set(rows.filter((r) => r.kind === 'deal' && mayReadTheWordsOf(r.ownerParticipantId)).map((r) => r.ownerParticipantId as string))];
         const ownersCheckIns = (checkIns as any[]).filter((c) => owners.includes(c.participantId)).map((c) => c.id);
         const turns = ownersCheckIns.length
@@ -3470,7 +3488,7 @@ export class BoardService {
       /* What to coach each rep this week, one line about the work, to whoever runs it (Q6; what-to-coach-this-week). */
       if (releaseOne && runsIt && judged && isASalesKind((ground as any).kindOfWork) && Array.isArray(out.eachPersonToday) && Array.isArray(out.workRecords)) {
         const dealRows = (out.workRecords as any[]).flatMap((sec: any) => (sec?.rows ?? []) as any[]).filter((r: any) => r?.kind === 'deal');
-        const crit = (r: any) => (eachDealInItsGroup('sales org', [{ section: 'Deal grid', stages: theSalesStages((ground as any).workStages), rows: [r] }] as any, deadlineOf(ground as any), now, { countedFromTheDeals: true, contactedWhenSpokenOf: true, byBuyingDate: true, criteria: criteriaFor(), stallDays }) as any[])?.[0]?.rows?.[0]?.criteria ?? [];
+        const crit = (r: any) => (eachDealInItsGroup('sales org', [{ section: 'Deal grid', stages: theSalesStages((ground as any).workStages), rows: [r] }] as any, deadlineOf(ground as any), now, { countedFromTheDeals: true, byBuyingDate: true, criteria: criteriaFor(), stallDays }) as any[])?.[0]?.rows?.[0]?.criteria ?? [];
         const owners = [...new Set(dealRows.map((r: any) => r.ownerParticipantId).filter(Boolean))] as string[];
         const said = owners.length
           ? ((((await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, participantId: { in: owners } } as any, select: { text: true, type: true, participantId: true, createdAt: true } as any }) as Promise<any[]>).catch(() => [] as any[])) ?? []) as any[])
@@ -3598,7 +3616,7 @@ export class BoardService {
         /* What the deals under "Likely" hold, for an aim counted from the deals: the prototype's "and 2 more are likely". From the same rows and groups as the deal grid. */
         const salesHere = isASalesKind((ground as any).kindOfWork);
         const likelyDeals = salesHere && countedFromTheDeals.size
-          ? ((eachDealInItsGroup('sales org', out.workRecords as any, deadlineOf(ground as any), now, { countedFromTheDeals: releaseOne, contactedWhenSpokenOf: releaseOne, byBuyingDate: releaseOne, criteria: criteriaFor(), stallDays }) ?? []) as any[]).flatMap((sec) => (sec.rows ?? []) as any[]).filter((r) => r.kind === 'deal' && r.group === 'likely')
+          ? ((eachDealInItsGroup('sales org', out.workRecords as any, deadlineOf(ground as any), now, { countedFromTheDeals: releaseOne, byBuyingDate: releaseOne, criteria: criteriaFor(), stallDays }) ?? []) as any[]).flatMap((sec) => (sec.rows ?? []) as any[]).filter((r) => r.kind === 'deal' && r.group === 'likely')
           : [];
         out.objectives = (out.objectives as any[]).map((o) => {
           const row = stored.get(o.id);
@@ -3961,7 +3979,7 @@ export class BoardService {
        */
       if (Array.isArray(walled.workRecords) && oneOfTheKinds((ground as any).kindOfWork)) {
         /* Each deal in its group, with why, from the rows this reader is served (request 112 a). See each-deal-in-its-group. */
-        walled.workRecords = eachDealInItsGroup(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, deadlineOf(ground as any), now, { countedFromTheDeals: releaseOne, contactedWhenSpokenOf: releaseOne, byBuyingDate: releaseOne, criteria: criteriaFor(), stallDays });
+        walled.workRecords = eachDealInItsGroup(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, deadlineOf(ground as any), now, { countedFromTheDeals: releaseOne, byBuyingDate: releaseOne, criteria: criteriaFor(), stallDays });
         walled.byArea = theWorkByArea(walled.workRecords);
         /* RELEASE 5: a funded project's board (release-5-projects), from the same records this reader is served. Off, nothing new. */
         if (isAProject((ground as any).kindOfWork) && (await theRelease5ProjectsIsOn(this.prisma, (ground as any).organizationId))) {
@@ -4377,7 +4395,7 @@ export class BoardService {
       }),
       this.prisma.checkIn.findMany({
         where: { groundId: ground.id },
-        select: { participantId: true, sessionNumber: true, status: true },
+        select: { participantId: true, sessionNumber: true, status: true, isSetup: true, closedReason: true, turns: SAID },
       }),
     ]);
     // WHETHER THESE PEOPLE SEE EACH OTHER'S WORK. The lead's answer if they gave

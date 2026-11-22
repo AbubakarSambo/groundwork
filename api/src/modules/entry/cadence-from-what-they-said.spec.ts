@@ -88,7 +88,9 @@ describe('the fields exist on the tool, so they can actually come back', () => {
   });
 
   it('carries timelineDays as a number', () => {
-    expect(EXTRACT).toMatch(/timelineDays: \{ type: 'number' \}/);
+    /* Changed 22 November 2026 (release test, bug 7): the field now says what it is (never a milestone), beside endsOn. */
+    expect(EXTRACT).toMatch(/timelineDays: \{ type: 'number', description: /);
+    expect(EXTRACT).toMatch(/endsOn: \{ type: 'string', description: /);
   });
 
   it('records why this exists, next to the field', () => {

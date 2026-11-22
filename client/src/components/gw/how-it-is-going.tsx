@@ -40,6 +40,8 @@ export interface Glance {
         which creeps forward on every visit. Draw this when it is sent; fall back to the day
         count only when it is absent. */
     sinceSays?: string | null
+    /** What stops the team's work, with its day and the goal it changed, said by the engine (a-goal-changed-by-its-lead). */
+    stopped?: string | null
   }
 }
 
@@ -130,6 +132,7 @@ export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingTo
   readerIsTheOnlyPerson?: boolean
 }) {
   const late = (glance?.inTheWay?.count ?? 0) > 0
+  const stopped = glance?.inTheWay?.stopped ?? null
   const vars = tone === 'dark'
     ? {
         ['--gwui-how-story' as any]: BOARD_BODY_INK,
@@ -196,8 +199,9 @@ export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingTo
                   .
                 </span>
               )
-              : <span className="gwui-how-strong">Nothing is in the way.</span>}
+              : !stopped && <span className="gwui-how-strong">Nothing is in the way.</span>}
           </div>
+          {stopped && <div className="gwui-how-warn">{stopped}</div>}
         </div>
       )}
     </div>

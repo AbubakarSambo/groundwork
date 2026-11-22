@@ -1,4 +1,4 @@
-import { thePlannedSessionsOf } from './this-sessions-count';
+import { thePlannedSessionsOf, theSessionAndItsCount } from './this-sessions-count';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { howOftenItRuns } from './the-check-ins-own-schedule';
 import { aDayInItsZone } from '../board/a-day-said-in-full';
@@ -79,6 +79,8 @@ export type PeopleAndSetup =
       roleDescribed: Record<string, boolean>;
       /** Release 2 only, and only for a scenario with types of its own: the type to confirm in "What it is". Absent otherwise. */
       checkInType?: TheTypeInWhatItIs;
+      /** Nobody but the lead has answered any session, so it can still be deleted as a test (whoElseHasAnswered, the rule the delete asks). */
+      stillATest: boolean;
     };
 
 /**
@@ -185,6 +187,22 @@ export function theSetupProblems(a: {
   return out;
 }
 
+/**
+ * WHO ELSE HAS ANSWERED, IN ANY SESSION (release test 22 November 2026, bug N6). The one rule for "can this still be deleted as a test":
+ * the delete asks it before it deletes (grounds.service deleteWhileItIsStillATest), and People and setup serves its answer, so the page
+ * offers "Delete this test" exactly when the delete would work. The page used to work it out itself from who had answered the clock's
+ * current session, so a lead whose team member answered session 1 read "Nobody else has answered yet" in session 2, and the delete then
+ * refused. Returns the participant ids, in row order, of everybody but the lead with a finished session.
+ */
+export function whoElseHasAnswered(
+  participants: { id: string; userId?: string | null }[],
+  checkIns: { participantId: string; status: string }[],
+  leadUserId: string,
+): string[] {
+  const finished = new Set(checkIns.filter((c) => String(c.status) === 'COMPLETED').map((c) => c.participantId));
+  return participants.filter((p) => p.userId !== leadUserId && finished.has(p.id)).map((p) => p.id);
+}
+
 const OPEN_STATUSES = new Set(['AWAITING_APPROVAL', 'AWAITING_LEAD', 'OPEN', 'AWAITING_PARTIES']);
 
 export async function readPeopleAndSetup(
@@ -271,7 +289,9 @@ export async function readPeopleAndSetup(
   const problems = theSetupProblems({ rows, leadUserId: ground.initiatorId, reader: isLead ? 'lead' : 'admin', organisationName: ground.organization?.name ?? 'your organisation', askedOnWhatsApp, phones, mayReadTheAddress });
 
   const leave = await leaveOfThePeopleOn(prisma, [ground.id]).catch(() => undefined);
-  const rounds = theRoundsDone(theSessionRowsOf(ground.checkIns ?? [], rows), leave, now);
+  /* Done by the same clock the board's header reads (theSessionAndItsCount), so "N of 12 sessions done" and "Check-in M of 12" agree. */
+  const theClock = theSessionAndItsCount({ participants: rows as any[], checkIns: ground.checkIns ?? [], scenario: ground.scenario, timelineDays: ground.timelineDays, cadence: ground.cadence, cadenceDays: (ground as any).cadenceDays, runsUntilEnded: ground.runsUntilEnded }, { now, leave }).clock.currentSession;
+  const rounds = theRoundsDone(theSessionRowsOf(ground.checkIns ?? [], rows), leave, now, theClock);
   /* The same function the member's page and the board read; a lead who is a party reads her own count here too. */
   const yourSessionsDone = mine ? theSessionsDoneBy(ground.checkIns ?? [], mine.id) : 0;
   const sessions = ground.cadence === 'ONE_TIME'
@@ -316,6 +336,7 @@ export async function readPeopleAndSetup(
     organisationName: orgName,
     roleDescribed: Object.fromEntries(rows.map((p) => [p.id, !!(p.roleAsDescribed ?? '').trim()])),
     ...(checkInType ? { checkInType } : {}),
+    stillATest: whoElseHasAnswered(rows, ground.checkIns ?? [], ground.initiatorId).length === 0,
   };
 }
 

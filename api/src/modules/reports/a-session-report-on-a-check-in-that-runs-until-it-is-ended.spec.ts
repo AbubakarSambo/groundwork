@@ -32,25 +32,25 @@ describe('a session report on a check-in that runs until the lead ends it', () =
     return svc.sessionReport('g-1', session, reader, 'org-1');
   };
 
-  it('says "Session 3. It runs until you end it." to the lead and gives no total', async () => {
+  it('says "Check-in 3. It runs until you end it." to the lead and gives no total', async () => {
     const served = await serve({ timelineDays: 0, runsUntilEnded: true }, 'u-lead');
     expect(served.runsUntilEnded).toBe(true);
     expect(served.plannedSessions).toBeNull();
-    expect(served.position).toBe('Session 3. It runs until you end it.');
+    expect(served.position).toBe('Check-in 3. It runs until you end it.');
     expect(JSON.stringify(served)).not.toMatch(/halfway|final session|session \d+ of \d+|the last one/i);
   });
 
   it('tells a participant who ends it, because only the person running it can', async () => {
     const served = await serve({ timelineDays: 0, runsUntilEnded: true }, 'u-miriam');
     expect(served.plannedSessions).toBeNull();
-    expect(served.position).toMatch(/^Session 3\. It runs until (Wairimu Kamau|the person running it) ends it\.$/);
+    expect(served.position).toMatch(/^Check-in 3\. It runs until (Wairimu Kamau|the person running it) ends it\.$/);
     expect(served.position).not.toContain('you end it');
   });
 
-  it.each(['u-lead', 'u-miriam'])('still says "Session 3 of 12." to %s where the check-in has a length', async (reader) => {
+  it.each(['u-lead', 'u-miriam'])('still says "Check-in 3 of 12." to %s where the check-in has a length', async (reader) => {
     const served = await serve({ timelineDays: 84, runsUntilEnded: false }, reader);
     expect(served.runsUntilEnded).toBe(false);
     expect(served.plannedSessions).toBe(12);
-    expect(served.position).toBe('Session 3 of 12.');
+    expect(served.position).toBe('Check-in 3 of 12.');
   });
 });

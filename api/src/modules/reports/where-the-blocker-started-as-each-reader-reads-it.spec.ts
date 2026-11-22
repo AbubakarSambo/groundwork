@@ -77,7 +77,8 @@ function setup(traces: any[] = [westgate]) {
     blockerTrace: { findMany: jest.fn(async ({ where }: any) => traces.filter((t) => t.organizationId === where.organizationId && t.endGroundId === where.endGroundId)) },
     ground: { findMany: jest.fn(async ({ where }: any) => all.filter((g) => where.id.in.includes(g.id) && g.organizationId === where.organizationId)) },
     /* The handoff in Sales each chain was followed from: Miriam asked Finance on 14 September; Wairimu's freezer wait names no team. */
-    groundDependency: { findUnique: jest.fn(async ({ where }: any) => ({
+    /* No other open wait in Sales on somebody outside it: every wait here is one a stored chain was followed from. */
+    groundDependency: { findMany: jest.fn(async () => []), findUnique: jest.fn(async ({ where }: any) => ({
       'h-terms': { id: 'h-terms', groundId: 'sales', fromParticipantId: 'p-s-miriam', onParticipantId: null, onLabel: 'Finance', waitingOnGroundId: 'finance', createdAt: new Date('2026-09-14T09:00:00Z') },
       'h-k': { id: 'h-k', groundId: 'sales', fromParticipantId: 'p-s-wairimu', onParticipantId: null, onLabel: null, waitingOnGroundId: 'kwame', createdAt: new Date('2026-09-21T09:00:00Z') },
     } as any)[where.id] ?? null) },

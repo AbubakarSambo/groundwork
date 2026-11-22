@@ -65,6 +65,17 @@ export function whatMattersMost(c: YearEndContent): string {
   return out.join(' ');
 }
 
+/**
+ * WHETHER A DRAFT HAS ANYTHING TO SAY (release test of 21 November, bug 92). Halima was sent her year-end draft one minute after her introduction, and
+ * it said only "Nothing has been promised, paid or approved on Halima's record for 2026 yet" and "Nothing has been forwarded for January, February ...".
+ * A draft says something when the record holds a matter (settled, said, open or waiting for a decision) or a monthly note. The same counts the draft's
+ * own first sentences are written from (theYearInWords), so the two cannot disagree.
+ */
+export function aDraftHasSomethingToSay(c: YearEndContent): boolean {
+  const matters = ['achieved', 'unverified', 'open', 'decision'].some((id) => claimsIn(c, id).length > 0);
+  return matters || (c.noteMonths ?? []).length > 0 || monthSections(c).length > 0;
+}
+
 /** The year in two or three sentences, from what the content holds. Both the report and the presentation say it. */
 export function theYearInWords(c: YearEndContent): string[] {
   const done = claimsIn(c, 'achieved').length;

@@ -1,7 +1,7 @@
 import { PartyType } from '@prisma/client';
 import { boardAs, person } from './the-switchboards-sections-harness';
 import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
-import { theNumbersPeopleCanRead, aboutTheSpeaker } from './an-aim-is-a-sentence-about-somebody';
+import { theNumbersPeopleCanRead, aboutTheSpeaker, anAimAsASentence, aThingToDoIsWhatItCounts } from './an-aim-is-a-sentence-about-somebody';
 
 /**
  * THE NAME OF EVERY AIM, AS EACH PERSON READS IT ON THE BOARD (review of 1 October 2026, row 113).
@@ -185,5 +185,34 @@ describe('a name with no verb, and "my" in the lead\'s own line, as each reader 
       'The team is keeping spending on field visits to no more than 180,000.',
       'Bisi Adeyemi needs the team to stop missing documents.',
     ]);
+  });
+});
+
+/* DROP ACCESS RE-READ, 22 NOVEMBER 2026: the number was said twice and the doing word kept, "Brian Otieno is aiming for 4 Activate 4 Drop Access points per week." */
+describe('a thing to do is what it counts, whatever the doing word', () => {
+  it('reads "Activate 4 Drop Access points per week" as the 4 points, said once', () => {
+    expect(anAimAsASentence('Activate 4 Drop Access points per week', { speaker: 'Wairimu', holder: 'Brian Otieno', target: 4 })).toBe('Brian Otieno is aiming for 4 Drop Access points per week.');
+    expect(anAimAsASentence('Sell 8 freezers per week', { speaker: 'Wairimu', holder: 'Brian Otieno', target: 8 })).toBe('Brian Otieno is aiming for 8 freezers per week.');
+  });
+  it('keeps a word that says how big the number is, and a currency in capitals', () => {
+    expect(aThingToDoIsWhatItCounts('Over 5 complaints')).toBe('Over 5 complaints');
+    expect(aThingToDoIsWhatItCounts('KES 600,000 in sales')).toBe('KES 600,000 in sales');
+    expect(aThingToDoIsWhatItCounts('Bring in 5 new clients')).toBe('5 new clients');
+  });
+});
+
+/* FINAL TEST, 22 NOVEMBER 2026: "The team is aiming for 4 each agent activates 4 points a week." A sentence that says its own number is
+   the sentence, whatever its verb, for every reader. */
+describe('a sentence that says its own number is kept, whatever its verb', () => {
+  const said = (name: string, target: number, holder: string | null = null) => anAimAsASentence(name, { speaker: 'Pat Lead', holder, target });
+  it('keeps a full sentence with a verb in no list', () => {
+    expect(said('Each agent activates 4 points a week.', 4)).toBe('Each agent activates 4 points a week.');
+    expect(said('Each of the four regions lands 50 new accounts.', 50)).toBe('Each of the four regions lands 50 new accounts.');
+    expect(said('The teams hit a total revenue target of 12 million for the quarter.', 12_000_000)).toBe('The teams hit a total revenue target of 12 million for the quarter.');
+  });
+  it('still gives a name that only says what is counted its holder and its number', () => {
+    expect(said('Spending on field visits.', 180_000)).toBe('The team is aiming for 180,000 spending on field visits.');
+    expect(said('10,000 units', 10_000)).toBe('The team is aiming for 10,000 units.');
+    expect(said('Activate 4 points a week', 4, 'Brian Otieno')).toBe('Brian Otieno is aiming for 4 points a week.');
   });
 });

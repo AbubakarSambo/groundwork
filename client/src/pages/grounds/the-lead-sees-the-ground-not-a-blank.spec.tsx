@@ -188,7 +188,10 @@ describe('the four things mounting it exposed', () => {
     expect(CODE).not.toMatch(/ci\.participantName/)
     /* Issue 66 (7 November 2026): "who is in this" carried a name nothing read, so it is gone; the resolver is still the one the
        sessions so far are named by. */
-    expect(CODE).toContain('theSessionsSoFar((ground.checkIns ?? []) as any[], nameOfParticipant)')
+    /* Changed 22 November 2026: the Batch S check-in tab (20 November) sends a lead who does not check in herself to the board, so the
+       sessions-so-far list and its resolver left this page as well. No session history is read here at all, so none can name people
+       differently from the roster. */
+    expect(CODE).not.toContain('theSessionsSoFar(')
   })
 
   /**

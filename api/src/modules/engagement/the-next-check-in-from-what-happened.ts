@@ -19,7 +19,7 @@ export function theNextCheckInFor(r: WhatTheRecordShows): TheNextCheckIn {
   if (r.waiting >= 2 && moved === 0 && r.scenario !== 'DRIFT') {
     return {
       scenario: 'DRIFT', kind: 'another', says: 'work that has gone off track',
-      why: `${things(r.waiting, 'handoff is', 'handoffs are')} still waiting and nothing has been marked done or cleared since the report`,
+      why: `people are still waiting on ${things(r.waiting, 'thing', 'things')} and nothing has been marked done or cleared since the report`,
       now: r.daysSinceTheReport && r.daysSinceTheReport >= 7 ? `${aNumberInWords(r.daysSinceTheReport)} days have passed since the report went out and nothing has moved in that time` : null,
     };
   }
@@ -27,7 +27,7 @@ export function theNextCheckInFor(r: WhatTheRecordShows): TheNextCheckIn {
   if (moved > 0 && r.waiting === 0 && r.scenario !== 'PULSE_CHECK') {
     return {
       scenario: 'PULSE_CHECK', kind: 'another', says: 'a regular read on live work',
-      why: `${things(moved, 'thing has', 'things have')} moved since the report and no handoff is waiting`,
+      why: `${things(moved, 'thing has', 'things have')} moved since the report and nobody is waiting on anything`,
       now: null,
     };
   }

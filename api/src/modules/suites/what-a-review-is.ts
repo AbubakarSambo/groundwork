@@ -47,9 +47,12 @@ export function whatThisReviewIs(r: AReviewToSay): string[] {
   out.push(`This review is drawn from ${listed(drawnFrom)}. Hours and leave are never part of it.`);
 
   /* Who reads it, by name where known. */
+  /* The reader comes first, as "You", and nobody is described inside the list: "Wairimu, you, as the one who writes it and every admin can
+     read it." read as Grace being spoken to (release test, 21 November 2026, bug 43). */
   const readers = [
-    you ? 'You' : r.person.first,
-    r.writer.reads ? 'you, as the one who writes it' : r.writer.first ? `${r.writer.first}, who writes it` : 'the admin who writes it',
+    ...(you || r.writer.reads ? ['You'] : []),
+    ...(you ? [] : [r.person.first]),
+    ...(r.writer.reads ? [] : [r.writer.first ?? 'the admin who writes it']),
     ...(r.others.release7
       ? [r.others.hr ? `${r.others.hr}, who looks after HR` : null, `an admin who set up or approved one of ${Ps} check-ins`].filter((x): x is string => !!x)
       : ['every admin']),

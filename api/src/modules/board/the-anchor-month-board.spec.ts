@@ -1,3 +1,4 @@
+/* Changed 22 November 2026 (release test): "handoffs" is work jargon, so the board says "Somebody is still waiting on one thing" and the like; the expectations below follow the new words. */
 import { PartyType } from '@prisma/client';
 import { person, answered, commitment, handoff, boardAs, AMINA, RUKIA, BARAKA, JUMA, SETUP_ADMIN, type Setup } from './the-switchboards-sections-harness';
 import { theMonthBoard, aDifferenceInAWords, aWaitInAWords, theWeekOfTheMonth, theLenses, howManyHeard } from './the-anchor-month-board';
@@ -65,11 +66,11 @@ describe('the month board, as the lead reads it', () => {
       'Groundwork has heard from three of five people.',
       'Two of five people have said what they will do themselves.',
       'No idea from your team has been captured yet.',
-      'One of the things people said they would do is done and one is still open. One handoff is still waiting on someone.',
+      'One of the things people said they would do is done and one is still open. Somebody is still waiting on one thing.',
     ]);
     expect(b.whatIsMoving).toEqual([
       'One of the things people said they would do is done.',
-      'One handoff that was waiting on someone has been cleared.',
+      'Somebody has stopped waiting on one thing.',
       'Two people have said what they will do themselves.',
     ]);
     expect(b.whatTheTeamIsContributing).toEqual(['No idea from your team has been captured yet.']);
@@ -80,7 +81,7 @@ describe('the month board, as the lead reads it', () => {
     expect(b.whatGroundworkIsWorkingOnNext).toEqual([
       'Two people have not answered this round yet. They’re being asked.',
       'One thing people said they’d do is still open.',
-      'One handoff is still waiting on someone.',
+      'Somebody is still waiting on one thing.',
     ]);
   });
 
@@ -200,11 +201,11 @@ describe('piece 22, as the review asked', () => {
 describe('the action lens never says "no are still open" (request 163, item 1)', () => {
   const { theMovement } = require('./the-anchor-month-board');
   it('says each count in words, with its own sentence for none', () => {
-    expect(theMovement({ commitmentsDone: 1, commitmentsOpen: 0, waiting: [] })).toBe('The one thing people said they would do is done. No handoff is waiting on anyone.');
-    expect(theMovement({ commitmentsDone: 3, commitmentsOpen: 0, waiting: [{}] })).toBe('All three of the things people said they would do are done. One handoff is still waiting on someone.');
-    expect(theMovement({ commitmentsDone: 0, commitmentsOpen: 2, waiting: [] })).toBe('Neither of the two things people said they would do is done yet. No handoff is waiting on anyone.');
-    expect(theMovement({ commitmentsDone: 0, commitmentsOpen: 1, waiting: [] })).toBe('The one thing people said they would do is not done yet. No handoff is waiting on anyone.');
-    expect(theMovement({ commitmentsDone: 0, commitmentsOpen: 0, waiting: [{}, {}] })).toBe('Two handoffs are still waiting on someone.');
+    expect(theMovement({ commitmentsDone: 1, commitmentsOpen: 0, waiting: [] })).toBe('The one thing people said they would do is done. Nobody is waiting on anything.');
+    expect(theMovement({ commitmentsDone: 3, commitmentsOpen: 0, waiting: [{}] })).toBe('All three of the things people said they would do are done. Somebody is still waiting on one thing.');
+    expect(theMovement({ commitmentsDone: 0, commitmentsOpen: 2, waiting: [] })).toBe('Neither of the two things people said they would do is done yet. Nobody is waiting on anything.');
+    expect(theMovement({ commitmentsDone: 0, commitmentsOpen: 1, waiting: [] })).toBe('The one thing people said they would do is not done yet. Nobody is waiting on anything.');
+    expect(theMovement({ commitmentsDone: 0, commitmentsOpen: 0, waiting: [{}, {}] })).toBe('People are still waiting on two things.');
     for (const r of [{ commitmentsDone: 1, commitmentsOpen: 0, waiting: [] }, { commitmentsDone: 0, commitmentsOpen: 1, waiting: [] }]) {
       expect(theMovement(r)).not.toMatch(/\bno (?:are|is)\b/i);
     }

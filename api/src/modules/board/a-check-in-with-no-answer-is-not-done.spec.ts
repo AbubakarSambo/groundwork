@@ -3,7 +3,10 @@ import { thePersonsRecord } from './the-persons-record';
 /** Peter, polish round 2: the board read "four of five check-ins, all on time" after he answered two of them. */
 describe('a check-in closed with no answer from them is not one they did', () => {
   const at = (d: string) => new Date(`${d}T09:00:00Z`);
-  const ci = (n: number, day: string, answers: number) => ({ id: `c${n}`, sessionNumber: n, status: 'COMPLETED', availableFrom: at(day), createdAt: at(day), completedAt: at(day), _count: { turns: answers } });
+  /* A check-in nobody answered is closed by the clock, as the product closes one (closeAsMissed and closeByTheClock write CLOSED_BY_THE_CLOCK).
+     Changed 22 November 2026: it was built as a finished check-in with no close reason, which the board's count has always read as answered;
+     a person's record now reads the board's one rule (theyAnsweredIn), so the fixture says how the check-in really closed. */
+  const ci = (n: number, day: string, answers: number) => ({ id: `c${n}`, sessionNumber: n, status: 'COMPLETED', availableFrom: at(day), createdAt: at(day), completedAt: at(day), ...(answers === 0 ? { closedReason: 'auto_closed' } : {}), _count: { turns: answers } });
   it('counts only the check-ins they answered', () => {
     const r = thePersonsRecord({
       participantId: 'p-peter', now: at('2026-10-19'), zone: 'Africa/Nairobi', sales: true,

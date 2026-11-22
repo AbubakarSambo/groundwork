@@ -22,14 +22,14 @@ describe('what people said they had done, as each reader reads the board', () =>
     const said = objs.flatMap((o) => o.saidBy).map((x: any) => `${x.name}:${x.count}`);
     expect(said).toEqual(expect.arrayContaining(['Rukia Mwangi:25', 'Baraka Otieno:27']));
     const t = theTargetLines({ objectives: objs.map((o: any) => ({ ...o, fromTheDeals: o.ownerParticipantId ? null : { counts: 'units', sold: 0, proven: 0, shown: 0, says: '' } })), workRecords: [] }, new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi');
-    expect(t.lines[0].text).toBe('The team target is 30. Rukia said 25 and Baraka said 27, which is 52 between them, and none of it is on a deal yet, so none of it is proven.');
+    expect(t.lines[0].text).toBe('The team’s goal is “The team is aiming for 30 solar lanterns sold a week”. Rukia said 25 and Baraka said 27, which is 52 between them, and none of it is on a deal yet, so none of it is proven.');
   });
   it('a person reads only their own number, never a colleague\'s', async () => {
     const baraka = await served(BARAKA);
     expect(JSON.stringify(baraka.flatMap((o) => o.saidBy))).toMatch(/Baraka/);
     expect(JSON.stringify(baraka)).not.toMatch(/Rukia|35 lanterns/);
     const t = theTargetLines({ objectives: baraka.map((o: any) => ({ ...o, fromTheDeals: { counts: 'units', sold: 0, proven: 0, shown: 0, says: '' } })), workRecords: [] }, new Date('2026-12-14T07:00:00Z'), 'Africa/Nairobi');
-    expect(t.lines[0].text).toBe('The team target is 30. Baraka said 27, and none of it is on a deal yet, so none of it is proven.');
+    expect(t.lines[0].text).toBe('The team’s goal is “The team is aiming for 30 solar lanterns sold a week”. Baraka said 27, and none of it is on a deal yet, so none of it is proven.');
   });
   it('Rukia\'s private aim and what she said against it reach nobody but her and the lead', async () => {
     expect(JSON.stringify(await served(BARAKA))).not.toMatch(/Rukia/);

@@ -46,11 +46,13 @@ describe('request 117 (3): one count for the sessions', () => {
     expect(c.yours.whyItMatters).toMatch(/^This is check-in 2 of 12 of this work\./);
   });
 
-  it.each([['Rukia', 'u-rukia'], ['Grace, who set it up', 'u-grace']])('%s is told only Faraji has not answered this session, never Baraka or Neema', async (_who, userId) => {
+  /* Changed 22 November 2026 (Hafsah, "Yes, move it on"): Rukia and Amani have begun session 2, so it is the team's session, and the
+     people who have not answered it are Baraka, Neema and Faraji. Before, Faraji's unanswered session 1 held the round at 1. */
+  it.each([['Rukia', 'u-rukia'], ['Grace, who set it up', 'u-grace']])('%s is told who has not answered session 2: Baraka, Neema and Faraji', async (_who, userId) => {
     const svc = heldOpenByFaraji();
     const c: any = await svc.coachingForTheBoard('g1', userId);
     const notAnswered = (c.eachPerson as any[]).filter((p) => p.probe.some((l: string) => /has not answered this check-in/.test(l))).map((p) => p.who);
-    expect(notAnswered).toEqual(['Faraji Odhiambo']);
+    expect(notAnswered.sort()).toEqual(['Baraka Mwangi', 'Faraji Odhiambo', 'Neema Achieng']);
   });
 
   it('Juma, an admin who only reads, and Baraka are sent no probe list at all', async () => {
@@ -69,21 +71,21 @@ describe('request 117 (3): the board says the same session to every reader', () 
     ['Neema, who checks in', NEEMA],
     ['Juma, an admin who only reads', JUMA_READS],
     ['Grace, the admin who set it up', GRACE_SET_IT_UP],
-  ])('%s: session 1 of 12, with session 2 started for some people', async (_who, reader) => {
+  ])('%s: session 2 of 12, with session 1 over and the misses said', async (_who, reader) => {
     const board = await boardAs(review5(), reader[0], reader[1]);
-    expect(board.phaseSpine.currentSession).toBe(1);
+    expect(board.phaseSpine.currentSession).toBe(2);
     expect(board.phaseSpine.plannedSessions).toBe(12);
-    expect(board.phaseSpine.sessions.map((s: any) => s.says)).toEqual([
-      'Check-in 1 opened on 22 September, and it is still open.',
-      'Check-in 2 has started for some people, while check-in 1 is still open.',
-    ]);
+    const lines = board.phaseSpine.sessions.map((s: any) => s.says);
+    expect(lines[0]).toMatch(/^Check-in 1 is over, and (one person|\d+ people) missed it\.$/);
+    expect(lines[1]).toMatch(/^Check-in 2 (opened on .*, and it is still open|is open now)\.$/);
+    expect(lines.join(' ')).not.toMatch(/still open\. .*while|while check-in/);
   });
 
-  it('the lead reads Baraka and Neema as having checked in for this round, and Faraji as not', async () => {
+  it('the lead reads that Baraka, Neema and Faraji have not checked in for session 2', async () => {
     const board = await boardAs(review5(), ...RUKIA_RUNS_IT);
     const says = Object.fromEntries((board.eachPerson as any[]).map((r) => [r.who, r.says]));
     expect(says['Faraji Odhiambo']).toBe('Faraji Odhiambo has not checked in yet.');
-    expect(says['Baraka Mwangi']).toMatch(/^Baraka Mwangi has checked in/);
-    expect(says['Neema Achieng']).toMatch(/^Neema Achieng has checked in/);
+    expect(says['Baraka Mwangi']).toMatch(/^Baraka Mwangi has not checked in/);
+    expect(says['Neema Achieng']).toMatch(/^Neema Achieng has not checked in/);
   });
 });

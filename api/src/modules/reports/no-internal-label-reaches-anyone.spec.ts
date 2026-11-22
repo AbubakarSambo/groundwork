@@ -141,8 +141,10 @@ describe('every board and report read goes through it', () => {
   const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const REPORTS = strip(readFileSync(join(__dirname, 'reports.service.ts'), 'utf8'));
   const BOARD = strip(readFileSync(join(__dirname, '..', 'board', 'board.service.ts'), 'utf8'));
+  /* Changed 22 November 2026 (commit 64bb1f10e): rounds() keeps what the last read returns as `walled` and builds its sequence from it, so the
+     read may be returned at once or kept first; either way what is served is what came out of the last read. */
   it.each(['getAsBuilt', 'sessionReportAsBuilt', 'roundsAsBuilt', 'whereAgainstSuccessAsBuilt'])('%s is served through the last read', (built) => {
-    expect(REPORTS).toMatch(new RegExp(`const served = await this\\.${built}\\([^)]*\\);\\s*return this\\.whatTheLeadHasNotShared\\(`));
+    expect(REPORTS).toMatch(new RegExp(`const served = await this\\.${built}\\([^)]*\\);\\s*(?:return|const walled: any = await) this\\.whatTheLeadHasNotShared\\(`));
   });
   it('and the last read and the board both take out every label', () => {
     /* Since screens request 77 the hidden-target read runs inside withTheirOwnWordsKept, which holds

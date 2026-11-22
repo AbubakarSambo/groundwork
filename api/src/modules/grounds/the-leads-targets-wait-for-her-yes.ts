@@ -1,4 +1,5 @@
 import { flatten, numbersIn } from './a-plan-is-many-proposals';
+import { anAimAsASentence } from '../board/an-aim-is-a-sentence-about-somebody';
 
 /**
  * THE TARGETS FROM THE LEAD'S OWN WORDS WAIT FOR HER YES (Hafsah, 18 October 2026: "Targets: at the end of setup, one confirm card
@@ -40,18 +41,12 @@ export function theWordsItCameFrom(t: ATargetToHold, turns: readonly string[]): 
   return scored[0] && scored[0].n >= 2 ? scored[0].s : null;
 }
 
-const ended = (s: string) => (/[.!?]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
-const lower = (s: string) => (/^[A-Z][a-z]/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
-
-/** The line the lead reads for one target on the card, in a full sentence. */
+/*
+ * THE CARD READS EACH TARGET THE WAY THE BOARD DOES (final test, 22 November 2026). The card had its own sentence-maker and read "The
+ * team’s target is 12,000,000 the teams hit a total revenue target of 12 million for the quarter.": it put the number before any name
+ * that did not repeat the figure word for word. One function turns a stored target into a sentence, anAimAsASentence, for the board,
+ * the check-in brief and this card, whatever shape the name has: a full sentence, a thing to do, or only what is counted.
+ */
 export function theTargetAsALine(t: ATargetToHold): string {
-  const name = t.name.trim().replace(/[.\s]+$/, '');
-  const whose = t.personName ? `${t.personName}’s` : 'The team’s';
-  /* A name the extraction wrote as a sentence ("Kevin sells 40 water dispensers by 30 October") is kept as she would read it. */
-  const isASentence = /^[A-Z][a-z]/.test(name) && name.split(/\s+/).length > 5
-    && (typeof t.target !== 'number' || new RegExp(`\\s${t.target}\\b`).test(name));
-  if (isASentence) return typeof t.target === 'number' ? `${ended(name)} The number is ${t.target.toLocaleString('en-GB')}.` : ended(name);
-  if (typeof t.target !== 'number') return `${whose} target is ${lower(name)}.`;
-  const startsWithTheNumber = new RegExp(`^${t.target}\\b`).test(name);
-  return startsWithTheNumber ? `${whose} target is ${lower(name)}.` : `${whose} target is ${t.target.toLocaleString('en-GB')} ${lower(name)}.`;
+  return anAimAsASentence(t.name.trim(), { speaker: null, holder: t.personName ?? null, target: t.target });
 }

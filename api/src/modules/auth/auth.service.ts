@@ -140,7 +140,7 @@ function goOnTo<T extends object>(res: T, kept: string | null | undefined): T & 
  * The sign-up answer names the address only because it is the person's own: they typed it a moment ago.
  */
 /** Said to somebody who set a password and never opened the link. */
-export const YOUR_SIGN_UP_IS_NOT_FINISHED = 'You have not finished creating your account yet. We have emailed you the link again. Open it, say where you work, and then sign in with your password.';
+export const YOUR_SIGN_UP_IS_NOT_FINISHED = 'You have not finished signing up yet. We have emailed you the link again. Open it, say where you work, and then sign in with your password.';
 
 export const theConfirmationLinkWasSent = (email: string): string =>
   `Check your email. I sent a link to ${email} to confirm it is yours. Open it on any device.`;

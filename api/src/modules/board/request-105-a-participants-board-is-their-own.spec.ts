@@ -79,7 +79,7 @@ describe('Femi, who checks in, where people see each other, before the team pict
   it('reads his own work in his own words, and nobody else\'s', async () => {
     const b = await boardAs(RUN, ...FEMI);
     expect(b.workPlan.map((r: any) => r.says)).toEqual([
-      'In session 2, you said, "I will visit a few of them again this week to see if I can collect the statements myself." Nobody has said yet whether it happened.',
+      'In check-in 2, you said, "I will visit a few of them again this week to see if I can collect the statements myself." Nobody has said yet whether it happened.',
     ]);
     expect(b.blockers.map((x: any) => x.says)).toEqual(['You are waiting for the bank statements.']);
     expect(b.whoOwnsWhat.map((r: any) => r.participantId)).toEqual(['p-femi']);

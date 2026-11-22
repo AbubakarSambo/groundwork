@@ -44,7 +44,7 @@ describe('the setup conversation', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Set up a check-in' })).toBeTruthy()
     /* Changed in F5 (stage 2): the opening is one line with the measured length. Changed 3 November evening (Hafsah: no cards in the
        conversation): the kind of check-in and its meaning are in the summary, with It’s something else, and End session is on screen. */
-    expect(document.body.textContent).toContain('This takes about five minutes. You can stop any time with End check-in.')
+    expect(document.body.textContent).toContain('This takes about five minutes. You can stop any time.')
     expect(screen.queryByRole('region', { name: 'This sounds like' })).toBeNull()
     const summary = screen.getByRole('complementary', { name: 'What is set so far' })
     expect(summary.textContent).toContain('Help someone get back on track')

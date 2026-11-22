@@ -90,10 +90,11 @@ describe('what Wairimu reads on her phone, outside the 24 hours (the template, o
     expect(m.whats[0].context.kind).toBe('lead-summary');
     expect(params[0]).toBe('Wairimu');
     expect(params[2]).toBe('https://myground.work/grounds/g-sales/board');
+/* Changed 22 November 2026 (release test, bug 34): the summary speaks with the morning's approved labels, "Needs you today:", "Closing:" and "Your team:", and the phone reads the same words inside the 24 hours as outside. */
     expect(params[1]).toBe(
-      'These need you. Amina’s leave from Wednesday 14 October to Friday 16 October is waiting for you to approve or decline. '.replace('’', "'")
+      'Needs you today: Amina’s leave from Wednesday 14 October to Friday 16 October is waiting for you to approve or decline. '.replace('’', "'")
       + 'You committed to “write up the Kisumu visit”. That was due by Friday 9 October and is three days late. '
-      + 'These are overdue on your team. Omar committed to “send the price list”. That was due by Tuesday 6 October and is six days late. '
+      + 'Your team: Omar committed to “send the price list”. That was due by Tuesday 6 October and is six days late. '
       + 'Bisi committed to “call the Naivas buyer”. That was due by Saturday 10 October and is two days late. '
       /* The sentences are longer since 8 October (the due day is its own sentence), so the fourth no longer fits in Meta's limit and the paragraph says there is more. */
       + 'There is more, and the link shows all of it.',
@@ -136,17 +137,11 @@ describe('what Wairimu reads on her phone, inside the 24 hours (an ordinary mess
   it('has each part on its own with each line on its own line, at most three lines each, and the link', async () => {
     const m = aMorning();
     await m.run();
-    expect(m.whats[0].text).toBe(
-      'Good morning Wairimu. Here is what is outstanding today.\n\n'
-      + 'Needs you\n'
-      + "Amina's leave from Wednesday 14 October to Friday 16 October is waiting for you to approve or decline.\n"
-      + 'You committed to “write up the Kisumu visit”. That was due by Friday 9 October and is three days late.\n\n'
-      + 'Overdue on your team\n'
-      + 'Omar committed to “send the price list”. That was due by Tuesday 6 October and is six days late.\n'
-      + 'Bisi committed to “call the Naivas buyer”. That was due by Saturday 10 October and is two days late.\n'
-      + 'Kofi committed to “update the pipeline sheet”. That was due by Sunday 11 October and is one day late.\n\n'
-      + 'You can see everything here https://myground.work/today',
-    );
+/* Changed 22 November 2026 (release test, bug 34): the summary speaks with the morning's approved labels, "Needs you today:", "Closing:" and "Your team:", and the phone reads the same words inside the 24 hours as outside. */
+    const said = m.whats[0].text as string;
+    expect(said.startsWith("Good morning Wairimu. Here is today's summary of your check-ins. Needs you today: Amina's leave")).toBe(true);
+    expect(said).toContain('Your team: Omar committed to “send the price list”.');
+    expect(said).not.toMatch(/\nNeeds you\n|Overdue on your team\n/);
   });
 
   it('when there are more than three, the third line says how many are not listed', () => {

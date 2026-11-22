@@ -54,7 +54,8 @@ describe('the People and setup tab', () => {
 
   it('and writes nothing until "Save changes"', () => {
     expect(PAGE).toContain('{anyChange && (')
-    expect(PAGE).toContain('onClick={save}>Save changes</Button>')
+    /* Changed 22 November 2026: one press is one save, so the button reads "Saving…" and waits while the writes are on their way. */
+    expect(PAGE).toContain("onClick={save}>{saving ? 'Saving…' : 'Save changes'}</Button>")
   })
 
   it('the old numbered accordion is gone, not just renamed', () => {

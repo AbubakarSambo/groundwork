@@ -551,6 +551,7 @@ const RULES = [
     /^\s*strategy\s*[:\-]\s*.{2,400}$/i,
     /^\s*way\s+of\s+working\s*[:\-]\s*.{2,400}$/i,
     /^\s*decision\s*[:\-]\s*.{2,400}$/i,
+    /^\s*(?:still\s+)?to\s+decide\s*[:\-]\s*.{2,400}$/i,
     /^\s*unsettled\s*[:\-]\s*.{2,400}$/i,
     /^\s*context\s+note\s*[:\-]\s*.{2,400}$/i,
     /* A statement and then "please add that to my check-in", or "add a line to my check-in: ..." (reviewer, 14 October). */

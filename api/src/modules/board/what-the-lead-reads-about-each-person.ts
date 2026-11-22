@@ -1,3 +1,4 @@
+import { theCheckInsSaid } from './a-day-they-checked-in';
 import { CHECK_INS_BEFORE_A_PATTERN } from '../patterns/patterns-across-the-assessments';
 import type { AStoredPersonsRecord } from './the-persons-record-store';
 import { theOneThingToCoach, type ACoaching, type AThingToCoach, type AClaim, type ThePersonsRecord } from './the-persons-record';
@@ -89,7 +90,7 @@ export function whoGroundworkCouldNotMove(stored: AStoredPersonsRecord | null | 
       return `${name} has spent ${one.sessions.length} check-ins on ${one.deal}, which cannot buy now. ${coached}`;
     }
     case 'check-ins':
-      return `${name} did ${s.checkInsDone} of ${s.checkInsDue} check-ins, ${s.checkInsOnTime} of them on time, and ${s.checkInsSpecific} named the item, what changed and the day. ${coached}`;
+      return `${theCheckInsSaid(name, { done: s.checkInsDone, due: s.checkInsDue, onTime: s.checkInsOnTime, specific: s.checkInsSpecific })} ${coached}`;
   }
   return null;
 }
@@ -289,7 +290,8 @@ export function whatMovedWithProof(people: { name: string; stored: AStoredPerson
     for (const c of p.stored?.record.claims ?? []) {
       const at = new Date(c.at).getTime();
       if (!c.proven || at < since.getTime() || at > until.getTime()) continue;
-      const key = c.about ? `${p.name}|${c.about}|${c.on}` : `${p.name}|${c.lineId}`;
+      /* One thing said once a day: Kevin's "Jane paid a deposit of KES 15,000 yesterday", kept from two check-ins on Thursday, names no deal and read twice. */
+      const key = c.about ? `${p.name}|${c.about}|${c.on}` : `${p.name}|${String(c.said ?? '').trim().toLowerCase()}|${c.on}`;
       const had = out.get(key);
       if (!had || c.said.length > had.c.said.length) out.set(key, { at, c, name: p.name });
     }

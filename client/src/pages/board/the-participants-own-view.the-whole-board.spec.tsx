@@ -211,8 +211,10 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
      * (`myLatestCheckInId` - the session this team picture is for), the direct route, like that
      * link above.
      */
+    /* Changed 22 November 2026 (release test, bug 36): it opened her own report, which "Read your own report" already opens. The
+       Report tab now opens with the shared report unfolded when arrived at directly (B-203), so it goes there. */
     const open = screen.getByRole('link', { name: 'Open today’s team picture.' })
-    expect(open).toHaveAttribute('href', '/checkin/ci-miriam-1/report')
+    expect(open).toHaveAttribute('href', '/grounds/g1/report')
   })
 
   it('reads "Your share" when the engine sends one, ending with who else sees it', async () => {

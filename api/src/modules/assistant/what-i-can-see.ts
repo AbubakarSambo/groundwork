@@ -1,3 +1,4 @@
+import { aDaySaidInFull } from '../board/a-day-said-in-full';
 import { WhatIsTrue, Source, MOST_OF_EACH } from './what-is-true-for-this-person';
 import { WHAT_THE_ASSISTANT_CAN_DO } from './what-the-assistant-can-do';
 import { whatIStillCannotDo } from './what-is-not-offered-in-chat';
@@ -49,7 +50,7 @@ export interface WhatICanSee {
   cannotDo: string[];
 }
 
-const day = (d: Date | null) => (d ? d.toDateString() : null);
+const day = (d: Date | null) => (d ? aDaySaidInFull(d) : null);
 
 /** Pure. Everything below is a rearrangement of what came in — nothing is fetched, nothing is added. */
 export function whatICanSee(truth: WhatIsTrue): WhatICanSee {

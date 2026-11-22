@@ -15,13 +15,17 @@ const ROWS = [
 ];
 
 describe('a finished session is never said to be still open', () => {
+  /* Against the clock's own session, 4 (session 4's day has come: whichRoundIsOpen). */
   it('Mercy reads "Session 3 finished on 14 October." and "Session 4 opened on 15 October, and it is still open."', () => {
-    expect(whatEachSessionSays(3, ROWS, 3, NOW).says).toBe('Check-in 3 finished on 14 October.');
-    expect(whatEachSessionSays(4, ROWS, 3, NOW).says).toBe('Check-in 4 opened on 15 October, and it is still open.');
+    expect(whatEachSessionSays(3, ROWS, 4, NOW).says).toBe('Check-in 3 finished on 14 October.');
+    expect(whatEachSessionSays(4, ROWS, 4, NOW).says).toBe('Check-in 4 opened on 15 October, and it is still open.');
   });
-  it('where somebody has not finished session 3, the lead still reads that it is open', () => {
+  /* Changed 22 November 2026 (Hafsah, "Yes, move it on"): a session is over once the next has begun, and whoever did not answer it
+     missed it. Before, the lead read "Check-in 4 opened on 15 October, while check-in 3 is still open." */
+  it('where somebody has not finished session 3, the lead reads that it is over and that one person missed it', () => {
     const rows = [...ROWS, { sessionNumber: 3, status: 'NOT_STARTED', availableFrom: '2026-10-14T05:00:00Z' }];
-    expect(whatEachSessionSays(4, rows, 3, NOW).says).toBe('Check-in 4 opened on 15 October, while check-in 3 is still open.');
+    expect(whatEachSessionSays(3, rows, 4, NOW).says).toBe('Check-in 3 is over, and one person missed it.');
+    expect(whatEachSessionSays(4, rows, 4, NOW).says).toBe('Check-in 4 opened on 15 October, and it is still open.');
   });
 });
 
@@ -71,21 +75,20 @@ describe('the header and the session lines read one count (Drop Access, 18 Octob
     });
   }
 
-  /* Release 1, part 3: the count is handed on only behind Release 1's switch; off, the header reads as the board did before it. */
-  it('with Release 1\'s switch off, Grace reads the header as the board did before it', async () => {
+  /* Hafsah, 22 November 2026 ("Yes, move it on"): the team's session is the latest one that has begun, with or without Release 1's
+     switch, so the switch no longer changes the header. Before, with it off, the header read "Check-in 3 of 15." here. */
+  it('with Release 1\'s switch off, Grace reads the same session as with it on', async () => {
     const b = await boardAs({
       people: DROP_PEOPLE as any, initiatorId: 'u-grace', checkIns: DROP_ROWS,
       clock: { now: NOW, timelineDays: 15, cadence: 'DAILY' },
       groundRow: { timelineDays: 15, cadence: 'DAILY' },
     }, 'u-grace', 'MEMBER');
-    expect(theHeaderSays(b.phaseSpine.currentSession, b.phaseSpine.plannedSessions, false)).toBe('Check-in 3 of 15.');
-    expect(theHeaderSays(theSessionClock(DROP_ROWS.filter((r) => r.participantId !== 'p-grace') as any, new Set(['p-joseph', 'p-kevin', 'p-mercy']), 15, NOW, false).currentSession, 15, false)).toBe('Check-in 3 of 15.');
+    expect(theHeaderSays(b.phaseSpine.currentSession, b.phaseSpine.plannedSessions, false)).toBe('Check-in 4 of 15.');
   });
 
   it("the check-in's own header counts the same session", () => {
     const clock = theSessionClock(DROP_ROWS.filter((r) => r.participantId !== 'p-grace') as any, new Set(['p-joseph', 'p-kevin', 'p-mercy']), 15, NOW);
     expect(clock.says).toBe('Check-in 4 of 15.');
-    expect(clock.whileOpen).toBeNull();
   });
 
   it('a finished round with nothing after it that has come stays the count', () => {

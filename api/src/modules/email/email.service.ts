@@ -567,7 +567,18 @@ export class EmailService implements OnModuleInit {
       where: { email: { equals: to.trim().toLowerCase(), mode: 'insensitive' } },
       select: { organizationId: true, externalId: true, timezone: true },
     });
-    if (!person) return null;
+    /*
+     * SOMEBODY WITH NO ROSTER ROW HAS THE ORGANISATION'S NIGHT TOO (release test, 21 November 2026, bug 91). Mail to an address with no
+     * roster row was never held, so report-ready mails and a nudge went out at three minutes past midnight while every other message,
+     * WhatsApp included (quiet-hours-are-the-organisations.ts), waited for seven. Their organisation's zone and the default hours are
+     * the rule for them, the same one WhatsApp reads.
+     */
+    if (!person) {
+      const user = await Promise.resolve((this.prisma as any).user?.findFirst?.({ where: { email: { equals: to.trim().toLowerCase(), mode: 'insensitive' } }, select: { organizationId: true } })).catch(() => null);
+      if (!user?.organizationId) return null;
+      const zone = await theOrganisationsZone(this.prisma as any, user.organizationId).catch(() => null);
+      return inQuietHours(now, zone, null) ? nextAllowedMoment(now, zone, null) : null;
+    }
     const prefs = await this.prisma.emailPreference.findUnique({
       where: { organizationId_personExternalId: { organizationId: person.organizationId, personExternalId: person.externalId } },
       select: { quietBeforeHour: true, quietAfterHour: true },
@@ -2310,12 +2321,15 @@ export class EmailService implements OnModuleInit {
    * "SEND ME THAT" FROM THE ASSISTANT (decision 109). The person asked for this email, so it is not a routine message: it is never counted toward
    * the day's one, never held back for it, and never stopped by the opt-out for what we decide to send. Same shape as the digest.
    */
-  async sendMeThat(email: string, subject: string, text: string): Promise<void> {
+  /** What they asked for in Ask, to them alone. It goes now, in quiet hours too, because they have just asked and are waiting; what became of it is returned, so Ask says what happened. */
+  async sendMeThat(email: string, subject: string, text: string): Promise<'sent' | 'held' | 'suppressed'> {
     const html = text
       .split('\n')
       .map((line) => (line.trim() ? `<p>${escapeHtml(line)}</p>` : ''))
       .join('');
-    await this.sendEmail({ to: email, subject, html }, undefined, 'sendMeThat');
+    const context: DeliveryContext = { kind: 'OTHER', answeringNow: true };
+    await this.sendEmail({ to: email, subject, html }, context, 'sendMeThat');
+    return context.outcome ?? 'sent';
   }
 
   async sendRoundDigest(email: string, subject: string, text: string): Promise<void> {

@@ -66,13 +66,15 @@ describe('Wanjiru, Muchemi & Co (test)', () => {
   });
 
   /*
-   * Changed in polish round 15 (a-day-they-checked-in.ts): each working day now counts once, from what happened that day. Read by the day,
-   * David's coaching came after his Wednesday check-in and two check-ins since got worse, so he is Wanjiru's now, in "Your team today".
+   * Changed 22 November. The coaching David was given after his Wednesday check-in, "name the item, what changed and the day", is judged
+   * only on that since run 7 (landed 20 November), never on whether he was on time, and a check-in he missed is not proof it failed (fix
+   * plan 16 November, group 5). One of his three check-ins up to Wednesday did it, and one of the two he did since did, so it got better:
+   * Wanjiru is not told to call him, and nothing else in the team part needs her today. Brian's missed check-ins stay on the board.
    */
-  it('on the litigation team, David is in it now: two check-ins since his coaching got worse, and a check-in not made since Friday stays on the board', async () => {
+  it('on the litigation team, David\'s coaching got better, so he is not in it, and a check-in not made since Friday stays on the board', async () => {
     const m = await morningOf('lit', await theNightRunsDatabaseWithRecords('lit', { directMorning: true }));
-    expect(theEmailParts([m!]).map((p) => p.heading)).toEqual(['What needs you today', 'Your team today']);
-    expect(theMessage(m)).toMatch(/Groundwork has coached David on it since Wednesday 14 October, and it has got worse, so call David\./);
+    expect(theEmailParts([m!]).map((p) => p.heading)).toEqual(['What needs you today']);
+    expect(theMessage(m)).not.toMatch(/so call David/);
     expect(asServedOnTheBoard(m!).parts.find((p) => p.key === 'team')!.lines).toContain("Brian hasn't checked in since Friday.");
   });
 });

@@ -53,9 +53,9 @@ describe('a session report knows how many sessions there are', () => {
    * which has no step for a one-time check-in, so the report read "Session 1." while the board read "of 1".
    * The report now asks the same `totalSessionsFor` the board and the engine ask.
    */
-  it.each(['u-lead', 'u-miriam'])('a one-time check-in, read by %s, is "Session 1 of 1."', async (reader) => {
+  it.each(['u-lead', 'u-miriam'])('a one-time check-in, read by %s, is "Check-in 1 of 1."', async (reader) => {
     const { served } = await serve(null, reader, 'ONE_TIME', 1);
     expect(served.plannedSessions).toBe(1);
-    expect(JSON.stringify(served)).toContain('Session 1 of 1.');
+    expect(JSON.stringify(served)).toContain('Check-in 1 of 1.');
   });
 });

@@ -175,7 +175,7 @@ describe('My work, as each reader is served it', () => {
     expect(by['working-on-the-right-things']).toMatchObject({ verdict: 'Needs work', happened: 'Westgate Deli has not answered since 2 October, and you are still following it up.', means: 'Time spent on the wrong work is taken from the right work.' });
     expect(by['backing-claims-with-proof']).toMatchObject({ verdict: 'Strength', happened: '3 of your 4 sales have proof.', means: 'Proof makes your work easy to trust.', basedOn: 'Your deals' });
     expect(by['helping-your-team']).toMatchObject({ verdict: 'Strength', happened: 'Joseph mentioned your help in 2 check-ins.', means: 'Helping teammates is what strong team players do.', basedOn: 'Joseph’s check-ins' });
-    expect(by['check-in-quality']).toMatchObject({ verdict: 'Strength', happened: 'You did 10 of 10 check-ins on time. 9 of 10 were specific.', means: 'Specific, on-time check-ins make your work visible.', basedOn: '10 check-ins' });
+    expect(by['check-in-quality']).toMatchObject({ verdict: 'Strength', happened: 'You did 10 of 10 check-ins, all on time. 9 of them named the item, what changed and the day.', means: 'Specific, on-time check-ins make your work visible.', basedOn: '10 check-ins' });
     expect(page.performing.libraryNote).toBe('');
     expect(page.coaching.better).toEqual([
       { text: TEAM_COACHING, from: 'Grace’s coaching for the team' },
@@ -228,7 +228,7 @@ describe('My work, as each reader is served it', () => {
     expect(page.toDo.othersNeed[1].text).toBe('You are waiting on Mercy for the name of who decides at Ruiru Academy.');
     const by = Object.fromEntries(page.performing.behaviours.map((b) => [b.key, b]));
     expect(by['keeping-promises'].happened).toBe('Mercy kept 8 of 9 promises.');
-    expect(by['check-in-quality'].happened).toBe('Mercy did 10 of 10 check-ins on time. 9 of 10 were specific.');
+    expect(by['check-in-quality'].happened).toBe('Mercy did 10 of 10 check-ins, all on time. 9 of them named the item, what changed and the day.');
     expect(by['helping-your-team'].happened).toBe('Joseph mentioned Mercy’s help in 2 check-ins.');
     expect(page.coaching.better).toEqual([
       { text: TEAM_COACHING, from: 'Your coaching for the team' },

@@ -2,7 +2,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CheckInStatus } from '@prisma/client';
 import { GroundworkEvents, RoundCompletedEvent } from '../../common/events';
-import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT, NOT_A_QUIET_CLOSE } from './an-answer-includes-a-refusal';
+import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT, NOT_A_QUIET_CLOSE, wasAQuietClose } from './an-answer-includes-a-refusal';
+import { inTheTeamsNumbering } from '../board/which-round-is-open';
 import { whoOnACheckInIsAway } from '../suites/who-is-away';
 import { whoIsNotLetInYet } from './who-an-admin-did-not-let-in';
 import { whoARoundWaitsFor } from './who-a-round-waits-for';
@@ -33,13 +34,32 @@ export async function recordRoundCompletion(
   prisma: PrismaService,
   events: EventEmitter2,
   groundId: string,
-  roundNumber: number,
+  sessionAsNumbered: number,
+  /** Whose session it is, where one person's check-in closed it: their own number is turned into the team's (inTheTeamsNumbering). */
+  whose?: string | null,
 ): Promise<boolean> {
-  const everyone = await prisma.groundParticipant.findMany({
+  /*
+   * THE TEAM'S ROUND, NOT ONE LATE JOINER'S OWN NUMBER (release test, 22 November 2026). Olu was added in session 3 and finished his own
+   * session 1, and everyone was mailed "Sales team, Q4 - check-in 1 is complete. Everyone has checked in for check-in 1 ... 7 people took
+   * part." A round is the team's session (board/which-round-is-open.ts, inTheTeamsNumbering): somebody added late is waited on from the
+   * session they joined in, and their own session k counts in the team's session they opened it in.
+   */
+  const rows: any[] = (await Promise.resolve((prisma.checkIn as any)?.findMany?.({
+    where: { groundId, isSetup: false },
+    select: { participantId: true, sessionNumber: true, status: true, availableFrom: true, createdAt: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } },
+  })).catch(() => null)) ?? [];
+  const numbered = inTheTeamsNumbering(rows);
+  const theTeamsNumber = (who: string, n: number) => numbered.find((r, i) => rows[i].participantId === who && rows[i].sessionNumber === n)?.sessionNumber ?? n;
+  const roundNumber = whose ? theTeamsNumber(whose, sessionAsNumbered) : sessionAsNumbered;
+  const firstOf = new Map<string, number>();
+  for (const r of numbered) firstOf.set(r.participantId, Math.min(firstOf.get(r.participantId) ?? Infinity, r.sessionNumber));
+  const joinedLater = (id: string) => (firstOf.get(id) ?? 0) > roundNumber;
+  const lateJoiners = numbered.some((r, i) => r.sessionNumber !== rows[i].sessionNumber);
+  const everyone = (await prisma.groundParticipant.findMany({
     /* Decision 133: the lead is counted only when they answered this round, never waited on. */
     where: { groundId, ...whoARoundWaitsFor(roundNumber) },
     select: { id: true, userId: true },
-  });
+  })).filter((p: any) => !joinedLater(p.id));
   /*
    * NOBODY AN ADMIN HAS NOT LET IN YET (decision 77). They cannot answer, so the session does not wait
    * on them: it closes once everybody let in has answered. Anything they did answer still counts. Once
@@ -59,14 +79,18 @@ export async function recordRoundCompletion(
    */
   if (participants.length === 0) return false;
 
-  const answered = await prisma.checkIn.count({
-    where: {
-      groundId,
-      sessionNumber: roundNumber,
-      status: { in: AN_ANSWER },
-      participantId: { in: participants.map((p) => p.id) },
-    },
-  });
+  /* Where somebody joined late, their rows are read in the team's numbering; otherwise the database counts as it always has. */
+  const inTheRound = (ids: string[], statuses: string[]) => numbered.filter((r) => r.sessionNumber === roundNumber && ids.includes(r.participantId) && statuses.includes(r.status));
+  const answered = lateJoiners
+    ? inTheRound(participants.map((p) => p.id), AN_ANSWER as string[]).length
+    : await prisma.checkIn.count({
+      where: {
+        groundId,
+        sessionNumber: roundNumber,
+        status: { in: AN_ANSWER },
+        participantId: { in: participants.map((p) => p.id) },
+      },
+    });
   /* Somebody on approved leave today is not waited on (week 23). Those who answered anyway are
      already in `answered`; the ones who did not are taken off what the round needs. */
   const away = await whoOnACheckInIsAway(prisma, groundId);
@@ -80,16 +104,18 @@ export async function recordRoundCompletion(
     notWaitedOn = [...away.keys()].filter((id) => participants.some((p) => p.id === id) && !spokeIds.has(id)).length;
   }
   if (answered < participants.length - notWaitedOn) return false;
-  const completed = await prisma.checkIn.count({
-    where: {
-      groundId,
-      sessionNumber: roundNumber,
-      status: CheckInStatus.COMPLETED,
-      /* A session the clock closed with nothing said is not an account (the round still closes without waiting on it). */
-      AND: [NOT_A_QUIET_CLOSE],
-      participantId: { in: participants.map((p) => p.id) },
-    },
-  });
+  const completed = lateJoiners
+    ? inTheRound(participants.map((p) => p.id), [CheckInStatus.COMPLETED]).filter((r) => !wasAQuietClose(r)).length
+    : await prisma.checkIn.count({
+      where: {
+        groundId,
+        sessionNumber: roundNumber,
+        status: CheckInStatus.COMPLETED,
+        /* A session the clock closed with nothing said is not an account (the round still closes without waiting on it). */
+        AND: [NOT_A_QUIET_CLOSE],
+        participantId: { in: participants.map((p) => p.id) },
+      },
+    });
   if (completed < AT_LEAST_ONE_ACCOUNT) return false;
 
   try {

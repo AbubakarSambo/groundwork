@@ -210,8 +210,10 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
      * (`myLatestCheckInId` - the session this team picture is for), the direct route, like that
      * link above.
      */
+    /* Changed 22 November 2026 (release test, bug 36): it opened her own report, which "Read your own report" already opens. The
+       Report tab now opens with the shared report unfolded when arrived at directly (B-203), so it goes there. */
     const open = screen.getByRole('link', { name: 'Open today’s team picture.' })
-    expect(open).toHaveAttribute('href', '/checkin/ci-miriam-1/report')
+    expect(open).toHaveAttribute('href', '/grounds/g1/report')
   })
 
   it('on a later day, reads the day the reports are for: never "Today’s team picture" of Wednesday’s (quality pass, 18 October, R-1)', async () => {
@@ -219,7 +221,7 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     renderBoard(board({ teamPicture: { shared: true, forDay: 'Wednesday 14 October', yourReportFor: '14 October' } }))
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.getByText('The team’s report for Wednesday 14 October is shared.')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Open it.' })).toHaveAttribute('href', '/checkin/ci-miriam-1/report')
+    expect(screen.getByRole('link', { name: 'Open it.' })).toHaveAttribute('href', '/grounds/g1/report')
     expect(screen.getByText('Your report for 14 October is ready.')).toBeTruthy()
     expect(screen.queryByText('Today’s team picture is shared.')).toBeNull()
     expect(screen.queryByText('Your own report is ready now.')).toBeNull()

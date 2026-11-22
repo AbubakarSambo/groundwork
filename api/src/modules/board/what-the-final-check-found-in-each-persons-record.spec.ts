@@ -53,7 +53,7 @@ describe('Kevin and Mercy, who checked in every day of the run (item 3)', () => 
     const quality = page.performing.behaviours.find((b: any) => b.key === 'check-in-quality');
     const part = page.record.parts.find((p: any) => /check-ins$/.test(p.heading));
     /* Thursday's session opened at 08:00 on Thursday 15 October and was not done by Friday evening: both say so, the same way. */
-    expect(quality.happened).toBe('You did 3 of 4 check-ins on time. 3 of 3 were specific.');
+    expect(quality.happened).toBe('You did 3 of 4 check-ins, all on time. 3 of them named the item, what changed and the day.');
     /* One missed in four is not "Needs work" while the record does not coach on it: the same bar. */
     expect(quality.verdict).toBe('Strength');
     expect(part.says).toBe('You did three of four check-ins, all on time. Three of them named the item, what changed and the day.');
@@ -79,7 +79,7 @@ describe('Njeri, who filed the Equity slip for FN-004 (item 4)', () => {
 describe('Peter, who checked in on Monday and on none of the days after (item 5)', () => {
   it('his record counts each working day his session stayed open, and Grace is not told he is doing well', async () => {
     const own = await theirRecord('drop', 'Peter', false);
-    expect(own.parts.find((p) => /check-ins$/.test(p.heading))!.says).toBe('Peter did one of four check-ins, all on time. One of them named the item, what changed and the day.');
+    expect(own.parts.find((p) => /check-ins$/.test(p.heading))!.says).toBe('Peter did one of four check-ins, and it was on time. It named the item, what changed and the day.');
     const p = personOf(await theLeadsTeam('drop'), 'Peter');
     expect(p.whereTheyStand.says).toBe('Peter needs coaching on checking in every time.');
     expect(everyLine(p)).not.toContain('Peter is doing well.');

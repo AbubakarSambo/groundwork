@@ -1,3 +1,6 @@
+import { theSessionANewcomerStartsIn } from './the-session-a-person-is-on';
+import { yourTurnIn } from './what-needs-you';
+import { theQuietHoursNow } from '../../common/the-clock';
 import { whoARoundWaitsFor } from './who-a-round-waits-for';
 import { thePlannedSessionsOf } from './this-sessions-count';
 import { thePromisesOf, thePromisesCounted, whatHappenedToThePromises } from './the-promises-counted-once';
@@ -65,6 +68,7 @@ import * as crypto from 'crypto';
 import { aKindMayBeGiven, theBoardKindsOffered, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
 import { askNameOf } from '../assistant/ask-name';
 import { readTheSituationAndTheKind, THE_SCENARIOS_IN_WORDS } from '../entry/which-situation-this-is';
+import { whatTheLeadSaidAtSetUp } from './what-the-lead-said-at-set-up';
 import { KINDS_OF_WORK, oneOfTheKinds, isASalesKind, theSetupWords } from '../board/the-kind-of-work';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf, theDaysItRunsOn } from './which-days-this-team-works';
@@ -92,7 +96,7 @@ import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { theGlanceAsThisReaderMayReadIt, whatIsInTheWay } from './what-a-manager-needs-at-a-glance';
-import { readPeopleAndSetup } from './people-and-setup';
+import { readPeopleAndSetup, whoElseHasAnswered } from './people-and-setup';
 import { readReferencesAndResources, readTheEvidence, aLineToKeep, aKeyFactFrom, type EvidenceQuery } from './references-and-resources';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
@@ -1582,6 +1586,8 @@ export class GroundsService {
        You leaves them out (isNotLetInYet), and named apart from "N of M" for whoever runs it. Never missed. */
     const notJoinedOnTheList = new Map<string, Set<string>>();
     for (const g of [...orgGrounds, ...participantGrounds] as any[]) {
+      /* Named as the board and the check-in's page name them, so the list's count says who, never "one person" (release test, 21 November 2026). */
+      await withTheirNamesFromTheOrganisation(this.prisma as any, g.organizationId, (g.participants ?? []) as any);
       const notJoined = await whoHasNotJoinedYet(this.prisma, g.participants ?? []).catch(() => new Set<string>());
       if (!notJoined.size) continue;
       notJoinedOnTheList.set(g.id, notJoined);
@@ -1602,13 +1608,8 @@ export class GroundsService {
       const found = await Promise.resolve((this.prisma as any).user?.findMany?.({ where: { id: { in: [...adminLeadIds] } }, select: { id: true, isActive: true, firstName: true, lastName: true } })).catch(() => []);
       for (const l of found ?? []) leadAccounts.set(l.id, l);
     }
-    /* Whether each organisation reads Release 1's clock (a finished round hands the count on), as the board and the page read it. One read per organisation. */
-    const handsOnIn = new Map<string, boolean>();
-    for (const orgId of new Set([...orgGrounds, ...participantGrounds].map((g: any) => g.organizationId).filter(Boolean))) {
-      handsOnIn.set(orgId as string, await theReleaseOneSalesBoardIsOn(this.prisma, orgId as string));
-    }
     /* When each organisation paused, if it is paused now: the one owner of when a round could be answered reads it (a-round-that-could-be-answered.ts). */
-    const pausedOn = await whenTheseOrganisationsPaused(this.prisma, [...handsOnIn.keys()], new Date()).catch(() => new Map<string, Date>());
+    const pausedOn = await whenTheseOrganisationsPaused(this.prisma, [...new Set([...orgGrounds, ...participantGrounds].map((g: any) => g.organizationId as string).filter(Boolean))], new Date()).catch(() => new Map<string, Date>());
     const setupFor = (g: any) => {
       if (userId && g.initiatorId === userId) return { leadHasLeft: false, mayChangeSetup: true };
       const lead = g.initiatorId && g.organizationId === organizationId && mayAdminHere(g) ? leadAccounts.get(g.initiatorId) : null;
@@ -1687,7 +1688,7 @@ export class GroundsService {
           participants: listedPeople, checkIns: checkIns as any, scenario: (rest as any).scenario ?? null,
           timelineDays: (rest as any).timelineDays ?? null, cadence: (rest as any).cadence ?? null, cadenceDays: (rest as any).cadenceDays ?? null, runsUntilEnded: !!(rest as any).runsUntilEnded,
         /* By name, as the check-in's page asks it: the sentence is served only to a reader shown the others (theCountAsServed). */
-        }, { handOn: handsOnIn.get((rest as any).organizationId) === true, leave: leaveOnTheList, names: { readerUserId: userId ?? null }, pausedFrom: pausedOn.get((rest as any).organizationId) ?? null });
+        }, { leave: leaveOnTheList, names: { readerUserId: userId ?? null }, pausedFrom: pausedOn.get((rest as any).organizationId) ?? null });
         const going = howACheckInIsGoing({
           /* The session the check-in's clock names, the one the board, the page and Ask count (this-sessions-count.ts). The people
              here are already marked for who has not joined and who is not let in, above. */
@@ -1854,6 +1855,11 @@ export class GroundsService {
               }
             : {}),
           checkIns: checkInsShown,
+          /* Whether it is the reader's turn here, by the one rule Today reads (yourTurnIn), with the same facts Today reads: whether an
+             admin has let them in, whether Groundwork is paused, and the one clock. The list never guesses it in the browser again. */
+          yourTurn: userId ? yourTurnIn({ ...(rest as any), status: (rest as any).status, participants: allParticipants ?? [], checkIns: checkIns as any } as any, {
+            userId, notLetIn: !!(myRowHere as any)?.user?.awaitingOrgApproval, pausedFrom: pausedOn.get((rest as any).organizationId) ?? null,
+          }, theQuietHoursNow()) : null,
           /* The one count (the-count-as-served.ts): who has answered each session, over the people this reader may see, and the clock's
              session said, to whoever is shown the others. */
           theCount: theCountAsServed({ session: listedCount.clock.currentSession, said: listedCount.count, planned: listedCount.clock.plannedSessions }, listedCount.bySession, { onlyThese: hidePeers ? shown : null }),
@@ -2157,8 +2163,6 @@ export class GroundsService {
         runsUntilEnded: noEnd,
       },
       {
-        /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
-        handOn: await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId),
         leave: await leaveOfThePeopleOn(this.prisma as any, [id]).catch(() => undefined),
         /* By name, for the reader the count is served to (thisSession is withheld from a reader walled from the others). */
         names: { readerUserId: requestingUserId ?? null },
@@ -5751,7 +5755,7 @@ export class GroundsService {
        * THE ONE READING (which-situation-this-is.ts readTheSituationAndTheKind), the same call and prompt as the door's, on what the
        * check-in is for and the words the lead or the admin wrote. A sales team runs in any situation, so the kind read is kept as read.
        */
-      const words = theSetupWords(g, THE_SCENARIOS_IN_WORDS[(g as any).scenario as keyof typeof THE_SCENARIOS_IN_WORDS] ?? null);
+      const words = theSetupWords(g, THE_SCENARIOS_IN_WORDS[(g as any).scenario as keyof typeof THE_SCENARIOS_IN_WORDS] ?? null, await whatTheLeadSaidAtSetUp(this.prisma, groundId));
       if (!words.trim()) return;
       const read = (await readTheSituationAndTheKind(this.anthropic, words))?.kind ?? null;
       /*
@@ -6513,8 +6517,9 @@ export class GroundsService {
         },
       });
 
+      /* Their first session is the team's session now (theSessionANewcomerStartsIn), so somebody added in session 3 checks in for session 3. */
       await tx.checkIn.create({
-        data: { groundId, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: session1AvailableFrom },
+        data: { groundId, participantId: participant.id, sessionNumber: await theSessionANewcomerStartsIn(tx, groundId), status: CheckInStatus.NOT_STARTED, availableFrom: session1AvailableFrom },
       });
 
       /**
@@ -7198,10 +7203,11 @@ export class GroundsService {
         id: true, label: true, initiatorId: true,
         participants: {
           select: {
-            id: true, userId: true, email: true,
+            id: true, userId: true, email: true, nameGiven: true,
             user: { select: { firstName: true, lastName: true } },
           },
         },
+        checkIns: { select: { participantId: true, status: true } },
       },
     });
     /* NotFound rather than Forbidden for a stranger, as everywhere else here. */
@@ -7214,17 +7220,12 @@ export class GroundsService {
       );
     }
 
-    const others = ground.participants.filter((p) => p.userId !== requestingUserId);
-    const answered = others.length
-      ? await this.prisma.checkIn.findMany({
-        where: { participantId: { in: others.map((p) => p.id) }, status: CheckInStatus.COMPLETED },
-        select: { participantId: true },
-      })
-      : [];
+    /* The one rule People and setup also serves (whoElseHasAnswered), so the page offers this delete exactly when it works (bug N6). */
+    const answered = whoElseHasAnswered(ground.participants, ground.checkIns as any[], ground.initiatorId);
     if (answered.length) {
-      const who = [...new Set(answered.map((a) => a.participantId))]
+      const who = answered
         .map((pid) => {
-          const p = others.find((x) => x.id === pid);
+          const p = ground.participants.find((x) => x.id === pid);
           const named = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim();
           /* Never an address as a name (Hafsah, 28 Sep 2026; screens requests 56, 58, 65). */
           return named || (p as any)?.nameGiven?.trim() || 'a colleague';
@@ -8534,11 +8535,7 @@ export class GroundsService {
       throw new BadRequestException('This check-in cannot be paused in the state it is in now, so there is nothing to do.');
     }
 
-    // Verify the requesting user belongs to this ground's org or is the initiator.
-    const initiatorOrAdmin = await this.prisma.user.findFirst({
-      where: { id: adminUserId, organizationId: ground.organizationId },
-    });
-    if (!initiatorOrAdmin) throw new ForbiddenException('Only a member of the organisation can pause a check-in, so ask one to do it.');
+    await this.theLeadOrAnAdminHere(ground, adminUserId, 'pause');
 
     await this.prisma.ground.update({
       where: { id: groundId },
@@ -8554,6 +8551,18 @@ export class GroundsService {
    * `pausedFromStatus` existed has no recorded prior status; those go back to ACTIVE, and the log
    * says so, because a guess is worth naming.
    */
+  /**
+   * WHO MAY HOLD A CHECK-IN, AND LIFT THE HOLD (release test 22 November, bug 35): the person running it, or an admin of its
+   * organisation. The routes were for admins only while the service let any member through, so the lead who runs it could not, and
+   * a member who does not could have. One rule, here, for both doors.
+   */
+  private async theLeadOrAnAdminHere(ground: { initiatorId: string | null; organizationId: string }, userId: string, doing: 'pause' | 'resume' | 'delete'): Promise<void> {
+    if (ground.initiatorId && ground.initiatorId === userId) return;
+    const here = await this.prisma.user.findFirst({ where: { id: userId, organizationId: ground.organizationId }, select: { id: true, role: true } });
+    if (String(here?.role ?? '') === 'ADMIN') return;
+    throw new ForbiddenException(`Only the person running this check-in, or an admin here, can ${doing} it, so ask one of them.`);
+  }
+
   async resumeGround(groundId: string, adminUserId: string, reason: string): Promise<void> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
@@ -8561,10 +8570,7 @@ export class GroundsService {
       throw new BadRequestException('This check-in is not on hold, so there is nothing to resume.');
     }
 
-    const member = await this.prisma.user.findFirst({
-      where: { id: adminUserId, organizationId: ground.organizationId },
-    });
-    if (!member) throw new ForbiddenException('Only a member of the organisation can resume a check-in, so ask one to do it.');
+    await this.theLeadOrAnAdminHere(ground, adminUserId, 'resume');
 
     const backTo = ground.pausedFromStatus ?? GroundStatus.ACTIVE;
     if (!ground.pausedFromStatus) {
@@ -8577,6 +8583,21 @@ export class GroundsService {
     });
 
     this.logger.warn(`Ground ${groundId} resumed to ${backTo} by user ${adminUserId}. Reason: ${reason}`);
+  }
+
+  /**
+   * TAKE A CHECK-IN OFF EVERYONE'S LISTS (Hafsah, 22 November 2026). Once people have answered, a check-in cannot be deleted,
+   * because the record stays. Its lead or an admin can still make it go: `hiddenAt` is set, and every list and count skips it
+   * from then on (prisma/a-hidden-check-in-is-on-no-list.ts). Nothing people said, no report and no contribution is removed.
+   * `hiddenAt` is written through a cast while the generated client in the shared node_modules predates the column.
+   */
+  async takeOffEveryList(groundId: string, userId: string): Promise<{ groundId: string; hidden: true }> {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    await this.theLeadOrAnAdminHere(ground, userId, 'delete');
+    await this.prisma.ground.update({ where: { id: groundId }, data: { hiddenAt: new Date() } as unknown as Prisma.GroundUpdateInput });
+    this.logger.warn(`Ground ${groundId} taken off every list by user ${userId}. The record is kept.`);
+    return { groundId, hidden: true };
   }
 
   /**

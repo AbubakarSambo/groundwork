@@ -48,6 +48,16 @@ function teamAims(b: any): any[] {
   return (Array.isArray(b.objectives) ? b.objectives : []).filter((o: any) => !o.ownerParticipantId && typeof o.target === 'number');
 }
 
+/** Each row's reason (where-each-person-is-against-their-number.ts) as the end of a sentence about one person and about several. */
+const THE_REASON_SAID: Record<string, [string, string]> = {
+  'has not answered': ['has not checked in yet', 'have not checked in yet'],
+  'something in the way two weeks': ['has had something in the way for two weeks', 'have had something in the way for two weeks'],
+  'behind the pace': ['is behind the pace', 'are behind the pace'],
+  'nothing checkable': ['has said nothing that can be checked', 'have said nothing that can be checked'],
+  'waiting on someone': ['is waiting on someone', 'are waiting on someone'],
+  'nothing to do': ['needs nothing from you', 'need nothing from you'],
+};
+
 export function theBoardAtAGlance(b: any, opts: { readerCheckedInThisRound: boolean | null; readerIsTheLead?: boolean }): TheBoardAtAGlance {
   const lines: Partial<Record<GlanceLine, string>> = {};
 
@@ -103,8 +113,9 @@ export function theBoardAtAGlance(b: any, opts: { readerCheckedInThisRound: bool
   if (each.length) {
     const counts = new Map<string, number>();
     for (const p of each) if (p.reason) counts.set(String(p.reason), (counts.get(String(p.reason)) ?? 0) + 1);
-    const top = [...counts.entries()].sort((x, y) => y[1] - x[1]).slice(0, 2).map(([r, n]) => `${n} ${r}`);
-    lines.teamToday = top.length ? top.join('; ') : `${plural(each.length, 'person', 'people')}`;
+    /* Said as a sentence, never the reasons' own keys ("3 has not answered; 2 nothing to do", release test, 21 November 2026). */
+    const top = [...counts.entries()].sort((x, y) => y[1] - x[1]).slice(0, 2).filter(([r]) => THE_REASON_SAID[r]).map(([r, n]) => `${plural(n, 'person', 'people')} ${THE_REASON_SAID[r][n === 1 ? 0 : 1]}`);
+    lines.teamToday = top.length ? `${top.join(', and ')}.` : `${plural(each.length, 'person', 'people')}`;
   }
   const patterns = Array.isArray(b.patterns) ? b.patterns : [];
   if (patterns.length) lines.patterns = `${plural(patterns.length, 'pattern')} about how the work is going`;

@@ -110,7 +110,7 @@ describe('someone signed out opens /start', () => {
     expect(within(panel).getByText('Help someone get back on track')).toBeTruthy()
     expect(within(panel).getByText('Both sides on the concern, before the conversation.')).toBeTruthy()
     expect(text(panel)).toContain('It starts the conversation with: “A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.” You can change every word.')
-    expect(text(panel)).toContain('You don’t need an account to start. We ask for your email when there’s something worth keeping.')
+    expect(text(panel)).toContain('You don’t need to sign up to start. We ask for your email when there’s something worth keeping.')
     fireEvent.click(within(panel).getByRole('button', { name: 'Start with this' }))
     await waitFor(() => expect(onboardStream).toHaveBeenCalled())
     expect(onboardStream.mock.calls[0][1]).toBe('PIP')
@@ -179,7 +179,8 @@ describe('a name, the topic in plain words, never the lead\'s words (U.6 review)
     const { join } = await import('path')
     const src = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
     expect(src.match(/groundLabel: isAnchorDraft\(\)\s*\n\s*\? anchorGroundLabel\s*\n(?:\s*\/\*.*\*\/\s*\n)?\s*: \(groundName\.trim\(\) \|\| theDefaultGroundName\(\)\),/g)).toHaveLength(2)
-    expect(src).toMatch(/function theDefaultGroundName\(\): string \{\s*\n\s*return effectiveFallbackGroundName\(\s*\n\s*theSituationTheLeadPicked\(\) \?\? onboardingSelections\.classifiedScenario,/)
+    /* Changed 22 November 2026: the people added under "Who's in it" now name a new hire's check-in too, read on the line before. */
+    expect(src).toMatch(/function theDefaultGroundName\(\): string \{[\s\S]{0,600}?return effectiveFallbackGroundName\(\s*\n\s*theSituationTheLeadPicked\(\) \?\? onboardingSelections\.classifiedScenario,/)
     expect(src).not.toMatch(/fallbackGroundName\([^)]*onboardingSelections\.initial/)
   })
 

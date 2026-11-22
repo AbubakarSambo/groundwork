@@ -198,7 +198,8 @@ describe('one review, as each reader reads it', () => {
       /* Batch S, S4: what it is drawn from, who reads it and what happens next, as Aisha reads it. */
       about: [
         'This review is drawn from your own view of your work, Wairimu’s own words and what Groundwork noticed in your check-ins. Hours and leave are never part of it.',
-        'You, Wairimu, who writes it and every admin can read it. Nobody else can.',
+        /* Changed 22 November 2026 (release test, bug 43): the reader first, and nobody described inside the list. */
+        'You, Wairimu and every admin can read it. Nobody else can.',
         expect.stringMatching(/^Wairimu decided it on \d{1,2} [A-Z][a-z]+ \d{4}\.$/),
         'No next steps were written down.',
         'No date is set to look at it again.',

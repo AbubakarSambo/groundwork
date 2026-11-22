@@ -48,7 +48,9 @@ describe('a check-in is not named after a database value', () => {
      * (the lead's pick first, then the classified situation, never her own first words) now lives
      * inside `theDefaultGroundName`, which still ends by calling `fallbackGroundName` the same way.
      */
-    expect(chat).toMatch(/function theDefaultGroundName\(\): string \{\s*\n\s*return effectiveFallbackGroundName\(\s*\n\s*theSituationTheLeadPicked\(\) \?\? onboardingSelections\.classifiedScenario,/)
+    /* Since 21 November the people named may also be the ones added under "Who's in it" (`named`, before the call); the order of the
+       situation is unchanged: the lead's pick first, then the classified situation. */
+    expect(chat).toMatch(/function theDefaultGroundName\(\): string \{[\s\S]{0,700}?return effectiveFallbackGroundName\(\s*\n\s*theSituationTheLeadPicked\(\) \?\? onboardingSelections\.classifiedScenario,/)
     expect(chat).toMatch(/return fallbackGroundName\(situation, where, saidSoFar\)/)
     expect(chat).not.toMatch(/fallbackGroundName\([^)]*onboardingSelections\.initial/)
     /* And the raw key is turned into words rather than printed: "NEW_HIRE" is not a name. */
@@ -152,7 +154,9 @@ describe('accepting an invitation never ends at another button', () => {
      * third click - "Check in for session 1 of 2" - after the email link and "Add my version".
      */
     expect(ACCEPT).toMatch(/if \(!checkIn\) \{/)
-    expect(ACCEPT).toMatch(/sessionNumber: 1, status: CheckInStatus\.NOT_STARTED/)
+    /* Since 22 November a late joiner starts in the team's current session (theSessionANewcomerStartsIn, which is 1 when the team has
+       not begun), and that first conversation is still their first. */
+    expect(ACCEPT).toMatch(/sessionNumber: await theSessionANewcomerStartsIn\(this\.prisma, ground\.id\), status: CheckInStatus\.NOT_STARTED/)
   })
 
   it('but never for somebody who has already completed one', () => {

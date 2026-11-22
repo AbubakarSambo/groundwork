@@ -141,7 +141,8 @@ describe('the words themselves', () => {
     expect(many!.lines.join(' ')).toContain('What I would do is bring the people involved together on that one question.');
     const none = theFirstInsight(SERVED({ stand: { open: [], stillOpen: 0, agreed: 3, settled: ['a', 'b', 'c'], openWithReasons: [] } }), 'Q4', { isTheLead: true });
     expect(none!.subjectForTheLead).toBeNull();
-    expect(none!.lines[0]).toBe('Nothing in the report for "Q4" is still open.');
+    /* Changed 22 November 2026 (release test, bug 20): "Nothing ... is still open" read as no waits open, under a subject counting four. */
+    expect(none!.lines[0]).toBe('The report for "Q4" found nothing that people see differently.');
   });
   it('says a difference the report wrote as a whole sentence as that sentence, and not after "differ on" (found on the test bed, journey 5)', () => {
     const real = SERVED({ stand: {
@@ -150,7 +151,8 @@ describe('the words themselves', () => {
       openWithReasons: [{ settledBy: 'Agree on a single owner for the distributor relationship and communicate this to the entire team.' }],
     } });
     const i = theFirstInsight(real, 'Q4 priorities', { isTheLead: true })!;
-    expect(i.subjectForTheLead).toBe('In "Q4 priorities", who owns the next step with the distributor is not agreed upon by the team, and one more difference is still open');
+    /* Changed 22 November 2026 (release test, bug 38): the sentence leads, as the report wrote it, and the check-in follows it. */
+    expect(i.subjectForTheLead).toBe('Who owns the next step with the distributor is not agreed upon by the team, in "Q4 priorities", and one more difference is still open');
     expect(i.lines[0]).toBe('Who owns the next step with the distributor is not agreed upon by the team, and one more difference is still open.');
     expect(i.lines.join(' ')).not.toContain('settled');
     expect(i.lines).toContain('Here is what I would do first. Agree on a single owner for the distributor relationship and communicate this to the entire team.');

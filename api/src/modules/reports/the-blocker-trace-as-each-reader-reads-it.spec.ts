@@ -38,13 +38,17 @@ const TRACE = {
 };
 const ANCHOR = { id: 'd-anchor', groundId: 'g-sales', fromParticipantId: 'p-miriam', onParticipantId: null, onLabel: 'Finance', waitingOnGroundId: 'g-fin', createdAt: at('14') };
 
-function readAs(userId: string, role: string, opts: { trace?: any; sales?: any; anchor?: any; canOpen?: string[] } = {}) {
+function readAs(userId: string, role: string, opts: { trace?: any; sales?: any; anchor?: any; canOpen?: string[]; waits?: any[] } = {}) {
   const grounds = [opts.sales ?? SALES, FINANCE, LEADERSHIP];
   const canOpen = opts.canOpen ?? (role === 'ADMIN' ? grounds.map((g) => g.id) : grounds.filter((g) => g.participants.some((p: any) => p.userId === userId)).map((g) => g.id));
   const prisma: any = {
-    blockerTrace: { findMany: jest.fn(async () => [structuredClone(opts.trace ?? TRACE)]) },
+    blockerTrace: { findMany: jest.fn(async () => (opts.trace === null ? [] : [structuredClone(opts.trace ?? TRACE)])) },
     ground: { findMany: jest.fn(async (a: any) => structuredClone(grounds.filter((g) => a.where.id.in.includes(g.id)))) },
-    groundDependency: { findUnique: jest.fn(async () => structuredClone(opts.anchor ?? ANCHOR)) },
+    groundDependency: {
+      findUnique: jest.fn(async () => structuredClone(opts.anchor ?? ANCHOR)),
+      /* The open waits said in Sales on somebody not in it: the one the chain was followed from, and any others. */
+      findMany: jest.fn(async () => structuredClone(opts.waits ?? [{ ...ANCHOR, what: 'Westgate Deli’s credit terms', status: 'WAITING', namedTheThing: true }])),
+    },
   };
   const list = { list: jest.fn(async () => canOpen.map((id) => ({ id, organizationId: 'org-1' }))) };
   const reports = Object.create(ReportsService.prototype) as ReportsService;
@@ -118,5 +122,42 @@ describe('the sentence', () => {
     expect(whichTeamItIsWaitingOn(ANCHOR, ['g-fin'], day)).toBe('This is waiting on Finance since 14 September.');
     expect(whichTeamItIsWaitingOn(ANCHOR, ['g-lead'], day)).toBeNull();
     expect(whichTeamItIsWaitingOn({ ...ANCHOR, onParticipantId: 'p-grace', onLabel: 'Grace' }, ['g-fin'], day)).toBe('This is waiting on another team since 14 September.');
+  });
+});
+
+/**
+ * RELEASE TEST 22 NOVEMBER, BUG 24: a wait on somebody outside the check-in that no chain follows yet. Amani, in Sales, waits on Baraka
+ * for the delivery schedule; Baraka has said nothing about it in any check-in, so no chain was written, and the page said nothing was on
+ * record while the board showed the wait.
+ */
+describe('a wait on somebody outside the check-in, with no chain yet', () => {
+  const BARAKA = { id: 'd-baraka', groundId: 'g-sales', fromParticipantId: 'p-miriam', onParticipantId: null, onLabel: 'Baraka', waitingOnGroundId: null,
+    what: 'the delivery schedule for Kilimani Fresh', status: 'BLOCKING', namedTheThing: true, createdAt: at('20') };
+
+  it('Wairimu, who runs Sales, reads where it starts on the record, who it waits on, and since when', async () => {
+    const { traces } = await readAs('u-wairimu', 'LEAD', { trace: null, waits: [BARAKA] });
+    expect(traces).toEqual([{
+      id: 'd-baraka',
+      steps: [{ kind: 'need', checkIn: 'Sales team, Q3', checkInId: 'g-sales', owner: 'Miriam Wanjiku', text: 'The delivery schedule for Kilimani Fresh' }],
+      whereItStarted: null, decisionNeeded: null, decidedBy: null,
+      waitingOn: 'This is waiting on Baraka since 20 September, and nothing on record follows it further yet.',
+    }]);
+  });
+
+  it('beside a chain that is followed, the wait it was followed from is not said twice', async () => {
+    const { traces } = await readAs('u-wairimu', 'LEAD', { waits: [{ ...ANCHOR, what: 'Westgate Deli’s credit terms', status: 'WAITING', namedTheThing: true }, BARAKA] });
+    expect(traces.map((t) => t.id)).toEqual(['t-1', 'd-baraka']);
+  });
+
+  it('where people in Sales do not see each other, Joseph reads nothing of Miriam’s wait, and Miriam reads her own', async () => {
+    const apart = { ...SALES, peersVisibleToEachOther: false };
+    expect((await readAs('u-joseph', 'MEMBER', { trace: null, waits: [BARAKA], sales: apart })).traces).toEqual([]);
+    const mine = await readAs('u-miriam', 'MEMBER', { trace: null, waits: [BARAKA], sales: apart });
+    expect(mine.traces[0].steps[0].owner).toBe('You');
+  });
+
+  it('a wait with nothing to it, or that is over, is not a blocker here', async () => {
+    const { traces } = await readAs('u-wairimu', 'LEAD', { trace: null, waits: [{ ...BARAKA, status: 'CLEARED' }] });
+    expect(traces).toEqual([]);
   });
 });

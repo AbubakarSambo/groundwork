@@ -48,7 +48,8 @@ describe('the board at a glance: facts from the board as served', () => {
     expect(g.lines.reported).toBe('Won: 1 said, 1 with proof');
     expect(g.lines.targetsOverTime).toBe('21 of 25, on time; 84 of 90');
     expect(g.lines.whatToAsk).toBe('Something worth recognising, and what’s in the way, for each of 5 people');
-    expect(g.lines.teamToday).toBe('2 waiting on someone; 1 has not answered');
+    /* A sentence, never the reasons' own keys (release test, 21 November 2026: "3 has not answered; 2 nothing to do"). */
+    expect(g.lines.teamToday).toBe('2 people are waiting on someone, and 1 person has not checked in yet.');
     expect(g.lines.patterns).toBe('4 patterns about how the work is going');
     expect(g.lines.whoCheckedIn).toBe('Today: 5 of 6 checked in');
     expect(g.lines.yourNextStep).toBe('Only you. You haven’t checked in this check-in');

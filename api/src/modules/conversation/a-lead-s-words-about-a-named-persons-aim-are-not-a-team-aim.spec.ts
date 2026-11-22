@@ -11,7 +11,8 @@ describe('an aim held by a named person is never kept as the team aim', () => {
     expect(anAimHeldByAnotherPerson({ whose: 'Lucy', target: null }, lucy)).toBe(false);
     expect(anAimHeldByAnotherPerson({ target: null }, lucy)).toBe(false);
   });
-  it('leaves a numbered aim on the road it always had', () => {
-    expect(anAimHeldByAnotherPerson({ whose: 'Mary', target: 35 }, lucy)).toBe(false);
+  /* Changed 22 November: a numbered aim of Mary's is Mary's own target, written once with her as owner by the per-person path, never a second ownerless team aim. */
+  it('is about Mary with a number too, so the number stays hers alone', () => {
+    expect(anAimHeldByAnotherPerson({ whose: 'Mary', target: 35 }, lucy)).toBe(true);
   });
 });

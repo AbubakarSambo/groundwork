@@ -124,6 +124,26 @@ export function soldAndProven(c: { counts: string; sold: number; proven: number 
   return <><b>{n(c.sold)}</b> sold, <b>{n(c.proven ?? 0)}</b> with proof of payment</>
 }
 
+/**
+ * THE TEAM'S GOAL AS IT STANDS, AND WHAT STOPS THE WORK, AT THE TOP OF THE LEAD'S SALES BOARD (Drop Access, final run of 22 November, bug N1).
+ * Wairimu changed the goal to a waitlist of shops because the freezers are out of stock. Amani's board said the new goal and when and why
+ * it changed, and Wairimu's own board said none of it: the sales board drew only the headline question and a bar, and no headline question is
+ * made of a waitlist. The goal's name (where no question says it), the board's sentence of what stops the work (glance.inTheWay.stopped)
+ * and the goal's own `changed` are drawn here, as the engine serves them to this reader, each sentence once.
+ */
+export function TheGoalAsItStands({ b, aim, cls }: { b: Any; aim: Any; cls: { label: string; goal: string; said: string } }) {
+  const name = !b.headline?.question && aim?.name ? String(aim.name).trim().replace(/[.!?\s]*$/, '.') : null
+  const said = [...new Set([b.howItIsGoing?.glance?.inTheWay?.stopped, aim?.changed].filter((x): x is string => typeof x === 'string' && !!x.trim()))]
+  if (!name && !said.length) return null
+  return (
+    <>
+      {name && <p className={cls.label}>What the team is aiming for</p>}
+      {name && <p className={cls.goal}>{name}</p>}
+      {said.map((x) => <p key={x} className={cls.said}>{x}</p>)}
+    </>
+  )
+}
+
 export function HeadlineAndGap({ b, deals, groups }: { b: Any; deals: Any; groups: Record<string, Any[]> }) {
   const headline = b.headline
   const aim = (b.objectives ?? []).find((o: Any) => !o.ownerParticipantId && o.target != null) ?? null
@@ -153,6 +173,7 @@ export function HeadlineAndGap({ b, deals, groups }: { b: Any; deals: Any; group
       <div>
         {headline?.question && <p className="pb-q">{headline.question}</p>}
         {headline?.answer && <p className="pb-answer">{headline.answer}</p>}
+        <TheGoalAsItStands b={b} aim={aim} cls={{ label: 'pb-q', goal: 'pb-answer', said: 'pb-note' }} />
         {target != null && done != null && (
           <TheBar of={target} shown={done} likely={Math.min(likely, target - done)} label={`${done} of ${target} done, ${likely} more likely.`} />
         )}
@@ -481,7 +502,8 @@ export function EveryDealDayByDay({ b, section, now, groundId, heading = 'Every 
                 </>
               ),
               rep: firstName(r.owner) || 'Nobody is named for it yet.',
-              stage: r.stage ? <Tag tone="plain">{r.stage}</Tag> : (b.releaseOneSalesBoard ? NOT_CONTACTED_YET : 'No stage said yet.'),
+              /* The stage as the record holds it (stageSays: "Said to be won, not shown yet") before the stage as said: words alone are not Won (release test, 22 November 2026, bug 18). */
+              stage: (r.stageSays ?? r.stage) ? <Tag tone="plain">{r.stageSays ?? r.stage}</Tag> : (b.releaseOneSalesBoard ? NOT_CONTACTED_YET : 'No stage said yet.'),
               shows: (
                 <>
                   <Dot filled={r.mark === 'proven'} />{PROOF_TAG[r.mark ?? 'said'] ?? 'In their words'}

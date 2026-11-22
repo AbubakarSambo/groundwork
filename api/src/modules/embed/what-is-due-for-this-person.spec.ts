@@ -34,6 +34,13 @@ describe('the first line leads with the thing that is theirs to move', () => {
     expect(openingOnWhatIsDue(due, 'Ada').line).toContain('your first check-in');
   });
 
+  it('says "your first check-in" to somebody added while the team is on session 3', () => {
+    const due = whatIsDueFor({ sessions: [sessions[0]], sessionNumbers: new Map([['c1', 3]]), theirFirst: new Set(['c1']), leftOpen: new Map(), slippedCommitments: 0 });
+    const line = openingOnWhatIsDue(due, 'Ada').line;
+    expect(line).toContain('your first check-in');
+    expect(line).not.toContain('check-in 3');
+  });
+
   it('a ground waiting on them to start comes with a chip that reads and confirms it', () => {
     const due = whatIsDueFor({ sessions: [sessions[1]], sessionNumbers: new Map(), leftOpen: new Map(), slippedCommitments: 0 });
     const o = openingOnWhatIsDue(due, 'Ada');

@@ -125,9 +125,10 @@ describe('who the one count counts', () => {
     const rows = [row('lead', 'COMPLETED'), row('a', 'COMPLETED'), row('b', 'COMPLETED'), row('c', 'NOT_STARTED'), session2('lead'), session2('a'), session2('b')];
     const ground = { participants: people, checkIns: rows, scenario: 'SALES', timelineDays: 360, cadence: 'MONTHLY', runsUntilEnded: false };
     expect(theSessionAndItsCount(ground, { now: NOW }).clock.says).toBe('Check-in 2 of 12.');
-    /* Let in, C is somebody the round waits on, so the same rows read session 1: the hold is what moves it, nothing else. */
+    /* Let in, C still does not hold the team back: session 2 has begun, so session 1 is over and C missed it (Hafsah, 22 November 2026,
+       "Yes, move it on"; before, this read "Check-in 1 of 12." once C was let in). */
     const letIn = { ...ground, participants: people.map((p) => (p.id === 'c' ? { ...p, notLetIn: false } : p)) };
-    expect(theSessionAndItsCount(letIn, { now: NOW }).clock.says).toBe('Check-in 1 of 12.');
+    expect(theSessionAndItsCount(letIn, { now: NOW }).clock.says).toBe('Check-in 2 of 12.');
   });
 });
 
@@ -178,12 +179,12 @@ describe('somebody with no name is counted, never called "Someone", in every sta
     { id: 'p3', userId: 'u3' },
   ];
   it('one nameless person who has not started', () => {
-    expect(whoSaid([people[1]], [], 2, ['p2'], new Set(), 'u-reader')).toEqual(['One person hasn’t started yet']);
+    expect(whoSaid([people[1]], [], 2, ['p2'], new Set(), 'u-reader')).toEqual(['one person hasn’t started yet']);
   });
   it('a named person and two nameless people who have not started', () => {
     expect(whoSaid(people, [], 2, ['p1', 'p2', 'p3'], new Set(), 'u-reader')).toEqual(['Neema and 2 other people haven’t started yet']);
   });
   it('a nameless person who did not check in before it closed', () => {
-    expect(whoSaid([people[1]], [], 2, ['p2'], new Set(['p2']), 'u-reader')).toEqual(['One person didn’t check in before it closed']);
+    expect(whoSaid([people[1]], [], 2, ['p2'], new Set(['p2']), 'u-reader')).toEqual(['one person didn’t check in before it closed']);
   });
 });

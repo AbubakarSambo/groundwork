@@ -28,7 +28,9 @@ describe('Grace, who runs it, with the direct morning on', () => {
       "Joseph hasn't checked in today, and last checked in yesterday.",
       "Kevin hasn't checked in today, and last checked in yesterday.",
     ]);
-    expect(g.eachPersonToday.map((r: any) => [r.who, r.nudge?.says ?? null])).toEqual([['Mercy Wairimu', 'Nudge Mercy'], ['Joseph Kariuki', 'Nudge Joseph'], ['Kevin Omondi', 'Nudge Kevin']]);
+    /* Changed 22 November 2026 (Hafsah, "Yes, move it on"): session 4 has begun, so nobody has checked in this session yet, all three rows say
+       so, and rows of one kind sort by name (whereEachPersonIs). Before, the rows read session 3 and came in the order Mercy, Joseph, Kevin. */
+    expect(g.eachPersonToday.map((r: any) => [r.who, r.nudge?.says ?? null])).toEqual([['Joseph Kariuki', 'Nudge Joseph'], ['Kevin Omondi', 'Nudge Kevin'], ['Mercy Wairimu', 'Nudge Mercy']]);
   });
   it('in the morning, before anybody’s usual time, there is no button, and each is credited for checking in on time', async () => {
     const g = await boardAs(theRun(true, THURSDAY_MORNING), ...reader('Grace'));

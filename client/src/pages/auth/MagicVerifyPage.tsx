@@ -678,7 +678,7 @@ export function MagicVerifyPage() {
         <Stack gap={18}>
           <PageTitle
             title="We couldn’t find your session on this device"
-            subtitle="Your account is active, but we have no copy here of the session you saved. Open this link on the browser or device where you finished it. Your session is still saved there."
+            subtitle="Your email is confirmed, but we have no copy here of the session you saved. Open this link on the browser or device where you finished it. Your session is still saved there."
             subtitleTone="ink"
           />
           <Stack gap={10}>

@@ -22,8 +22,10 @@ export interface ADueCheckIn {
   checkInId: string;
   groundId: string;
   label: string;
-  /** Which session this is for them. 1 is their first. */
+  /** The team's session, as every other page counts it. */
   sessionNumber: number;
+  /** Whether this is their own first conversation (theirOwnSessionNumber), whatever the team's session: somebody added in session 3. */
+  theirFirst: boolean;
   /** What their own earlier sessions left open, in their own words. Theirs, shown to them. */
   leftOpen: string[];
   /** A check-in about one person, where nothing is "released with everybody else's". */
@@ -41,6 +43,8 @@ export interface WhatIsDue {
 export function whatIsDueFor(args: {
   sessions: ASessionStanding[];
   sessionNumbers: Map<string, number>;
+  /** The check-ins that are their own first. Without it, session 1 is. */
+  theirFirst?: Set<string>;
   leftOpen: Map<string, string[]>;
   slippedCommitments: number;
 }): WhatIsDue {
@@ -51,6 +55,7 @@ export function whatIsDueFor(args: {
       groundId: s.groundId,
       label: s.label,
       sessionNumber: args.sessionNumbers.get(s.checkInId as string) ?? 1,
+      theirFirst: args.theirFirst ? args.theirFirst.has(s.checkInId as string) : (args.sessionNumbers.get(s.checkInId as string) ?? 1) === 1,
       leftOpen: args.leftOpen.get(s.checkInId as string) ?? [],
       aboutOnePerson: !!s.aboutOnePerson,
     }));
@@ -93,7 +98,7 @@ export function openingOnWhatIsDue(due: WhatIsDue, firstName: string): {
     };
   }
   const c = due.checkIns[0];
-  const which = c.sessionNumber === 1 ? 'your first check-in' : `check-in ${c.sessionNumber}`;
+  const which = c.theirFirst ? 'your first check-in' : `check-in ${c.sessionNumber}`;
   const more = due.checkIns.length > 1 ? ` ${due.checkIns.length - 1} more ${due.checkIns.length - 1 === 1 ? 'is' : 'are'} open as well.` : '';
   const thread = c.leftOpen.length ? ` Last time you left this open: "${c.leftOpen[0]}".` : '';
   return {

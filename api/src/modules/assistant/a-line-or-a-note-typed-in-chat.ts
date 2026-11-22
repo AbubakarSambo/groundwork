@@ -10,10 +10,17 @@
 
 export type TypedContextKind = 'STRATEGY' | 'WAY_OF_WORKING' | 'DECISION' | 'UNSETTLED' | 'NOTE';
 
+/*
+ * A DECISION SAID IS DECIDED (release test of 21 November 2026). "decision: we drop the Westlands pilot" was kept as DECISION, which in this
+ * product is something still to decide: the board asked each person for their view on it, Today said "You wrote this down as still to
+ * decide", and the open issues said nobody had decided it. A decision the lead states goes where a decided one goes, how this team works,
+ * the same place the board puts the lead's answer to something still to decide. Something still open is said as "to decide:".
+ */
 const KIND_WORDS: { pattern: RegExp; kind: TypedContextKind; label: string }[] = [
   { pattern: /^\s*strategy\s*[:\-]\s*/i, kind: 'STRATEGY', label: 'a strategy note' },
   { pattern: /^\s*way\s+of\s+working\s*[:\-]\s*/i, kind: 'WAY_OF_WORKING', label: 'a way of working' },
-  { pattern: /^\s*decision\s*[:\-]\s*/i, kind: 'DECISION', label: 'a decision' },
+  { pattern: /^\s*decision\s*[:\-]\s*/i, kind: 'WAY_OF_WORKING', label: 'a decision' },
+  { pattern: /^\s*(?:still\s+)?to\s+decide\s*[:\-]\s*/i, kind: 'DECISION', label: 'something still to decide' },
   { pattern: /^\s*unsettled\s*[:\-]\s*/i, kind: 'UNSETTLED', label: 'something unsettled' },
   { pattern: /^\s*context\s+note\s*[:\-]\s*/i, kind: 'NOTE', label: 'a note' },
 ];
@@ -28,15 +35,15 @@ export function labelForContextKind(kind: string): string {
  * Anchored on the whole message, so the kind word has to open it - the same shape the router's
  * `context_line` patterns already require before this is ever called.
  */
-export function parseContextLine(message: string): { kind: TypedContextKind; text: string } | null {
+export function parseContextLine(message: string): { kind: TypedContextKind; text: string; label: string } | null {
   const raw = (message ?? '').trim();
   const asked = aLineAskedForInPlainWords(raw);
-  if (asked) return { kind: 'NOTE', text: asked };
-  for (const { pattern, kind } of KIND_WORDS) {
+  if (asked) return { kind: 'NOTE', text: asked, label: labelForContextKind('NOTE') };
+  for (const { pattern, kind, label } of KIND_WORDS) {
     const m = pattern.exec(raw);
     if (m) {
       const text = raw.slice(m[0].length).trim();
-      if (text) return { kind, text };
+      if (text) return { kind, text, label };
     }
   }
   return null;

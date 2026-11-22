@@ -1,3 +1,4 @@
+/* Changed 22 November 2026 (release test): "handoffs" in what a lead reads is work jargon, so the mails say "people are still waiting on two things" and the like; the expectations below follow the new words. */
 import { sendTheLeadsWeeklyLetters } from '../email/the-leads-weekly-letter';
 import { whatTheLeadsWeeklyReportSays } from './the-leads-own-weekly-report';
 import { EmailService } from '../email/email.service';
@@ -73,10 +74,10 @@ describe('a 12-person Ground that is not the anchor\'s, as the lead reads her Fr
     expect(w.sent).toHaveLength(1);
     const m = w.sent[0];
     expect(m.to).toBe('wairimu@x.test');
-    expect(m.subject).toBe('Four things people said they would do were done, all by Abigail; two handoffs are still waiting, both on James');
+    expect(m.subject).toBe('Four things people said they would do were done, all by Abigail; people are still waiting on James for two things');
     expect(m.lines).toEqual([
       'Your team is starting to move.',
-      'This week, nine of 12 people checked in. Four things people said they would do were done, all by Abigail. Two handoffs are still waiting, both on James. Eric, Mercy and Omar did not check in.',
+      'This week, nine of 12 people checked in. Four things people said they would do were done, all by Abigail. People are still waiting on James for two things. Eric, Mercy and Omar did not check in.',
       'Here is what moved this week. Abigail finished sending the price list to the distributor. Abigail finished booking the Nairobi depot.',
       'I have already sent reminders to Eric and Mercy this week.',
       'Here is what I would do this week.',
@@ -92,7 +93,7 @@ describe('a 12-person Ground that is not the anchor\'s, as the lead reads her Fr
     w.prisma.report = { findFirst: async () => ({ id: 'r1' }) };
     await send(w, { anchorIsOn: false, weeklyReport: async () => null });
     const next = w.sent[0].lines.find((l: string) => l.startsWith('Here is something worth doing next.'));
-    expect(next).toBe('Here is something worth doing next. Groundwork suggests a check-in for work that has gone off track, because three handoffs are still waiting and nothing has been marked done or cleared since the report.');
+    expect(next).toBe('Here is something worth doing next. Groundwork suggests a check-in for work that has gone off track, because people are still waiting on three things and nothing has been marked done or cleared since the report.');
     const quiet = aFriday();
     quiet.prisma.report = { findFirst: async () => ({ id: 'r1' }) };
     await send(quiet);

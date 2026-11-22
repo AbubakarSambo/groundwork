@@ -1,3 +1,6 @@
+import { theSessionAndItsCount } from '../grounds/this-sessions-count';
+import { inTheTeamsNumbering } from '../board/which-round-is-open';
+import { theSessionClock } from '../board/one-count-for-the-sessions';
 import { whenACheckInBegan } from '../grounds/a-round-that-could-be-answered';
 import { whenTheseOrganisationsPaused, thePausesThatAreOver } from '../billing/the-trial-grace';
 import { rebuildThePersonsRecords } from '../board/the-persons-record-store';
@@ -138,12 +141,15 @@ function theDoneSentence(w: AWeekInOneCheckIn, said: (n: number) => string = aNu
   return one ? `${base}, ${w.done === 1 ? 'by' : w.done === 2 ? 'both by' : 'all by'} ${one}` : base;
 }
 
-/** "Two handoffs are still waiting, both on James." Named only when ALL of them wait on one person. */
+/**
+ * "People are still waiting on James for two things." Named only when ALL of them wait on one person. In plain words, never "handoffs"
+ * (release test, 22 November 2026: "Four handoffs are still waiting" in a subject is work jargon).
+ */
 function theWaitingSentence(w: AWeekInOneCheckIn, said: (n: number) => string = aNumber): string | null {
   if (w.waiting <= 0) return null;
-  const base = `${capital(said(w.waiting))} ${w.waiting === 1 ? 'handoff is' : 'handoffs are'} still waiting`;
   const one = w.waitingOn?.length === 1 && w.waitingOn[0].count === w.waiting ? w.waitingOn[0].name : null;
-  return one ? `${base}, ${w.waiting === 1 ? 'on' : w.waiting === 2 ? 'both on' : 'all on'} ${one}` : base;
+  const what = `${said(w.waiting)} ${w.waiting === 1 ? 'thing' : 'things'}`;
+  return one ? `People are still waiting on ${one} for ${what}` : `People are still waiting on ${what}`;
 }
 
 const lowerFirst = (s: string) => `${s.charAt(0).toLowerCase()}${s.slice(1)}`;
@@ -233,7 +239,8 @@ export function theRestOfTheWeekIn(w: AWeekInOneCheckIn, roomForToDo: number): s
   const out: string[] = [];
   /* The record's own parts first, where the direct morning is on: the target, what moved with proof, and who needs her. */
   if (w.theTarget) out.push(`Here is where the target stands. ${w.theTarget}`);
-  const proved = (w.movedWithProof ?? []).slice(0, 4);
+  /* The newest four: it is oldest first, and the first four dropped Friday's balance from Savannah Cafe (release test fixes, 22 November). */
+  const proved = (w.movedWithProof ?? []).slice(-4);
   if (proved.length) out.push(`Here is what moved this week, with what shows it. ${proved.join(' ')}`);
   for (const [i, n] of (w.needsYou ?? []).slice(0, 3).entries()) out.push(`${i === 0 ? 'Here is who needs you. ' : ''}${n.says}${n.evidence.length ? ` ${n.evidence.join(' ')}` : ''}`);
   const moved = withoutRepeats(w.moved ?? []).slice(0, 3);
@@ -358,9 +365,26 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   const checkedInThisWeek = new Set((finished as any[]).map((r) => r.participantId));
   /* Invited, not joined yet: not counted and never "not yet" (decision 8 redone, night run 3). */
   const notJoined = await whoHasNotJoinedYet(prisma, people as any[]).catch(() => new Set<string>());
-  const counted = (people as any[]).filter((p) => !notJoined.has(p.id) || checkedInThisWeek.has(p.id)).filter((p) => !p.managingOnly && (owesThisSession(p) || checkedInThisWeek.has(p.id)) && !isNotLetInYet(p));
+  /*
+   * ON A WEEKLY CHECK-IN THE WEEK IS THE SESSION (Hafsah, 22 November 2026: a session is over once the next one has begun). The letter
+   * counted who finished anything in the last seven days, so a late answer to last week's session and a newcomer's first one made "Five
+   * of the seven people checked in this week" beside the board's "4 of 7". Here it reads the session's one count (theSessionAndItsCount),
+   * the board's own. Other rhythms keep the week's count.
+   */
+  const weekly = String(g.cadence ?? '').toUpperCase() === 'WEEKLY';
+  const theSession = weekly
+    ? (() => {
+      const c = theSessionAndItsCount({ participants: (people as any[]).map((p) => (notJoined.has(p.id) ? { ...p, notJoinedYet: true } : p)), checkIns: sessions, cadence: g.cadence ?? null }, { now });
+      return c.bySession[c.clock.currentSession] ?? null;
+    })()
+    : null;
+  const counted = theSession
+    ? (people as any[]).filter((p) => theSession.onTheCheckIn.includes(p.id) && (!notJoined.has(p.id) || theSession.answered.includes(p.id)))
+    : (people as any[]).filter((p) => !notJoined.has(p.id) || checkedInThisWeek.has(p.id)).filter((p) => !p.managingOnly && (owesThisSession(p) || checkedInThisWeek.has(p.id)) && !isNotLetInYet(p));
   const countedIds = new Set(counted.map((p) => p.id));
-  const finishedIds = new Set((finished as any[]).map((r) => r.participantId).filter((id: string) => countedIds.has(id)));
+  const finishedIds = theSession
+    ? new Set(theSession.answered.filter((id) => countedIds.has(id)))
+    : new Set((finished as any[]).map((r) => r.participantId).filter((id: string) => countedIds.has(id)));
   const notYet = counted
     .filter((p) => !finishedIds.has(p.id))
     .map((p) => (p.userId && p.userId === g.initiatorId ? 'you' : nameToCall(p)))
@@ -415,16 +439,20 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   /* Approved leave is no miss, as in every other count of misses (missed-check-ins.ts): the letter counted it as one (N48). */
   const leave = await leaveOfThePeopleOn(prisma, [g.id]).catch(() => new Map<string, Stretch[]>());
   const pausesOver = (await thePausesThatAreOver(prisma, [g.organizationId ?? null])).get(g.organizationId ?? '') ?? null;
+  /* Every session in the team's numbering and against the check-in's own clock (theSessionClock over everybody counted), never one person's
+     own: "Zawadi missed one of one" was read off her own rows (release test, 21 November 2026). */
+  const numbered = inTheTeamsNumbering((Array.isArray(sessions) ? sessions : []) as any[]);
+  const theClocksSession = theSessionClock(numbered.filter((c) => c.participantId) as any, countedIds, null, now).currentSession;
   let checkInsDue = 0;
   let checkInsMade = 0;
   const missedBy: { name: string; missed: number; of: number }[] = [];
   for (const p of counted) {
     if (p.userId && p.userId === g.initiatorId) continue;
-    const theirs = (Array.isArray(sessions) ? sessions : []).filter((c) => c.participantId === p.id);
+    const theirs = numbered.filter((c) => c.participantId === p.id);
     const inTheWeek = new Set(theirs.filter((c) => { const at = new Date(c.availableFrom ?? c.createdAt); return at >= since && at <= now; }).map((c) => c.sessionNumber));
     /* On a check-in that opens each working day, a quiet session on a day they answered another is no miss: "Kevin missed one of six" (polish round 15). */
     /* The same conditions as every other reader of a miss (grounds/a-round-that-could-be-answered): not before they joined or before anybody had said anything, and not in a pause. */
-    const closed = theirClosedSessions(theirs, leave.get(p.id) ?? [], now, { opensDaily: String(g.cadence ?? '').toUpperCase() === 'DAILY', pausedFrom: pausedFrom ?? null, pausesOver, joinedAt: (p as any).joinedAt ?? null, checkInBeganAt }).filter((c) => inTheWeek.has(c.sessionNumber));
+    const closed = theirClosedSessions(theirs, leave.get(p.id) ?? [], now, { opensDaily: String(g.cadence ?? '').toUpperCase() === 'DAILY', theClocksSession, pausedFrom: pausedFrom ?? null, pausesOver, joinedAt: (p as any).joinedAt ?? null, checkInBeganAt }).filter((c) => inTheWeek.has(c.sessionNumber));
     const missed = closed.filter((c) => c.missed).length;
     checkInsDue += closed.length;
     checkInsMade += closed.length - missed;
@@ -432,7 +460,9 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   }
   /* SOMEBODY INVITED WHO HAS NOT JOINED IS ONE OF THE PEOPLE ON THE CHECK-IN, and "five of five people checked in" was said with Ruth never having joined (run 7, mail 90). The one count
      (reports/how-many-have-answered.ts) counts them, and the "what is new" mail already reads it; this count is the same people. They are never listed as "not yet": they have not started. */
-  const notJoinedButOnIt = (people as any[]).filter((p) => notJoined.has(p.id) && !checkedInThisWeek.has(p.id) && !p.managingOnly && owesThisSession(p) && !isNotLetInYet(p));
+  const notJoinedButOnIt = theSession
+    ? (people as any[]).filter((p) => notJoined.has(p.id) && theSession.onTheCheckIn.includes(p.id) && !theSession.answered.includes(p.id))
+    : (people as any[]).filter((p) => notJoined.has(p.id) && !checkedInThisWeek.has(p.id) && !p.managingOnly && owesThisSession(p) && !isNotLetInYet(p));
   return { groundId: g.id, label: g.label, ofHowMany: counted.length + notJoinedButOnIt.length, checkedIn: finishedIds.size, answerableIds: [...counted, ...notJoinedButOnIt].map((p) => p.userId ?? p.id), checkedInIds: counted.filter((p) => finishedIds.has(p.id)).map((p) => p.userId ?? p.id), notYet, saidWhatNext: saidNextBy.size, done: done as number, waiting: waiting as number, closedBy, waitingOn, checkInsDue, checkInsMade, ...(missedBy.length ? { missedBy } : {}), ...(releaseOne ? { releaseOne: true } : {}), ...(claims.length ? { claims } : {}), ...(reminded.length ? { reminded } : {}) };
 }
 

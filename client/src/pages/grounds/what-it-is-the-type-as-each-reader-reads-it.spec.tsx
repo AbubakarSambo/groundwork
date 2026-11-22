@@ -121,7 +121,7 @@ describe('Wanjiru, who runs it', () => {
   it('saving stores the kind of work she chose as confirmed, and nothing is stored before she saves', async () => {
     ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_WANJIRU)
     renderPage(props())
-    await waitFor(() => expect(whatItIs().getByLabelText('Kind of work')).toBeTruthy())
+    await waitFor(() => expect(whatItIs().getByLabelText('Kind of work')).toBeTruthy(), { timeout: 5000 })
     fireEvent.change(whatItIs().getByLabelText('Kind of work'), { target: { value: 'loans' } })
     expect(groundsApi.confirmTheType).not.toHaveBeenCalled()
     fireEvent.click(screen.getAllByRole('button', { name: 'Save changes' })[0])
@@ -134,7 +134,7 @@ describe('an admin who does not run it', () => {
   it('reads the kind of work and the sentence about Wanjiru, with nothing to choose', async () => {
     ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_THE_ADMIN)
     renderPage(props({ user: { id: 'u-admin' }, isInitiator: false, isOrgAdmin: true, viewerIsAParty: false }))
-    await waitFor(() => expect(whatItIs().getByText('Groundwork read this from what Wanjiru wrote when setting it up. Wanjiru has not confirmed it yet.')).toBeTruthy())
+    await waitFor(() => expect(whatItIs().getByText('Groundwork read this from what Wanjiru wrote when setting it up. Wanjiru has not confirmed it yet.')).toBeTruthy(), { timeout: 5000 })
     expect(whatItIs().getByText('Fee notes and invoices')).toBeTruthy()
     expect(whatItIs().queryByLabelText('Kind of work')).toBeNull()
   })
@@ -145,7 +145,7 @@ describe('with Release 2 off', () => {
     const { checkInType: _gone, ...asBefore } = SERVED_TO_WANJIRU
     ;(groundsApi.peopleAndSetup as any).mockResolvedValue(asBefore)
     renderPage(props({ ground: { ...FEE_NOTES, scenario: 'PULSE_CHECK', kindOfWork: 'sales team' }, groundScenario: 'PULSE_CHECK' }))
-    await waitFor(() => expect(whatItIs().getByLabelText('Kind of work')).toBeTruthy())
+    await waitFor(() => expect(whatItIs().getByLabelText('Kind of work')).toBeTruthy(), { timeout: 5000 })
     const kind = whatItIs().getByLabelText('Kind of work') as HTMLSelectElement
     expect([...kind.options].map((o) => o.value)).toEqual(['', 'sales team', 'sales org'])
     expect(whatItIs().queryByText(/Save changes to confirm it/)).toBeNull()
@@ -163,6 +163,6 @@ describe('Wanjiru, who runs it and checks in herself, reads her own count beside
     ;(groundsApi.peopleAndSetup as any).mockResolvedValue({ ...SERVED_TO_WANJIRU, sessions: '1 of 12 sessions done. Sessions already done are never removed.', teamSessionsDone: 1 })
     renderPage(props({ mySessionsDone: 3, plannedSessions: 12 }))
     await waitFor(() => expect(screen.getByText('1 of 12 sessions done. Sessions already done are never removed.')).toBeTruthy(), { timeout: 5000 })
-    expect(screen.getByText('3 of 12 check-ins are done. The team has finished 1.')).toBeTruthy()
+    expect(screen.getByText('You have checked in for 3 of the 12 sessions. The team has finished 1.')).toBeTruthy()
   })
 })

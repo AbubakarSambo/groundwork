@@ -78,6 +78,10 @@ function aTeller(opts: { admins?: string[] } = {}) {
 }
 
 describe('who is told', () => {
+  /* Pinned to midday in Lagos (22 November 2026): a notice is not said in the approver's night any more (release test, bug 90), and this
+     read the real clock, so it passed only by day. */
+  beforeEach(() => jest.useFakeTimers({ now: new Date('2026-10-05T11:00:00Z'), doNotFake: ['setTimeout', 'setInterval', 'setImmediate', 'clearTimeout', 'clearInterval', 'nextTick', 'queueMicrotask'] }));
+  afterEach(() => jest.useRealTimers());
   it('the line manager who approves, on their own number, as a first message Groundwork starts', async () => {
     const { told, sent } = aTeller();
     await told.waiting('org-1', await told.approversOf('org-1', { kind: 'manager', userId: 'u-wairimu' }, 'u-amina'), AMINA_LEAVE);
@@ -88,6 +92,13 @@ describe('who is told', () => {
     await told.waiting('org-1', await told.approversOf('org-1', { kind: 'admin' }, 'u-amina'), AMINA_LEAVE);
     expect(sent.map((s) => s.to)).toEqual(['+2348012345678']);
     expect(sent[0].text).toMatch(/^Hi Bola, Amina has asked for leave/);
+  });
+  /* Release test, 21 November 2026, bug 90: a notice held for the night went at seven for requests already approved by then. */
+  it('in the approver\'s night nothing is said or held: the morning sweep says what still waits then', async () => {
+    jest.setSystemTime(new Date('2026-10-05T22:30:00Z'));
+    const { told, sent } = aTeller();
+    await told.waiting('org-1', await told.approversOf('org-1', { kind: 'manager', userId: 'u-wairimu' }, 'u-amina'), AMINA_LEAVE);
+    expect(sent).toEqual([]);
   });
   it('the person, with the name of who decided', async () => {
     const { told, sent } = aTeller();

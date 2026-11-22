@@ -56,6 +56,7 @@ describe('a follow-up said done in other words is kept', () => {
   it('and on Tuesday, before she said it, it was still told as late, as it should be', async () => {
     const now = new Date('2026-10-13T08:00:00Z');
     const o = await whatIsOutstandingFor(theRecord(now, WEDNESDAY_MORNING) as any, LEAD, { boards: {} as any, release: new Date('2026-01-01') }, now);
-    expect(said(o)).toBe('These are overdue on your team. Mercy committed to “follow up with Joseph about the samples today”. That was due by Monday 12 October and is one day late.');
+    /* Changed 22 November 2026 (release test, bug 34, commit 2b308fa48): this summary speaks with the morning's approved labels (Hafsah, 21 October: "Needs you today:", "Closing:", "Your team:"), the same as the direct morning, so the lead reads one shape every morning. A risk is said under "Your team:" with what is overdue, never with a label of its own. */
+    expect(said(o)).toBe('Your team: Mercy committed to “follow up with Joseph about the samples today”. That was due by Monday 12 October and is one day late.');
   });
 });

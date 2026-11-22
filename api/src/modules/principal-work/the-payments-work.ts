@@ -17,6 +17,7 @@ import { hasProof, isPaidWithProof, SOUNDS_LIKE_AN_APPROVAL, SOUNDS_LIKE_PROOF, 
 import { anAskKey, giveTheAskBack, queueTheAsk, theAskWent, theQuestionsOnRecordFor } from '../executive-onboarding/information-gaps';
 import { herMaterialToSearch, theTeamSheNamed, type ABatchForWork, type AMaterialItem } from '../executive-onboarding/the-material-for-work';
 import { dayWords } from '../year-end/the-year-end-content';
+import { theOrganisationsSpendRequests } from '../suites/the-spend-requests-read-elsewhere';
 
 /* ------------------------------------------------------------------ what a person reads */
 
@@ -143,7 +144,7 @@ export async function thePaymentsNow(prisma: any, a: { organizationId: string; p
   const lines = rows.map(lineOnRecord);
   const grounds: any[] = (await prisma.ground?.findMany?.({ where: { organizationId: a.organizationId, initiatorId: a.principalUserId }, select: { id: true } }).catch(() => [])) ?? [];
   const obligations: any[] = grounds.length ? (await prisma.obligation?.findMany?.({ where: { groundId: { in: grounds.map((g) => g.id) } } }).catch(() => [])) ?? [] : [];
-  const spends: any[] = lines.length ? (await prisma.spendRequest?.findMany?.({ where: { organizationId: a.organizationId } }).catch(() => [])) ?? [] : [];
+  const spends: any[] = lines.length ? await theOrganisationsSpendRequests(prisma, a.organizationId) : [];
   const trackerFiles = [...new Set(lines.map((l) => l.fileName))];
   const mentioning = lines.length ? await herMaterialToSearch(prisma, { principalUserId: a.principalUserId, exceptFiles: trackerFiles }) : () => [];
   const linkMap = new Map<string, ALinks>();

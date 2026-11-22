@@ -43,7 +43,8 @@ describe('what is forwarded to a senior person\'s assistant', () => {
    * because a report of clipped sentences under months was not one she would be glad to receive. It is allowed for ONE module and held by reading its source:
    * the notes go in as data inside a fixed prompt that says so; the model has no tool but a record to fill in, and the module has no way to send, mail, write a
    * row or call anything else; and what comes back is kept only where code finds the sentence's quotation in the note and every number, date, amount and name in
-   * the note or the record (the same pattern the National Assembly report uses). Nothing else in the product may show a forwarded note to a model.
+   * the note or the record (the same pattern the National Assembly report uses). Nothing else in the product may show a forwarded note to a model, except
+   * the team loop's reads, held in team-loop/the-team-loop-keeps-to-its-limits.spec.ts (Hafsah, 22 November 2026: what she forwards is read into her own list).
    */
   it('is shown to a model by ONE year-end module only, which can do nothing but return a record that code then checks', () => {
     const narrators = everySourceFile(SRC).filter((f) => /[\\/]year-end[\\/]the-year-end-narrat(?:ive|or\.service)\.ts$/.test(f));

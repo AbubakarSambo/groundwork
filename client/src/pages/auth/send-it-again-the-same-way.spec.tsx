@@ -79,7 +79,7 @@ describe('a sign-up still waiting for its link to be opened', () => {
     fireEvent.change(await screen.findByLabelText('Your name'), { target: { value: 'Wairimu' } })
     fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: 'Wairimu@Baridi.test' } })
     fireEvent.change(screen.getByLabelText(/Your organisation/), { target: { value: 'Baridi Appliances' } })
-    fireEvent.click(screen.getByRole('button', { name: /^Create account$/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Sign up$/ }))
     await screen.findByText('Check your email')
 
     const first = (authApi.entrySave as any).mock.calls[0]

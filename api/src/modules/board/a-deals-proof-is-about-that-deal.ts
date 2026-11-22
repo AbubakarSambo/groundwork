@@ -100,6 +100,18 @@ export function aContactWithProof(l: ALineWithItsProof, deal: { name: string; fi
   return dayKey(said) === dayKey(added);
 }
 
+/**
+ * THE MARK A DEAL TAKES FROM ITS OWN LINE IS ABOUT THAT DEAL (release test, 21 November 2026, bugs 28, 33 and 84). Amani said "2 signed
+ * up: Mama Njeri Duka and Kilimani Fresh." with the order form she added behind it; the form is Mama Njeri Duka's alone, and Kilimani
+ * Fresh, which she said is verbal, read "Won, Proven", "3 sold, 3 with proof" and "Every one of your 3 sales has proof". The rule above
+ * (a document that can be read is about the customers it names) held for every other line and not for the line a deal was written
+ * from. A line proven by a document that can be read and does not name this deal says it; it does not show it.
+ */
+export function theMarkForTheDeal<M extends string | null>(lineMark: M, documentWords: string | null | undefined, deal: { name: string; fields?: Record<string, string> | null }): M | 'said' {
+  if (lineMark !== 'proven' || !documentWords) return lineMark;
+  return theWordsNameTheDeal(documentWords, deal) ? lineMark : 'said';
+}
+
 /** A proven line, with the document behind it, as the payment rule reads it. */
 export interface AProvenLine {
   text: string;

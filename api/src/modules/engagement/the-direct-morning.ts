@@ -1,3 +1,4 @@
+import { A_SESSION_OF_THEIRS } from '../grounds/the-sessions-done';
 import { withoutTheOldEnding } from '../reports/what-people-said-differently-about';
 import { howManyReadsAreStillToCome } from '../conversation/the-read-is-owed';
 import { workingDaysOf } from '../grounds/which-days-this-team-works';
@@ -229,14 +230,17 @@ const theDealRows = (board: any): any[] => ((board?.workRecords ?? []) as any[])
 const listedNames = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0] ?? '');
 
 /**
- * WHAT EACH PERSON SAID THEY HAD DONE, in the newest round anybody said it in, "Asha said 25". Read from what the board serves for the
- * reader (saidBy on each target, kept by board.listener keepWhatPeopleSaid), one per person, never from a count: a said number is not
- * a count and proves nothing. Somebody who did not say one in that round is not named, since they have not said it this week.
+ * WHAT EACH PERSON SAID THEY HAD DONE AGAINST THIS TARGET, in the newest round anybody said it in, "Asha said 25". Read from what the
+ * board serves for the reader (saidBy on the target, kept by board.listener keepWhatPeopleSaid), one per person, never from a count: a
+ * said number is not a count and proves nothing. Somebody who did not say one in that round is not named, since they have not said it
+ * this week.
+ *
+ * ONLY WHAT WAS SAID AGAINST THE TARGET IT IS SAID BESIDE (release test, 22 November 2026, bug 22). Wairimu's letter read "The team target
+ * is 40. Olu said 3": Olu's "3 shops agreed to take a trial" was kept against his own aim, to get Msingi into 10 new shops, and every
+ * target's numbers were read beside the team's. A number said against one target is that target's.
  */
-export function theNumbersPeopleSaid(board: any): { lines: string[]; total: number } {
-  /* Said against the team's target first, so a person who also said one against an aim of their own is named once, for the team's. */
-  const all = [...((board?.objectives ?? []) as any[])].sort((a, b) => Number(!!a?.ownerParticipantId) - Number(!!b?.ownerParticipantId))
-    .flatMap((o) => (Array.isArray(o?.saidBy) ? o.saidBy : []) as any[])
+export function theNumbersPeopleSaid(aim: any): { lines: string[]; total: number } {
+  const all = ((Array.isArray(aim?.saidBy) ? aim.saidBy : []) as any[])
     .filter((x) => x && typeof x.count === 'number' && x.count > 0 && String(x.name ?? '').trim());
   const newest = Math.max(-1, ...all.map((x) => Number(x.atSession ?? 0)));
   const seen = new Set<string>();
@@ -269,7 +273,12 @@ export function theTargetLines(board: any, now: Date, zone: string, readIsStillT
   /* Sold on a deposit only is said as such, never as paid (final real-model check, item 10). */
   const onADeposit = counted && typeof counted.deposit === 'number' && counted.deposit > 0 ? Number(counted.deposit) : 0;
   const by = theAimsDay(aim.name) ?? null;
-  const rows = theDealRows(board);
+  /*
+   * A DEAL COUNTS ONLY TOWARD THE TARGET WHOSE THING IT SELLS (Drop Access, 22 November 2026). Wairimu changed the team's goal from freezers
+   * to a waitlist of shops; the freezer deals still on the board were read against the waitlist, "0 of 50 sold, 50 short, and the open deals
+   * cover 40". A target the deals do not count (no fromTheDeals) reads no deal, and is said with its own count.
+   */
+  const rows = counted ? theDealRows(board) : [];
   /*
    * NOTHING ON A DEAL IS NOT "0 SOLD" (fix plan 17 November, group 5; run 4, 18 November). Taa Solar's people gave their numbers every
    * week and no deal was ever written, so every morning opened "0 of 30 sold, 30 short, and no open deal covers any of it", which says
@@ -277,16 +286,31 @@ export function theTargetLines(board: any, now: Date, zone: string, readIsStillT
    * a count from the deals, so it never applied. Run 5 (19 November): it still did not, because Taa Solar's board holds one deal (a shop named in a check-in, no number of units on it), so "no deal at all" was false while the count was still nothing. The test is therefore whether any deal holds a number of units, which is what the old line's "short" and "cover" were counting. With no counted deal the line says the target, what each person said, and that none
    * of it is on a deal yet so none of it is proven. It names no gap.
    */
-  const { lines: saidLines, total: saidTotal } = theNumbersPeopleSaid(board);
+  const { lines: saidLines, total: saidTotal } = theNumbersPeopleSaid(aim);
   /* Beside the target, what they said between them (run 7: the lead read each name and had to add it up herself). One person's number is the total. */
   const whatTheySaid = saidLines.length ? `${listedNames(saidLines)}${saidLines.length > 1 ? `, which is ${commas(saidTotal)} between them` : ''}` : null;
   const nothingCounted = sold === 0 && !(paid && paid > 0);
+  /*
+   * THE GOAL BY ITS OWN NAME, AND WHEN AND WHY IT CHANGED (Drop Access, 22 November 2026, bug N4). The letter read "The team target is 15"
+   * of "Each person builds a waitlist of 15 shops by 31 December": a number with nothing to say what it counts, or that it is each person's.
+   * The goal row's name says both, so the line names it, and the sentence the board serves of its change (objective `changed`, from
+   * a-goal-changed-by-its-lead) follows the line, so the letter says the same as the board.
+   */
+  const name = String(aim.name ?? '').trim().replace(/[.!?\s]+$/, '');
+  const theGoal = name
+    ? `The team’s goal is “${name}”${name.replace(/,/g, '').includes(String(target)) ? '' : `, with a target of ${commas(target)}`}`
+    : `The team target is ${commas(target)}`;
+  const changed = typeof aim.changed === 'string' && aim.changed.trim() ? ` ${aim.changed.trim()}` : '';
+  if (!counted && sold > 0) {
+    const text = `${theGoal}. ${commas(sold)} of ${commas(target)} so far${sold >= target ? ', and you have reached the target.' : `, with ${commas(target - sold)} to go.`}${whatTheySaid ? ` ${whatTheySaid}.` : ''}${changed}`;
+    return { lines: [{ text, rank: 0 }], gap: Math.max(0, target - sold), target, heading };
+  }
   /* Run 8: 21 of 43 letters said "0 of 30 sold, 30 short, and no open deal covers any of it" while people said 9 to 17 a week, because a deal that held units sent the line down the count's path. Where people said a number and nothing is counted, the line says what they said, and that none of it is counted. */
   if (nothingCounted && (whatTheySaid || !rows.some((r) => (theUnitsOf(r.fields) ?? 0) > 0))) {
     const text = whatTheySaid
-      ? `The team target is ${commas(target)}. ${whatTheySaid}, and none of it is ${rows.some((r) => (theUnitsOf(r.fields) ?? 0) > 0) ? 'counted as sold' : 'on a deal'} yet, so none of it is proven.`
-      : `The team target is ${commas(target)}, and nothing is counted against it yet.`;
-    return { lines: [{ text, rank: 0 }], gap: null, target, heading };
+      ? `${theGoal}. ${whatTheySaid}, and none of it is ${rows.some((r) => (theUnitsOf(r.fields) ?? 0) > 0) ? 'counted as sold' : 'on a deal'} yet, so none of it is proven.`
+      : `${theGoal}, and nothing is counted against it yet.`;
+    return { lines: [{ text: `${text}${changed}`, rank: 0 }], gap: null, target, heading };
   }
   const likely = rows.filter((r) => r.group === 'likely' && !isWon(r));
   const likelyUnits = likely.reduce((n, r) => n + (theUnitsOf(r.fields) ?? 0), 0);
@@ -296,7 +320,7 @@ export function theTargetLines(board: any, now: Date, zone: string, readIsStillT
   const gap = target - sold - likelyUnits;
   const andWhatTheySaid = whatTheySaid ? ` ${whatTheySaid}.` : '';
   if (gap <= 0) {
-    return { lines: [{ text: `${sold >= target ? `${said}, and you have reached the target.` : `${said}, and with the likely deals you reach the target.`}${andWhatTheySaid}`, rank: 0 }], gap: Math.max(0, gap), target, heading };
+    return { lines: [{ text: `${sold >= target ? `${said}, and you have reached the target.` : `${said}, and with the likely deals you reach the target.`}${andWhatTheySaid}${changed}`, rank: 0 }], gap: Math.max(0, gap), target, heading };
   }
   /* What the open deals hold: the deals the board lists to close the gap, else every open deal not already counted as likely. */
   const listed = new Set(((board?.toCloseTheGap?.deals ?? []) as any[]).map((d) => String(d?.name ?? '').trim().toLowerCase()).filter(Boolean));
@@ -308,7 +332,7 @@ export function theTargetLines(board: any, now: Date, zone: string, readIsStillT
     : cover > 0
       ? `${said}, ${commas(gap)} short, and the open deals cover ${commas(cover)}.`
       : `${said}, ${commas(gap)} short, and no open deal covers any of it.`;
-  return { lines: [{ text: `${text}${andWhatTheySaid}`, rank: 0 }], gap, target, heading };
+  return { lines: [{ text: `${text}${andWhatTheySaid}${changed}`, rank: 0 }], gap, target, heading };
 }
 
 const A_DECISION = /\b(?:decision|decide|approv\w*|yes or no|go-ahead|sign[- ]off on the price|price)\b/i;
@@ -981,7 +1005,7 @@ export async function theDirectMorningFor(
     managingOnly: !!p.managingOnly, left: !!p.leftAt, isTheLead: p.userId === opts.leadUserId || p.partyType === 'INITIATOR', userId: p.userId,
   }));
   const hers = new Set(people.filter((p) => p.isTheLead).map((p) => p.id));
-  const checkIns: any[] = ((await Promise.resolve(prisma?.checkIn?.findMany?.({ where: { groundId: ground.id }, select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } } })).catch(() => [])) ?? []) as any[];
+  const checkIns: any[] = ((await Promise.resolve(prisma?.checkIn?.findMany?.({ where: { groundId: ground.id, ...A_SESSION_OF_THEIRS }, select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } } })).catch(() => [])) ?? []) as any[];
   const lastCheckIn: Record<string, Date | null> = {};
   const firstOpened: Record<string, Date | null> = {};
   for (const c of checkIns) {

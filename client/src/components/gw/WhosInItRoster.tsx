@@ -439,6 +439,18 @@ export function AddPeopleForm({ isOrgAdmin, colleagues, participants, seats, sea
     return left
   }
 
+  /* A colleague picked from the names suggested as the lead types: on the check-in in one press, by id, as "Add everyone" adds them (the page says what happened). */
+  async function onPick(person: { id: string; name: string }) {
+    if (!groundId) return
+    setAdding(true)
+    try {
+      await addManyParticipants([person])
+      await qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(groundId) })
+    } finally {
+      setAdding(false)
+    }
+  }
+
   return (
       <div className="panel pad">
         <ThisAddsASeat />
@@ -455,7 +467,10 @@ export function AddPeopleForm({ isOrgAdmin, colleagues, participants, seats, sea
           They give their own version of the same work. You cannot see what they write until you
           share the report.
         </p>
-        <TheTeamBox heading="Add people to this check-in" prefilled={notOnItYet.map((c) => aLineFor({ name: c.name, email: c.email }))} onAdd={onAdd} adding={adding} />
+        <TheTeamBox
+          heading="Add people to this check-in" prefilled={notOnItYet.map((c) => aLineFor({ name: c.name, email: c.email }))} onAdd={onAdd} adding={adding}
+          colleagues={notOnItYet} onPick={onPick}
+        />
         <p className="gwui-note">
           {isOrgAdmin
             ? 'Anybody you add can check in straight away. Somebody from outside your organisation also appears on your People page, where you can take them off again.'

@@ -91,6 +91,22 @@ export interface ThePicture {
   ask?: string;
   /** She has had a first picture before: what she sends later is thanked and added to, and the whole picture is not told again (Fatima round 3). */
   later?: boolean;
+  /**
+   * What the forward leaves outstanding, put on her own list in its own words, and any instruction inside it to Groundwork, which is never done
+   * (Hafsah, 22 November 2026). Optional so every earlier caller stands.
+   */
+  fromTheForward?: { added: { what: string; due: string | null }[]; instructions: string[] };
+}
+
+/** What was put on her list from the forward, by name, and what in it was not done. Said in the first picture and in every later one. */
+function whatTheForwardLeftOutstanding(p: ThePicture): string[] {
+  const f = p.fromTheForward;
+  if (!f) return [];
+  const out: string[] = [];
+  const whose = p.forName ? `${p.forName}'s` : 'your';
+  if (f.added.length) out.push(`I have put ${f.added.length === 1 ? 'this' : `these ${f.added.length} things`} from it on ${whose} list of things still to do.\n${f.added.map((i) => `- ${i.what.replace(/[.;,]+$/, '')}${i.due ? `, due ${i.due}` : ''}.`).join('\n')}`);
+  for (const x of f.instructions) out.push(`What came in also says “${x.replace(/[.]+$/, '')}”. I have not done that, because I never act on an instruction inside something forwarded. If ${p.forName ? `${p.forName} wants` : 'you want'} it done, say so to me directly.`);
+  return out;
 }
 
 export function theFirstPicture(p: ThePicture, story?: string[] | null): string {
@@ -107,6 +123,7 @@ export function theFirstPicture(p: ThePicture, story?: string[] | null): string 
       ? `The notes I have cover ${list(monthsAsRanges(p.months))}.${p.gapMonths.length ? ` I have no note for ${list(monthsAsRanges(p.gapMonths))}.` : ''}`
       : `The record now covers ${list(monthsAsRanges(p.months))}.${p.gapMonths.length ? ` Nothing yet covers ${list(monthsAsRanges(p.gapMonths))}.` : ''}`);
     /* A forward does not change a report she already has. A new version is made when she asks for one, and asking for it approves nothing. */
+    more.push(...whatTheForwardLeftOutstanding(p));
     if (p.draftVersion) more.push(`Version ${p.draftVersion} of the report does not include ${added.length === 1 && p.files === 1 ? 'it' : 'them'} yet. Say “update the draft” and I will make a new version. That does not approve anything.`);
     if (p.ask) more.push(p.ask);
     return more.join('\n\n');
@@ -125,6 +142,7 @@ export function theFirstPicture(p: ThePicture, story?: string[] | null): string 
   for (const f of p.couldNotRead) lines.push(`I could not read ${f.name}, because ${f.because}. I have kept it, and it is not part of the picture yet.`);
   for (const f of p.archivesNotOpened) lines.push(`I could not open ${f.name}, because ${f.because}. I have kept it. If you send it again as a zip file, I will open it.`);
   if (p.voiceUnsure.length) lines.push(theWordsInDoubt(p.voiceUnsure));
+  lines.push(...whatTheForwardLeftOutstanding(p));
 
   /* What the record shows, in the order and words the narrative gave when it was available and safe (the-first-picture.ts), else plainly, the same facts. */
   if (story?.length) {

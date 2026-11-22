@@ -14,5 +14,7 @@ export function whereASessionsReportStands(input: { report: unknown; finishedAt:
   if (!input.finishedAt) return { state: 'open', says: 'This check-in is still open, so it has no report of its own yet.' };
   /* A read that failed is still owed and will land: that is "not read yet", never "not kept" (the read is tried again by the scheduled pass). */
   if (input.readIsStillToCome) return { state: 'being-read', says: 'Groundwork is still working out the report for this check-in. What you said is below, and the report will appear here when it is ready.' };
-  return { state: 'not-kept', says: 'No report was kept for this check-in. What you said is below.' };
+  /* "No report was kept" was said straight after Amani finished, and her report then appeared on the same tab (release test, 21 November
+     2026, bug 15): the end of a check-in writes it a little later. Nothing here can know it will never come, so it says only what is true now. */
+  return { state: 'not-kept', says: 'There is no report for this check-in yet. What you said is below.' };
 }

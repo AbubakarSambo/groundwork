@@ -1,3 +1,4 @@
+import { theirOwnSessionNumber } from '../grounds/the-session-a-person-is-on';
 import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { theNumberOnRecord } from '../whatsapp/one-number-for-a-person';
 import { Injectable, Logger } from '@nestjs/common';
@@ -172,7 +173,7 @@ export class WebhooksListener {
      * 09:15 and emailed "You can start your check-in now", added his number, and at 09:30 was sent this opening for the same first session. The
      * approval email is that session's opening, on email: where it was sent after this check-in was made, the first session is not told again.
      */
-    if (e.sessionNumber === 1 && await this.theApprovalEmailOpenedIt(e.checkInId, participant)) return;
+    if ((await theirOwnSessionNumber(this.prisma, e)) === 1 && await this.theApprovalEmailOpenedIt(e.checkInId, participant)) return;
     const today = theCheckInIsOpen({ firstName: participant.user?.firstName, label: ground.label }, ground.simplerWords);
     /*
      * THE ONE THING THAT MATTERS TO THEM TODAY IS THE MESSAGE (part 3; conversation/the-one-thing-today), for everybody since batch 1. It

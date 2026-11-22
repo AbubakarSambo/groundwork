@@ -96,7 +96,7 @@ describe('a person’s history, asked for by name', () => {
   it('Grace is told the same sentence for a person who is not in anything she runs, whether or not that person exists', async () => {
     const nia = await ask(theAssistant('lead-1'), 'How has Nia been performing?');
     const nobody = await ask(theAssistant('lead-1'), 'How has Zuri been performing?');
-    expect(nia.said).toBe('I can give the history of people in the check-ins you run, and I cannot find Nia in any of them. If you lead Nia, ask me about a name as it is on your check-in.');
+    expect(nia.said).toBe('I can give the history of people in the check-ins you run and of the people who report to you, and I cannot find Nia among them. If you lead Nia, ask me about a name as it is on your check-in.');
     expect(nobody.said).toBe(nia.said.replace('Nia', 'Zuri').replace('Nia', 'Zuri'));
     expect(nia.said).not.toContain('Support, Q4');
   });
@@ -110,12 +110,12 @@ describe('a person’s history, asked for by name', () => {
   it('a member asking about a colleague is told what an outsider is told, and reads nothing of the colleague', async () => {
     const r = await ask(theAssistant('u-mercy'), 'How has Kevin been performing?');
     expect(r.lane).toBe('performance_history');
-    expect(r.said).toBe('I can give the history of people in the check-ins you run, and I cannot find Kevin in any of them. If you lead Kevin, ask me about a name as it is on your check-in.');
+    expect(r.said).toBe('I can give the history of people in the check-ins you run and of the people who report to you, and I cannot find Kevin among them. If you lead Kevin, ask me about a name as it is on your check-in.');
   });
 
   it('an admin who runs nothing is not handed a team’s history through the chat', async () => {
     const r = await ask(theAssistant('u-admin', 'ADMIN'), 'How has Mercy been performing?');
-    expect(r.said).toContain('I cannot find Mercy in any of them');
+    expect(r.said).toContain('I cannot find Mercy among them');
   });
 
   it('Mercy asking about herself reads her own page, in the second person', async () => {

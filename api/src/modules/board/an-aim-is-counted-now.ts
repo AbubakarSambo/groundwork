@@ -1,5 +1,6 @@
 import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, whatASalesAimCounts, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
 import { isASalesKind } from './the-kind-of-work';
+import { theThingItsNumberCounts } from './an-aim-is-a-sentence-about-somebody';
 import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { theMonthItCounts, theMonthsDays } from './a-sales-aim-is-counted-from-the-deals';
@@ -42,7 +43,10 @@ export async function theAimsCountedNow(
   const theTeams = [...aims, ...allAims].map((a) => whatASalesAimCounts(a.name)).find((w) => w && w.counts !== 'new leads') ?? null;
   if (theTeams) {
     for (const a of aims) {
-      if (counted.has(a.id) || !a.ownerParticipantId || whatASalesAimCounts(a.name)) continue;
+      /* An aim that names its own thing ("Activate 4 Drop Access points per week") is not the team's freezers: counted from the freezer
+         deals, it read "3 won deals have no record of how many units" (Drop Access re-read, 22 November). A deal counts only toward an aim
+         whose thing it is. */
+      if (counted.has(a.id) || !a.ownerParticipantId || whatASalesAimCounts(a.name) || theThingItsNumberCounts(a.name ?? '')) continue;
       const target = (a as any).target;
       if (typeof target !== 'number' || target <= 0) continue;
       const asTheTeams = theTeams.counts === 'value' ? `KES ${target} in sales` : theTeams.counts === 'sales' ? `${target} sales` : `${target} units`;

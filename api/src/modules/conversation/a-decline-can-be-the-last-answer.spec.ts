@@ -27,7 +27,7 @@ describe('declining', () => {
   });
 
   it('and the round it closes is the one the decline was in', () => {
-    expect(bodyOf('decline')).toMatch(/closeTheRoundIfThisWasTheLastAnswer\(checkIn\.groundId, checkIn\.sessionNumber\)/);
+    expect(bodyOf('decline')).toMatch(/closeTheRoundIfThisWasTheLastAnswer\(checkIn\.groundId, checkIn\.sessionNumber, checkIn\.participantId\)/);
   });
 });
 
@@ -35,7 +35,7 @@ describe('what closing that round does', () => {
   const body = bodyOf('closeTheRoundIfThisWasTheLastAnswer');
 
   it('asks recordRoundCompletion first, and stops when the round is not closed', () => {
-    expect(body).toMatch(/recordRoundCompletion\(this\.prisma, this\.events, groundId, sessionNumber\)/);
+    expect(body).toMatch(/recordRoundCompletion\(this\.prisma, this\.events, groundId, sessionNumber, whose\)/);
     expect(body).toMatch(/if \(!roundJustClosed\) return/);
   });
 

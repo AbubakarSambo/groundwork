@@ -5,7 +5,7 @@ describe('a session’s own report, as the person reads it', () => {
   it('a finished session with no report says it was not kept, instead of leaving the page waiting', () => {
     expect(whereASessionsReportStands({ report: null, finishedAt: new Date() })).toEqual({
       state: 'not-kept',
-      says: 'No report was kept for this check-in. What you said is below.',
+      says: 'There is no report for this check-in yet. What you said is below.',
     });
   });
   it('an open session and a kept report say so too', () => {
@@ -19,7 +19,7 @@ describe('a session’s own report, as the person reads it', () => {
     const out = await svc.getSessionReport('c1', 'u1');
     expect(out.report).toBeNull();
     expect(out.state).toBe('not-kept');
-    expect(out.says).toBe('No report was kept for this check-in. What you said is below.');
+    expect(out.says).toBe('There is no report for this check-in yet. What you said is below.');
   });
   it('never says no report was kept while their own report ("Here is what you shared") is kept and drawn beside it (run 9)', async () => {
     const svc: any = Object.create(ConversationService.prototype);

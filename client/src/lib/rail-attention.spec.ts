@@ -19,34 +19,28 @@ const ground = (over: Partial<Parameters<typeof railAttention>[0]> = {}) => ({
   ...over,
 }) as any
 
+/*
+ * YOUR TURN IS THE SERVER'S (release test, 21 November 2026). The rail used to work it out from the rows here, and the list said "Your
+ * turn" while Today said nothing needed you. The list now serves `yourTurn` on each row (yourTurnIn, what-needs-you.ts, whose rules -
+ * not open yet, two behind, declined, shut, paused, not let in - are tested in your-turn-is-the-servers.spec.ts), and the rail reads it.
+ */
+const turn = (sessionNumber: number, openedDaysAgo: number) => ({ checkInId: `c${sessionNumber}`, sessionNumber, openedAt: days(openedDaysAgo) })
+
 describe('when it is your turn', () => {
-  it('says so, with the session number', () => {
-    const g = ground({ checkIns: [{ participantId: 'p-me', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: days(1) }] })
+  it('says so, with the session number the server served', () => {
+    const g = ground({ yourTurn: turn(2, 1), checkIns: [{ participantId: 'p-me', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: days(1) }] })
     expect(railAttention(g, 'u-me', NOW)).toEqual({ kind: 'yours', sessionNumber: 2 })
   })
 
-  it('and a session scheduled for the future is not your turn yet', () => {
-    // A check-in that opens next fortnight is not something anybody is late for,
-    // and a rail that nags about it teaches people to ignore the rail.
-    const future = new Date(NOW.getTime() + 5 * 86_400_000).toISOString()
-    const g = ground({ checkIns: [{ participantId: 'p-me', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: future }] })
-    expect(railAttention(g, 'u-me', NOW).kind).toBe('none')
-  })
-
-  it('and two rounds behind still reads as one thing to do', () => {
-    // Otherwise the rail nags twice for the same person.
-    const g = ground({ checkIns: [
-      { participantId: 'p-me', sessionNumber: 3, status: 'NOT_STARTED', availableFrom: days(1) },
-      { participantId: 'p-me', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: days(2) },
-    ] })
-    expect(railAttention(g, 'u-me', NOW)).toEqual({ kind: 'yours', sessionNumber: 2 })
+  it('and where the server served no turn, an open row of yours is not guessed into one', () => {
+    const g = ground({ yourTurn: null, checkIns: [{ participantId: 'p-me', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: days(1) }] })
+    expect(railAttention(g, 'u-me', NOW).kind).not.toBe('yours')
   })
 })
 
 describe('red is for late, not for your turn', () => {
   it('stays "yours" inside the window', () => {
-    const g = ground({ checkIns: [{ participantId: 'p-me', sessionNumber: 1, status: 'NOT_STARTED', availableFrom: days(OVERDUE_AFTER_DAYS) }] })
-    expect(railAttention(g, 'u-me', NOW).kind).toBe('yours')
+    expect(railAttention(ground({ yourTurn: turn(1, OVERDUE_AFTER_DAYS) }), 'u-me', NOW).kind).toBe('yours')
   })
 
   it('and only turns overdue once the window has closed', () => {
@@ -57,8 +51,7 @@ describe('red is for late, not for your turn', () => {
      * this shape of signal: "Never say engagement is declining... These are
      * surveillance observations. They make people feel watched not supported."
      */
-    const g = ground({ checkIns: [{ participantId: 'p-me', sessionNumber: 1, status: 'NOT_STARTED', availableFrom: days(OVERDUE_AFTER_DAYS + 1) }] })
-    expect(railAttention(g, 'u-me', NOW)).toMatchObject({ kind: 'overdue', sessionNumber: 1 })
+    expect(railAttention(ground({ yourTurn: turn(1, OVERDUE_AFTER_DAYS + 1) }), 'u-me', NOW)).toMatchObject({ kind: 'overdue', sessionNumber: 1 })
   })
 })
 
@@ -182,7 +175,8 @@ describe('the waiting count is about a session that has opened', () => {
         { participantId: 'c', sessionNumber: 2, status: 'IN_PROGRESS', availableFrom: '2026-09-25T12:00:00Z' },
         { participantId: 'a', sessionNumber: 3, status: 'NOT_STARTED', availableFrom: '2026-10-03T12:00:00Z' },
       ],
-      theCount: aServedCount({ 2: { on: ['a', 'b', 'c'], answered: ['a', 'b'] }, 3: { on: ['a', 'b', 'c'], answered: [] } }),
+      /* The server's one clock names the session (22 November 2026): session 3 has not begun, so it serves session 2, and the rail reads it. */
+      theCount: { ...aServedCount({ 2: { on: ['a', 'b', 'c'], answered: ['a', 'b'] }, 3: { on: ['a', 'b', 'c'], answered: [] } }), session: 2 },
     }
     expect(openRound(g.checkIns, NOW)).toBe(2)
     expect(railAttention(g, 'u-admin', NOW)).toEqual({ kind: 'waiting', done: 2, total: 3 })

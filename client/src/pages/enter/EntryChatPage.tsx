@@ -1155,7 +1155,8 @@ export function groupOf(card: { cardKey: string; scenario: string }): string {
  * takes and how to stop, added in front of the first message she reads, which stays as it was; and one line when setup is done.
  */
 /* The target journey's opening, one line (F5, stage 2), with the measured length from its one owner. */
-export const THE_SETUP_LINE = `This takes ${SETUP_TAKES}. You can stop any time with End check-in.`
+/* It names no button (release test, 22 November 2026, bug 8), the same as the check-in's own first line (api the-opening-line.ts). */
+export const THE_SETUP_LINE = `This takes ${SETUP_TAKES}. You can stop any time.`
 export function theSetupIsDoneSaying(firstOpensOn: string | null): string {
   const d = firstOpensOn ? new Date(`${firstOpensOn}T12:00:00Z`) : null
   const day = d && !isNaN(d.getTime()) ? whenItWas(d, 'weekdayAndDay', 'UTC') : null
@@ -2017,7 +2018,7 @@ export function EntryChatPage() {
     /* The card and the summary read the same state, so what she said ticks both at once (setup page
        review: the card stayed "0 of 4 set" after "Weekly, on Thursdays, with no end. Call it New
        accounts.", when the engine's own extraction missed it). Her change on the summary stands. */
-    if (said.cadence && !cadenceChangedOnTheSummary.current) { setCadence(said.cadence); setCadenceChosen(true) }
+    if (said.cadence && !cadenceChangedOnTheSummary.current) { setCadence(said.cadence); setCadenceChosen(true); keepTheRhythm({ cadence: said.cadence, cadenceChosen: true }) }
     if (said.name && (!useEntryStore.getState().groundName.trim() || useEntryStore.getState().groundName === 'Entry session')) setGroundName(said.name)
     if (said.workingDays && !daysChangedOnTheSummary.current) { daysAreTheDailyDefault.current = false; setWorkingDays(said.workingDays); keepTheSchedule({ workingDays: said.workingDays }) }
     if (!endChangedOnTheSummary.current) {
@@ -2086,6 +2087,13 @@ export function EntryChatPage() {
       // then lock" must survive a refresh. (closed was saved but never restored,
       // so ended sessions reopened editable.)
       if (saved.closed) setClosed(true)
+      /* Her setup conversation comes back whichever step she left at. Restored only while setup was open, a lead who came back to
+         the save card saved with none of her own words, so her setup was read from nothing and the target she gave never became a
+         target (Drop Access and RHEA Soil, 22 November). */
+      if ((saved as any).onboardingHistory) {
+        setOnboardingHistory((saved as any).onboardingHistory)
+        setOnboardingReady((saved as any).onboardingReady ?? false)
+      }
       const step = saved.onboardingStep ?? 0
       // The lead path legitimately has an empty history (the coordinator has no
       // check-in), so it must not fall back into onboarding on reload.
@@ -2104,11 +2112,6 @@ export function EntryChatPage() {
       } else if (step > 0) {
         setPhase('onboarding')
         setOnboardingStep(step)
-        // Restore onboarding history from session if present
-        if ((saved as any).onboardingHistory) {
-          setOnboardingHistory((saved as any).onboardingHistory)
-          setOnboardingReady((saved as any).onboardingReady ?? false)
-        }
       }
   }
 
@@ -2236,8 +2239,21 @@ export function EntryChatPage() {
     } catch { /* best effort, like every other save on this page */ }
   }
 
+  /*
+   * AND THE RHYTHM, THE SAME WAY (release test, 21 November 2026, bug 1). "Weekly" said in the chat set the panel to "Every week", and a
+   * reload put back "Not set yet": the save that follows a reply is made from the closure the reply was sent from, which still held the
+   * rhythm from before. What was just heard or chosen is written into the kept setup at once, with its own values.
+   */
+  function keepTheRhythm(patch: { cadence?: string; cadenceChosen?: boolean; sessions?: number; plannedFrom?: { timelineDays: number; cadence: string } | null; groundName?: string }) {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      saveSession({ ...JSON.parse(raw), ...patch })
+    } catch { /* best effort, like every other save on this page */ }
+  }
+
   function persistOnboarding(h: Turn[], sels: OnboardingSelections, step: number, obHistory?: Turn[], obReady?: boolean) {
-    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, schedule: theScheduleSoFar(), teamText: teamTextNow.current, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
+    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, schedule: theScheduleSoFar(), teamText: teamTextNow.current, onboardingHistory: obHistory ?? onboardingHistory, onboardingReady: obHistory !== undefined ? (obReady ?? false) : onboardingReady } as any)
   }
 
   /*
@@ -2248,8 +2264,10 @@ export function EntryChatPage() {
    * check-in starts erased the plan somebody had just agreed to. Seen live: "6 sessions planned"
    * came back as "1 session planned" after a reload, with the conversation intact above it.
    */
+  /* Her setup conversation is in every save, because `saveSession` writes the record whole: a save without it erased it, and the save
+     then sent none of her words, so the target she gave in setup was never read (Drop Access and RHEA Soil, 22 November). */
   function persistCheckin(h: Turn[], cl = false, rep = '') {
-    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, schedule: theScheduleSoFar(), teamText: teamTextNow.current } as any)
+    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, schedule: theScheduleSoFar(), teamText: teamTextNow.current, onboardingHistory, onboardingReady } as any)
   }
 
   /*
@@ -2691,6 +2709,9 @@ export function EntryChatPage() {
         if (Array.isArray(res.extracted.cadenceDays) && res.extracted.cadenceDays.length >= 2) setCadenceDays(res.extracted.cadenceDays)
         /* "When I end it", as the engine heard it (piece 3a), unless she already set an end on the summary. */
         if (res.extracted.runsUntilEnded === true && !endChangedOnTheSummary.current) { setRunsUntilEnded(true); setEndChosen(true); keepTheSchedule({ runsUntilEnded: true, endChosen: true }) }
+        /* The end she named ("200 traders by March"), as the engine read it, unless she set one on the summary: the check-ins run to it
+           (release test, 22 November 2026, bug 7: "by March" got the situation's 30 days, four check-ins over 21 days). */
+        else if (/^\d{4}-\d{2}-\d{2}$/.test(res.extracted.endsOn ?? '') && !endChangedOnTheSummary.current) { setRunsUntilEnded(false); setLastCheckInBy(res.extracted.endsOn!); setEndChosen(true); keepTheSchedule({ runsUntilEnded: false, lastCheckInBy: res.extracted.endsOn, endChosen: true }) }
         /* Walk fault 5: the day she named for the check-ins ("every Monday"), unless she already chose
            one on the day picker. Without it the day came from the start date, which was a Sunday. */
         {
@@ -2713,6 +2734,15 @@ export function EntryChatPage() {
       }
       setOnboardingReady(res.ready)
       persistOnboarding([], onboardingSelections, onboardingStep, updatedHistory, res.ready)
+      if (res.extracted) {
+        const heard = res.extracted
+        const planned = heard.timelineDays && heard.timelineDays > 0 ? plannedSessionsFor(heard.timelineDays, heard.cadence ?? cadence, undefined, heard?.cadenceDays) : null
+        keepTheRhythm({
+          ...(heard.cadence ? { cadence: heard.cadence, cadenceChosen: true } : {}),
+          ...(planned != null ? { sessions: planned, plannedFrom: { timelineDays: heard.timelineDays!, cadence: heard.cadence ?? cadence } } : {}),
+          ...(heard.name && (!groundName.trim() || groundName === 'Entry session') ? { groundName: heard.name } : {}),
+        })
+      }
       /*
        * THE ANCHOR HAS NO FORK AND NO SECOND CONVERSATION (request 165, "the rest of the anchor's
        * walk"). Every other situation reaches `ready` and then asks who does the check-ins - "I set
@@ -3480,9 +3510,12 @@ export function EntryChatPage() {
    * field will become.
    */
   function theDefaultGroundName(): string {
+    /* The people named in the chat, else the people added under "Who's in it" by name: a new hire added there is who the check-in is
+       about, so it is "Kwame, first 90 days", not the situation's own label (Hafsah's pane test and release test, 21 November 2026). */
+    const named = onboardingSelections.peopleNamed?.length ? onboardingSelections.peopleNamed : inviteAdded.map((e) => (displayNames[e] ?? '').trim()).filter(Boolean)
     return effectiveFallbackGroundName(
       theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario,
-      onboardingSelections.peopleNamed,
+      named,
       `${onboardingSelections.initial ?? ''} ${onboardingSelections.brief ?? ''}`,
       orgName.trim() || user?.organization?.name || undefined,
     )
@@ -4464,7 +4497,7 @@ export function EntryChatPage() {
             <div className="gwui-ec-savecard-eyebrow">
               {skippedCheckin
                 ? 'This is check-in 1. You set the context here.'
-                : hasAnswered ? 'This is check-in 1. It is your private report.' : 'This will be check-in 1. It will be your private report.'}
+                : hasAnswered ? 'This is check-in 1.' : 'This will be check-in 1.'}
             </div>
             <div className="gwui-ec-savecard-title">{groundName || (hasAnswered ? 'What you said is on record.' : 'Nothing is on record yet.')}</div>
             <div className="gwui-ec-savecard-venn-row">
@@ -4472,7 +4505,8 @@ export function EntryChatPage() {
               <div className="gwui-ec-savecard-venn-text">
                 {skippedCheckin
                   ? <>You did the first check-in; after this one, only the people you invite check in. Once everyone has checked in, a <b>shared report</b> shows where they agree and where they differ.</>
-                  : <>This individual report is private to you. Once everyone has checked in, a separate <b>shared report</b> shows where everyone agrees and where they differ.</>}
+                  /* No privacy note here (the standards: "no privacy notes in messages or screens"; Hafsah's pane test, 21 November 2026). */
+                  : <>Once everyone has checked in, a <b>shared report</b> shows where everyone agrees and where they differ.</>}
               </div>
             </div>
             {history.filter(m => m.role === 'user').length > 0 && !reportFailed && (() => {
@@ -4606,7 +4640,7 @@ export function EntryChatPage() {
                 <TheSetup
                   cadence={cadence}
                   cadenceChosen={cadenceChosen}
-                  onCadence={(c) => { cadenceChangedOnTheSummary.current = true; setCadence(c); setCadenceChosen(true) }}
+                  onCadence={(c) => { cadenceChangedOnTheSummary.current = true; setCadence(c); setCadenceChosen(true); keepTheRhythm({ cadence: c, cadenceChosen: true }) }}
                   anchorDay={cadenceAnchorDay}
                   onAnchorDay={(d) => { setCadenceAnchorDay(d); keepTheSchedule({ cadenceAnchorDay: d }) }}
                   workingDays={workingDays}
@@ -4723,7 +4757,8 @@ export function EntryChatPage() {
                 <TextField type="text" autoComplete="name" placeholder="Your name" aria-label="Your name" value={yourName} onChange={e => { setYourName(e.target.value); setNameError('') }}
                   className={`gwui-ec-savecard-field ${nameError ? 'gwui-ec-savecard-field-error' : ''}`}
                 />
-                {nameError && <div className="gwui-ec-savecard-error">{nameError}</div>}
+                {/* Said before Save, not only after it (coordinator, release test, 21 November 2026): the name is needed, so the field says why from the start. */}
+                {nameError ? <div className="gwui-ec-savecard-error">{nameError}</div> : !yourName.trim() && <div className="gwui-ec-savecard-helper">{WRITE_YOUR_NAME}</div>}
                 <TextField type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
                   className={`gwui-ec-savecard-field ${emailError ? 'gwui-ec-savecard-field-error' : ''}`}
                 />

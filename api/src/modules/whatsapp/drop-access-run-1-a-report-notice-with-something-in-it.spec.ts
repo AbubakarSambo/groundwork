@@ -79,6 +79,6 @@ describe("Grace's first WhatsApp message", () => {
     expect(s.posted).toHaveLength(1);
     expect(s.posted[0].template.name).toBe('groundwork_first_contact');
     const [org, words] = s.posted[0].template.components[0].parameters.map((p: any) => p.text);
-    expect(`This is Groundwork, writing for ${org}. ${words} Not you? Reply STOP.`).toBe('This is Groundwork, writing for Drop Access (test). Good morning Grace. Here is today\'s summary of your check-ins. These need you. Joseph is waiting on you for a decision on the KES 4,500 price for Juja Hardware since Wednesday 14 October. You can open your board for the full picture here http://localhost:5195/today If you would rather not hear from us here again today, reply "not now". Not you? Reply STOP.');
+    expect(`This is Groundwork, writing for ${org}. ${words} Not you? Reply STOP.`).toBe('This is Groundwork, writing for Drop Access (test). Good morning Grace. Here is today\'s summary of your check-ins. Needs you today: Joseph is waiting on you for a decision on the KES 4,500 price for Juja Hardware since Wednesday 14 October. You can open your board for the full picture here http://localhost:5195/today If you would rather not hear from us here again today, reply "not now". Not you? Reply STOP.');
   });
 });

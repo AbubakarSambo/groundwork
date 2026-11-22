@@ -1,3 +1,4 @@
+import { aDaySaidInFull } from '../board/a-day-said-in-full';
 import { recordTheStrategy } from '../subjects/the-strategy-over-time';
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { DraftParticipantState } from '@prisma/client';
@@ -114,7 +115,7 @@ export class DraftsService {
     const proposed = f === 'measure' ? draft.proposedMeasure
       : f === 'target' ? draft.proposedTarget
       : f === 'title' ? draft.workingTitle
-      : draft.proposedDueDate?.toDateString() ?? null;
+      : (draft.proposedDueDate ? aDaySaidInFull(draft.proposedDueDate) : null);
     if (proposed) positions.push({ personExternalId: draft.initiatorExternalId, body: proposed });
 
     const others = await this.prisma.draftContribution.findMany({

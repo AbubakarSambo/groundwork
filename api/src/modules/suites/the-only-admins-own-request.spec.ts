@@ -12,7 +12,8 @@ const ORG = 'org';
 function bed(otherAdmins: number, suite: 'leave' | 'spend') {
   const prisma: any = {
     organizationSuite: { findUnique: jest.fn(async ({ where }: any) => (where.organizationId_suite.suite === suite ? { isOn: true, answers: { days: 21, approver: 'An admin' } } : null)) },
-    organizationMembership: { findUnique: jest.fn(async () => ({ role: 'ADMIN' })) },
+    /* Admins are counted by their membership, the role every board reads (who-may-decide.ts, nobodyElseCanDecide); this fixture counted the account's own role. */
+    organizationMembership: { findUnique: jest.fn(async () => ({ role: 'ADMIN' })), count: jest.fn(async () => otherAdmins) },
     person: { findFirst: jest.fn(async () => ({ linkedUserId: 'u-grace', externalId: 'p-grace', department: null, managerExternalId: null, active: true })), findMany: jest.fn(async () => []) },
     user: { count: jest.fn(async () => otherAdmins), findMany: jest.fn(async () => []) },
     leaveRequest: { create: jest.fn(async () => ({ id: 'r1' })), findMany: jest.fn(async () => []) },

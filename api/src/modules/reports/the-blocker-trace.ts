@@ -69,18 +69,25 @@ export interface TheTraceForThisReader {
   mayReadAStepBy: (groundId: string, personId: string | null) => boolean;
 }
 
+/** Whether this reader may read one step, said in one check-in by one person: THE RULES above, for a stored step or a wait with no chain yet. */
+export function mayReadAStep(
+  step: { groundId: string; personId: string | null },
+  mayOpen: Map<string, ACheckInTheReaderMayOpen>,
+  reader: { userId: string; role?: string | null },
+): boolean {
+  const g = mayOpen.get(step.groundId);
+  if (!g || !(g.label ?? '').trim()) return false;
+  const runsIt = (!!g.initiatorId && g.initiatorId === reader.userId) || (reader.role === 'ADMIN' && !g.readersParticipantId);
+  if (runsIt || peersAreNamedOn(g as any, { participantId: g.readersParticipantId })) return true;
+  return !!g.readersParticipantId && step.personId === g.readersParticipantId;
+}
+
 export function theTraceForThisReader(
   trace: AStoredTrace,
   mayOpen: Map<string, ACheckInTheReaderMayOpen>,
   reader: { userId: string; role?: string | null },
 ): TheTraceForThisReader | null {
-  const mayRead = (s: AStoredStep): boolean => {
-    const g = mayOpen.get(s.groundId);
-    if (!g || !(g.label ?? '').trim()) return false;
-    const runsIt = (!!g.initiatorId && g.initiatorId === reader.userId) || (reader.role === 'ADMIN' && !g.readersParticipantId);
-    if (runsIt || peersAreNamedOn(g as any, { participantId: g.readersParticipantId })) return true;
-    return !!g.readersParticipantId && s.personId === g.readersParticipantId;
-  };
+  const mayRead = (s: AStoredStep): boolean => mayReadAStep(s, mayOpen, reader);
   const steps = Array.isArray(trace.steps) ? trace.steps : [];
   if (steps.length < 2) return null;
   if (!mayRead(steps[steps.length - 1])) return null;
@@ -108,4 +115,18 @@ export function whichTeamItIsWaitingOn(
   if (!anchor?.waitingOnGroundId || !hiddenGroundIds.includes(anchor.waitingOnGroundId)) return null;
   const team = !anchor.onParticipantId ? anArticleSaidMidSentence((anchor.onLabel ?? '').trim().replace(/[.\s]+$/, '')) : '';
   return `This is waiting on ${team || 'another team'} since ${dayInWords(new Date(anchor.createdAt))}.`;
+}
+
+/**
+ * A WAIT ON SOMEBODY OUTSIDE THIS CHECK-IN THAT NO CHAIN FOLLOWS YET (release test 22 November, bug 24). Amani waits on Baraka for the
+ * delivery schedule, and Baraka has said nothing about it in a check-in, so no chain was written and the page said "Nothing on record
+ * follows a blocker here back to another team yet." while the board showed the wait. The record holds where it starts: this wait, said
+ * here, on that person or team, since that day. It is served as that, and says the record goes no further.
+ */
+export function whereAWaitStandsWithNoChain(
+  wait: { onLabel?: string | null; createdAt: Date | string },
+  dayInWords: (d: Date) => string,
+): string {
+  const on = anArticleSaidMidSentence((wait.onLabel ?? '').trim().replace(/[.\s]+$/, '')) || 'another team';
+  return `This is waiting on ${on} since ${dayInWords(new Date(wait.createdAt))}, and nothing on record follows it further yet.`;
 }

@@ -27,8 +27,9 @@ describe('the request the assessment sends the model', () => {
     expect(json.match(/"aboutWhom"/g)).toHaveLength(1);
     expect(json.match(/"wellbeing"/g)).toHaveLength(1);
     expect(json.match(/"cannotBeTrue"/g)).toHaveLength(1);
-    /* It was 306 fields with the three marks on every item; it is 215 with them said once. */
-    expect(sizeOf(THE_ASSESSMENT_SCHEMA.input_schema)).toBeLessThanOrEqual(220);
+    /* It was 306 fields with the three marks on every item; it is 215 with them said once. 222 since 22 November: a goal the lead changes
+       carries the goals it replaces, why, and whether that stops the work (90da721ea), proven with the real model on the bed. */
+    expect(sizeOf(THE_ASSESSMENT_SCHEMA.input_schema)).toBeLessThanOrEqual(225);
   });
 
   it('reads the marks back onto their items, so who may see a line and what cannot be true are read as before', () => {
@@ -116,7 +117,7 @@ describe('what each page says while the read is still to come', () => {
     const now = whereASessionsReportStands({ report: null, finishedAt: new Date(), readIsStillToCome: true });
     expect(now.state).toBe('being-read');
     expect(now.says).toBe('Groundwork is still working out the report for this check-in. What you said is below, and the report will appear here when it is ready.');
-    expect(whereASessionsReportStands({ report: null, finishedAt: new Date() }).says).toBe('No report was kept for this check-in. What you said is below.');
+    expect(whereASessionsReportStands({ report: null, finishedAt: new Date() }).says).toBe('There is no report for this check-in yet. What you said is below.');
   });
 
   it('the lead\'s morning says the team target is being worked out, and only says there is none when it is true', () => {

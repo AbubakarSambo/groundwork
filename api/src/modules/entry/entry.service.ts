@@ -1,3 +1,4 @@
+import { theSessionANewcomerStartsIn } from '../grounds/the-session-a-person-is-on';
 import { REFERENCES_AND_RESOURCES, PEOPLE_AND_SETUP } from '../../common/the-tab-names';
 import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
 import { notTheLeadHerself, herSetupWordsAsATurn, howSheDescribesHerself, aLineThatDescribesNothing } from './the-lead-is-you-in-her-report';
@@ -1187,7 +1188,7 @@ Rules:
     );
 
     // Second lightweight call to extract structured fields
-    const EXTRACT_SYSTEM = `You are extracting structured data from an onboarding conversation for Groundwork.
+    const EXTRACT_SYSTEM = `You are extracting structured data from an onboarding conversation for Groundwork. Today is ${new Date().toISOString().slice(0, 10)}.
 
 From the conversation history, extract whatever you can. Return only what has been clearly stated.
 
@@ -1227,7 +1228,8 @@ Fields:
 - cadence: how often they check in, IF they said. One of "DAILY", "WEEKLY", "FORTNIGHTLY", "MONTHLY", "ONE_TIME". Map their own words: "daily", "every day", "every working day" or "each day" -> DAILY; "weekly" or "every week" -> WEEKLY; "every two weeks", "fortnightly", "every other week" -> FORTNIGHTLY; "monthly" or "once a month" -> MONTHLY; "just once", "a single check-in" -> ONE_TIME. Only words about how often THIS CHECK-IN happens count: "I own the weekly review" or "our monthly target" names another meeting or a number, not the check-in's rhythm, and never changes a rhythm they already gave. Omit it entirely if they did not say.
 - cadenceDays: ONLY when they said the check-in happens more than once a week on days they named ("twice a week, on Monday and Thursday", "Mondays and Thursdays"): those weekdays as numbers, 0 is Sunday and 6 is Saturday, with cadence "WEEKLY". Omit it for once a week, or when they named no days.
 - runsUntilEnded: true ONLY if they said it runs until they end it themselves ("when I end it", "until I stop it", "no end date"). Then leave timelineDays out.
-- timelineDays: how long the whole period runs, in days, IF they said. "90 days" or "three months" -> 90; "60 days" -> 60; "a quarter" -> 90; "two weeks" -> 14; "three weeks" -> 21; "a month" -> 30. Omit if they did not say.
+- timelineDays: how long the whole period runs, in days, IF they said. "90 days" or "three months" -> 90; "60 days" -> 60; "a quarter" -> 90; "two weeks" -> 14; "three weeks" -> 21; "a month" -> 30. Omit if they did not say. A goal or milestone inside the period is not its length: "by day 30 he should know the routes", "in his first month he shadows Tobi" or "settled in within two weeks" say what should be true by then, not when the check-in ends, so they give no timelineDays.
+- endsOn: the day the whole period ends, as YYYY-MM-DD, IF they named when it ends rather than how long it runs: "200 traders trained by March" -> the last day of March, "until 30 December" -> that day. A milestone inside it ("by day 30") is not when it ends. Omit if they did not say.
 
 Only include a field if it has been clearly communicated. Omit fields that are still unknown.
 Never guess a cadence or a duration. Somebody who did not mention how often, or for how long,
@@ -1282,7 +1284,8 @@ from finishing at all.`;
           // sessions they asked for. Their words were recorded correctly in the
           // brief and then dropped on the way to the enum.
           cadence: { type: 'string', enum: ['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ONE_TIME'] },
-          timelineDays: { type: 'number' },
+          timelineDays: { type: 'number', description: 'How long the whole period runs, in days, only if they said its length. Never a milestone inside it.' },
+          endsOn: { type: 'string', description: 'The day the whole period ends, YYYY-MM-DD, only if they named when it ends.' },
           cadenceDays: { type: 'array', items: { type: 'integer', minimum: 0, maximum: 6 } },
           runsUntilEnded: { type: 'boolean' },
         },
@@ -1304,7 +1307,7 @@ from finishing at all.`;
       },
     };
 
-    let extracted: { mode?: string; initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[]; brief?: string; cadence?: string; cadenceDays?: number[]; timelineDays?: number; runsUntilEnded?: boolean; yourRole?: string } = {};
+    let extracted: { mode?: string; initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[]; brief?: string; cadence?: string; cadenceDays?: number[]; timelineDays?: number; endsOn?: string; runsUntilEnded?: boolean; yourRole?: string } = {};
     /* Kept out of the try so a failed reply still fails the turn; a failed extraction is logged below. */
     const extractionInFlight: Promise<typeof extracted | null | Error> = (async () =>
       this.anthropic.extract<typeof extracted>(
@@ -2710,7 +2713,7 @@ from finishing at all.`;
      * still records, because with zero contributors the count is the same either way. The only
      * change is that the question is asked once the party is known.
      */
-    await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber);
+    await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber, checkIn.participantId);
 
     // Zero contributors = a deliberate solo/broadcast start: the initiator
     // completing session 1 is the whole party, so the ground goes ACTIVE.
@@ -3146,7 +3149,7 @@ from finishing at all.`;
       });
       if (!checkIn) {
         checkIn = await tx.checkIn.create({
-          data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+          data: { groundId: ground.id, participantId: participant.id, sessionNumber: await theSessionANewcomerStartsIn(tx, ground.id), status: CheckInStatus.NOT_STARTED },
         });
       }
       return { user, checkIn };

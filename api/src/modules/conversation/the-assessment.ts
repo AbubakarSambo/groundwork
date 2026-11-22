@@ -276,8 +276,10 @@ export function whoMaySee(section: string, item?: { wellbeing?: unknown; aboutWh
 export function anAimHeldByAnotherPerson(t: { whose?: unknown; target?: unknown }, speaker: string | null | undefined): boolean {
   const whose = String(t?.whose ?? '').trim().split(/\s+/)[0]?.toLowerCase() ?? '';
   const me = String(speaker ?? '').trim().split(/\s+/)[0]?.toLowerCase() ?? '';
-  /* One with a number keeps the road it always had: the targets set for a person, which the owner rules already carry. */
-  return !!whose && whose !== 'the' && whose !== me && typeof t.target !== 'number';
+  /* One with a number too (22 November): a number the lead gives a named person is that person's target, written once, with its owner, by
+     the targets she sets for each person (readTheAimsAndExpectations). Kept here as well, it was a second, ownerless "Amani sells 10
+     freezers a week." beside Amani's own "Sell 10 freezers a week", so the board counted the same target twice. */
+  return !!whose && whose !== 'the' && whose !== me;
 }
 
 /**
@@ -338,6 +340,7 @@ export const THE_ASSESSMENT_PROMPT = [
   '  - observations: what you noticed, as facts and never as judgements: a vague answer, a question they avoided, signs of overload. Quote their words.',
   '  - comparedWithLastTime (only when a previous assessment or open promises are given; facts only): promisesDue has one item for EACH open promise on the record, with its id in `previousItem`, saying what happened to it (kept; not kept, only when their own words say it was not done, which includes a promise whose day has passed that they now promise again for later; not mentioned, which includes "I have nothing more on that" and anything that does not say what happened; or still open, in progress or given a new date before its day passed) and `happened` by the rules below; `dayPassed` is true when the day they gave for it is before the day of this conversation; figures that changed with both values and the date of the earlier one, work that moved or did not, blockers new, still there or cleared, anything repeated and how many times, and where what they said disagrees with the record or with someone else. Use the previous item\'s id in `previousItem` where there is one.',
   '  - stillOpen: what is still open, to ask next time.',
+  '  - saidBack: one entry for each item of this person\'s own about their work (work, claims, promises, numbers, dates, decisions, blockers, targets), as it will be read back to them at the end so they can check it. `words` is the item\'s words, copied exactly from the item. `says` is one whole, plain sentence to them, using "you", that says what was recorded: who, what, the number with what it counts, and the day, by name, as far as they said it, and true to how sure it is ("one verbal agreement", never "signed" for that). Never quote a fragment of their words, never join pieces with commas, and never write "which I recorded as".',
   '  - everythingElse: everything else they said, so nothing falls through.',
   '  - aboutTheLead: only for somebody who is not the lead. Each thing they say against the person who leads this check-in. That is how that person treats them, leads them, speaks to them or behaves. Read it by its meaning, in any words or language. A wait on the lead for a piece of work is not one, and nor is a fair disagreement about the work. Copy their words exactly. Never mention any of it in the summary.',
   '',
@@ -409,6 +412,18 @@ export const THE_ASSESSMENT_SCHEMA = {
           required: ['words'],
         },
       },
+      saidBack: {
+        type: 'array',
+        description: 'Each of this person\'s own items about their work, said back to them as one whole plain sentence, for them to check at the end.',
+        items: {
+          type: 'object',
+          properties: {
+            words: { type: 'string', description: 'The words of the item, copied exactly from the item.' },
+            says: { type: 'string', description: 'One whole plain sentence to them, using "you", saying what was recorded.' },
+          },
+          required: ['words', 'says'],
+        },
+      },
       workUpdates: anItem({ work: S('The piece of work.'), area: S('Its area.'), stage: S('Its stage.'), value: S('Its value, with the unit.'), dates: S('Its dates, as said.'), nextStep: S('The next step.'), nextStepDay: S('The day of the next step, as said.'), nextStepOwner: S('Who owns the next step.') }),
       claims: anItem({ claim: S('What they say is true or done.'), proof: { type: 'string', enum: ['proved', 'said'] }, proofIs: S('What the proof is.'), needsProof: { type: 'boolean', description: 'True when it is something done or true that proof could show; false for something not done, a plan or a feeling.' }, proofAsked: { type: 'boolean', description: 'True when Groundwork asked for proof of it, or they said they would send it.' }, previousItem: S('The id of the same claim in their previous assessment.') }),
       promises: anItem({
@@ -421,7 +436,7 @@ export const THE_ASSESSMENT_SCHEMA = {
       dates: anItem({ when: S('The date, as said.'), what: S('What it is for.') }),
       decisions: anItem({ decision: S('The decision.'), state: { type: 'string', enum: ['made', 'waiting'] }, whoDecides: S('Who decides.') }),
       blockers: anItem({
-        what: S('What they wait for, reading after the word "for".'), namedTheThing: { type: 'boolean' }, onName: S('The person waited on.'),
+        what: S('What they wait for, reading after the word "for", without who they wait on (that is onName or onLabel): "the delivery schedule for Kilimani Fresh", never "an answer from Baraka about the delivery schedule".'), namedTheThing: { type: 'boolean' }, onName: S('The person waited on.'),
         onLabel: S('What is waited on when not a person.'), status: { type: 'string', enum: ['BLOCKING', 'WAITING', 'CLEARED'] },
         then: S('What happens once it clears.'), previousItem: S('The id of the same wait in their previous assessment.'), triedSaid: S('What they said they already did, their words.'), takenFurther: { type: 'boolean', description: 'True only when they say they took it above the person it was with, or round them. Asking again or chasing is false.' }, dueSaid: S('When it is due, their words.'), since: S('Since when, as said.'), sinceDay: S('The day it started, YYYY-MM-DD, from their words and the day of the conversation.'),
       }),
@@ -456,7 +471,7 @@ export const THE_ASSESSMENT_SCHEMA = {
           disagreements: anItem({ what: S('What they said.'), otherSays: S('What the record or someone else says.') }),
         },
       },
-      targets: anItem({ aim: S('The aim as one plain, full sentence about whoever holds it, by first name, or "The team".'), target: { type: ['number', 'null'], description: 'The number aimed at, only where they said one.' }, unit: S('What it counts.'), by: S('By when, in their words.'), whose: S('Whose aim: a first name, or "The team".'), reportsWhatIsDone: { type: 'boolean', description: 'True when the number is what they say they have already done or got ("I sold 24 last week"), reported against an aim, and not a number they are aiming at.' } }),
+      targets: anItem({ aim: S('The aim as one plain, full sentence about whoever holds it, by first name, or "The team".'), target: { type: ['number', 'null'], description: 'The number aimed at, only where they said one.' }, unit: S('What it counts.'), by: S('By when, in their words.'), whose: S('Whose aim: a first name, or "The team".'), reportsWhatIsDone: { type: 'boolean', description: 'True when the number is what they say they have already done or got ("I sold 24 last week"), reported against an aim, and not a number they are aiming at.' }, replaces: { type: 'array', items: { type: 'string' }, description: 'Only where the lead changed goals listed under THE GOALS ON RECORD and said yes to the change: the ids of the goals this aim takes the place of.' }, because: S('Why the goal changed, in their words, where it replaces goals on record.'), stopsTheWork: { type: 'boolean', description: 'True where the reason for the change stops the work itself (a stock-out, a closed road).' } }),
       stillOpen: anItem({ question: S('What to ask next time.') }),
       everythingElse: anItem({ what: S('What it is about.') }),
       aboutTheLead: anItem({ what: S('What they say against the person who leads this check-in, in plain words.') }),
@@ -506,6 +521,8 @@ export interface TheMaterial {
   on?: string | null;
   givenRole: string | null;
   priorities: string[];
+  /** For the lead only: every goal on record with its id, so a goal she changes is named by its id (a-goal-changed-by-its-lead). */
+  goalsOnRecord?: { id: string; name: string; target: number | null }[];
   /** Every turn in order; person turns carry their number. */
   turns: { role: 'person' | 'groundwork'; content: string; n?: number }[];
   /** Setup's words, numbered first, and what setup was given beside them (the lead's notes on each person, the timing). */
@@ -532,6 +549,7 @@ export function theMaterialAsText(m: TheMaterial): string {
   if (m.on) out.push(`The day of the conversation: ${m.on}.`);
   out.push(`The role they were given: ${m.givenRole ?? 'not known'}.`);
   if (m.priorities.length) out.push('', 'THE TEAM\'S PRIORITIES:', ...m.priorities.map((p) => `  - ${p}`));
+  if (m.goalsOnRecord?.length) out.push('', 'THE GOALS ON RECORD (only the lead can change these):', ...m.goalsOnRecord.map((g) => `  [${g.id}] ${g.name}${typeof g.target === 'number' ? `, ${g.target}` : ''}`));
   if (m.setup) {
     out.push('', 'SETUP MATERIAL (the lead setting this check-in up):');
     for (const w of m.setup.words) out.push(...(w.asked ? [`(Groundwork had asked: ${w.asked.slice(-300)})`] : []), `[${w.n}] THE LEAD, IN SETUP: ${w.content}`);
@@ -621,9 +639,12 @@ export type TheReadParts = Pick<TheAssessment, AnItemSection | 'setup' | 'compar
  * are put on every item (in any section) whose words are those, so nothing downstream knows they were said apart.
  */
 export function withTheMarksOnTheItems(answer: any): any {
-  const marks = Array.isArray(answer?.marks) ? (answer.marks as any[]).filter((m) => m && typeof m.words === 'string' && m.words.trim()) : [];
+  const listed = (k: string) => (Array.isArray(answer?.[k]) ? (answer[k] as any[]).filter((m) => m && typeof m.words === 'string' && m.words.trim()) : []);
+  /* The sentence each item is read back in (the-read-back.ts) is put on its item the same way, as `saidBack`. */
+  const marks = [...listed('marks'), ...listed('saidBack').filter((m) => typeof m.says === 'string' && m.says.trim()).map((m) => ({ words: m.words, saidBack: m.says.trim() }))];
   if (!marks.length) return answer;
-  const byWords = new Map<string, any>(marks.map((m) => [squash(m.words), m]));
+  const byWords = new Map<string, any>();
+  for (const m of marks) byWords.set(squash(m.words), { ...byWords.get(squash(m.words)), ...m });
   const mark = (items: any): any => (Array.isArray(items)
     ? items.map((it) => {
       const m = it && typeof it.words === 'string' ? byWords.get(squash(it.words)) : null;
@@ -634,7 +655,7 @@ export function withTheMarksOnTheItems(answer: any): any {
     : items);
   const out: any = { ...answer };
   for (const k of Object.keys(out)) {
-    if (k === 'marks') continue;
+    if (k === 'marks' || k === 'saidBack') continue;
     if (Array.isArray(out[k])) out[k] = mark(out[k]);
     else if (out[k] && typeof out[k] === 'object') out[k] = Object.fromEntries(Object.entries(out[k]).map(([kk, v]) => [kk, mark(v)]));
   }

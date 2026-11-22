@@ -1,5 +1,5 @@
 import { rules, text, type Reply } from './a-reply-is-a-payload-not-a-string';
-import { NO_DOCUMENTS_TO_READ, NOT_IN_THE_DOCUMENTS } from './a-question-is-answered-from-the-documents';
+import { askCouldNotFindIt } from './a-question-is-answered-from-the-documents';
 
 /**
  * WHEN ASK DOES NOT KNOW WHAT WAS MEANT, ON A PHONE (Fatima round 1, issue I-01).
@@ -41,7 +41,9 @@ export function aPhoneReplyMadeSafe(raw: unknown): string | null {
 export function theRulesDidNotKnow(reply: Reply): 'did-not-place' | 'not-found' | null {
   if (reply.lane === 'unplaced') return 'did-not-place';
   const first = reply.blocks[0];
-  if (reply.lane === 'answer_from_documents' && first?.type === 'text' && (first.body === NO_DOCUMENTS_TO_READ || first.body === NOT_IN_THE_DOCUMENTS)) return 'not-found';
+  /* Every way Ask says it could not find it ends the same (askCouldNotFindIt), the model's own reason included: "Who is off next week?" on WhatsApp was told to
+     "add a file with Choose a file" (release test of 21 November 2026, Ask #41). */
+  if (reply.lane === 'answer_from_documents' && first?.type === 'text' && askCouldNotFindIt(first.body ?? '')) return 'not-found';
   return null;
 }
 

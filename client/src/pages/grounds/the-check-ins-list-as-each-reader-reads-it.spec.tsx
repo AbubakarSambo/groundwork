@@ -51,6 +51,8 @@ const LEADERSHIP = {
   id: 'g-lead', label: 'Leadership, Q3', status: 'ACTIVE', initiatorId: 'u-amani', scenario: 'OKR_ALIGNMENT', cadence: 'WEEKLY', cadenceAnchorDay: 3,
   participants: [p('p-am', 'u-amani', 'Amani', 'Njoroge', 'INITIATOR'), p('p-h3', 'u-h', 'Hafsah', 'Jumare')],
   checkIns: [{ participantId: 'p-h3', sessionNumber: 4, status: 'NOT_STARTED', availableFrom: ago(2) }],
+  /* Her turn, as the server serves it on the row (yourTurnIn, what-needs-you.ts): the list no longer guesses it from the rows. */
+  yourTurn: { checkInId: 'c-h3-4', sessionNumber: 4, openedAt: ago(2) },
   glance: { progress: { roundsDone: 3, roundsPlanned: 12, answeredThisRound: 0, ofPeople: 2 } },
   theCount: aServedCount({ 4: { on: ['p-am', 'p-h3'], answered: [] } }, { session: 4, says: 'Nobody has checked in yet; you and Amani haven’t started yet.' }),
 }
@@ -200,7 +202,7 @@ describe('small cases, said as sentences', () => {
     expect(r.also).toBe('It needs a second person for a shared report.')
   })
   it('a round of yours past its date says how long ago it opened, not a mark against you', () => {
-    const r = howARowReads({ ...LEADERSHIP, checkIns: [{ participantId: 'p-h3', sessionNumber: 4, status: 'NOT_STARTED', availableFrom: ago(24 * 9) }] }, 'u-h', NOW)
+    const r = howARowReads({ ...LEADERSHIP, checkIns: [{ participantId: 'p-h3', sessionNumber: 4, status: 'NOT_STARTED', availableFrom: ago(24 * 9) }], yourTurn: { checkInId: 'c-h3-4', sessionNumber: 4, openedAt: ago(24 * 9) } } as any, 'u-h', NOW)
     expect(r.needs).toEqual({ text: 'Your turn', tone: 'action' })
     expect(r.stands).toBe('It opened 9 days ago')
   })

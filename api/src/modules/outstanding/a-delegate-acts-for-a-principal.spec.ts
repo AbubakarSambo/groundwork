@@ -23,8 +23,8 @@ describe('naming somebody to act for you is done by talking, said back first, an
     expect(await o.says('u-fatima', 'yes')).toBe('Done. Amina Yusuf can now act for you. To end it, tell me that Amina Yusuf can no longer act for you.');
     expect(o.tables.delegate.rows).toHaveLength(1);
     expect(o.tables.delegate.rows[0]).toMatchObject({ principalUserId: 'u-fatima', delegateEmail: 'amina@example.com', createdVia: 'chat', revokedAt: null });
-    /* Created with the grant: the principal never asked for the two standing jobs by form. */
-    expect(o.tables.persistentJob.rows.map((j: any) => j.title).sort()).toEqual(['2026 annual report and presentation', '2026 outstanding matters and 2027 carry-forward register']);
+    /* Changed 22 November 2026 (release test of 21 November, Ask #71): asking Ask, or letting somebody act for you, never makes the two standing jobs. Only an admin adding a senior person does (executive-onboarding/onboard-an-executive.ts), so a lead who names an assistant is never sent a year-end report. */
+    expect(o.tables.persistentJob.rows).toEqual([]);
   });
 
   it('a no leaves everything as it was', async () => {
@@ -103,14 +103,20 @@ describe('what a delegate reads is what the principal could read, and never more
     expect(await o.says('u-fatima', 'What is outstanding?')).toContain('Think about my own retirement date. You have it.');
   });
 
-  it('the register is built for a delegate without the list at all, not with it taken out afterwards', async () => {
+  /*
+   * Changed on 22 November 2026, by Hafsah's decision ("great do you recommendation"): what Fatima or her assistant forwards is read into
+   * Fatima's own list, and only she and her assistant see it. So the delegate's register now asks her list for the forwarded items only, in
+   * the query itself, and still never reads the rest of her list. Before, it asked her list for nothing at all (spy not called).
+   */
+  it('the register is built for a delegate without her private list at all, not with it taken out afterwards: only what was forwarded is asked for', async () => {
     const o = await withAmina();
+    await o.prisma.todo.create({ data: { id: 't-forwarded', organizationId: ORG, personExternalId: 'p-fatima', text: 'Reply to the Ministry on the Kano visit', dueSaid: null, dueAt: null, state: 'OPEN', source: 'forward', createdAt: NOW, doneAt: null } });
     const spy = jest.spyOn(o.prisma.todo, 'findMany');
-    await buildTheRegister(o.prisma, { organizationId: ORG, principalUserId: 'u-fatima', now: NOW, forADelegate: true });
-    expect(spy).not.toHaveBeenCalled();
     const reg = await buildTheRegister(o.prisma, { organizationId: ORG, principalUserId: 'u-fatima', now: NOW, forADelegate: true });
-    expect(reg.rows.flatMap((r) => r.sources.map((s) => s.kind))).not.toContain('todo');
+    for (const [args] of spy.mock.calls as any[]) expect(args.where.source).toBe('forward');
+    expect(reg.rows.flatMap((r) => r.sources.filter((s) => s.kind === 'todo').map((s) => s.id))).toEqual(['t-forwarded']);
     expect(whatIsOutstandingSaid(reg, { forName: 'Fatima', now: NOW })).not.toContain('retirement');
+    expect(whatIsOutstandingSaid(reg, { forName: 'Fatima', now: NOW })).toContain('Reply to the Ministry on the Kano visit');
   });
 
   it('a delegate of Fatima reads nothing of what Tunde runs, even when asking by his name', async () => {

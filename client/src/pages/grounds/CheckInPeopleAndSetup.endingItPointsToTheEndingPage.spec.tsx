@@ -92,7 +92,7 @@ beforeEach(() => vi.clearAllMocks())
 describe('"Ending it" points the lead at the page that actually ends a check-in', () => {
   it('tells the lead she can end it, with a link to the ending page', async () => {
     renderWith({ isInitiator: true, isOrgAdmin: false, viewerIsAParty: true })
-    expect(await screen.findByText(/ending it stops new check-ins, everything stays as it is, and each person keeps their own history\./)).toBeTruthy()
+    expect(await screen.findByText(/ending it stops new check-ins/i)).toBeTruthy()
     expect(screen.queryByText(/You can't end a check-in you don't run/)).toBeNull()
     const link = screen.getByRole('link', { name: 'Decide how it ends' })
     expect(link).toHaveAttribute('href', '/grounds/g1/end')

@@ -9,6 +9,7 @@ describe('the people on a check-in’s row', () => {
       id: 'g', label: 'Sales team, Q3', initiatorId: 'u-lead', cadence: 'DAILY', workingDays: [1, 2, 3, 4, 5],
       participants: [{ id: 'p-lead', userId: 'u-lead', partyType: 'INITIATOR', managingOnly: true }, ...people],
     } as any, 'u-lead')
-    expect(row.about.startsWith('6 people. Daily, weekdays.')).toBe(true)
+    /* The schedule is said by the check-in's one wording now (howOftenItRuns: "Every weekday, Monday to Friday."), not "Daily, weekdays." (changed 22 November 2026); the count is what this tests. */
+    expect(row.about).toBe('6 people. Every weekday, Monday to Friday.')
   })
 })

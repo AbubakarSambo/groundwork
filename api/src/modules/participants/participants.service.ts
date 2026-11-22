@@ -1,3 +1,4 @@
+import { theSessionANewcomerStartsIn } from '../grounds/the-session-a-person-is-on';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { sessionClaims } from '../auth/a-session-token';
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
@@ -530,7 +531,7 @@ export class ParticipantsService {
       if (!everCompleted) {
         this.logger.warn(`accept: participant ${participant.id} had no session-1 check-in on ground ${ground.id}; creating one`);
         checkIn = await this.prisma.checkIn.create({
-          data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+          data: { groundId: ground.id, participantId: participant.id, sessionNumber: await theSessionANewcomerStartsIn(this.prisma, ground.id), status: CheckInStatus.NOT_STARTED },
         });
       }
     }

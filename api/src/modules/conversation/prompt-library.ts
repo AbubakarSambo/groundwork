@@ -1951,6 +1951,16 @@ export const READ_THE_AIMS = `   One item per aim, keeping what they said it is 
    are genuinely different stay as two.
 
    Only what they actually said it is for. If they never said, return an empty list.
+
+   A GOAL THE LEAD CHANGED IS THAT GOAL, NOT A NEW ONE. Where THE GOALS ON RECORD are listed, the lead can
+   change them: "freezers are out of stock, so the goal this week is a waitlist of 50 names". When she
+   changes a goal and says yes once Groundwork has said the change back (or asks for it plainly and agrees
+   when it is put to her), the new aim carries:
+   - replaces: the ids of every goal on record it takes the place of. Ten freezers a week for each of two
+     people is two ids, both replaced by the one waitlist.
+   - because: why it changed, in her words, as one plain sentence ("Freezers are out of stock until next month.").
+   - stopsTheWork: true where that reason stops the work itself (a stock-out, a closed road, a broken machine).
+   Leave replaces out for an aim that sits beside the goals on record, and for a change she has not agreed to.
 `;
 
 export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING this check-in, capture two things. What the check-in as a whole is aiming at is read by the conversation's assessment, not here.
@@ -2790,13 +2800,15 @@ const OKR_ALIGNMENT_PACK = `MOMENT: Setting goals and keeping track of how the w
 
 PURPOSE: Get the goals and the numbers down, with an owner and a date on each, so there is something real to track against. Then, session by session, find out how it is actually going and where somebody needs support.
 
+THE GOALS ARE SET ONCE. Everything from OPENING to WHAT WOULD TELL THEM IT IS DONE is for a person whose goals are not on record yet, usually their first check-in. Once a goal, its number or its owner is on record, or they have just told you, it is settled: never ask for it again, in this check-in or a later one, and never go back to asking what they are trying to achieve. Read what is on record and what they have just said before every question.
+
 OPENING: Ask what they are trying to achieve this period, in their own words. Two or three is usually enough and it is a suggestion, never a limit: somebody with five real goals has five, and cutting them off to fit a number is the product deciding what their work is. Do not ask them to recite anybody else's goals back.
 
 THE NUMBER, AND THIS IS THE ONE THAT MATTERS: for each goal, ask what the number is and by when. "500 contracts by the end of the year." A goal with no number cannot be tracked, and tracking is what they came for. If they genuinely have no number, say that plainly and move on - do not press a third time.
 
 WHO CARRIES IT: ask who each goal belongs to, and where a total splits across people, what each person's share is. "150 each" said about three people is three numbers, not one.
 
-HAVE THEY BEEN TOLD, AND THIS IS NOT OPTIONAL: the moment a number has somebody's name on it, ask whether that person has been told. Ask it plainly - "does Nadia know that is her number yet?" - and ask it once per person, not once per goal.
+HAVE THEY BEEN TOLD, AND THIS IS NOT OPTIONAL: the moment a number has the name of somebody on the team on it, ask whether that person has been told. It is about people on the team only, never a customer, a shop or another organisation. Ask it plainly - "does Nadia know that is her number yet?" - and ask it once per person, not once per goal.
 
 Somebody is about to be measured against a figure. If they have never seen it, every session after this reads their work against a standard nobody showed them, which is the one thing this product exists not to do. It also tends to be the most useful thing in the session: read live, a lead set two numbers, had told neither person, and said so the moment she was asked.
 
@@ -2804,7 +2816,7 @@ Both answers are real. "Not yet" is recorded as it is and is never a failing: it
 
 WHAT WOULD TELL THEM IT IS DONE: one question, concrete. What will exist at the end that would tell them, and anyone else looking, that this was met.
 
-HOW IT IS GOING, from the second check-in onwards: what has moved since last time, what is in the way, and what they need from somebody else. This is the whole point of the scenario and most of the sessions are this.
+HOW IT IS GOING, from the second check-in onwards: what has moved since last time, what is in the way, and what they need from somebody else. This is the whole point of the scenario and most of the sessions are this. Start from what they have just told you and follow it: when they name a number, a wait or an offer, your next question is about that, not a general one about their work. A wait on another team, or a shortage another team controls, is part of their work and of this check-in: ask who it waits on, what was asked for and by when, never that it is not theirs to solve.
 
 THE WIDER PICTURE, AND IT IS OPTIONAL: if it comes up naturally, ask what this sits under in the organisation. Ask ONCE. If they do not know, or say it is not what they need, leave it and note it as open. It is a useful thing to have and it is not what this check-in is for.
 
@@ -3707,7 +3719,10 @@ export interface PromptContext {
    * do not know it keep the existing behaviour.
    */
   moment?: GroundMoment | null;
+  /** The team's session: where the run stands. */
   sessionNumber: number;
+  /** Which of this person's own conversations it is (theirOwnSessionNumber): 1 for somebody added in session 3. The team's session when not given. */
+  theirOwnSession?: number;
   totalSessions?: number;
   roleAsDescribed?: string | null;
   otherPartyCheckedIn: boolean;
@@ -3741,7 +3756,7 @@ export interface PromptContext {
    * against that, which is how a person could be pressed for specifics about the wrong thing - and
    * why a report could read somebody against a number nobody had shown either of them.
    */
-  objectives?: { name: string; target: number | null }[];
+  objectives?: { name: string; target: number | null; changed?: string | null }[];
   priorContext?: string | null;
   priorSession?: string | null;
   resolutionState?: string | null;
@@ -3988,8 +4003,25 @@ function selectPathwayNumber(
   }
 }
 
+/**
+ * THE SITUATION'S GUIDE, GIVEN AS A GUIDE (release test, 22 November 2026, bug N3). Every pack is written as labelled notes for the model
+ * ("MOMENT: Setting goals and keeping track of how the work is going. PURPOSE: ..."), and it was given bare, straight after "open with one
+ * sentence that names what this ground is for". So the model took the pack's first line as that sentence, label and all, and Sade read
+ * "Moment: Setting goals and keeping track of how the work is going." The pack is now handed over as what it is: notes for the model, whose
+ * labels are never said. One wrapper, used wherever a pack reaches a model (the conversation and the session's planner), and it holds for a
+ * pack stored as a PromptVersion row as much as for one in this file.
+ */
+export function theSituationsGuide(pack: string): string {
+  const p = String(pack ?? '').trim();
+  return p
+    ? `THE GUIDE TO THIS SITUATION. These are notes for you, not words to say. The capital-letter labels in them, such as MOMENT, PURPOSE and OPENING, name the parts of the notes and are never said to the person. Say what you need from them in your own plain words.\n\n${p}`
+    : '';
+}
+
 function buildActivePathway(ctx: PromptContext): string {
-  const { scenario, partyType, sessionNumber, lowSpecificityMultiDim } = ctx;
+  const { scenario, partyType, lowSpecificityMultiDim } = ctx;
+  /* How this person's conversation opens is about their own conversations; the stage of the run is the team's. */
+  const sessionNumber = ctx.theirOwnSession ?? ctx.sessionNumber;
   const relHistory = resolveRelationshipHistory(scenario, ctx.relationshipHistory);
 
   /*
@@ -4008,8 +4040,8 @@ function buildActivePathway(ctx: PromptContext): string {
    * sessions keep their continuity opening - that block carries the PRIOR_SESSION mechanics and
    * nothing here replaces it - and the pack follows underneath as what the conversation is about.
    */
-  const pack = ctx.scenarioPackOverride
-    ?? buildScenarioPackForParty(scenario, partyType, ctx.moment, whichStage(sessionNumber, ctx.totalSessions));
+  const pack = theSituationsGuide(ctx.scenarioPackOverride
+    ?? buildScenarioPackForParty(scenario, partyType, ctx.moment, whichStage(ctx.sessionNumber, ctx.totalSessions)) ?? '');
 
   /* The continuity block leads, because it sets the opening. The pack says what to talk about. */
   const withTheScenarioUnderneath = (continuity: string): string =>
@@ -4396,12 +4428,21 @@ export function buildIntakeBlock(ctx: PromptContext): string {
           (ctx.objectives ?? [])
             .map((o) => {
               const name = (o.name ?? '').trim();
-              if (/[.!?]$/.test(name)) return o.target != null && !/\d/.test(name) ? `${name} The number is ${o.target.toLocaleString('en-US')}.` : name;
-              return o.target != null ? `${name} (target ${o.target.toLocaleString('en-US')})` : name;
+              const changed = o.changed ? ` ${o.changed}` : '';
+              if (/[.!?]$/.test(name)) return (o.target != null && !/\d/.test(name) ? `${name} The number is ${o.target.toLocaleString('en-US')}.` : name) + changed;
+              return (o.target != null ? `${name} (target ${o.target.toLocaleString('en-US')})` : name) + changed;
             })
             .join((ctx.objectives ?? []).some((o) => /[.!?]$/.test((o.name ?? '').trim())) ? ' ' : '; ')
         : 'none stated'
     }`,
+    /* A goal its lead changed (a-goal-changed-by-its-lead): the team is told and asked about it, in the conversation's own words. */
+    ...((ctx.objectives ?? []).some((o) => o.changed) && ctx.partyType !== PartyType.INITIATOR
+      ? ['A GOAL CHANGED: a goal above says when and why it changed. The person you are talking to may not know yet. Early on, tell them the new goal and why in one plain sentence, then ask how they are doing on it and how they are getting there. Their numbers against the old goal are not asked for any more.']
+      : []),
+    /* Only the lead changes a goal by saying so, and only with her yes (a-goal-changed-by-its-lead). */
+    ...(ctx.partyType === PartyType.INITIATOR && (ctx.objectives ?? []).length
+      ? ['CHANGING A GOAL: the person you are talking to runs this check-in and can change a goal above by saying so, for example because something stops the work. When they do, say back plainly what will change, from which goal to which goal and why, and end that message by asking whether that is right. Change nothing until they say yes. Once they do, tell them it is changed and that each person will be asked about the new goal in their next check-in.']
+      : []),
     /**
      * WHAT THIS PERSON IS WORKING TO, AND WHETHER THEY HAVE EVER SEEN IT.
      *
@@ -5058,7 +5099,7 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
  */
 export const ANCHOR_TO_DOCUMENTS_PROMPT = `You are matching lines taken from what one person said against documents they attached or can see.
 
-A line is BACKED by a document only when the document plainly states the same fact: the same date, the same number, the same named thing, the same event or decision. Close is not backed. A document that talks about the same topic without stating the fact does not back it. When in doubt, it is not backed.
+A line is BACKED by a document only when the document plainly states the same fact: the same date, the same number, the same named thing, the same event or decision. Close is not backed. A document that talks about the same topic without stating the fact does not back it. The document must state ALL of the line: a line about two shops signing is not backed by an order from one of them, a line saying "signed" is not backed by a document that shows only a verbal agreement or a quote, and a line with a number is not backed by a document with a different number. When in doubt, it is not backed.
 
 A line READS DIFFERENTLY in a document when the document states THE SAME FACT with a different value: a different date, number, name or outcome for the same thing. A worry, a risk or an opinion about a thing is not a statement of it and never reads differently. A document that says who holds something does not contradict a person saying they fear it will drift to them. Report genuine differences separately, quoting the document's words short. Do not decide who is right: the person may be describing a change the document does not have yet.
 
