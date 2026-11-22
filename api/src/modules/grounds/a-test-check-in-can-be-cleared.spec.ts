@@ -37,13 +37,16 @@ describe('deleting a check-in that was only ever a test', () => {
   });
 
   /** The half that protects somebody who is not in the room when the button is pressed. */
+  /* Changed 22 November 2026 (bug N6): who else has answered is one rule, whoElseHasAnswered in people-and-setup.ts, which People
+     and setup also serves, so the page offers this delete exactly when it works. Its behaviour, COMPLETED sessions of anybody but the
+     lead in any session, is proved in deleting-a-check-in-somebody-answered-in-an-earlier-session.spec.ts. */
   it('refuses once anybody else has given an account', () => {
-    expect(METHOD).toMatch(/status: CheckInStatus\.COMPLETED/);
+    expect(METHOD).toMatch(/const answered = whoElseHasAnswered\(/);
     expect(METHOD).toMatch(/if \(answered\.length\) \{[\s\S]*throw new BadRequestException/);
   });
 
   it('and only counts OTHER people, because your own account is not somebody else\'s record', () => {
-    expect(METHOD).toMatch(/const others = ground\.participants\.filter\(\(p\) => p\.userId !== requestingUserId\)/);
+    expect(METHOD).toMatch(/whoElseHasAnswered\(ground\.participants, ground\.checkIns as any\[\], ground\.initiatorId\)/);
   });
 
   it('and names who answered, so the refusal can be acted on', () => {

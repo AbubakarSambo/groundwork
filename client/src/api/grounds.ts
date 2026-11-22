@@ -701,7 +701,7 @@ export type PeopleAndSetup =
   | { on: false }
   | { on: true; view: 'member'; howItRuns: string; yourRole: string; status: string; yourSessionsDone: number; sessionsPlanned: number | null; runsIt: string | null; whoSeesWhat: string }
   | { on: true; view: 'reader'; howItRuns: string; runsIt: string | null }
-  | { on: true; view: 'lead' | 'admin'; howItRuns: string; problems: ASetupProblem[]; sessions: string; teamSessionsDone?: number; yourSessionsDone: number; sessionsPlanned: number | null; joinedWithTheLink: string; kindOfWork: string | null; kindsOffered: string[]; othersWithAccess: string; runsIt: string | null; organisationName: string; roleDescribed: Record<string, boolean>; checkInType?: TheTypeInWhatItIs }
+  | { on: true; view: 'lead' | 'admin'; howItRuns: string; problems: ASetupProblem[]; sessions: string; teamSessionsDone?: number; yourSessionsDone: number; sessionsPlanned: number | null; joinedWithTheLink: string; kindOfWork: string | null; kindsOffered: string[]; othersWithAccess: string; runsIt: string | null; organisationName: string; roleDescribed: Record<string, boolean>; checkInType?: TheTypeInWhatItIs; stillATest?: boolean }
 
 /** References and resources, as the server serves it to this reader (api grounds/references-and-resources.ts). */
 export type AReferenceKind = 'RULE' | 'STAGE_NEEDS' | 'COACHING' | 'RISK' | 'KEY_FACT' | 'PERSON_NOTE' | 'HELP_WITH'

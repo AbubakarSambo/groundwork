@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
+import { groundsApi } from '@/api/grounds'
 
 /**
  * B-152. "Delete this check-in" stayed on screen once somebody else had already answered, even
@@ -84,25 +85,65 @@ function renderWith(over: Record<string, any> = {}) {
   return props
 }
 
-beforeEach(() => vi.clearAllMocks())
+/** What the server serves on People and setup: `stillATest` is its one answer (people-and-setup.ts, whoElseHasAnswered). */
+function served(stillATest: boolean) {
+  return {
+    on: true, view: 'lead', howItRuns: '2 people answer every week, here.', problems: [], sessions: '1 of 12 sessions done.', yourSessionsDone: 0,
+    sessionsPlanned: 12, joinedWithTheLink: 'Nobody has answered with it yet.', kindOfWork: null, kindsOffered: [], othersWithAccess: '',
+    runsIt: 'Amina Wanjiru', organisationName: 'Msingi', roleDescribed: {}, stillATest,
+  }
+}
+
+beforeEach(() => { vi.restoreAllMocks(); vi.clearAllMocks() })
 
 describe('B-152: "Delete this check-in" only while deleting could still work', () => {
+  /* 22 November 2026, bug N6: these cases now say what the server serves, because the page no longer decides from this session's
+     rows. The rows below are kept to prove they no longer decide it. */
   it('is offered before anyone else has answered', async () => {
+    vi.spyOn(groundsApi, 'peopleAndSetup').mockResolvedValue(served(true) as any)
     renderWith({
       isInitiator: true,
       whoIsInThisParties: [{ id: 'p-lead', done: false, isSelf: true }, { id: 'p-a', done: false, isSelf: false }],
     })
-    expect(await screen.findByRole('button', { name: 'Delete this test' })).toBeTruthy()
-  })
+    expect((await screen.findByText('Delete this test', {}, { timeout: 5000 })).closest('button')).toBeTruthy()
+    expect(screen.getByText('Nobody else has answered yet, so this can still be deleted as a test. Otherwise, ending it stops new check-ins, everything stays as it is, and each person keeps their own history.')).toBeTruthy()
+    expect(screen.queryByText('Delete this check-in')).toBeNull()
+  }, 20000)
 
   it('is hidden, with no "Ask us to end it instead", once somebody else has answered', async () => {
+    vi.spyOn(groundsApi, 'peopleAndSetup').mockResolvedValue(served(false) as any)
     renderWith({
       isInitiator: true,
       whoIsInThisParties: [{ id: 'p-lead', done: true, isSelf: true }, { id: 'p-a', done: true, isSelf: false }],
     })
-    await screen.findByRole('link', { name: 'Decide how it ends' })
+    expect(await screen.findByRole('button', { name: 'Delete this check-in' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Delete this test' })).toBeNull()
     expect(screen.getByText(/Ending it stops new check-ins\. Everything stays as it is/)).toBeTruthy()
     expect(screen.queryByText(/Ask us to end it instead/)).toBeNull()
+  })
+
+  /**
+   * BUG N6 (release test 22 November 2026). Baraka ran "Imani Hassan, first ninety days". Imani answered session 1; it was session 2,
+   * and she had not answered that one yet. The page counted only this session, read "Nobody else has answered yet", offered the hard
+   * delete, and the server refused it. The page now reads the server's answer, which counts every session.
+   */
+  it('a team member who answered an earlier session, and not this one, has answered: the lead is offered the delete that keeps the record', async () => {
+    vi.spyOn(groundsApi, 'peopleAndSetup').mockResolvedValue(served(false) as any)
+    renderWith({
+      isInitiator: true,
+      whoIsInThisParties: [{ id: 'p-lead', done: false, isSelf: true }, { id: 'p-imani', done: false, isSelf: false }],
+    })
+    expect(await screen.findByText("People have already answered this check-in, so what they said is kept. You can still delete the check-in, and it will be gone from everyone's lists.")).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Delete this check-in' })).toBeTruthy()
+    expect(screen.queryByText(/Nobody else has answered yet/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Delete this test' })).toBeNull()
+    expect(screen.getByText('Ending it stops new check-ins. Everything stays as it is, and each person keeps their own history. This can’t be undone.')).toBeTruthy()
+  })
+
+  it('before the server has answered, only what keeps the record is offered', async () => {
+    vi.spyOn(groundsApi, 'peopleAndSetup').mockReturnValue(new Promise(() => {}) as any)
+    renderWith({ isInitiator: true, whoIsInThisParties: [] })
+    await screen.findByRole('link', { name: 'Decide how it ends' })
+    expect(screen.queryByRole('button', { name: 'Delete this test' })).toBeNull()
   })
 })
