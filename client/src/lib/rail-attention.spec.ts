@@ -175,7 +175,8 @@ describe('the waiting count is about a session that has opened', () => {
         { participantId: 'c', sessionNumber: 2, status: 'IN_PROGRESS', availableFrom: '2026-09-25T12:00:00Z' },
         { participantId: 'a', sessionNumber: 3, status: 'NOT_STARTED', availableFrom: '2026-10-03T12:00:00Z' },
       ],
-      theCount: aServedCount({ 2: { on: ['a', 'b', 'c'], answered: ['a', 'b'] }, 3: { on: ['a', 'b', 'c'], answered: [] } }),
+      /* The server's one clock names the session (22 November 2026): session 3 has not begun, so it serves session 2, and the rail reads it. */
+      theCount: { ...aServedCount({ 2: { on: ['a', 'b', 'c'], answered: ['a', 'b'] }, 3: { on: ['a', 'b', 'c'], answered: [] } }), session: 2 },
     }
     expect(openRound(g.checkIns, NOW)).toBe(2)
     expect(railAttention(g, 'u-admin', NOW)).toEqual({ kind: 'waiting', done: 2, total: 3 })

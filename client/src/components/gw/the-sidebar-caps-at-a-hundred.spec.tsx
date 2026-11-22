@@ -34,6 +34,8 @@ function aHundredGrounds(waiting: number[] = [2, 5]) {
       checkIns: needsYou
         ? [{ participantId: `p${i}`, sessionNumber: 1, status: 'PENDING', availableFrom: new Date(Date.now() - 86_400_000).toISOString() }]
         : [],
+      /* Your turn is the server's (21 November 2026): the list serves it on each row (yourTurnIn), and the sidebar reads it. */
+      yourTurn: needsYou ? { checkInId: `c${i}`, sessionNumber: 1, openedAt: new Date(Date.now() - 86_400_000).toISOString() } : null,
     })
   }
   return grounds

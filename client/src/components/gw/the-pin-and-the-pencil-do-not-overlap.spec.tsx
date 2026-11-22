@@ -152,7 +152,9 @@ describe('the pin and the rename pencil on a sidebar row', () => {
     qc.setQueryData(['my-waiting'], { waiting: false })
     qc.setQueryData(['grounds'], [
       { id: 'g1', label: 'Coamana growth, Q3 paying customers', status: 'AWAITING_PARTIES', initiatorId: 'u-sahar', participants: [], checkIns: [] },
-      { id: 'g2', label: 'Leadership, Q3', status: 'AWAITING_PARTIES', initiatorId: 'u-x', participants: [{ id: 'p', userId: 'u-sahar' }], checkIns: [{ participantId: 'p', sessionNumber: 1, status: 'IN_PROGRESS' }] },
+      { id: 'g2', label: 'Leadership, Q3', status: 'AWAITING_PARTIES', initiatorId: 'u-x', participants: [{ id: 'p', userId: 'u-sahar' }], checkIns: [{ participantId: 'p', sessionNumber: 1, status: 'IN_PROGRESS' }],
+        /* Your turn is the server's (21 November 2026): the list serves it on the row, and the sidebar reads it. */
+        yourTurn: { checkInId: 'c1', sessionNumber: 1, openedAt: null } },
     ])
     qc.setQueryData(['my-organizations'], [])
     useAuthStore.setState({ user: { id: 'u-sahar', firstName: 'Sahar', lastName: 'Ali', role: 'ADMIN', organizationName: 'Coamana' }, token: 't', isAuthenticated: true } as any)

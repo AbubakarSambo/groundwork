@@ -58,7 +58,8 @@ describe('what this check-in is about', () => {
     expect(shape).toContain('brief: true')
     /* The engine may read more about each objective (it added isADecisionAboutAPerson on 29
        September); what matters here is that these three are read. */
-    expect(shape).toMatch(/objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true[^}]*\}/)
+    /* Since 22 November each objective's id is read too, so a goal its lead changed can be matched to its change. */
+    expect(shape).toMatch(/objectives: \{ select: \{ (id: true, )?name: true, target: true, ownerParticipantId: true[^}]*\}/)
   })
 
   it('is declared on the response the client reads', () => {
