@@ -174,15 +174,13 @@ describe('Wanjiru’s direct morning, Muchemi & Co (test): fee notes and the lit
         'People said different things about the current status of the Kasarani Foods reply, so settle it with them.',
       ] },
       /*
-       * Changed in polish round 15 (a-day-they-checked-in.ts): each working day now counts once, from what happened that day. David answered
-       * nothing on Tuesday 13 and Monday 19 October and answered a day late on Wednesday to Friday. Read by the day, the coaching came after his
-       * Wednesday check-in and two check-ins since got worse, so by Groundwork's own rule it is Wanjiru's now. The old reading counted sessions,
-       * said Friday was not done though he answered that Friday, and never counted Tuesday.
+       * Changed 22 November: David is no longer in "Your team today". The coaching he was given after his Wednesday check-in was "name the
+       * item, what changed and the day", and since run 7 (landed 20 November) it is judged only on that, never on whether he was on time; a
+       * check-in he missed is not proof it failed (fix plan 16 November, group 5). One of his three check-ins up to Wednesday did it, and one of
+       * the two he did since (Thursday) did, so it got better, and the morning does not tell Wanjiru to call him. This spec pinned the rule
+       * from before, where his late Thursday and Friday read as worse.
        */
-      { heading: 'Your team today, in Litigation team daily', lines: [
-        'David did 4 of 6 check-ins, 1 of them on time, and 2 named the item, what changed and the day. Groundwork has coached David on it since Wednesday 14 October, and it has got worse, so call David.',
-      ] },
-    ]);
+        ]);
     expect(theSubject('Wanjiru', [fees!, lit!])).toBe('Wanjiru: KES 850,000 owed, and Nyota Logistics disputes FN-008');
   });
 });

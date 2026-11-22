@@ -119,21 +119,13 @@ describe('Wanjiru reads her teams, Muchemi & Co (test)', () => {
   });
 
   /*
-   * Changed in polish round 15 (a-day-they-checked-in.ts). Each working day now counts once, from what happened that day. David answered
-   * nothing on Tuesday 13 and Monday 19 October, and answered a day late on Wednesday, Thursday and Friday. The old reading counted his
-   * sessions instead, so it said "On Friday 16 October, the check-in was not done" though he answered that Friday, and it never counted
-   * Tuesday. Read by the day, his record showed check-ins falling short on Wednesday evening, so the coaching came after that check-in,
-   * and two check-ins since got worse: by Groundwork's own rule that is a hard conversation, with the evidence beside it.
+   * Changed 22 November: since run 7 (landed 20 November) the coaching "name the item, what changed and the day" is judged only on that, never on being on time, and a check-in he missed is not proof it failed (fix plan 16 November, group 5). One of his three check-ins up to Wednesday did it, and one of the two he did since did, so it got better. So it is coaching, with the evidence, and no longer a hard conversation.
    */
-  it('on the litigation team, David’s check-ins got worse in the two check-ins since his coaching: a hard conversation, with the evidence', async () => {
+  it('on the litigation team, David\'s check-ins got better since his coaching: coaching, with the evidence, not a hard conversation', async () => {
     const t: any = await teamOf('lit');
     const d = personOf(t, 'David');
-    expect(d.whereTheyStand.says).toBe('David needs a hard conversation about check-ins that were missed, late or vague.');
-    expect(d.whereTheyStand.evidence).toEqual([
-      'David did four of six check-ins, one of them on time. Two of them named the item, what changed and the day.',
-      'After David’s check-in on Wednesday 14 October, Groundwork told David “Name the item, what changed and the day, every time.”',
-      'How specific and on time David’s check-ins are has got worse since then.',
-    ]);
+    expect(d.whereTheyStand.says).toBe('David needs coaching on checking in every time, checking in on time and naming the item, what changed and the day.');
+    expect(d.whereTheyStand.evidence).toEqual(['David did four of six check-ins, one of them on time. Two of them named the item, what changed and the day.']);
     expect(d.actions[3].label).toBe('Reassign work');
   });
 });
