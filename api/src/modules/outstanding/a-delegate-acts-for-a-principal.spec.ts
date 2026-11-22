@@ -103,14 +103,20 @@ describe('what a delegate reads is what the principal could read, and never more
     expect(await o.says('u-fatima', 'What is outstanding?')).toContain('Think about my own retirement date. You have it.');
   });
 
-  it('the register is built for a delegate without the list at all, not with it taken out afterwards', async () => {
+  /*
+   * Changed on 22 November 2026, by Hafsah's decision ("great do you recommendation"): what Fatima or her assistant forwards is read into
+   * Fatima's own list, and only she and her assistant see it. So the delegate's register now asks her list for the forwarded items only, in
+   * the query itself, and still never reads the rest of her list. Before, it asked her list for nothing at all (spy not called).
+   */
+  it('the register is built for a delegate without her private list at all, not with it taken out afterwards: only what was forwarded is asked for', async () => {
     const o = await withAmina();
+    await o.prisma.todo.create({ data: { id: 't-forwarded', organizationId: ORG, personExternalId: 'p-fatima', text: 'Reply to the Ministry on the Kano visit', dueSaid: null, dueAt: null, state: 'OPEN', source: 'forward', createdAt: NOW, doneAt: null } });
     const spy = jest.spyOn(o.prisma.todo, 'findMany');
-    await buildTheRegister(o.prisma, { organizationId: ORG, principalUserId: 'u-fatima', now: NOW, forADelegate: true });
-    expect(spy).not.toHaveBeenCalled();
     const reg = await buildTheRegister(o.prisma, { organizationId: ORG, principalUserId: 'u-fatima', now: NOW, forADelegate: true });
-    expect(reg.rows.flatMap((r) => r.sources.map((s) => s.kind))).not.toContain('todo');
+    for (const [args] of spy.mock.calls as any[]) expect(args.where.source).toBe('forward');
+    expect(reg.rows.flatMap((r) => r.sources.filter((s) => s.kind === 'todo').map((s) => s.id))).toEqual(['t-forwarded']);
     expect(whatIsOutstandingSaid(reg, { forName: 'Fatima', now: NOW })).not.toContain('retirement');
+    expect(whatIsOutstandingSaid(reg, { forName: 'Fatima', now: NOW })).toContain('Reply to the Ministry on the Kano visit');
   });
 
   it('a delegate of Fatima reads nothing of what Tunde runs, even when asking by his name', async () => {

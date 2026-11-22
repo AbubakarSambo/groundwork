@@ -53,6 +53,8 @@ import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-the
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { whatThisReaderCallsEachLabel, noStandInLabelAnywhereIn } from '../reports/a-stand-in-label-never-reaches-a-reader';
 import { howManyAnsweredInWords } from '../reports/the-picture-in-plain-sentences';
+import { WHAT_THEY_SAID_OPENS_WHEN_SHARED } from '../reports/the-session-report';
+import { theirNewestWaitingRequest } from '../suites/the-spend-requests-read-elsewhere';
 import { whatSomeoneSaid, checkInsTheyMayRead, latestRounds, I_CANNOT_SHOW_YOU_THAT } from './what-they-said-that-you-may-read';
 import {
   aDelegateGranted, aDelegateLeftAlone, aDelegateRevoked, aDelegateSaidBack, aRevokeLeftAlone, aRevokeSaidBack,
@@ -273,6 +275,9 @@ const THE_CONTEXT_LANES = new Set<string>(['add_context', 'context_line', 'lead_
  * Deliberately generous at the short end - one word is a first name - and strict about length,
  * because the cost of guessing wrong is reading a person's question back to them as a colleague.
  */
+/** A person's name as people write one: one to four words, each starting with a capital ("Zuri", "Nia Odhiambo"). Read by its shape, never by who exists. */
+const A_NAME_AS_WRITTEN = /^\p{Lu}[\p{L}'’.-]*(?:\s+\p{Lu}[\p{L}'’.-]*){0,3}$/u;
+
 export function looksLikeAName(q: string): boolean {
   const t = (q ?? '').trim();
   if (!t || t.length > 60) return false;
@@ -959,6 +964,9 @@ export class AssistantService {
       case 'switch_a_suite':
         return this.switchASuiteByTalking(organizationId, who, userId ?? null, message);
       case 'performance_history':
+        /* One person's history is read by name. A question about the team with nobody named ("Who should I let go?", placed here by the model) is
+           answered from the record, which judges only the people the asker is responsible for (Drop Access, 22 November 2026). */
+        if (userId && !routed.subject?.trim()) return this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, groundId ?? null, message);
         return this.aPersonsHistory(organizationId, userId ?? null, routed.subject ?? '');
       case 'period_report':
         return this.aPeriodReport(organizationId, userId ?? null, message);
@@ -1199,8 +1207,10 @@ export class AssistantService {
           try { served = await this.reports.sessionReport(g.id, round.sessionNumber, userId, organizationId); } catch { continue; }
           for (const row of (Array.isArray(served?.whatEachPersonSaid) ? served.whatEachPersonSaid : []).slice(0, 6)) {
             const said = (Array.isArray(row?.lines) ? row.lines : []).filter((l: unknown) => typeof l === 'string' && l.trim()).slice(0, 3);
-            if (!said.length || typeof row?.who !== 'string') continue;
-            lines.push(`In the check-in ${g.label}, ${row.isYou ? 'you' : row.who} said ${said.map((l: string) => `"${l.trim()}"`).join(' and ')}.`);
+            if (typeof row?.who !== 'string') continue;
+            const inOurWords = typeof row?.saying === 'string' && row.saying !== WHAT_THEY_SAID_OPENS_WHEN_SHARED ? row.saying.trim() : '';
+            if (said.length) lines.push(`In the check-in ${g.label}, ${row.isYou ? 'you' : row.who} said ${said.map((l: string) => `"${l.trim()}"`).join(' and ')}.`);
+            else if (inOurWords) lines.push(`In the check-in ${g.label}, this is what ${row.who} said, in Groundwork's own words. ${inOurWords}`);
           }
         }
       } catch (err: any) {
@@ -2007,11 +2017,7 @@ export class AssistantService {
    */
   private async aFileGoesWithTheRequest(organizationId: string, userId: string): Promise<{ name: string } | null> {
     const since = new Date(Date.now() - 15 * 60_000);
-    const request = await (this.prisma as any).spendRequest?.findFirst?.({
-      where: { organizationId, userId, status: 'waiting', attachedName: null, createdAt: { gte: since } },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true },
-    });
+    const request = await theirNewestWaitingRequest(this.prisma, { organizationId, userId, since });
     if (!request?.id) return null;
     const theirs = await this.prisma.groundParticipant.findMany({ where: { userId, ground: { organizationId } }, select: { id: true } });
     const [doc] = theirs.length ? await this.prisma.groundDocument.findMany({
@@ -2226,9 +2232,7 @@ export class AssistantService {
   /** Where a file could go for this person now: read from their own requests, their role and the suites, never from the screen. */
   private async whereAFileCouldGo(organizationId: string, userId: string, checkIn: { label: string } | null): Promise<WhereAFileCouldGo> {
     const p: any = this.prisma;
-    const waiting = await Promise.resolve(p.spendRequest?.findFirst?.({
-      where: { organizationId, userId, status: 'waiting', attachedName: null }, orderBy: { createdAt: 'desc' }, select: { id: true, amount: true, what: true },
-    })).catch(() => null);
+    const waiting = await theirNewestWaitingRequest(p, { organizationId, userId });
     const currency = waiting && this.spending ? ((await this.spending.checkForChat(organizationId, userId, 1).catch(() => null)) as any)?.currency ?? null : null;
     const report = this.reportsOnRequest ? await this.reportsOnRequest.openRequestOf(organizationId, userId).catch(() => null) : null;
     const desk = mayAddToTheDesk(await this.roleHere(organizationId, userId).catch(() => null));
@@ -4108,12 +4112,10 @@ export class AssistantService {
    */
   private async continueTheDraft(organizationId: string, who: string, message: string, placedOnALane: () => Promise<boolean> = async () => false): Promise<Reply | null> {
     /* A draft that cannot be read is no draft: this must never be the reason a plain message gets no answer. */
-    const open = await Promise.resolve(
-      this.prisma.objectiveDraft?.findFirst({
-        where: { organizationId, initiatorExternalId: who, state: { in: ['DRAFTING', 'CONTESTED'] } },
-        orderBy: { updatedAt: 'desc' },
-      }) ?? null,
-    ).catch(() => null);
+    const open = await (async () => this.prisma.objectiveDraft?.findFirst?.({
+      where: { organizationId, initiatorExternalId: who, state: { in: ['DRAFTING', 'CONTESTED'] } },
+      orderBy: { updatedAt: 'desc' },
+    }) ?? null)().catch(() => null);
     if (!open) return null;
     const next = whatToAskForNext(open);
     if (!next) return null;
@@ -5279,7 +5281,13 @@ export class AssistantService {
       /* An update told to Ask ("sold 12 today") is told where it belongs, never answered as a question about the record (release test, Ask #27). */
       case 'an_update': return rules('an_update', text(await this.whereAnUpdateGoes(organizationId, userId)));
       /* Everything else in the guide is done by its own lane, the one the rules reach too (answerInTheLane). */
-      default: return this.answerInTheLane((GUIDE_BY_KEY.get(key)?.lane ?? key) as Lane, route(message).subject ?? about ?? undefined, organizationId, personId, who, userId, undefined, message);
+      default: {
+        const lane = (GUIDE_BY_KEY.get(key)?.lane ?? key) as Lane;
+        /* One person's history takes a name. What the model says a message is about ("letting someone go") is a name only when it is written as one; otherwise
+           nobody is named, and the question is answered from the record (Drop Access, 22 November 2026). A name that is written, real or not, reads as before. */
+        const about2 = lane === 'performance_history' && about && !A_NAME_AS_WRITTEN.test(about.trim()) ? null : about;
+        return this.answerInTheLane(lane, route(message).subject ?? about2 ?? undefined, organizationId, personId, who, userId, undefined, message);
+      }
     }
   }
   /** The model's draft of a request, read against today and what waits for this reader (a-request-read-by-the-model.ts). Empty without a model. */

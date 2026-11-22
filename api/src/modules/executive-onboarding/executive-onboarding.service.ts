@@ -129,6 +129,7 @@ export class ExecutiveOnboardingService {
       narrate: this.teamLoop ? (facts) => this.teamLoop!.narrate(facts) : undefined,
       theirCheckIn: this.teamLoop ? (a) => this.teamLoop!.theirCheckIn(a) : undefined,
       anUnclearMatter: this.teamLoop ? (texts) => this.teamLoop!.anUnclearMatter(texts) : undefined,
+      whatIsOutstanding: this.teamLoop ? (texts) => this.teamLoop!.whatIsOutstandingIn(texts) : undefined,
     };
   }
 

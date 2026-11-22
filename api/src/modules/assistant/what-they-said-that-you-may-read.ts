@@ -250,8 +250,9 @@ export async function whatSomeoneSaid(
         const named = /^\p{Lu}\p{Ll}+(?:\s+\p{Lu}\p{Ll}+)+$/u.test(f.row.who) && !/^(?:Participant|The)\b/.test(f.row.who) ? f.row.who.split(/\s+/)[0] : f.row.who;
         entry.push(`${named}'s words open to you when the team's report is shared.`);
       } else {
-        entry.push(`I cannot show you ${f.row.who}'s words from ${inIt}.`);
-        if (f.row.saying) entry.push(f.row.saying);
+        /* Groundwork's own sentence where there is one (decision of 22 November 2026): what was said, in our words, not a wall. */
+        if (f.row.saying) entry.push(`Here is what ${f.row.isYou ? 'you' : f.row.who} said in ${inIt}, in my own words.`, f.row.saying);
+        else entry.push(`I cannot show you ${f.row.who}'s words from ${inIt}.`);
       }
       if (f.row.finding) entry.push(`What the report says: ${f.row.finding}`);
     }

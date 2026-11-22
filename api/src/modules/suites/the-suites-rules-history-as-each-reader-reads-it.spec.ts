@@ -69,11 +69,12 @@ describe('Grace, an admin', () => {
       ['Grace changed the answers for leave requests on 2 October.', ['The answer to “How many days of leave does each person have in a year?” changed from 21 to 25.']],
       ['Grace switched on leave requests on 1 October.', [
         'The answer to “How many days of leave does each person have in a year?” was set to 21.',
-        'The answer to “Who approves a request for time off?” was set to Their manager.',
+        /* Changed 22 November 2026: Batch S took the approver question out of leave (who approves is the rules now), so the history says only the
+           answers to the questions leave still asks, and an answer to a question it no longer asks is not kept. */
       ]],
     ]);
-    expect(changes[3].before).toEqual({ isOn: true, answers: { days: 21, approver: 'Their manager' } });
-    expect(changes[3].after).toEqual({ isOn: true, answers: { days: 25, approver: 'Their manager' } });
+    expect(changes[3].before).toEqual({ isOn: true, answers: { days: 21 } });
+    expect(changes[3].after).toEqual({ isOn: true, answers: { days: 25 } });
     expect(changes.every((c) => c.by === 'Grace')).toBe(true);
   });
 });

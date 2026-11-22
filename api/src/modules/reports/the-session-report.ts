@@ -1,5 +1,6 @@
 import { howALineIsKnown, type HowALineIsKnown } from './how-a-line-is-known';
 import { theDifferencesReadAgreesWithTheQuestion } from '../board/the-quick-read-agrees-with-the-report';
+import { theHeaderSays } from '../board/one-count-for-the-sessions';
 import { WHAT_EACH_MARK_SAYS, type AMarkOnALine, type TheMarksOfAReport } from './the-mark-on-every-line';
 import { WHERE_IT_WAS_READ_FROM } from '../conversation/how-checkable-a-session-was';
 import { COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
@@ -697,9 +698,10 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     sessionNumber: input.sessionNumber,
     plannedSessions: input.runsUntilEnded ? null : input.plannedSessions ?? null,
     runsUntilEnded: input.runsUntilEnded === true,
+    /* Where the check-in is in its run, in the one sentence the board's header and the check-in page say it in (theHeaderSays). */
     position: input.runsUntilEnded
-      ? `Check-in ${input.sessionNumber}. It runs until ${input.whoEndsIt ? input.whoEndsIt : 'you'} end${input.whoEndsIt ? 's' : ''} it.`
-      : input.plannedSessions ? `Check-in ${input.sessionNumber} of ${input.plannedSessions}.` : `Check-in ${input.sessionNumber}.`,
+      ? `${theHeaderSays(input.sessionNumber, null, false)} It runs until ${input.whoEndsIt ? input.whoEndsIt : 'you'} end${input.whoEndsIt ? 's' : ''} it.`
+      : theHeaderSays(input.sessionNumber, input.plannedSessions ?? null, false),
     state: input.closed ? 'final' : 'forming',
     confidence,
     whereThingsStand: { agreed, stillOpen, saying: standing, settled, ...(settledMarks ? { settledMarks } : {}), open: theOpenListWithWhatTheRecordHolds, differences: openNow, ...(openMarks ? { openMarks } : {}), openWithReasons },

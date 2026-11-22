@@ -168,3 +168,45 @@ describe('control: an ordinary team check-in (OKR_ALIGNMENT) is unchanged', () =
     expect(JSON.stringify(rowsFor(result))).toContain(THE_COLLEAGUES_WORDS);
   });
 });
+
+/*
+ * HAFSAH'S DECISION, 22 NOVEMBER 2026 ("great do you recommendation"): exact words go only to the people in that check-in. Anybody else, an admin or a
+ * manager, reads what was said in Groundwork's own words. Release test of 21 November, case #45: Grace, an admin in none of Sales Q4, was given three of
+ * Amani's exact quotes by Ask, which reads these same served rows.
+ */
+describe('on an ordinary team check-in, exact words go only to the people in it (22 November 2026)', () => {
+  it('an admin who is not in the check-in reads no one\'s exact words on the report', async () => {
+    const service = makeService(makeGround('OKR_ALIGNMENT'), 'ADMIN');
+    const rows = rowsFor(await service.sessionReport('g1', 1, 'user-admin', 'org-1'));
+    expect(rows.length).toBeGreaterThan(0);
+    expect(JSON.stringify(rows)).not.toContain(THE_COLLEAGUES_WORDS);
+    expect(JSON.stringify(rows)).not.toContain(THE_SUBJECTS_WORDS);
+    for (const r of rows) expect(r.lines).toEqual([]);
+  });
+  it('an admin who is not in the check-in reads the themed sections without anybody\'s words, and each section still says what came up', async () => {
+    const asAdmin: any = await makeService(makeGround('OKR_ALIGNMENT'), 'ADMIN').sessionReport('g1', 1, 'user-admin', 'org-1');
+    const asLead: any = await makeService(makeGround('OKR_ALIGNMENT')).sessionReport('g1', 1, 'user-1', 'org-1');
+    const progress = (r: any) => r.sections.find((x: any) => x.title === 'Progress and priorities');
+    console.log(`THE ADMIN READS\n${JSON.stringify(progress(asAdmin))}\n\nTHE LEAD READS\n${JSON.stringify(progress(asLead))}`);
+    expect(JSON.stringify(asAdmin.sections)).not.toContain(THE_COLLEAGUES_WORDS);
+    expect(JSON.stringify(asAdmin.sections)).not.toContain(THE_SUBJECTS_WORDS);
+    expect(progress(asLead).items.length).toBeGreaterThan(0);
+    expect(progress(asAdmin).saying).toBe(`${progress(asLead).items.length === 1 ? 'One thing' : `${progress(asLead).items.length} things`} came up here in this check-in. What each person said is told in Groundwork's own words under their name.`);
+    expect(JSON.stringify(asLead.sections)).toContain(THE_COLLEAGUES_WORDS);
+  });
+  it('the people in it read the exact words as before: the lead and each person on it', async () => {
+    for (const reader of ['user-1', 'user-2', 'user-3']) {
+      const rows = rowsFor(await makeService(makeGround('OKR_ALIGNMENT')).sessionReport('g1', 1, reader, 'org-1'));
+      expect(JSON.stringify(rows)).toContain(THE_COLLEAGUES_WORDS);
+    }
+  });
+  it('the admin who set it up for its lead runs it, and reads it as the lead does (decision 60 point 4)', async () => {
+    const rows = rowsFor(await makeService(makeGround('OKR_ALIGNMENT', { createdByUserId: 'user-admin' }), 'ADMIN').sessionReport('g1', 1, 'user-admin', 'org-1'));
+    expect(JSON.stringify(rows)).toContain(THE_COLLEAGUES_WORDS);
+  });
+  it('keeps Groundwork\'s own sentence for each person and drops only the lines', async () => {
+    const { whatEachPersonSaidInOurWords } = await import('./colleagues-exact-words-stay-with-the-manager');
+    expect(whatEachPersonSaidInOurWords([{ who: 'Amani', isYou: false, lines: ['AMANI-EXACT'], lineMarks: ['x'], saying: 'Amani says Kilele paid on Monday.', finding: 'Amani has proof for one sale.' }]))
+      .toEqual([{ who: 'Amani', isYou: false, lines: [], saying: 'Amani says Kilele paid on Monday.', finding: 'Amani has proof for one sale.' }]);
+  });
+});

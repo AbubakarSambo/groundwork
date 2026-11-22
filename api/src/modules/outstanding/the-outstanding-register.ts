@@ -231,7 +231,7 @@ export interface BuildArgs {
   organizationId: string;
   principalUserId: string;
   now: Date;
-  /** A delegate never reads the principal's private to-do list. */
+  /** A delegate never reads the principal's private to-do list, only what was put on it from a forward (Hafsah, 22 November 2026). */
   forADelegate: boolean;
   /** What waits for the principal to decide, as the suites already serve it to her. */
   waitingForThePrincipal?: AWaitingForThePrincipal[];
@@ -313,13 +313,17 @@ export async function buildTheRegister(prisma: any, a: BuildArgs): Promise<TheRe
     }
   }
 
-  if (!a.forADelegate) {
+  /*
+   * Her own list. The assistant who acts for her reads only what was put on it from a forward (Hafsah, 22 November 2026: what she or her assistant
+   * forwards is read into her own list, and only she and her assistant see it); the rest of her list stays hers.
+   */
+  {
     const me = await prisma.person.findFirst({ where: { organizationId: a.organizationId, linkedUserId: a.principalUserId }, select: { externalId: true } }).catch(() => null);
     if (me?.externalId) {
-      const todos: any[] = (await prisma.todo.findMany({ where: { organizationId: a.organizationId, personExternalId: me.externalId, state: { in: ['OPEN', 'DONE'] } } })) ?? [];
+      const todos: any[] = (await prisma.todo.findMany({ where: { organizationId: a.organizationId, personExternalId: me.externalId, state: { in: ['OPEN', 'DONE'] }, ...(a.forADelegate ? { source: 'forward' } : {}) } })) ?? [];
       for (const t of todos) {
         raws.push({
-          sourceKind: 'todo', sourceId: t.id, from: 'your own list', text: t.text, action: t.text, owner: 'you', workstream: null,
+          sourceKind: 'todo', sourceId: t.id, from: t.source === 'forward' ? 'what was forwarded' : 'your own list', text: t.text, action: t.text, owner: 'you', workstream: null,
           whenSaid: t.dueSaid ?? null, dueGiven: t.dueAt ?? null, state: t.state, settledBy: null, settledAt: t.doneAt ?? null,
           at: t.createdAt, updatedAt: t.doneAt ?? t.createdAt, external: false, dependency: null, decision: null,
         });

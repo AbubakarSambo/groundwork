@@ -241,7 +241,8 @@ describe('what the board never holds', () => {
       for (const name of readdirSync(d)) {
         const p = join(d, name);
         if (statSync(p).isDirectory()) { if (name !== 'suites') walk(p); }
-        else if (/\.ts$/.test(name) && !/\.spec\.ts$/.test(name) && /\b(spendRequest|teamBudget)\b/.test(strip(readFileSync(p, 'utf8')))) faults.push(p);
+        /* A world a test builds (a-world-for-*.ts) sets up the tables with fakes, and is not product code that could serve them (added 22 November 2026). */
+        else if (/\.ts$/.test(name) && !/\.spec\.ts$/.test(name) && !/^a-world-for-/.test(name) && /\b(spendRequest|teamBudget)\b/.test(strip(readFileSync(p, 'utf8')))) faults.push(p);
       }
     };
     walk(join(__dirname, '..'));

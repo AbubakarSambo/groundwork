@@ -170,7 +170,7 @@ function theOtherPeoplesNames(participants: any[], readerParticipantId: string |
   }
   return [...out];
 }
-import { whatEachPersonSaidForTheSubject, deeplyWithoutColleaguesQuotesForTheSubject, theNewHireReadsTheLeadsWords } from './colleagues-exact-words-stay-with-the-manager';
+import { whatEachPersonSaidForTheSubject, whatEachPersonSaidInOurWords, theSectionsInOurWords, deeplyWithoutColleaguesQuotesForTheSubject, theNewHireReadsTheLeadsWords } from './colleagues-exact-words-stay-with-the-manager';
 import { theTableStaysWithTheEngine } from './the-table-is-for-the-engine';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
@@ -3379,6 +3379,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
        them. NEVER every admin of the organisation, the same access rule decision 58 gave patterns.
        See patterns/who-reads-a-pattern, runsItForAPattern. */
     const evaluationWordsRunsIt = runsItForAPattern(ground as any, requestingUserId);
+    /* Hafsah, 22 November 2026: exact words go only to the people in the check-in. A reader who neither runs it nor is on it reads Groundwork's words. */
+    const readsInOurWords = !isInitiator && !me && !evaluationWordsRunsIt;
     /* THIS SESSION'S picture, released on its own (decision 76, item 4): not the report's first release. */
     const released = isThisSessionReleased(ground.report as any, sessionNumber);
 
@@ -3587,7 +3589,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           isLead: isInitiator || evaluationWordsRunsIt,
           viewerParticipantId: me?.id ?? null,
           participants: ground.participants as any,
-        }) || (isOrgAdmin && !evaluationWordsRunsIt && isEvaluationCheckIn((ground as any).scenario)),
+        }) || readsInOurWords,
         /* The Blockers tile names only the reader's own waits, as the board's header and tile do (ownWaitsOnly). */
         ownWaitsOnly: !!me && !viewerIsLead && !evaluationWordsRunsIt
           && (!this.peersAreNamed(ground as any, me.id) || isEvaluationCheckIn((ground as any).scenario)),
@@ -3800,6 +3802,15 @@ Close the report by framing - neutrally, without recommending one - the choice n
         const leadWho = (leadLabel ? nameByLabel.get(leadLabel) : undefined) ?? aColleague(theLead.id);
         shape.whatEachPersonSaid = (shape.whatEachPersonSaid as any[]).map((row, i) => (!row.isYou && row.who === leadWho ? unwalled[i] : row)) as any;
       }
+    }
+    /*
+     * HAFSAH'S DECISION, 22 NOVEMBER 2026: exact words go only to the people in that check-in. A reader who neither runs it nor is on it, an admin
+     * or a manager, reads what each person said in Groundwork's own words, on every kind of check-in (release test of 21 November, case #45). The
+     * admin who set it up for its lead runs it (decision 60 point 4) and reads it as the lead does. Ask reads the same served rows.
+     */
+    if (readsInOurWords) {
+      shape.whatEachPersonSaid = whatEachPersonSaidInOurWords(shape.whatEachPersonSaid as any[]) as any;
+      shape.sections = theSectionsInOurWords(shape.sections as any[]) as any;
     }
 
     /**
@@ -4414,7 +4425,14 @@ Close the report by framing - neutrally, without recommending one - the choice n
   async rounds(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const served = await this.roundsAsBuilt(groundId, requestingUserId, requestingUserOrgId);
-    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
+    const walled: any = await this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
+    /*
+     * WHAT EACH ROUND LED WITH IS READ FROM THE ROUNDS AS THIS READER IS SERVED THEM (privacy sweep, decision 75 item 14). It was read from the
+     * stored pictures before the wall, so Kwame, in a cohort where people do not see each other, read "One hire (inbound) is closing deals ..."
+     * in `moved` while the same paragraph was taken out of `rounds`. Read from the served rounds, it can say nothing they do not.
+     */
+    if (!Array.isArray(walled?.rounds)) return walled;
+    return { ...walled, moved: howThisHasMoved(walled.rounds.map((r: any) => ({ ...r, round: r.sessionNumber }))).map((m: any) => ({ ...m, says: typeof m.says === 'string' ? notTheWordParty(m.says) : m.says })) };
   }
 
   private async roundsAsBuilt(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
@@ -4484,10 +4502,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
     /* The table calls it sessionNumber and the sequence reads `round`: without this every movement
        came back with no session number, and the page printed "At the end of session undefined"
        (request 59). */
-    const moved = howThisHasMoved(cleaned.map((r: any) => ({ ...r, round: r.sessionNumber }))).map((m: any) => ({
-      ...m,
-      says: typeof m.says === 'string' ? notTheWordParty(m.says) : m.says,
-    }));
     /*
      * WHAT EACH ROUND LED WITH, AS THAT ROUND'S PICTURE SAID IT, FOR EVERY READER. Screens request 66.
      *
@@ -4499,7 +4513,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * every reader of this check-in already reads in `rounds[].sharedPicture`, and its labels are
      * turned into a name, or into "you", for each reader on the way out (whatTheLeadHasNotShared).
      */
-    return { rounds: cleaned, moved };
+    return { rounds: cleaned };
   }
 
   /**

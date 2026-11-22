@@ -138,9 +138,14 @@ describe.each([['a performance plan', 'PIP'], ['a promotion', 'RECOGNITION'], ['
 });
 
 describe('an ordinary team check-in (OKR_ALIGNMENT), as a control', () => {
-  it('is still read by an admin of the organisation who has no other access', async () => {
+  /*
+   * Changed on 22 November 2026, by Hafsah's decision ("great do you recommendation"): exact words go only to the people in the check-in. The admin
+   * still reads this report, as this control says, but in Groundwork's own words: it used to expect the colleague's exact line in it.
+   */
+  it('is still read by an admin of the organisation who has no other access, in Groundwork\'s own words', async () => {
     const service = makeService(makeGround('OKR_ALIGNMENT'), 'ADMIN');
-    const result = await service.sessionReport('g1', 1, 'user-admin', 'org-1');
-    expect(JSON.stringify(result)).toContain(THE_COLLEAGUES_WORDS);
+    const result: any = await service.sessionReport('g1', 1, 'user-admin', 'org-1');
+    expect(result.sections.length).toBeGreaterThan(0);
+    expect(JSON.stringify(result)).not.toContain(THE_COLLEAGUES_WORDS);
   });
 });
