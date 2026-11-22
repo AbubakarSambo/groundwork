@@ -1,10 +1,11 @@
+/* Changed 22 November 2026 (release test): "handoffs" in what a lead reads is work jargon, so the mails say "people are still waiting on two things" and the like; the expectations below follow the new words. */
 import { theWeekOf, theLeadsLetter, theSubjectFor, theCountsOf } from './the-leads-weekly-letter';
 import { whatTheyTriedInFull } from '../grounds/a-wait-is-the-speakers-account';
 
 /**
  * DROP ACCESS RUN 1, ITEMS 17 TO 20: GRACE'S FRIDAY LETTER OF 23 OCTOBER (gw_sweep_drop10), from the run's own rows.
  *
- * What she read (subject "Five things people said they would do were done; 25 handoffs are still waiting"):
+ * What she read (subject "Five things people said they would do were done; people are still waiting on 25 things"):
  *   "This week, all four people checked in. Four people said what they will do next. Five things people said they would do were done.
  *    25 handoffs are still waiting."
  *   "Joseph says the work is waiting on you for a decision on the KES 4,500 price for Juja Hardware. Not backed: no attempt to unblock
@@ -13,7 +14,7 @@ import { whatTheyTriedInFull } from '../grounds/a-wait-is-the-speakers-account';
  *   "Sort out approval on the KES 4,500 price for 5 units. Joseph Kariuki is waiting on you for it."
  *   "Sort out an answer about the KES 4,500 price. Joseph Kariuki is waiting on you for it."
  * Joseph missed sessions 7 and 8 (closed by the clock with nothing said), and he had said "I've asked Grace about the price".
- * And on 16 October the subject was "Ten things people said they would do were done; 14 handoffs are still waiting".
+ * And on 16 October the subject was "Ten things people said they would do were done; people are still waiting on 14 things".
  */
 const NOW = new Date('2026-10-23T14:00:00.046Z');
 const G = { id: 'ffa3b4b1-5ce0-4651-b35b-bf5ecc42d5be', label: 'Sales team, Q4', initiatorId: 'u-grace' };
@@ -69,7 +70,7 @@ describe('item 17: the week counts the check-ins made', () => {
     expect([w.checkInsMade, w.checkInsDue]).toEqual([13, 15]);
     expect(w.missedBy).toEqual([{ name: 'Joseph', missed: 2, of: 5 }]);
     const letter = theLeadsLetter([{ ...w, toDo: THE_REPORTS_TO_DO }])!;
-    expect(letter.lines[1]).toBe('This week, 13 of the 15 check-ins were made. Joseph missed two of five. Four people said what they will do next. Five things people said they would do were done. 25 handoffs are still waiting.');
+    expect(letter.lines[1]).toBe('This week, 13 of the 15 check-ins were made. Joseph missed two of five. Four people said what they will do next. Five things people said they would do were done. People are still waiting on 25 things.');
     expect(letter.lines.join(' ')).not.toContain('all four people checked in');
   });
 });
@@ -89,7 +90,7 @@ describe('item 19: the letter says one decision once', () => {
     expect(all.match(/KES 4,500/g)).toHaveLength(1);
     expect(letter.lines).toEqual([
       'Your team is starting to move.',
-      'This week, 13 of the 15 check-ins were made. Joseph missed two of five. Four people said what they will do next. Five things people said they would do were done. 25 handoffs are still waiting.',
+      'This week, 13 of the 15 check-ins were made. Joseph missed two of five. Four people said what they will do next. Five things people said they would do were done. People are still waiting on 25 things.',
       'Here is what I would do this week.',
       'Sort out a decision on the KES 4,500 price for Juja Hardware. Joseph Kariuki is waiting on you for it.',
     ]);
@@ -100,9 +101,9 @@ describe('item 19: the letter says one decision once', () => {
 describe('item 20: a subject or line never mixes words and digits for its counts', () => {
   it('16 October: "Ten things ...; 14 handoffs" is "10 things ...; 14 handoffs"; 23 October\'s "Five ...; 25" is "5 ...; 25"', () => {
     const base = { groundId: G.id, label: G.label, ofHowMany: 4, checkedIn: 4, notYet: [], saidWhatNext: 4, releaseOne: true };
-    expect(theSubjectFor([{ ...base, done: 10, waiting: 14 }])).toBe('10 things people said they would do were done; 14 handoffs are still waiting');
-    expect(theSubjectFor([{ ...base, done: 5, waiting: 25 }])).toBe('5 things people said they would do were done; 25 handoffs are still waiting');
-    expect(theSubjectFor([{ ...base, done: 4, waiting: 10 }])).toBe('Four things people said they would do were done; ten handoffs are still waiting');
+    expect(theSubjectFor([{ ...base, done: 10, waiting: 14 }])).toBe('10 things people said they would do were done; people are still waiting on 14 things');
+    expect(theSubjectFor([{ ...base, done: 5, waiting: 25 }])).toBe('5 things people said they would do were done; people are still waiting on 25 things');
+    expect(theSubjectFor([{ ...base, done: 4, waiting: 10 }])).toBe('Four things people said they would do were done; people are still waiting on ten things');
     expect(theCountsOf(9, 12)(9)).toBe('9');
   });
 });
@@ -112,12 +113,12 @@ describe('with Release 1\'s switch off for the organisation, the letter reads as
     const w = await theWeekOf(theRecord(false), G, NOW);
     expect(w.releaseOne).toBeUndefined();
     const letter = theLeadsLetter([{ ...w, toDo: THE_REPORTS_TO_DO }])!;
-    expect(letter.lines[1]).toBe('This week, 13 of the 15 check-ins were made. Joseph missed two of five. Four people said what they will do next. Five things people said they would do were done. 25 handoffs are still waiting.');
+    expect(letter.lines[1]).toBe('This week, 13 of the 15 check-ins were made. Joseph missed two of five. Four people said what they will do next. Five things people said they would do were done. People are still waiting on 25 things.');
     /* Changed 3 November (Hafsah, F2: silence is never a finding): "Not backed: no attempt to unblock mentioned" is gone everywhere, switch on or off. */
     expect(letter.lines.join('\n')).not.toMatch(/Not backed|could have messaged/);
   });
   it('a subject says each count as before: "Ten things ...; 14 handoffs"', () => {
     const base = { groundId: G.id, label: G.label, ofHowMany: 4, checkedIn: 4, notYet: [], saidWhatNext: 4 };
-    expect(theSubjectFor([{ ...base, done: 10, waiting: 14 }])).toBe('Ten things people said they would do were done; 14 handoffs are still waiting');
+    expect(theSubjectFor([{ ...base, done: 10, waiting: 14 }])).toBe('Ten things people said they would do were done; people are still waiting on 14 things');
   });
 });

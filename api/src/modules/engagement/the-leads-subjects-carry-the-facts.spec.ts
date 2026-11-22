@@ -1,3 +1,4 @@
+/* Changed 22 November 2026 (release test): "handoffs" in what a lead reads is work jargon, so the mails say "people are still waiting on two things" and the like; the expectations below follow the new words. */
 import { theRanOutOfTimeSubject, theSharedPictureSubject, howManyCheckedIn } from './the-leads-subjects-carry-the-facts';
 import { theFactsOfTheWeek } from '../email/the-leads-weekly-letter';
 import { EmailService } from '../email/email.service';
@@ -34,7 +35,7 @@ describe('"ran out of time"', () => {
 describe('"the shared picture is ready"', () => {
   const week: any = { groundId: 'g', label: 'Sales team, Q4', ofHowMany: 6, checkedIn: 6, notYet: [], saidWhatNext: 3, done: 4, waiting: 2, closedBy: [{ name: 'Abigail', count: 4 }], waitingOn: [{ name: 'James', count: 2 }] };
   it('tells Wairimu what was done and what waits, with names as facts, then that it is ready', () => {
-    expect(theSharedPictureSubject('Sales team, Q4', stood, theFactsOfTheWeek(week))).toBe('Four things people said they would do were done, all by Abigail; two handoffs are still waiting, both on James, and the report for "Sales team, Q4" is ready');
+    expect(theSharedPictureSubject('Sales team, Q4', stood, theFactsOfTheWeek(week))).toBe('Four things people said they would do were done, all by Abigail; people are still waiting on James for two things, and the report for "Sales team, Q4" is ready');
   });
   it('tells everybody else that all of them checked in, with no name', () => {
     expect(theSharedPictureSubject('Sales team, Q4', { ofHowMany: 6, answered: 6, notYet: [] }, null)).toBe('All six people on "Sales team, Q4" have checked in, and the report is ready');

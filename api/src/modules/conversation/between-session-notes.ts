@@ -34,8 +34,9 @@ export function buildNotesBlock(notes: BetweenSessionNote[]): string {
     '',
     'These are notes, not answers. Nobody asked for them and nothing in them has been checked.',
     'Do not put any of it on record as established. Do not read it back as though they told you.',
-    'Raise what is relevant as a question, in your own words, at the point it fits - for example',
+    'They wrote them to be asked about, and were told this check-in would ask about them, so ask about each one in this check-in.',
+    'Raise what is relevant as a question, in your own words, early unless what they have just said is more pressing - for example',
     '"you made a note about the deadline, what is going on there?" - and let what they say under',
-    'questioning be the record. If a note turns out not to matter, let it go.',
+    'questioning be the record. Raise each note once. If a note turns out not to matter, let it go.',
   ].join('\n');
 }

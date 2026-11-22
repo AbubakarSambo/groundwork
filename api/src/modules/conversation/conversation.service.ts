@@ -1691,6 +1691,17 @@ export class ConversationService {
       where: { role: TurnRole.PERSON, checkIn: { participantId: checkIn.participantId }, NOT: { checkInId: checkIn.id } },
       select: { content: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 200,
     }) ?? Promise.resolve([])).then((ts: any[]) => ts.map((t) => ({ text: t.content ?? '', at: t.createdAt }))).catch(() => []);
+    /*
+     * THE NOTES THEY WROTE ARE WORDS THEY WROTE (final run, 22 November 2026, bug 11). Wairimu's opener raised the note she typed under her
+     * finished check-in, and the check below, given only her conversation turns, cut it as a "last time you said" nothing she wrote supports;
+     * the question after it pointed at nothing and became "What has moved since your last check-in?". Her notes are hers, with their day.
+     */
+    if (!fromRecordText) {
+      const notes: any[] = await Promise.resolve((this.prisma as any).participantNote?.findMany?.({
+        where: { participantId: checkIn.participantId }, select: { text: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 50,
+      })).catch(() => []) ?? [];
+      theirEarlier.push(...notes.map((n) => ({ text: String(n.text ?? ''), at: n.createdAt })));
+    }
     const theirOwn = fromRecordText ? { text: quoted.text, changed: false } : aLastTimeInTheirOwnWords(quoted.text, theirEarlier);
     if (theirOwn.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener told them what they said before; now in their own words.`);
     /* An opener never answers its own question for them: "Is that now filed? Understood. What is..." (E7). */
@@ -5149,8 +5160,10 @@ export class ConversationService {
        * null means no session has picked it up yet, so a note is raised once
        * rather than in every session from now on.
        */
+      /* And the ones already carried into this very check-in, on every turn of it (release test, 22 November 2026, bug 11): stamped on the
+         first turn's prompt, a note was in that prompt alone, so the opener's one chance to raise it was the only one. */
       this.prisma.participantNote.findMany({
-        where: { participantId: checkIn.participantId, carriedIntoCheckInId: null },
+        where: { participantId: checkIn.participantId, OR: [{ carriedIntoCheckInId: null }, { carriedIntoCheckInId: checkIn.id }] },
         orderBy: { createdAt: 'asc' },
         select: { id: true, text: true, createdAt: true },
       }),
@@ -5428,7 +5441,7 @@ export class ConversationService {
       // a session would re-raise the same note next time and every time after.
       await this.prisma.participantNote
         .updateMany({
-          where: { id: { in: pendingNotes.map((n) => n.id) } },
+          where: { id: { in: pendingNotes.map((n) => n.id) }, carriedIntoCheckInId: null },
           data: { carriedIntoCheckInId: checkIn.id },
         })
         .catch((e) => this.logger.error(`Could not mark notes carried for check-in ${checkIn.id}: ${e?.message ?? e}`));
@@ -6128,7 +6141,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     ]);
 
     /* Their own words from earlier sessions, for the number-claim cut. Same lifetime as knownForThisTurn. */
-    this.theirEarlierWordsForThisTurn.set(checkIn.id, pastEntries.map((e) => e.text));
+    /* And the notes they wrote for this check-in, which are their own words too (release test, 22 November 2026, bug 11): a turn that raised
+       "you made a note that ..." was cut as a claim nothing they wrote supports. */
+    this.theirEarlierWordsForThisTurn.set(checkIn.id, [...pastEntries.map((e) => e.text), ...pendingNotes.map((n) => String(n.text ?? ''))]);
     this.commitmentsForThisTurn.set(checkIn.id, pastEntries.filter((e) => e.type === 'COMMITMENT').map((e) => e.text));
     /* What the invention gate may treat as already said. See knownForThisTurn. */
     this.knownForThisTurn.set(checkIn.id, [

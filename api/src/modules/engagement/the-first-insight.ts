@@ -71,9 +71,12 @@ export function aTopicQuoted(t: unknown): string | null {
   return x ? `"${x}"` : null;
 }
 
-/* "You", "Your", "We", "They" and the other words that are not names too (messages test, 19 October, finding 8: In "Sales team, Q4", You and the team ...). */
-const LOWER_AFTER_A_COMMA = /^(?:The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its|You|Your|We|They|There|It|Everyone|Nobody|Each|Both|Some|All|No|None|Participants?)\b/;
-const lowerFirstOfAClause = (s: string) => (LOWER_AFTER_A_COMMA.test(s) ? `${s.charAt(0).toLowerCase()}${s.slice(1)}` : s);
+/*
+ * A SENTENCE THE REPORT WROTE IS NEVER PUT AFTER A COMMA (release test, 21 November 2026, bug 38). It was, with a word list deciding which
+ * first words to lower: "In "Sales team, Q4", One participant's count of signed shops..." got through because "One" was not on the list,
+ * and the next new first word would too. The sentence now leads, as written, and the check-in follows it: "..., in "Sales team, Q4"".
+ */
+const withoutItsStop = (s: string) => capital(String(s ?? '').trim().replace(/[.!?]+$/, ''));
 
 /**
  * The first thing open, said as the report says it. The report writes a difference either as a noun phrase ("the unit of measurement for success") or as a
@@ -86,8 +89,7 @@ function firstOpenSaid(label: string, items: string[], capitalised: boolean): st
   const more = items.length - 1;
   const rest = more > 0 ? `, and ${aNumberInWords(more)} more ${more === 1 ? 'difference is' : 'differences are'} still open` : '';
   if (isAWholeSentence(first)) {
-    const clause = lowerFirstOfAClause(first);
-    return capitalised ? `${capital(first)}${rest}.` : `In "${label}", ${clause}${rest}`;
+    return capitalised ? `${capital(first)}${rest}.` : `${withoutItsStop(first)}, in "${label}"${rest}`;
   }
   return `The people in "${label}" differ on "${first}"${rest}${capitalised ? '.' : ''}`;
 }
@@ -119,7 +121,9 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
   const noneNameable = open.length > 0 && isAStandIn(ordered[0]);
   const theCount = (l: string) => `The report for "${l}" found ${aNumberInWords(open.length)} ${open.length === 1 ? 'difference' : 'differences'} still open`;
   if (open.length) lines.push(noneNameable ? `${theCount(name)}.` : firstOpenSaid(name, ordered, true));
-  else lines.push(`Nothing in the report for "${name}" is still open.`);
+  /* What the report holds open is where people see things differently, never the waits: "Nothing ... is still open" sat under "Four
+     handoffs are still waiting" (release test, 22 November 2026, bug 20). So it says which it is. */
+  else lines.push(`The report for "${name}" found nothing that people see differently.`);
   const question = whatEachPersonSaid(String(report?.theConversationWorthHaving ?? '').replace(/\s+/g, ' ').trim());
   /* What the report writes about one finding can say it in all three places; a line that repeats one already in the mail is left out (a-sentence-said-twice.ts). */
   if (question && !lines.some((l) => saysTheSame(l, question))) lines.push(/[.!?]$/.test(question) ? question : `${question}.`);
@@ -148,15 +152,14 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
 }
 
 /**
- * The first thing the served report names as still open, as a clause that follows "found that" or "In "X",": a phrase is "the people differ on "T"" and a
- * sentence is itself with its first word lower case where it is not a name. Null where the report names nothing open.
+ * The first thing the served report names as still open, as a whole sentence: the report's sentence as written, or "The people differ on "T".". Null where the report names nothing open.
  */
 export function theFirstOpenDifference(report: any): string | null {
   if (!report?.whereThingsStand || report?.withheldUntilYouAnswer) return null;
   const open: unknown[] = Array.isArray(report.whereThingsStand.differences) ? report.whereThingsStand.differences : Array.isArray(report.whereThingsStand.open) ? report.whereThingsStand.open : [];
   for (const t of open) {
     const x = anOpenThing(t);
-    if (x && !isAStandIn(x)) return isAWholeSentence(x) ? lowerFirstOfAClause(x) : `the people differ on "${x}"`;
+    if (x && !isAStandIn(x)) return isAWholeSentence(x) ? `${withoutItsStop(x)}.` : `The people differ on "${x}".`;
   }
   return null;
 }

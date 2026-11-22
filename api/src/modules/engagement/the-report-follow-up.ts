@@ -46,24 +46,25 @@ const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 export function theFollowUpWords(firstName: string | null | undefined, label: string, wentOut: Date, c: WhatChangedSinceTheReport) {
   const changed: string[] = [];
   if (c.done > 0) changed.push(`${things(c.done, 'thing people said they would do was', 'things people said they would do were')} done`);
-  if (c.cleared > 0) changed.push(`${things(c.cleared, 'handoff was', 'handoffs were')} cleared`);
+  /* In plain words, never "handoffs" (release test, 22 November 2026). */
+  if (c.cleared > 0) changed.push(`people stopped waiting on ${things(c.cleared, 'thing', 'things')}`);
   const stillThere: string[] = [];
-  if (c.waiting > 0) stillThere.push(`${things(c.waiting, 'handoff is', 'handoffs are')} still waiting`);
+  if (c.waiting > 0) stillThere.push(`people are still waiting on ${things(c.waiting, 'thing', 'things')}`);
   if (c.open > 0) stillThere.push(`${things(c.open, 'thing people said they would do is', 'things people said they would do are')} still open`);
   /* A subject that carries the finding and stays short (under about a hundred characters): counts in words, the check-in's name cut if it is long. */
   const name = cutAtAWord(label, 30);
   const moved = c.done + c.cleared;
   const subject = moved > 0 && c.waiting > 0
-    ? `${capital(things(moved, 'thing', 'things'))} on "${name}" moved after the report, and ${things(c.waiting, 'handoff still waits', 'handoffs still wait')}`
+    ? `${capital(things(moved, 'thing', 'things'))} on "${name}" moved after the report, and people wait on ${things(c.waiting, 'thing', 'things')}`
     : moved > 0
       ? `${capital(things(moved, 'thing', 'things'))} on "${name}" moved after the report went out`
       : c.waiting > 0
-        ? `${capital(things(c.waiting, 'handoff', 'handoffs'))} on "${name}" still ${c.waiting === 1 ? 'waits' : 'wait'}, and nothing has been marked done since the report`
+        ? `People on "${name}" still wait on ${things(c.waiting, 'thing', 'things')}, and nothing has been marked done since the report`
         : `Nothing has been marked done or cleared on "${name}" since the report went out`;
   /* THE FINDING, WHERE THERE IS ONE (engagement spec section 11). The message goes only when no next session has been opened, so no picture has been made since
      and the difference the report found has not been looked at again: that is said as what it is, and not as "still unresolved". */
   const looked = c.difference
-    ? [`The report found that ${c.difference}. No check-in has been held since, so that has not been looked at again.`]
+    ? [`The report found this. ${capital(c.difference.trim().replace(/[.!?]+$/, ''))}. No check-in has been held since, so that has not been looked at again.`]
     : [];
   const lines = [
     `Hello ${firstName?.trim() || 'there'}. The report for "${label}" went out on ${whenItWas(wentOut, 'day')}.`,
@@ -72,7 +73,7 @@ export function theFollowUpWords(firstName: string | null | undefined, label: st
     ...(stillThere.length ? [`${capital(stillThere.join(' and '))}.`] : []),
     theSuggestionSaid(theNextCheckInFor(c)),
   ];
-  return { subject: c.difference ? aSubjectThatFits(`In "${name}", ${c.difference}, and it has not been looked at again`, `In "${name}", a difference the report found has not been looked at again`) : subject, lines, linkLabel: 'See where it stands' };
+  return { subject: c.difference ? aSubjectThatFits(`${capital(c.difference.trim().replace(/[.!?]+$/, ''))}, in "${name}", and it has not been looked at again`, `In "${name}", a difference the report found has not been looked at again`) : subject, lines, linkLabel: 'See where it stands' };
 }
 
 const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;

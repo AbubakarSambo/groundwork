@@ -2790,13 +2790,15 @@ const OKR_ALIGNMENT_PACK = `MOMENT: Setting goals and keeping track of how the w
 
 PURPOSE: Get the goals and the numbers down, with an owner and a date on each, so there is something real to track against. Then, session by session, find out how it is actually going and where somebody needs support.
 
+THE GOALS ARE SET ONCE. Everything from OPENING to WHAT WOULD TELL THEM IT IS DONE is for a person whose goals are not on record yet, usually their first check-in. Once a goal, its number or its owner is on record, or they have just told you, it is settled: never ask for it again, in this check-in or a later one, and never go back to asking what they are trying to achieve. Read what is on record and what they have just said before every question.
+
 OPENING: Ask what they are trying to achieve this period, in their own words. Two or three is usually enough and it is a suggestion, never a limit: somebody with five real goals has five, and cutting them off to fit a number is the product deciding what their work is. Do not ask them to recite anybody else's goals back.
 
 THE NUMBER, AND THIS IS THE ONE THAT MATTERS: for each goal, ask what the number is and by when. "500 contracts by the end of the year." A goal with no number cannot be tracked, and tracking is what they came for. If they genuinely have no number, say that plainly and move on - do not press a third time.
 
 WHO CARRIES IT: ask who each goal belongs to, and where a total splits across people, what each person's share is. "150 each" said about three people is three numbers, not one.
 
-HAVE THEY BEEN TOLD, AND THIS IS NOT OPTIONAL: the moment a number has somebody's name on it, ask whether that person has been told. Ask it plainly - "does Nadia know that is her number yet?" - and ask it once per person, not once per goal.
+HAVE THEY BEEN TOLD, AND THIS IS NOT OPTIONAL: the moment a number has the name of somebody on the team on it, ask whether that person has been told. It is about people on the team only, never a customer, a shop or another organisation. Ask it plainly - "does Nadia know that is her number yet?" - and ask it once per person, not once per goal.
 
 Somebody is about to be measured against a figure. If they have never seen it, every session after this reads their work against a standard nobody showed them, which is the one thing this product exists not to do. It also tends to be the most useful thing in the session: read live, a lead set two numbers, had told neither person, and said so the moment she was asked.
 
@@ -2804,7 +2806,7 @@ Both answers are real. "Not yet" is recorded as it is and is never a failing: it
 
 WHAT WOULD TELL THEM IT IS DONE: one question, concrete. What will exist at the end that would tell them, and anyone else looking, that this was met.
 
-HOW IT IS GOING, from the second check-in onwards: what has moved since last time, what is in the way, and what they need from somebody else. This is the whole point of the scenario and most of the sessions are this.
+HOW IT IS GOING, from the second check-in onwards: what has moved since last time, what is in the way, and what they need from somebody else. This is the whole point of the scenario and most of the sessions are this. Start from what they have just told you and follow it: when they name a number, a wait or an offer, your next question is about that, not a general one about their work. A wait on another team, or a shortage another team controls, is part of their work and of this check-in: ask who it waits on, what was asked for and by when, never that it is not theirs to solve.
 
 THE WIDER PICTURE, AND IT IS OPTIONAL: if it comes up naturally, ask what this sits under in the organisation. Ask ONCE. If they do not know, or say it is not what they need, leave it and note it as open. It is a useful thing to have and it is not what this check-in is for.
 
@@ -5063,7 +5065,7 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
  */
 export const ANCHOR_TO_DOCUMENTS_PROMPT = `You are matching lines taken from what one person said against documents they attached or can see.
 
-A line is BACKED by a document only when the document plainly states the same fact: the same date, the same number, the same named thing, the same event or decision. Close is not backed. A document that talks about the same topic without stating the fact does not back it. When in doubt, it is not backed.
+A line is BACKED by a document only when the document plainly states the same fact: the same date, the same number, the same named thing, the same event or decision. Close is not backed. A document that talks about the same topic without stating the fact does not back it. The document must state ALL of the line: a line about two shops signing is not backed by an order from one of them, a line saying "signed" is not backed by a document that shows only a verbal agreement or a quote, and a line with a number is not backed by a document with a different number. When in doubt, it is not backed.
 
 A line READS DIFFERENTLY in a document when the document states THE SAME FACT with a different value: a different date, number, name or outcome for the same thing. A worry, a risk or an opinion about a thing is not a statement of it and never reads differently. A document that says who holds something does not contradict a person saying they fear it will drift to them. Report genuine differences separately, quoting the document's words short. Do not decide who is right: the person may be describing a change the document does not have yet.
 

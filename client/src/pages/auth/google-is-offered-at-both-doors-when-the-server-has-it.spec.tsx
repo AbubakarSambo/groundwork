@@ -63,7 +63,7 @@ describe('when the server says Google is off', () => {
     expect(screen.queryByRole('button', { name: /Google/ })).toBeNull()
     first.unmount()
     renderAt('/auth?mode=signup')
-    await screen.findByRole('heading', { name: 'Create your account' })
+    await screen.findByRole('heading', { name: 'Sign up to Groundwork' })
     expect(screen.queryByRole('button', { name: /Google/ })).toBeNull()
   })
 })

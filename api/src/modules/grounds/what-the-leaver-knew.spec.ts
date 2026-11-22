@@ -51,7 +51,8 @@ describe('the brief carries what is outstanding, never what anybody said', () =>
      */
     const b = buildHandoverBrief(input(), NOW);
     expect(b.whatIsNotHere).toBe(WHAT_IS_NOT_HERE);
-    expect(WHAT_IS_NOT_HERE).toMatch(/stays theirs/);
+    /* Removed 22 November 2026: the assertion that the sentence says their words "stay theirs" (a privacy note on screen, which Hafsah's
+       standards rule out). That nothing they said reaches the brief is still held by the shape tests above, unchanged. */
     expect(WHAT_IS_NOT_HERE).toMatch(/ask the people/);
   });
 });

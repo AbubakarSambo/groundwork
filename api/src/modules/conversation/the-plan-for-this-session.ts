@@ -228,6 +228,12 @@ export function sayThePlan(plan: ThePlan, turns: ATurnInSession[], forTheOpener:
   });
   const next = covered.notAsked[0];
   if (!forTheOpener) lines.push(next ? `NEXT IN THE PLAN, when the current thread is done: ${next.what}` : 'EVERY PLANNED QUESTION HAS BEEN PUT. Check DONE WHEN, then close.');
+  /*
+   * WHAT THEY SAID DECIDES WHAT IS ANSWERED, NOT THIS LIST (release test, 22 November 2026, bug 9). The marks above are a word match, so an
+   * answer in other words read as not given, and Amani was asked "What specific progress have you made on that main piece?" straight after
+   * "yes I have the signed order form from Mama Njeri", and who and by when straight after she had named Baraka, operations and Friday.
+   */
+  if (!forTheOpener) lines.push('Before you ask any planned question, read what they have said in this session: if it already answers it, in any words, it is answered. Never ask for what they have just told you; ask the next thing it leaves open.');
   if (plan.watchFor.length) lines.push('WATCH FOR, WITH THIS PERSON:', ...plan.watchFor.map((w) => `  - ${w.pattern}${w.ifSeen ? ` -> ${w.ifSeen}` : ''}`));
   if (plan.coachingPath) lines.push(`COACHING PATH: noticed ${plan.coachingPath.noticed}. Toward: ${plan.coachingPath.toward}. This session's move: ${plan.coachingPath.move}`);
   lines.push(`DONE WHEN: ${plan.doneWhen}`);

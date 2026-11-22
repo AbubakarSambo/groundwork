@@ -53,7 +53,7 @@ export const EVERY_SITUATION = {
   keepIt: 'Keep it as it is',
   /** "It starts the conversation with: “…” You can change every word." */
   itStartsWith: (opener: string) => `It starts the conversation with: “${opener}” You can change every word.`,
-  noAccountNeeded: 'You don’t need an account to start. We ask for your email when there’s something worth keeping.',
+  noAccountNeeded: 'You don’t need to sign up to start. We ask for your email when there’s something worth keeping.',
 } as const
 
 /** all-situations.txt: the group headings, in the prototype's order. The keys are the catalogue's. */

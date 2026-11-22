@@ -91,7 +91,8 @@ describe("Grace's morning summary on Thursday 15 October", () => {
   it('from the record alone: the one thing due today, with the customer it is for and the day the wait began', async () => {
     const m = graceMorning();
     await m.run();
-    expect(m.whats[0].context.params[1]).toBe('Joseph promised Mercy the samples for Tuskys today. Mercy has been waiting since Monday 12 October.');
+/* Changed 22 November 2026 (release test, bug 34): the summary speaks with the morning's approved labels, "Needs you today:", "Closing:" and "Your team:", and the phone reads the same words inside the 24 hours as outside. */
+    expect(m.whats[0].context.params[1]).toBe('Closing: Joseph promised Mercy the samples for Tuskys today. Mercy has been waiting since Monday 12 October.');
   });
 
   it('now: all three parts the board has, most important first, and the decision says the customer, the person and the day', async () => {
@@ -99,9 +100,9 @@ describe("Grace's morning summary on Thursday 15 October", () => {
     await m.run();
     const p = m.whats[0].context.params[1];
     expect(p).toBe(
-      'One thing needs you today. Decide on the discount Mama Pima wants on 10 units. Joseph said on Monday 12 October, “Wanjiru is still deciding. She wants a discount.” '
-      + 'Joseph promised Mercy the samples for Tuskys today. Mercy has been waiting since Monday 12 October. '
-      + 'These are risks. 55 more units are needed to reach the target of 120 units. Even if all six open deals close, that is 27 units, 28 short. Upper Hill Offices has no number of units yet.',
+      'Needs you today: Decide on the discount Mama Pima wants on 10 units. Joseph said on Monday 12 October, “Wanjiru is still deciding. She wants a discount.” '
+      + 'Closing: Joseph promised Mercy the samples for Tuskys today. Mercy has been waiting since Monday 12 October. '
+      + 'Your team: 55 more units are needed to reach the target of 120 units. Even if all six open deals close, that is 27 units, 28 short. Upper Hill Offices has no number of units yet.',
     );
     /* Never the vague line the run sent, with no customer, no person and no day. */
     expect(p).not.toContain('A decision on a discount for a potential 10-unit sale is holding up progress');

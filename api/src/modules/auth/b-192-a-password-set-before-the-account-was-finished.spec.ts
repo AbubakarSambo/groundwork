@@ -21,7 +21,7 @@ describe('B-192: signing in before the account was finished', () => {
   it('with the password she set, she is told what is left and the link goes again, new', async () => {
     const { svc, email, pending } = await world();
     await expect(svc.login({ email: 'Halima@Msingi.test', password: 'Halima-Pass-1' } as any)).rejects.toThrow(YOUR_SIGN_UP_IS_NOT_FINISHED);
-    expect(YOUR_SIGN_UP_IS_NOT_FINISHED).toBe('You have not finished creating your account yet. We have emailed you the link again. Open it, say where you work, and then sign in with your password.');
+    expect(YOUR_SIGN_UP_IS_NOT_FINISHED).toBe('You have not finished signing up yet. We have emailed you the link again. Open it, say where you work, and then sign in with your password.');
     expect(email.sendVerificationEmail).toHaveBeenCalledTimes(1);
     expect(email.sendVerificationEmail.mock.calls[0][0]).toBe('halima@msingi.test');
     expect(pending.token).not.toBe('old');

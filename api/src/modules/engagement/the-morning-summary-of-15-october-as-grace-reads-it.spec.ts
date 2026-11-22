@@ -30,7 +30,8 @@ describe('Grace’s morning summary on Thursday 15 October', () => {
   afterAll(() => jest.useRealTimers());
 
   it('M-1, M-2: {{2}} opens with how many things need her, and the answer Joseph waits for names the deal and the price it is against', () => {
-    expect(paragraph.startsWith('Two things need you today. ')).toBe(true);
+/* Changed 22 November 2026 (release test, bug 34): the summary speaks with the morning's approved labels, "Needs you today:", "Closing:" and "Your team:", and the phone reads the same words inside the 24 hours as outside. */
+    expect(paragraph.startsWith('Needs you today: ')).toBe(true);
     expect(paragraph).toContain('Joseph has been waiting since Wednesday for your answer on Juja Hardware, which wants 5 units at KES 4,500 each instead of KES 5,000.');
     expect(paragraph).toContain('You said on 12 October that you would decide on KES 12,000 off 10 units for Mama Pima Stores, and Wanjiru is still waiting.');
   });
@@ -50,7 +51,7 @@ describe('Grace’s morning summary on Thursday 15 October', () => {
 
   it('inside the 24 hours, the same things, with what is due under its own heading', () => {
     const w = theWindowForm('Grace', facts, `${BASE}/today`);
-    expect(w).toContain('Due today and tomorrow\nJoseph has promised Mercy the samples for Tuskys Westgate three check-ins running, for today.');
+    expect(w).toContain('Closing: Joseph has promised Mercy the samples for Tuskys Westgate three check-ins running, for today.');
   });
 
   /* Release 1, pull request 5: an answer she owes with no day of its own reaches "Needs you" only with the switch on, so with it off the

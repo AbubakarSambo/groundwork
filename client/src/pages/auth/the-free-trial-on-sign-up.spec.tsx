@@ -33,7 +33,7 @@ describe('the free trial on sign-up', () => {
     ;(billingApi.getPricing as any).mockResolvedValue(pricing({ on: false, teamsUnder: 20, months: 1 }))
     renderSignUp()
     await waitFor(() => expect(billingApi.getPricing).toHaveBeenCalled())
-    expect(await screen.findByText('We send you a link to confirm your email. Your account is made when you open it.')).toBeTruthy()
+    expect(await screen.findByText('We send you a link to confirm your email. You are signed up when you open it.')).toBeTruthy()
     expect(screen.queryByText(/months free|No card/)).toBeNull()
   })
 
@@ -53,7 +53,7 @@ describe('the free trial on sign-up', () => {
   it('a failed read says nothing about a trial', async () => {
     ;(billingApi.getPricing as any).mockRejectedValue(new Error('offline'))
     renderSignUp()
-    expect(await screen.findByText('We send you a link to confirm your email. Your account is made when you open it.')).toBeTruthy()
+    expect(await screen.findByText('We send you a link to confirm your email. You are signed up when you open it.')).toBeTruthy()
     expect(screen.queryByText(/months free/)).toBeNull()
   })
 
@@ -66,7 +66,7 @@ describe('the free trial on sign-up', () => {
   it('leaves the trial line out when signing up from an organisation\'s own join link', async () => {
     ;(billingApi.getPricing as any).mockResolvedValue(pricing({ on: true, teamsUnder: 20, months: 1 }))
     renderSignUp('/auth?mode=signup&next=%2Fj%2Fmsingi-7k2p')
-    expect(await screen.findByText('We send you a link to confirm your email. Your account is made when you open it.')).toBeTruthy()
+    expect(await screen.findByText('We send you a link to confirm your email. You are signed up when you open it.')).toBeTruthy()
     expect(screen.queryByText(/months free|No card/)).toBeNull()
   })
 })

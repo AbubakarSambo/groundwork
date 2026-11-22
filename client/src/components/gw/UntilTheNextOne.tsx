@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { groundsApi } from '@/api/grounds'
@@ -18,6 +18,10 @@ import { whereAConversationLives } from '@/pages/grounds/ground-tabs'
  * For the lead, who checks in when she chooses (decision 133), writing here starts her check-in
  * with what she wrote ready to send: the box is the way in, so no "Check in yourself" button.
  * When the next check-in is already open, nothing is said about it: the Check-in tab opens it.
+ *
+ * WHAT WAS WRITTEN HERE STAYS ON SCREEN (release test, 21 November 2026, bug 13). Wairimu typed two messages into this box and saw nothing
+ * but a toast that came and went, so they read as dropped until she pressed "Check in again". They were kept as notes all along. Each
+ * note still waiting for a check-in is now shown under the box, with one sentence saying when it will be asked about.
  */
 export function UntilTheNextOne({ groundId, myCheckIns, theLeadChecksInWhenSheChooses = false }: {
   groundId: string
@@ -28,6 +32,8 @@ export function UntilTheNextOne({ groundId, myCheckIns, theLeadChecksInWhenSheCh
   const qc = useQueryClient()
   const navigate = useNavigate()
   const next = theNextOne(myCheckIns, null)
+  const { data: notes = [] } = useQuery({ queryKey: ['my-notes', groundId], queryFn: () => groundsApi.myNotes(groundId) })
+  const waiting = (notes ?? []).filter(n => !n.carriedIntoCheckInId)
 
   const addNote = useMutation({
     mutationFn: (t: string) => groundsApi.addMyNote(groundId, t),
@@ -68,6 +74,16 @@ export function UntilTheNextOne({ groundId, myCheckIns, theLeadChecksInWhenSheCh
         ariaLabel={WRITE_ANYTHING_YOU_WANT_ME_TO_REMEMBER}
         sendLabel="Send"
       />
+      {waiting.length > 0 && (
+        <div data-testid="kept-for-next-time">
+          <p className="gwui-until-next-line">
+            {theLeadChecksInWhenSheChooses
+              ? `I kept ${waiting.length === 1 ? 'what you wrote' : 'everything you wrote'} here, and I will ask you about it when you check in again.`
+              : `I kept ${waiting.length === 1 ? 'what you wrote' : 'everything you wrote'} here, and your next check-in will ask you about it.`}
+          </p>
+          {waiting.map(n => <p key={n.id} className="gwui-until-next-line">“{n.text}”</p>)}
+        </div>
+      )}
       {theLeadChecksInWhenSheChooses && (
         <p className="gwui-until-next-line">
           <button type="button" className="gwui-plain-link" onClick={() => checkIn.mutate()} disabled={busy}>Check in again</button>

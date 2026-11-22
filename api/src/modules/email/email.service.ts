@@ -567,7 +567,18 @@ export class EmailService implements OnModuleInit {
       where: { email: { equals: to.trim().toLowerCase(), mode: 'insensitive' } },
       select: { organizationId: true, externalId: true, timezone: true },
     });
-    if (!person) return null;
+    /*
+     * SOMEBODY WITH NO ROSTER ROW HAS THE ORGANISATION'S NIGHT TOO (release test, 21 November 2026, bug 91). Mail to an address with no
+     * roster row was never held, so report-ready mails and a nudge went out at three minutes past midnight while every other message,
+     * WhatsApp included (quiet-hours-are-the-organisations.ts), waited for seven. Their organisation's zone and the default hours are
+     * the rule for them, the same one WhatsApp reads.
+     */
+    if (!person) {
+      const user = await Promise.resolve((this.prisma as any).user?.findFirst?.({ where: { email: { equals: to.trim().toLowerCase(), mode: 'insensitive' } }, select: { organizationId: true } })).catch(() => null);
+      if (!user?.organizationId) return null;
+      const zone = await theOrganisationsZone(this.prisma as any, user.organizationId).catch(() => null);
+      return inQuietHours(now, zone, null) ? nextAllowedMoment(now, zone, null) : null;
+    }
     const prefs = await this.prisma.emailPreference.findUnique({
       where: { organizationId_personExternalId: { organizationId: person.organizationId, personExternalId: person.externalId } },
       select: { quietBeforeHour: true, quietAfterHour: true },
