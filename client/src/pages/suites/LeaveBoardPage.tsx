@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { leaveBoardApi, type LeaveWaiting } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
+import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tag, ExampleExchange, FieldLabel, TextArea, Skeleton } from '@/components/gw/ui'
 import { theDaysInFull, theDaysShort } from './the-days-someone-is-off'
 import { AskAQuestion } from './AskAQuestion'
@@ -35,12 +36,16 @@ const DID_NOT_GO = 'That did not go through, and nothing has changed. Try again.
 
 export function LeaveBoardPage() {
   const user = useAuthStore(s => s.user)
+  const suitesOn = useSuitesOnForYou()
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['suite-leave'],
     queryFn: leaveBoardApi.get,
-    enabled: !!user,
+    enabled: !!user && suitesOn.known && suitesOn.mayOpenTheLeaveBoard,
     retry: false,
   })
+  const refusedBeforeAsking = !suitesOn.known ? null
+    : !suitesOn.leave ? 'The leave suite is not switched on. An admin switches it on under Suites.'
+      : !suitesOn.mayOpenTheLeaveBoard ? 'Only an admin or a lead can open this board.' : null
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
 
   return (
@@ -51,7 +56,9 @@ export function LeaveBoardPage() {
         subtitle="People ask for time off in their check-in or chat. Groundwork checks their balance and who else is off, and sends it to the right approver."
       />
 
-      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
+      {(isLoading || (!!user && !suitesOn.known)) && <Skeleton what="Getting this page" shape="rows" />}
+      {/* Refused before asking, by the rule the server serves on /suites/mine, in the words the server would say (page loads, 22 November 2026). */}
+      {refusedBeforeAsking && <Note tone={theToneForARefusal(refusedBeforeAsking)}><SuiteOffMessage message={refusedBeforeAsking} role={user?.role} /></Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
           <Note tone={theToneForARefusal(refused.data?.message ?? 'Only an admin or a lead can open this board.')}><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>

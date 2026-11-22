@@ -158,15 +158,19 @@ export function QueuePage() {
    */
   const [declined, setDeclined] = useState<string | null>(null)
 
+  const suitesOn = useSuitesOnForYou()
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['suite-queue', suite, pageSize],
     queryFn: () => queueApi.get({ page: 1, pageSize, suite: suite === 'all' ? undefined : suite }),
-    enabled: !!user,
+    enabled: !!user && suitesOn.known && user.role !== 'GUEST' && (suitesOn.leave || suitesOn.spending),
     retry: false,
     /* Switching the suite tab or pressing "Show more" changes the query key; keeping the last page
        on screen while the new one loads stops the tabs and the list flashing away mid-switch. */
     placeholderData: keepPreviousData,
   })
+  const refusedBeforeAsking = !suitesOn.known ? null
+    : user?.role === 'GUEST' ? 'Only people in this organisation can read what waits for them.'
+      : !suitesOn.leave && !suitesOn.spending ? 'Neither leave nor spending is switched on. An admin switches it on under Suites.' : null
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
 
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
@@ -243,7 +247,9 @@ export function QueuePage() {
         title="Waiting for you to decide"
       />
 
-      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
+      {(isLoading || (!!user && !suitesOn.known)) && <Skeleton what="Getting this page" shape="rows" />}
+      {/* Refused before asking, by the rule the server serves on /suites/mine, in the words the server would say (page loads, 22 November 2026). */}
+      {refusedBeforeAsking && <Note tone={theToneForARefusal(refusedBeforeAsking)}><SuiteOffMessage message={refusedBeforeAsking} role={user?.role} /></Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
           <Note tone={theToneForARefusal(refused.data?.message ?? 'Only people in this organisation can read what waits for them.')}><SuiteOffMessage message={refused.data?.message ?? 'Only people in this organisation can read what waits for them.'} role={user?.role} /></Note>

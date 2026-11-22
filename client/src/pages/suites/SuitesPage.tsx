@@ -101,12 +101,14 @@ const CHECKED = ['leave', 'time', 'spend', 'reviews']
 
 export function SuitesPage() {
   const user = useAuthStore(s => s.user)
+  const suitesOn = useSuitesOnForYou()
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['suites'],
     queryFn: suitesApi.get,
-    enabled: !!user,
+    enabled: !!user && suitesOn.known && suitesOn.maySeeSuites,
     retry: false,
   })
+  const refusedBeforeAsking = suitesOn.known && !suitesOn.maySeeSuites ? 'Only an admin or a lead can open the suites.' : null
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
   const orgName = user?.organization?.name?.trim() || user?.organizationName || ''
   /* "Your own leave and spending requests" only where a suite is on for this person: with both
@@ -115,7 +117,6 @@ export function SuitesPage() {
      and the two pages agree on when the link shows.
      FAULT 1 OF THE LIVE WALK (6 October): hours gates it the same way, and the link's own words
      change with it - "Your own requests" once hours are part of what it opens. */
-  const suitesOn = useSuitesOnForYou()
   const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user && suitesOn.leave, retry: false, staleTime: 60_000 })
   const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user && suitesOn.spending, retry: false, staleTime: 60_000 })
   const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user && suitesOn.hours, retry: false, staleTime: 60_000 })
@@ -141,7 +142,9 @@ export function SuitesPage() {
         }
       />
 
-      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
+      {(isLoading || (!!user && !suitesOn.known)) && <Skeleton what="Getting this page" shape="rows" />}
+      {/* Refused before asking, by the rule the server serves on /suites/mine, in the words the server would say (page loads, 22 November 2026). */}
+      {refusedBeforeAsking && <Note tone="error">{refusedBeforeAsking}</Note>}
       {isError && (
         refused?.status === 403 ? (
           <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open the suites.'}</Note>

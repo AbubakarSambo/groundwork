@@ -49,7 +49,9 @@ export function MyWorkPage({ groundId, rest, onAllYourReports }: {
     queryFn: () => groundsApi.myWork(groundId, person),
     enabled: !!groundId,
   })
-  if (isLoading) return <Skeleton what="Getting My work" shape="rows" />
+  /* The rest of My work starts its own reads now, beside /my-work, not after it (page loads, 22 November 2026: a waterfall). It is
+     mounted out of sight until the page above it is drawn, and read from the same cache when it is. */
+  if (isLoading) return <><Skeleton what="Getting My work" shape="rows" /><div hidden>{rest}</div></>
   if (error || !data) return <Callout tone="warning">My work could not be read just now. Try again in a moment.</Callout>
   /* The server says the switch is off: today's page, as it was handed in. */
   if (!data.on) return <>{rest}</>

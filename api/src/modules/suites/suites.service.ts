@@ -835,14 +835,17 @@ export class SuitesService {
    * `false`, not an error. Somebody who is not in the organisation (a guest, or no one) has none, and is not refused either,
    * so a page can ask without a refusal ever hiding something that is on. Only yes or no for each suite; nothing of its answers.
    */
-  async forYourRequests(reader: Reader): Promise<{ leave: boolean; spend: boolean; time: boolean; reviews: boolean; any: boolean; says: string }> {
+  async forYourRequests(reader: Reader): Promise<{ leave: boolean; spend: boolean; time: boolean; reviews: boolean; any: boolean; says: string; maySeeSuites: boolean }> {
     const role = await this.roleOf(reader);
     const rows = role && role !== 'GUEST' ? await this.rows(reader.organizationId) : new Map<string, { isOn: boolean }>();
+    /* Whether the Suites page (GET /suites) will open for this reader, by its own rule (forReader), so the page never asks to be refused. */
+    const maySeeSuites = role === 'ADMIN' || role === 'LEAD' || (role === 'MEMBER' && (await this.suitesTheySetUp(reader, role)).size > 0);
     const on = (key: string) => rows.get(key)?.isOn === true;
     const out = { leave: on('leave'), spend: on('spend'), time: on('time') };
     const any = out.leave || out.spend || out.time;
     return {
       ...out,
+      maySeeSuites,
       /* Journey walk row 5: GET /suites/reviews/mine answers 404 while reviews are off, and every screen asked it anyway.
        * The screens read this one yes or no first. It is not a request, so `any` and the sentence stay about the three requests. */
       reviews: on('reviews'),

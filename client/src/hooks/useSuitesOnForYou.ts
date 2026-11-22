@@ -21,5 +21,6 @@ export function useSuitesOnForYou() {
     staleTime: 5 * 60_000,
   })
   const on = q.isSuccess ? q.data : undefined
-  return { leave: !!on?.leave, spending: !!on?.spend, hours: !!on?.time, reviews: !!on?.reviews, known: q.isSuccess }
+  /* Whether the Suites page and the leave board will open for this reader, by their own rules on the server, so neither page asks to be refused. */
+  return { leave: !!on?.leave, spending: !!on?.spend, hours: !!on?.time, reviews: !!on?.reviews, maySeeSuites: !!on?.maySeeSuites, mayOpenTheLeaveBoard: !!on?.mayOpenTheLeaveBoard, known: q.isSuccess }
 }
