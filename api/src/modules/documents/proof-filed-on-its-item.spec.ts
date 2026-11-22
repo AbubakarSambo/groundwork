@@ -5,8 +5,10 @@ import { fileTheProofOnItsItem, whatTheProofIs, theItemItNames, whatItShows } fr
  * PROOF ADDED IN A CHECK-IN IS FILED ON ITS ITEM (Release 1B, pull request 2 of 3; references-upload-in-check-in.txt). Mercy
  * adds the signed Greenfield Hardware order in her check-in: it is read as a signed order, counts as proof, and is filed on
  * Greenfield Hardware. The Mama Mboga visit photo is kept as a photo, which is not proof of a sale. With the switch off,
- * nothing is filed at all. No model call anywhere: the words are the ones the existing reading already took out.
+ * nothing is filed at all. Which of her items it is about is the model's reading (bug 16, 22 November 2026); the model is a stand-in here that answers as
+ * it would, and what is proved is where the proof lands. Updated for bug 16: the filing now takes the model, and files only on her own items.
  */
+const reads = (itemId: string) => ({ extract: jest.fn(async () => ({ itemId })) });
 const NOW = new Date('2026-10-16T09:00:00Z');
 const DEALS = [
   { id: 'w-greenfield', kind: 'deal', name: 'Greenfield Hardware', ownerParticipantId: 'p-mercy', fields: { Contact: 'J. Mwangi' } },
@@ -39,7 +41,7 @@ const VISIT = {
 describe('a document added in a check-in is filed on its item', () => {
   it('the signed order is read as a signed order, counts as proof, and is filed on Greenfield Hardware', async () => {
     const { prisma, made } = theDatabase();
-    const out = await fileTheProofOnItsItem(prisma, ORDER, NOW);
+    const out = await fileTheProofOnItsItem(prisma, reads('w-greenfield'), ORDER, NOW);
     expect(out).toEqual({ id: 'e-1', itemName: 'Greenfield Hardware' });
     expect(made[0]).toEqual({
       groundId: 'g-sales', documentId: 'd-order', participantId: 'p-mercy', workItemId: 'w-greenfield', itemName: 'Greenfield Hardware',
@@ -50,13 +52,13 @@ describe('a document added in a check-in is filed on its item', () => {
 
   it('a visit photo is a photo, not proof of a sale, and is filed on the deal her words in the check-in name', async () => {
     const { prisma, made } = theDatabase({ lastSaid: 'On delivery, next Friday. Also, this is from Mama Mboga yesterday.' });
-    await fileTheProofOnItsItem(prisma, VISIT, NOW);
+    await fileTheProofOnItsItem(prisma, reads('w-mama'), VISIT, NOW);
     expect(made[0]).toMatchObject({ workItemId: 'w-mama', itemName: 'Mama Mboga Mart', readAs: 'A photo', countsAsProof: false });
   });
 
   it('a document that names no item, or two, is kept as evidence on no item: never a guess', async () => {
     const { prisma, made } = theDatabase();
-    await fileTheProofOnItsItem(prisma, { ...VISIT, id: 'd-none' }, NOW);
+    await fileTheProofOnItsItem(prisma, reads(''), { ...VISIT, id: 'd-none' }, NOW);
     expect(made[0]).toMatchObject({ workItemId: null, itemName: null });
     expect(theItemItNames('Greenfield Hardware and Kilele Supplies both ordered', DEALS, 'p-joseph')).toBeNull();
   });
@@ -87,6 +89,7 @@ describe('the upload files it only when it was added in a check-in', () => {
     s.assertParticipant = async () => ({ id: 'p-mercy' });
     s.extractContent = async () => ORDER.content;
     s.assessDocument = async () => null;
+    s.anthropic = reads('w-greenfield');
     s.readTheRestOfIt = async () => null;
     s.anchorAfterUpload = () => undefined;
     s.config = { get: () => true };

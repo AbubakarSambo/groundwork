@@ -46,6 +46,8 @@ const RUN: Setup = {
     item('w-quickmart', 'quickmart ruaka', { stage: 'Won', ownerParticipantId: 'p-ngozi', sourceEntryId: 'e-lpo', fields: { Value: 'KES 61,200' } }),
   ],
 };
+/* Which of her deals the form is about is the model's reading now (bug 16, evening of 22 November); a stand-in answers as the model reads the form. */
+const READS_MAMA_NJERI = { extract: async (_s: string, h: any[]) => ({ itemId: /id w-njeri: Mama Njeri Duka/.test(h[0].content) ? 'w-njeri' : '' }) };
 const grid = (b: any) => ((b.workRecords ?? []) as any[]).find((s) => s.section === 'Deal grid');
 const row = (b: any, name: string) => grid(b)?.rows.find((r: any) => r.name === name);
 const heading = (b: any, id: string) => grid(b)?.groups.find((g: any) => g.rowIds.includes(id))?.heading;
@@ -82,7 +84,7 @@ describe('her answer to "what does it confirm" is not the form\'s description', 
         workItem: { findMany: async () => RUN.items },
         groundDocument: { findUnique: async () => ({ fileName: 'order.png', uploaderNote: note, content: ORDER_FORM }) },
       };
-      await fileProofThatWasFiledOnNothing(prisma, 'g-1');
+      await fileProofThatWasFiledOnNothing(prisma, READS_MAMA_NJERI, 'g-1');
       return evidence[0].itemName;
     };
     expect(await run(null)).toBe('Mama Njeri Duka');
@@ -109,10 +111,10 @@ describe('her answer to "what does it confirm" is not the form\'s description', 
       },
       groundDocument: { findUnique: async () => ({ fileName: 'order.png', uploaderNote: HER_ANSWER, content: ORDER_FORM }) },
     };
-    await fileTheProofOnItsItem(prisma, { id: 'doc-order', groundId: 'g-1', participantId: 'p-femi', fileName: 'order.png', mimeType: 'image/png', uploaderNote: HER_ANSWER, content: ORDER_FORM });
+    await fileTheProofOnItsItem(prisma, READS_MAMA_NJERI, { id: 'doc-order', groundId: 'g-1', participantId: 'p-femi', fileName: 'order.png', mimeType: 'image/png', uploaderNote: HER_ANSWER, content: ORDER_FORM });
     expect(evidence[0]).toMatchObject({ readAs: 'A signed order', countsAsProof: true, workItemId: null });
     items = RUN.items ?? [];
-    expect(await fileProofThatWasFiledOnNothing(prisma, 'g-1')).toBe(1);
+    expect(await fileProofThatWasFiledOnNothing(prisma, READS_MAMA_NJERI, 'g-1')).toBe(1);
     expect(evidence[0]).toMatchObject({ workItemId: 'w-njeri', itemName: 'Mama Njeri Duka' });
   });
 
