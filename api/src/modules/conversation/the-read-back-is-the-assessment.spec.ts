@@ -132,3 +132,22 @@ describe('Amani\'s read-back is whole sentences from the assessment (release tes
     expect(theReadBackFrom(amanis)!.text).not.toMatch(/which I recorded as|You said “wait 5 days”/);
   });
 });
+
+describe('pieces of one message are read back once, as the item that holds them (release test, 22 November 2026)', () => {
+  const said2 = new Map<number, string>([[1, 'kilimani is waiting on baraka in operations for the delivery schedule. he said wait 5 days. i need an answer by next friday or we lose kilimani fresh']]);
+  const parts2 = thePartsFrom({
+    summary: 'Amani waits on Baraka.', nothingToRecord: [],
+    numbers: [{ words: 'wait 5 days', from: [1], figure: '5', measures: 'days' }],
+    dates: [{ words: 'by next friday', from: [1], when: 'next Friday' }],
+    blockers: [{ words: 'kilimani is waiting on baraka in operations for the delivery schedule. he said wait 5 days. i need an answer by next friday or we lose kilimani fresh', from: [1], what: 'the delivery schedule for Kilimani Fresh', onName: 'Baraka' }],
+    saidBack: [{ words: 'kilimani is waiting on baraka in operations for the delivery schedule. he said wait 5 days. i need an answer by next friday or we lose kilimani fresh', says: 'You are waiting on Baraka in operations for the delivery schedule for Kilimani Fresh, which you need by next Friday or you will lose the deal.' }],
+  }, said2, { hasSetup: false, previous: null, givenRole: null, read: 1, isTheLead: false });
+  const a2: any = { kind: 'assessment', version: 1, about: { checkInId: 'c-a', groundId: 'g', participantId: 'p-a', who: 'Amani Wekesa', isTheLead: false, sessionNumber: 3, endedAt: '2026-11-22T05:00:00Z' }, messages: [{ n: 1, turnId: 't1', where: 'check-in', at: null }], ...parts2 };
+  it('Amani reads the wait once, in its whole sentence, and no quoted piece of it', () => {
+    expect(theReadBackFrom(a2)!.text).toBe([
+      'Here’s what I recorded.',
+      'You are waiting on Baraka in operations for the delivery schedule for Kilimani Fresh, which you need by next Friday or you will lose the deal.',
+      'Is anything wrong? Tell me and I will put it right.',
+    ].join('\n'));
+  });
+});

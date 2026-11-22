@@ -52,15 +52,21 @@ export function aLineAsTheyReadIt(f: Pick<AFact, 'words' | 'saidWordForWord'> & 
 /** The read-back from the assessment, or null when it holds nothing of theirs to say back. */
 export function theReadBackFrom(a: TheAssessment | null): { text: string; lines: ALineReadBack[] } | null {
   if (!a) return null;
-  const seen = new Set<string>();
-  const lines: ALineReadBack[] = [];
-  for (const f of theFactsIn(a, { kind: 'the person', participantId: a.about.participantId })) {
-    if (NOT_READ_BACK.test(f.section) || f.participantId !== a.about.participantId) continue;
-    const key = theWordsAlone(f.words).toLowerCase();
-    if (!key || seen.has(key) || [...seen].some((k) => k.includes(key))) continue;
-    seen.add(key);
-    lines.push({ id: `${f.checkInId}#${f.itemId}`, says: aLineAsTheyReadIt(f) });
-  }
+  const theirs = theFactsIn(a, { kind: 'the person', participantId: a.about.participantId })
+    .filter((f) => !NOT_READ_BACK.test(f.section) && f.participantId === a.about.participantId)
+    .map((f) => ({ f, key: theWordsAlone(f.words).toLowerCase() }))
+    .filter((x) => x.key);
+  /*
+   * ONE THING SAID ONCE, THE FULLER WAY, WHATEVER ORDER THE ITEMS CAME IN (release test, 22 November 2026, bugs 9 and 10). Amani's one
+   * message was read into a wait with its whole sentence ("You are waiting on Baraka in operations for the delivery schedule...") and into a
+   * number and a date made of pieces of it ("wait 5 days", "by next friday"), which were then said back as quoted fragments beside it. Only
+   * a later piece was dropped before, so it depended on the order. Words that sit inside another of their items' words are that item.
+   */
+  const insideAnother = (x: (typeof theirs)[number], i: number) => theirs.some((y, j) => j !== i && y.key.includes(x.key)
+    && (y.key.length > x.key.length || (!!y.f.saidBack && !x.f.saidBack) || (!!y.f.saidBack === !!x.f.saidBack && j < i)));
+  const lines: ALineReadBack[] = theirs
+    .filter((x, i) => !insideAnother(x, i))
+    .map(({ f }) => ({ id: `${f.checkInId}#${f.itemId}`, says: aLineAsTheyReadIt(f) }));
   if (!lines.length) return null;
   return { text: [THE_READ_BACK_OPENS, ...lines.map((l) => l.says), THE_READ_BACK_ASKS].join('\n'), lines };
 }
