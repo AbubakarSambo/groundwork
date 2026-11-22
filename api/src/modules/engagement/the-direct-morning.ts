@@ -229,14 +229,17 @@ const theDealRows = (board: any): any[] => ((board?.workRecords ?? []) as any[])
 const listedNames = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0] ?? '');
 
 /**
- * WHAT EACH PERSON SAID THEY HAD DONE, in the newest round anybody said it in, "Asha said 25". Read from what the board serves for the
- * reader (saidBy on each target, kept by board.listener keepWhatPeopleSaid), one per person, never from a count: a said number is not
- * a count and proves nothing. Somebody who did not say one in that round is not named, since they have not said it this week.
+ * WHAT EACH PERSON SAID THEY HAD DONE AGAINST THIS TARGET, in the newest round anybody said it in, "Asha said 25". Read from what the
+ * board serves for the reader (saidBy on the target, kept by board.listener keepWhatPeopleSaid), one per person, never from a count: a
+ * said number is not a count and proves nothing. Somebody who did not say one in that round is not named, since they have not said it
+ * this week.
+ *
+ * ONLY WHAT WAS SAID AGAINST THE TARGET IT IS SAID BESIDE (release test, 22 November 2026, bug 22). Wairimu's letter read "The team target
+ * is 40. Olu said 3": Olu's "3 shops agreed to take a trial" was kept against his own aim, to get Msingi into 10 new shops, and every
+ * target's numbers were read beside the team's. A number said against one target is that target's.
  */
-export function theNumbersPeopleSaid(board: any): { lines: string[]; total: number } {
-  /* Said against the team's target first, so a person who also said one against an aim of their own is named once, for the team's. */
-  const all = [...((board?.objectives ?? []) as any[])].sort((a, b) => Number(!!a?.ownerParticipantId) - Number(!!b?.ownerParticipantId))
-    .flatMap((o) => (Array.isArray(o?.saidBy) ? o.saidBy : []) as any[])
+export function theNumbersPeopleSaid(aim: any): { lines: string[]; total: number } {
+  const all = ((Array.isArray(aim?.saidBy) ? aim.saidBy : []) as any[])
     .filter((x) => x && typeof x.count === 'number' && x.count > 0 && String(x.name ?? '').trim());
   const newest = Math.max(-1, ...all.map((x) => Number(x.atSession ?? 0)));
   const seen = new Set<string>();
@@ -277,7 +280,7 @@ export function theTargetLines(board: any, now: Date, zone: string, readIsStillT
    * a count from the deals, so it never applied. Run 5 (19 November): it still did not, because Taa Solar's board holds one deal (a shop named in a check-in, no number of units on it), so "no deal at all" was false while the count was still nothing. The test is therefore whether any deal holds a number of units, which is what the old line's "short" and "cover" were counting. With no counted deal the line says the target, what each person said, and that none
    * of it is on a deal yet so none of it is proven. It names no gap.
    */
-  const { lines: saidLines, total: saidTotal } = theNumbersPeopleSaid(board);
+  const { lines: saidLines, total: saidTotal } = theNumbersPeopleSaid(aim);
   /* Beside the target, what they said between them (run 7: the lead read each name and had to add it up herself). One person's number is the total. */
   const whatTheySaid = saidLines.length ? `${listedNames(saidLines)}${saidLines.length > 1 ? `, which is ${commas(saidTotal)} between them` : ''}` : null;
   const nothingCounted = sold === 0 && !(paid && paid > 0);
