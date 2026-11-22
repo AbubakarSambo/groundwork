@@ -133,4 +133,8 @@ describe('the words underneath', () => {
     expect(theTargetAsALine({ name: 'The team is aiming for each rep to open 10 new leads each week', target: 10, ownerParticipantId: null, personName: null }))
       .toBe('The team is aiming for each rep to open 10 new leads each week. The number is 10.');
   });
+  it('a target said as a thing to do reads as what it counts, its number said once (Drop Access re-read, 22 November)', () => {
+    expect(theTargetAsALine({ name: 'Sell 8 freezers per week', target: 8, ownerParticipantId: 'p-brian', personName: 'Brian Otieno' })).toBe('Brian Otieno’s target is 8 freezers per week.');
+    expect(theTargetAsALine({ name: 'Activate 4 Drop Access points per week', target: 4, ownerParticipantId: 'p-brian', personName: 'Brian Otieno' })).toBe('Brian Otieno’s target is 4 Drop Access points per week.');
+  });
 });
