@@ -960,6 +960,9 @@ export class AssistantService {
       case 'switch_a_suite':
         return this.switchASuiteByTalking(organizationId, who, userId ?? null, message);
       case 'performance_history':
+        /* One person's history is read by name. A question about the team with nobody named ("Who should I let go?", placed here by the model) is
+           answered from the record, which judges only the people the asker is responsible for (Drop Access, 22 November 2026). */
+        if (userId && !routed.subject?.trim()) return this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, groundId ?? null, message);
         return this.aPersonsHistory(organizationId, userId ?? null, routed.subject ?? '');
       case 'period_report':
         return this.aPeriodReport(organizationId, userId ?? null, message);
