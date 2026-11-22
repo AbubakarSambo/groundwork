@@ -634,10 +634,10 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
         </Stack>
       </Section>
 
-      {/* 9. PAUSING (release test 22 November, bug 35): its lead or an admin puts it on hold and lifts the hold, here beside ending it. */}
+      {/* PAUSING (release test 22 November, bug 35): its lead or an admin puts it on hold and lifts the hold, here above ending it. */}
       {(isInitiator || isOrgAdmin) && <PauseOrResume groundId={id} status={g?.status} />}
 
-      {/* 10. ENDING */}
+      {/* 9. ENDING */}
       <Panel as="section" aria-label="Ending it">
         {isInitiator ? (
           <Stack gap={10}>
