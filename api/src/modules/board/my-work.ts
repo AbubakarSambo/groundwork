@@ -1,5 +1,6 @@
 import { A_SESSION_OF_THEIRS } from '../grounds/the-sessions-done';
 import { theCheckInsSaid } from './a-day-they-checked-in';
+import { theQuietHoursNow } from '../../common/the-clock';
 import { theirWordsAsSaid, theWordsAlone, mayBeQuoted } from '../conversation/their-words-as-said';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { aWaitSomebodyElseChases } from './a-wait-somebody-else-chases';
@@ -699,7 +700,7 @@ export async function readMyWork(
   prisma: any,
   board: ABoardReader | null,
   input: { groundId: string; userId: string; personId?: string | null },
-  now: Date = new Date(),
+  now: Date = theQuietHoursNow(),
 ): Promise<MyWork> {
   const ground = await prisma.ground.findFirst({ where: { id: input.groundId }, select: GROUND_SELECT });
   if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
