@@ -470,7 +470,8 @@ export function EveryDealDayByDay({ b, section, now, groundId, heading = 'Every 
                 </>
               ),
               rep: firstName(r.owner) || 'Nobody is named for it yet.',
-              stage: r.stage ? <Tag tone="plain">{r.stage}</Tag> : (b.releaseOneSalesBoard ? NOT_CONTACTED_YET : 'No stage said yet.'),
+              /* The stage as the record holds it (stageSays: "Said to be won, not shown yet") before the stage as said: words alone are not Won (release test, 22 November 2026, bug 18). */
+              stage: (r.stageSays ?? r.stage) ? <Tag tone="plain">{r.stageSays ?? r.stage}</Tag> : (b.releaseOneSalesBoard ? NOT_CONTACTED_YET : 'No stage said yet.'),
               shows: (
                 <>
                   <Dot filled={r.mark === 'proven'} />{PROOF_TAG[r.mark ?? 'said'] ?? 'In their words'}
