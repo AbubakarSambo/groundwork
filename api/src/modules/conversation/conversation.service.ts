@@ -343,7 +343,7 @@ import { keepThePromisesSaidDone } from './a-promise-said-done-is-kept';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
 import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collections';
 import { FROM_YOUR_CHECK_IN, theWordsItCameFrom, theTargetAsALine, type ATargetToHold } from '../grounds/the-leads-targets-wait-for-her-yes';
-import { theChangeToMake, theGoalAsItWas, theGoalChangesOn, theChangeThatMadeThisGoal, theChangeAsASentence, type AGoalChange, type AGoalChangeSaid, type AGoalOnRecord } from '../grounds/a-goal-changed-by-its-lead';
+import { theChangeToMake, putTheChangeOnTheGoal, keepAGoalChange, theGoalChangesOn, theChangeThatMadeThisGoal, theChangeAsASentence, type AGoalChangeSaid, type AGoalOnRecord } from '../grounds/a-goal-changed-by-its-lead';
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
@@ -10633,7 +10633,7 @@ ${told}` : '';
     if (corrected && Number.isFinite(own!.target) && own!.target > 0 && numbersInTheirWords.has(Math.round(own!.target))) {
       if (corrected.target !== Math.round(own!.target)) {
         await this.prisma.groundObjective.update({ where: { id: corrected.id }, data: { target: Math.round(own!.target) } });
-        await this.keepTheChangeOfATarget(groundId, { objectiveId: corrected.id, from: corrected.target, to: Math.round(own!.target), byParticipantId: participantId, said: theirOwnTurns[theirOwnTurns.length - 1] ?? null });
+        await keepAGoalChange(this.prisma, groundId, { objectiveId: corrected.id, from: corrected.target, to: Math.round(own!.target), byParticipantId: participantId, said: theirOwnTurns[theirOwnTurns.length - 1] ?? null });
         this.logger.log(`Ground ${groundId}: a target of ${participantId} changed from ${corrected.target} to ${Math.round(own!.target)}, in their words.`);
       }
     } else if (own?.name?.trim() && Number.isFinite(own.target) && own.target > 0) {
@@ -10783,15 +10783,7 @@ ${told}` : '';
     for (const one of said) {
       const change = theChangeToMake(one, onRecord as AGoalOnRecord[], people, (n) => numbersInTheirWords.has(n));
       if (!change) continue;
-      await this.prisma.groundObjective.update({
-        where: { id: change.keep.id },
-        data: { name: change.name, target: change.target, ownerParticipantId: change.ownerParticipantId, count: 0, prevCount: 0, suggestedCount: null, suggestedSaid: null, suggestedAtSession: null, addedAtSession: session?.sessionNumber ?? null, setByParticipantId: checkIn.participantId },
-      });
-      if (change.drop.length) await this.prisma.groundObjective.deleteMany({ where: { id: { in: change.drop.map((d) => d.id) }, groundId } });
-      await this.keepTheChangeOfATarget(groundId, {
-        objectiveId: change.keep.id, from: change.keep.target, to: change.target, byParticipantId: checkIn.participantId, said: herWords[herWords.length - 1] ?? null,
-        fromNames: [change.keep, ...change.drop].map((o) => theGoalAsItWas(o, people)), toName: change.name, because: change.because, stopsTheWork: change.stopsTheWork,
-      });
+      await putTheChangeOnTheGoal(this.prisma, groundId, change, { participantId: checkIn.participantId, said: herWords[herWords.length - 1] ?? null, sessionNumber: session?.sessionNumber ?? null }, people);
       this.logger.log(`Ground ${groundId}: the lead changed a goal, with her yes (${change.drop.length + 1} replaced).`);
     }
   }
@@ -10863,14 +10855,6 @@ ${told}` : '';
     return { readable, privateFigures, numbersInTheirWords, theirWordsAsText, sumsOnlyARequestSaid };
   }
 
-  /** A target's number changed in somebody's words: kept in the check-in's log, beside what was there, so its history stays. */
-  private async keepTheChangeOfATarget(groundId: string, change: Omit<AGoalChange, 'at'>): Promise<void> {
-    const g: any = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { groundAuditLog: true } as any }).catch(() => null);
-    const raw = g?.groundAuditLog;
-    const log: any = raw && !Array.isArray(raw) && typeof raw === 'object' ? { ...raw } : { timeline: Array.isArray(raw) ? raw : [], contextNotes: [] };
-    log.targetChanges = [...(Array.isArray(log.targetChanges) ? log.targetChanges : []), { ...change, said: change.said?.slice(0, 400) ?? null, at: new Date().toISOString() }];
-    await this.prisma.ground.update({ where: { id: groundId }, data: { groundAuditLog: log } as any }).catch(() => undefined);
-  }
 
   /** On a sales check-in with Release 1's sales board on, the targets read from the lead's words wait for her yes. */
   private async theLeadsTargetsWaitForHerYes(groundId: string): Promise<boolean> {

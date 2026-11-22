@@ -99,3 +99,36 @@ export function theChangeAsASentence(c: AGoalChange, names: readonly string[] = 
   const was = before.length === 1 ? ` Before that, the goal was ${before[0]}.` : before.length > 1 ? ` Before that, the goals were ${before.slice(0, -1).join(', ')} and ${before[before.length - 1]}.` : '';
   return ended(`On ${theDay(c.at)} the goal changed${why}`) + (whatItWas ? was : '');
 }
+
+/** One change, kept once in the check-in's log beside the ones before it, so its history stays (the one writer of `targetChanges`). */
+export async function keepAGoalChange(prisma: any, groundId: string, change: Omit<AGoalChange, 'at'>): Promise<void> {
+  const g: any = await prisma.ground.findUnique({ where: { id: groundId }, select: { groundAuditLog: true } }).catch(() => null);
+  const raw = g?.groundAuditLog;
+  const log: any = raw && !Array.isArray(raw) && typeof raw === 'object' ? { ...raw } : { timeline: Array.isArray(raw) ? raw : [], contextNotes: [] };
+  log.targetChanges = [...(Array.isArray(log.targetChanges) ? log.targetChanges : []), { ...change, said: change.said?.slice(0, 400) ?? null, at: new Date().toISOString() }];
+  await prisma.ground.update({ where: { id: groundId }, data: { groundAuditLog: log } }).catch(() => undefined);
+}
+
+export type AChangeToMake = NonNullable<ReturnType<typeof theChangeToMake>>;
+
+/**
+ * THE CHANGE PUT ON THE ONE GOAL ROW, wherever the lead said yes to it: her check-in (keepTheAimsTheySaid) or Ask (a-goal-changed-in-ask).
+ * The goal row changes in place, any other goal it replaces goes, and what it was, when and why are kept once in the log.
+ */
+export async function putTheChangeOnTheGoal(
+  prisma: any,
+  groundId: string,
+  change: AChangeToMake,
+  by: { participantId: string; said: string | null; sessionNumber: number | null },
+  people: readonly { id: string; firstName: string | null }[],
+): Promise<void> {
+  await prisma.groundObjective.update({
+    where: { id: change.keep.id },
+    data: { name: change.name, target: change.target, ownerParticipantId: change.ownerParticipantId, count: 0, prevCount: 0, suggestedCount: null, suggestedSaid: null, suggestedAtSession: null, addedAtSession: by.sessionNumber, setByParticipantId: by.participantId },
+  });
+  if (change.drop.length) await prisma.groundObjective.deleteMany({ where: { id: { in: change.drop.map((d) => d.id) }, groundId } });
+  await keepAGoalChange(prisma, groundId, {
+    objectiveId: change.keep.id, from: change.keep.target, to: change.target, byParticipantId: by.participantId, said: by.said,
+    fromNames: [change.keep, ...change.drop].map((o) => theGoalAsItWas(o, people)), toName: change.name, because: change.because, stopsTheWork: change.stopsTheWork,
+  });
+}

@@ -176,3 +176,59 @@ describe('what a check-in is for, and the Desk (Ask #28, #48)', () => {
       .toBe('Nothing you can read says yet how "40 new shops by December" is moving. The Desk shows each priority as soon as there is something you may read about it.');
   });
 });
+
+/* DROP ACCESS, 22 NOVEMBER 2026: a lead told Ask her goal changed, and read "What you say here in Ask stays between you and Groundwork". */
+describe('a lead changes a goal by telling Ask', () => {
+  const SAID = 'Freezers are out of stock until January. The team’s goal changes now: a waitlist of 50 shops. Please change the target and tell the team.';
+  function asWairimuWithGoals() {
+    const engine: any = aModel({ [SAID]: { kind: 'update' }, yes: { kind: 'agreement' } });
+    const read = engine.extract.getMockImplementation();
+    engine.extract = jest.fn(async (prompt: string, h: any[]) => (/^Somebody who runs one or more check-ins/.test(prompt)
+      ? { changes: true, replaces: ['o-amani', 'o-chidi'], aim: 'The team is building a waitlist of 50 shops', target: 50, whose: 'The team', because: 'Freezers are out of stock until January.', stopsTheWork: true }
+      : read(prompt, h)));
+    const w = asWairimu(engine);
+    const goals = [
+      { id: 'o-amani', name: 'Sell 10 freezers a week', target: 10, ownerParticipantId: 'p-amani' },
+      { id: 'o-chidi', name: 'Sell 10 freezers a week', target: 10, ownerParticipantId: 'p-chidi' },
+    ];
+    w.prisma.ground.findMany = jest.fn(async () => [{
+      id: 'g1', label: 'Drop Access sales', objectives: goals,
+      participants: [
+        { id: 'p-wairimu', partyType: 'INITIATOR', nameGiven: null, user: { id: 'lead-1', firstName: 'Wairimu' } },
+        { id: 'p-amani', partyType: 'PARTICIPANT', nameGiven: null, user: { id: 'u-amani', firstName: 'Amani' } },
+        { id: 'p-chidi', partyType: 'PARTICIPANT', nameGiven: null, user: { id: 'u-chidi', firstName: 'Chidi' } },
+      ],
+    }]);
+    w.prisma.ground.findUnique = jest.fn(async () => ({ groundAuditLog: {} }));
+    w.prisma.ground.update = jest.fn(async () => ({}));
+    w.prisma.groundObjective = { update: jest.fn(async () => ({})), deleteMany: jest.fn(async () => ({ count: 1 })) };
+    w.prisma.checkIn.findFirst = jest.fn(async () => ({ sessionNumber: 2 }));
+    return w;
+  }
+
+  it('says the change back and asks her yes, never the line about Ask being private', async () => {
+    const w = asWairimuWithGoals();
+    const read = await w.say(SAID);
+    expect(read).toBe('I have that the goal on “Drop Access sales” is now “The team is building a waitlist of 50 shops”, because freezers are out of stock until January. It takes the place of Amani’s “Sell 10 freezers a week” and Chidi’s “Sell 10 freezers a week”. Is that right? When you say yes, I change it, and each person in the check-in is told the new goal in their next check-in.');
+    expect(read).not.toMatch(/stays between you and Groundwork/);
+    expect(w.prisma.groundObjective.update).not.toHaveBeenCalled();
+  });
+
+  it('on her yes the one goal row changes, the other goes, and the change is kept with its reason', async () => {
+    const w = asWairimuWithGoals();
+    await w.say(SAID);
+    const done = await w.say('yes');
+    expect(done).toBe('Done. The goal on “Drop Access sales” is now “The team is building a waitlist of 50 shops”. Each person in the check-in is told the new goal, and asked how they are doing on it, in their next check-in.');
+    expect(w.prisma.groundObjective.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'o-amani' }, data: expect.objectContaining({ name: 'The team is building a waitlist of 50 shops', target: 50, ownerParticipantId: null, addedAtSession: 2, setByParticipantId: 'p-wairimu' }) }));
+    expect(w.prisma.groundObjective.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ['o-chidi'] }, groundId: 'g1' } });
+    const log = (w.prisma.ground.update as jest.Mock).mock.calls[0][0].data.groundAuditLog;
+    expect(log.targetChanges[0]).toMatchObject({ objectiveId: 'o-amani', because: 'Freezers are out of stock until January.', stopsTheWork: true, toName: 'The team is building a waitlist of 50 shops' });
+  });
+
+  it('on a no, nothing changes', async () => {
+    const w = asWairimuWithGoals();
+    await w.say(SAID);
+    expect(await w.say('no')).toBe('All right. I have left the goal as it was.');
+    expect(w.prisma.groundObjective.update).not.toHaveBeenCalled();
+  });
+});
