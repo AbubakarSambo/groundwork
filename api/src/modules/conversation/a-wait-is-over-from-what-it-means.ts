@@ -10,7 +10,7 @@ import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
  * saying it needed a new rule, and the next way of saying it was always missed.
  *
  * Now the model reads each open wait against the record, the way a good manager would: the lines said about it in any of the
- * organisation's check-ins (never one about a single person), by anybody, before or after it was raised, the work items it names, and
+ * organisation's check-ins (never one about a single person), by anybody, before or after it was raised (never the conversation that raised it), and
  * any correction that was backed. It decides whether the wait is over, and which line or item shows it. The product writes only that the
  * wait is over, on the day of that line; nobody's words move between check-ins. Nothing here approves or writes money or leave: those
  * keep their fixed rules. A wait the model does not end stays open, and when the model cannot be reached the old word rules run instead,
@@ -29,17 +29,17 @@ export interface AWaitToJudge {
   sourceCheckInId?: string | null;
 }
 export interface AWitness {
-  /** A line on record, a work item, or a correction that was backed. */
+  /** A line on record, or a correction that was backed. */
   id: string;
   who: string;
-  /** Kind of line ("what happened", "a worry", "a promise"), or "work item", or "correction". */
+  /** Kind of line ("what happened", "a worry", "a promise"), or "correction". */
   kind: string;
   where: string;
   on: Date | string;
   text: string;
   /** People this is by, as user ids (one person in several check-ins is one person). */
   byUserId?: string | null;
-  /** The conversation a line was said in; none for a work item or a correction. */
+  /** The conversation a line was said in; none for a correction. */
   checkInId?: string | null;
 }
 export interface AWaitOver { id: string; clearedAt: Date; witnessId: string }
@@ -49,7 +49,7 @@ export const WAIT_OVER_PROMPT = `You keep the record of a team's work. Each wait
 
 A wait is over when the record shows the thing came, happened, was done, was given, was decided, or is no longer needed, in any words: a fee note paid was raised, a reply filed means the revisions to it were done, "Jamii paid FN-007" ends a wait for confirmation that FN-007 was raised, "I approved the KES 4,500 price" ends a wait for a decision on that price. It is also over when the one waiting says they are not waiting for it any more, or the one it waits on says, believably, that nothing is owed.
 
-A wait is not over when the record only shows a promise, a plan, a hope, a reminder or a chase, or when only part of the thing came: one person's proof does not end a wait on the whole team. A work item's stage ends a wait only when the wait was for that very stage: a deal marked Won ends a wait for the contract to be signed, never a wait for its delivery schedule, its price or anything else about that customer. It is not over from a line about a different thing, a different customer or a different deal (FN-006 is not FN-007; a sale to Juja Hardware says nothing about a price somebody else is waiting on). Something else that happened to the same thing does not answer what was asked about it: a fee note raised does not give the day it will be paid, and a promise to tell somebody is not telling them. When lines disagree, the newest line from somebody who would know wins, and a line with a document or a slip weighs more than a line without.
+A wait is not over when the record only shows a promise, a plan, a hope, a reminder or a chase, or when only part of the thing came: one person's proof does not end a wait on the whole team. It is not over from a line about a different thing, a different customer or a different deal (FN-006 is not FN-007; a sale to Juja Hardware says nothing about a price somebody else is waiting on). Something else that happened to the same thing does not answer what was asked about it: a fee note raised does not give the day it will be paid, and a promise to tell somebody is not telling them. When lines disagree, the newest line from somebody who would know wins, and a line with a document or a slip weighs more than a line without.
 
 Name, for each wait you end, the one line or item that shows it, by its id from the list, and say in one short sentence why that line ends that wait. Never end a wait without one. When you are not sure, leave it open.`;
 
@@ -203,16 +203,17 @@ export async function clearTheWaitsTheRecordEnds(
     where: { disputedAt: null, participant: { groundId: { in: ids } } },
     select: { id: true, participantId: true, checkInId: true, type: true, text: true, createdAt: true, participant: { select: { groundId: true, userId: true } } },
   })) ?? [];
-  const items: any[] = (await Promise.resolve(prisma.workItem?.findMany?.({
-    where: { groundId: { in: ids }, stage: { not: null } },
-    select: { id: true, groundId: true, kind: true, name: true, stage: true, updatedAt: true },
-  })).catch(() => [])) ?? [];
+  /*
+   * NO WORK ITEMS (release test, 22 November 2026, bug 19). A work item's stage is built from the very lines read here, so it said the same
+   * thing twice, and a deal's stage was read as the end of a wait about that deal: "Naivas is at the stage Quoted" ended Chidi's wait for
+   * Fatuma's pricing approval two minutes after he said it was still with her, and Today told Wairimu he was no longer waiting. The lines
+   * people said are the one source.
+   */
   const all: AWitness[] = [
     ...lines.map((l) => ({
       id: l.id, who: nameOf(l.participantId), kind: KIND[String(l.type)] ?? 'a line', where: labelOf.get(l.participant?.groundId) ?? 'a check-in',
       on: l.createdAt, text: String(l.text ?? '').replace(/\[INFERRED:[^\]]*\]/g, '').trim(), byUserId: l.participant?.userId ?? null, checkInId: l.checkInId ?? null,
     })),
-    ...items.map((i) => ({ id: i.id, who: 'the record', kind: 'work item', where: labelOf.get(i.groundId) ?? 'a check-in', on: i.updatedAt, text: `${i.kind} ${i.name} is at the stage "${i.stage}"` })),
     ...extra,
   ];
   const version = await Promise.resolve(prompts?.getActive(WAIT_OVER_PROMPT_KEY)).catch(() => null);
