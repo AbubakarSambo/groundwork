@@ -126,7 +126,8 @@ describe('a sales team is told from a sales organisation', () => {
     /* Changed 22 November 2026: the one reading carries the words in its prompt, which itself says "never decide from the job titles";
        what it is given of this check-in is its purpose and the lead's words, never a job title. */
     const told = String(anthropic.extract.mock.calls[0][0]);
-    const given = told.slice(told.indexOf('Description: '));
+    /* The marker is "What they said:" since the reading is given the whole conversation (22 November 2026). */
+    const given = told.slice(told.indexOf('What they said:'));
     expect(given).toContain('What the check-in is for: ');
     expect(given).not.toContain('Sales rep');
     expect(told).not.toContain('Sales manager');

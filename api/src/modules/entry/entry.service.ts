@@ -86,7 +86,7 @@ import { THE_EXTRACTION_SYSTEM, THE_EXTRACTION_TOOL, THE_CLOSING_REMINDER, allSe
 import { theLeadsReveal } from './the-anchor-reveal';
 import type { TheLeadsReveal, ThePeopleStepRules } from './the-anchor-served-shapes';
 import { draftFromASetUp, type ASetUpToStartFrom } from './a-set-up-can-start-from-a-recommendation';
-import { readTheSituationAndTheKind, whatTheReadingSets } from './which-situation-this-is';
+import { readTheSituationAndTheKind, whatTheReadingSets, theWholeConversation } from './which-situation-this-is';
 import { keepWhatTheLeadTyped } from '../grounds/what-the-lead-said-at-set-up';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
@@ -1132,7 +1132,9 @@ Rules:
     /* And the kind of work, read in the same call, on every turn until one is read: "need to set quarterly goals for my 3 teams" names
        no kind, and the answer "each team hits its own revenue target, 12m in total" does. The situation already read is kept. */
     const reading = (!scenarioInput || !soFar?.kindOfWork) && theirWords.trim().length > 12
-      ? await this.classifyIntent(theirWords, undefined, scenarioInput).catch(() => null)
+      /* The whole conversation, both sides, so a word is read by what everything else said is about (a bill on its way through a national
+         assembly is not a bill owed), never one message's words on their own (Hafsah's setup, 22 November 2026: "Collect what's owed"). */
+      ? await this.classifyIntent(theWholeConversation(messages as { role: string; content: string }[]), undefined, scenarioInput).catch(() => null)
       : null;
     const scenarioForTheQuestion = scenarioInput ? scenarioInput : reading?.scenario ?? undefined;
     const kindReadHere = reading?.kind;

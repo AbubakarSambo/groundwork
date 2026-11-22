@@ -389,6 +389,9 @@ class TheDatesDto {
   @IsOptional() @IsArray() @ArrayMaxSize(7) @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true }) workingDays?: number[];
   @IsOptional() @IsString() @MaxLength(10) startsOn?: string;
   @IsOptional() @IsString() @MaxLength(10) endsOn?: string;
+  @IsOptional() @IsBoolean() runsUntilEnded?: boolean;
+  @IsOptional() @IsInt() @Min(1) @Max(3660) timelineDays?: number;
+  @IsOptional() @IsString() @MaxLength(60) scenario?: string;
 }
 
 @Controller('entry')

@@ -1,5 +1,6 @@
 import { theDatesBeforeItIsSaved } from './the-dates-before-it-is-saved';
 import { howManyRoundsUpTo } from '../grounds/the-check-ins-own-schedule';
+import { DEFAULT_TIMELINE_DAYS } from '../grounds/grounds.service';
 
 /* Sunday 22 November 2026, midday in Lagos: the day Hafsah set up a weekly check-in and was told it opened on Sunday. */
 const SUNDAY = new Date('2026-11-22T11:00:00Z');
@@ -9,7 +10,16 @@ describe('the dates a setup will open on come from the check-in’s own schedule
     const r = theDatesBeforeItIsSaved({ cadence: 'WEEKLY', startsOn: '', endsOn: '' }, SUNDAY);
     expect(r.days[0]).toBe('2026-11-23');
     expect(new Date(`${r.days[0]}T00:00:00Z`).getUTCDay()).toBe(1);
-    expect(r.count).toBeNull();
+  });
+
+  it('with no end chosen, ends where the save will: the kind’s own length from the start, never an empty end', () => {
+    const r = theDatesBeforeItIsSaved({ cadence: 'WEEKLY', cadenceAnchorDay: 1, startsOn: '2026-11-23', scenario: 'NEW_PROJECT' }, SUNDAY);
+    const days = DEFAULT_TIMELINE_DAYS.NEW_PROJECT;
+    expect(r.endsOn).toBe(new Date(Date.UTC(2026, 10, 23) + days * 86_400_000).toISOString().slice(0, 10));
+    expect(r.count).toBe(howManyRoundsUpTo({ cadence: 'WEEKLY' as any, anchorDay: 1, days: null, workingDays: [1, 2, 3, 4, 5], startsNow: false }, Date.UTC(2026, 10, 23), Date.UTC(2026, 10, 23) + days * 86_400_000));
+    /* A length she said wins over the kind's own, and "until I end it" has no end and no count. */
+    expect(theDatesBeforeItIsSaved({ cadence: 'WEEKLY', startsOn: '2026-11-23', timelineDays: 14 }, SUNDAY).endsOn).toBe('2026-12-07');
+    expect(theDatesBeforeItIsSaved({ cadence: 'WEEKLY', startsOn: '2026-11-23', runsUntilEnded: true }, SUNDAY)).toMatchObject({ count: null, endsOn: null });
   });
 
   it('follows the day they said: every Monday', () => {
@@ -27,8 +37,8 @@ describe('the dates a setup will open on come from the check-in’s own schedule
   });
 
   it('a one-time check-in is one day, and one that opens when the lead checks in has no dates', () => {
-    expect(theDatesBeforeItIsSaved({ cadence: 'ONE_TIME', startsOn: '2026-11-25' }, SUNDAY)).toEqual({ days: ['2026-11-25'], count: 1 });
-    expect(theDatesBeforeItIsSaved({ cadence: 'SEQUENTIAL' }, SUNDAY)).toEqual({ days: [], count: null });
+    expect(theDatesBeforeItIsSaved({ cadence: 'ONE_TIME', startsOn: '2026-11-25' }, SUNDAY)).toEqual({ days: ['2026-11-25'], count: 1, endsOn: null });
+    expect(theDatesBeforeItIsSaved({ cadence: 'SEQUENTIAL' }, SUNDAY)).toEqual({ days: [], count: null, endsOn: null });
   });
 });
 
@@ -41,7 +51,7 @@ describe('the "Now" rules, as the screen shows them', () => {
   const ANY = [0, 1, 2, 3, 4, 5, 6];
   const at = (y: number, m: number, d: number) => new Date(Date.UTC(y, m - 1, d, 9));
   const days = (cadence: string, cadenceAnchorDay: number | null, startsOn: string, endsOn: string, now: Date) =>
-    theDatesBeforeItIsSaved({ cadence, cadenceAnchorDay, startsOn, endsOn, workingDays: ANY }, now);
+    theDatesBeforeItIsSaved({ cadence, cadenceAnchorDay, startsOn, endsOn, workingDays: ANY, runsUntilEnded: !endsOn /* the day rule alone, with no end to stop it */ }, now);
   it('Now, on a Sunday, every Monday: the first stays open until Monday 19', () => {
     expect(days('WEEKLY', 1, '', '', at(2026, 10, 11)).days).toEqual(['2026-10-11', '2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09']);
   });
@@ -61,7 +71,7 @@ describe('the "Now" rules, as the screen shows them', () => {
     expect(days('WEEKLY', 1, '', '2026-11-29', at(2026, 10, 11)).count).toBe(7);
   });
   it('monthly on the 20th until 15 January is three', () => {
-    expect(days('MONTHLY', 20, '', '2027-01-15', at(2026, 10, 11))).toEqual({ days: ['2026-10-11', '2026-11-20', '2026-12-20'], count: 3 });
+    expect(days('MONTHLY', 20, '', '2027-01-15', at(2026, 10, 11))).toMatchObject({ days: ['2026-10-11', '2026-11-20', '2026-12-20'], count: 3 });
   });
   it('"Now" counts the same days as starting on today\'s date', () => {
     expect(days('DAILY', null, '', '2026-07-10', at(2026, 6, 30)).count).toBe(days('DAILY', null, '2026-06-30', '2026-07-10', at(2026, 6, 30)).count);

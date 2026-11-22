@@ -59,7 +59,10 @@ ${THE_KINDS_IN_WORDS}
 The situation is why the check-in is set up; the kind is what the work itself is. ${HOW_A_KIND_IS_CHOSEN}
 ${modeHint}
 
-Description: "${description.slice(0, 400)}"
+What they said:
+${description.slice(0, 4000)}
+
+READ WHAT THEY MEAN, NOT THE WORDS ON THEIR OWN. Each situation and kind above is described by what it is for; choose the one whose description fits what this person wants the check-in to do, from everything they said. A word can mean different things in different work, so read each word by what the rest of what they said is about, never by a word that also appears in a description. Who is asked for what decides the situation: people giving regular updates on their own work is getting updates from a team, whatever subject the updates are about.
 
 Confidence is "high" only when one situation clearly fits and the others clearly do not. Say "low" when two or more fit about equally, when the description is too thin to tell (a feeling, a worry, or a team problem with no sign of what the person wants to do about it), or when what the person describes is not any of these. A wrong answer given as "high" is worse than "low", because with "low" the conversation asks the person instead of guessing.`;
 }
@@ -95,6 +98,17 @@ export function readTheClassification(answer: { scenario?: string; confidence?: 
   const kind = oneOfTheKinds(answer.kind);
   if (!key && !kind) return null;
   return { scenario: confidence === 'high' ? key : null, confidence, ...(kind ? { kind } : {}) };
+}
+
+/**
+ * THE WHOLE CONVERSATION, AS THE READING IS GIVEN IT: what they said and what Groundwork said back, in order, so the reading has the
+ * context every word was said in (a read-back they confirmed says more than their first line alone).
+ */
+export function theWholeConversation(messages: readonly { role: string; content: string }[]): string {
+  return messages
+    .filter((m) => typeof m.content === 'string' && m.content.trim())
+    .map((m) => `${m.role === 'user' ? 'They said' : 'Groundwork said'}: ${m.content.trim()}`)
+    .join('\n');
 }
 
 /** The model's reading call, as the engine's model service makes it. */
