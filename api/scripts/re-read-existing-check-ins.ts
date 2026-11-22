@@ -14,8 +14,9 @@
  *  - the kind of work: GroundsService.readTheKindOfWork, the one reading (readTheSituationAndTheKind), which now reads what the lead
  *    said at set-up too. It never changes a kind the lead set, and a sales kind already held stays. Where it gives a kind there was none, it
  *    emits KIND_OF_WORK_READ, and the board listener reads the finished check-ins into their records (deals, counts), as for a new one.
- *  - the targets: ConversationService.extractExpectations, the set-up target writer, given what the lead said at set-up as her set-up
- *    conversation. A target already on record, the same thing counted for the same person, is never written again.
+ *  - the targets: readTheTargetsSheGaveAtSetUp, the reader a check-in set up in the chat runs, which reads what the lead said at set-up
+ *    with ConversationService.extractExpectations, the set-up target writer. A target already on record, the same thing counted for the
+ *    same person, is never written again.
  * It changes nothing else: no words, sessions, schedules, reports, statuses or emails, and it reopens nothing. The situation is kept as
  * saved, because nothing on record says whether the lead picked it.
  *
@@ -75,8 +76,7 @@ async function main() {
   const { AnthropicService } = await import('../src/modules/conversation/anthropic.service');
   const { readTheSituationAndTheKind, THE_SCENARIOS_IN_WORDS } = await import('../src/modules/entry/which-situation-this-is');
   const { theSetupWords, oneOfTheKinds } = await import('../src/modules/board/the-kind-of-work');
-  const { whatTheLeadSaidAtSetUp } = await import('../src/modules/grounds/what-the-lead-said-at-set-up');
-  const { GroundworkEvents } = await import('../src/common/events');
+  const { whatTheLeadSaidAtSetUp, readTheTargetsSheGaveAtSetUp } = await import('../src/modules/grounds/what-the-lead-said-at-set-up');
   const { EventEmitter2 } = await import('@nestjs/event-emitter');
 
   const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error', 'warn'] });
@@ -120,11 +120,8 @@ async function main() {
       if (!may.writes) continue;
       const kindBefore = g.kindOfWork;
       await grounds.readTheKindOfWork(g.id);
-      if (own && lead && leadsFirst) {
-        const landed = await conversation.extractExpectations(leadsFirst.id, lead.id, g.id, [{ role: 'user', content: own }]).catch(() => false);
-        /* As at set-up: the board is warmed again once her targets have landed. */
-        if (landed) events.emit(GroundworkEvents.SETUP_READ, { groundId: g.id });
-      }
+      /* Her targets, by the same reader a check-in set up in the chat runs (readTheTargetsSheGaveAtSetUp), which warms the board when they land. */
+      if (own && lead && leadsFirst) await readTheTargetsSheGaveAtSetUp({ prisma, conversation, events, logger: console }, g.id);
       const now = await prisma.ground.findUnique({ where: { id: g.id }, select: { kindOfWork: true, objectives: { select: { id: true } } } });
       /* On a sales check-in with Release 1 on, the lead's targets wait for her yes, as one card (the release's own rule, 18 October). */
       const forHerYes = await prisma.planProposal.count({ where: { groundId: g.id, kind: 'GOAL', status: 'PENDING' } }).catch(() => 0);

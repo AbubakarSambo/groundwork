@@ -180,8 +180,9 @@ describe('a check-in set up by talking, turn by turn, as Grace the lead reads it
     expect((await l.say('Deals, payments and visits')).text).toBe('Who should be in it, and how do I reach each of them? Mercy Wairimu and Kevin Omondi report to you, so say yes to ask all of them. Or give me each person’s name with an email address, and a phone number too if you want their check-ins on WhatsApp, one person to a line.');
     expect((await l.say('Mercy\nJuma Otieno juma@baridi.co.ke +254 712 345 678')).text).toBe('How often should they check in? Every day, every week, every two weeks, or every month?');
     expect(created).toEqual([]);
+    /* Changed 22 November 2026: the situation is said in its card's words (the scenario table), the same words /start uses, since it is now read by the one reading. */
     const back = (await l.say('Every week')).text;
-    expect(back).toBe('Here is the check-in I will open. It is called "Updates on deals, payments and visits", and it asks for updates on deals, payments and visits. I will run it as a check-in about a regular read on live work. Mercy Wairimu (mercy@baridi.co.ke) and Juma Otieno (juma@baridi.co.ke, +254 712 345 678) will be in it, and each of them will be emailed an invitation. They will check in every week. Shall I open it?');
+    expect(back).toBe('Here is the check-in I will open. It is called "Updates on deals, payments and visits", and it asks for updates on deals, payments and visits. I will run it as a check-in to keep a read on live work. Mercy Wairimu (mercy@baridi.co.ke) and Juma Otieno (juma@baridi.co.ke, +254 712 345 678) will be in it, and each of them will be emailed an invitation. They will check in every week. Shall I open it?');
     expect(created).toEqual([]);
     expect((await l.say('yes')).text).toBe('I have opened "Updates on deals, payments and visits". Mercy Wairimu and Juma Otieno have been invited.');
     expect(created[0]).toEqual(expect.objectContaining({ label: 'Updates on deals, payments and visits', scenario: 'PULSE_CHECK', cadence: 'WEEKLY' }));
