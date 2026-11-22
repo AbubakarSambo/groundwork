@@ -5144,8 +5144,10 @@ export class ConversationService {
        * null means no session has picked it up yet, so a note is raised once
        * rather than in every session from now on.
        */
+      /* And the ones already carried into this very check-in, on every turn of it (release test, 22 November 2026, bug 11): stamped on the
+         first turn's prompt, a note was in that prompt alone, so the opener's one chance to raise it was the only one. */
       this.prisma.participantNote.findMany({
-        where: { participantId: checkIn.participantId, carriedIntoCheckInId: null },
+        where: { participantId: checkIn.participantId, OR: [{ carriedIntoCheckInId: null }, { carriedIntoCheckInId: checkIn.id }] },
         orderBy: { createdAt: 'asc' },
         select: { id: true, text: true, createdAt: true },
       }),
@@ -5423,7 +5425,7 @@ export class ConversationService {
       // a session would re-raise the same note next time and every time after.
       await this.prisma.participantNote
         .updateMany({
-          where: { id: { in: pendingNotes.map((n) => n.id) } },
+          where: { id: { in: pendingNotes.map((n) => n.id) }, carriedIntoCheckInId: null },
           data: { carriedIntoCheckInId: checkIn.id },
         })
         .catch((e) => this.logger.error(`Could not mark notes carried for check-in ${checkIn.id}: ${e?.message ?? e}`));
