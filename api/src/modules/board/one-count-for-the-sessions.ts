@@ -1,4 +1,4 @@
-import { whichRoundIsOpen } from './which-round-is-open';
+import { whichRoundIsOpen, inTheTeamsNumbering } from './which-round-is-open';
 import { theDayZone } from '../../common/the-organisations-own-day';
 /**
  * ONE COUNT FOR THE SESSIONS, FROM THE BOARD'S OWN CLOCK (request 107 e, with request 97 a).
@@ -146,7 +146,7 @@ export function theSessionClock(
   /* Release 1's reading, where its switch is on for the organisation; false reads as before it (theRoundThatHasCome). */
   handOn = true,
 ): TheSessionClock {
-  const theirs = rows.filter((r) => whoChecksIn.has(r.participantId));
+  const theirs = inTheTeamsNumbering(rows.filter((r) => whoChecksIn.has(r.participantId)));
   const highest = rows.reduce((m, r) => Math.max(m, r.sessionNumber ?? 1), 1);
   const open = theirs.length ? whichRoundIsOpen(theirs as any) : highest;
   const current = theRoundCappedAtThePlan(open, planned, theirs, now, handOn);

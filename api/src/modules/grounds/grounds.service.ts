@@ -1578,6 +1578,8 @@ export class GroundsService {
        You leaves them out (isNotLetInYet), and named apart from "N of M" for whoever runs it. Never missed. */
     const notJoinedOnTheList = new Map<string, Set<string>>();
     for (const g of [...orgGrounds, ...participantGrounds] as any[]) {
+      /* Named as the board and the check-in's page name them, so the list's count says who, never "one person" (release test, 21 November 2026). */
+      await withTheirNamesFromTheOrganisation(this.prisma as any, g.organizationId, (g.participants ?? []) as any);
       const notJoined = await whoHasNotJoinedYet(this.prisma, g.participants ?? []).catch(() => new Set<string>());
       if (!notJoined.size) continue;
       notJoinedOnTheList.set(g.id, notJoined);

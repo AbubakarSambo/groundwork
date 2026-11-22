@@ -1,3 +1,4 @@
+import { theQuietHoursNow } from '../../common/the-clock';
 import { aRoundIsCounted, sessionsAPauseOpened } from '../grounds/a-round-that-could-be-answered';
 import { whenTheseOrganisationsPaused, thePausesThatAreOver } from '../billing/the-trial-grace';
 import { thePlannedSessionsOf } from '../grounds/this-sessions-count';
@@ -456,7 +457,8 @@ export class BoardService {
     /* `now`: the board's clock. Dates it writes leave out the year only where it is this clock's year. */
     opts: { mayWordNewLines?: boolean; now?: Date } = {},
   ) {
-    const now = opts.now ?? new Date();
+    /* The one clock Today, the list and the sweeps read (common/the-clock.ts), so the board counts the same sessions as open. */
+    const now = opts.now ?? theQuietHoursNow();
     /* Nobody held for a seat reads the board (finding 3). */
     await refuseSomeoneHeldForASeat(this.prisma as any, groundId, requestingUserId);
     const ground = await this.prisma.ground.findUnique({
@@ -481,7 +483,7 @@ export class BoardService {
         /* participantId too: the glance counts who has answered this round by it, and without it the board read
            "0 of 2 answered this round" to a woman who had just answered (Hafsah, 21 Sep 2026). */
         /* With the close reason and the person's first turn, so the glance does not count a session the clock closed with nothing said as answered. */
-        checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true, availableFrom: true, closedReason: true, turns: SAID } },
+        checkIns: { select: { sessionNumber: true, status: true, isSetup: true, completedAt: true, participantId: true, availableFrom: true, createdAt: true, closedReason: true, turns: SAID } },
         reportRounds: { select: { sharedPicture: true, sessionNumber: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
         poll: { include: { options: { orderBy: { sortOrder: 'asc' } } } },
       },
@@ -4367,7 +4369,7 @@ export class BoardService {
       }),
       this.prisma.checkIn.findMany({
         where: { groundId: ground.id },
-        select: { participantId: true, sessionNumber: true, status: true },
+        select: { participantId: true, sessionNumber: true, status: true, isSetup: true, closedReason: true, turns: SAID },
       }),
     ]);
     // WHETHER THESE PEOPLE SEE EACH OTHER'S WORK. The lead's answer if they gave

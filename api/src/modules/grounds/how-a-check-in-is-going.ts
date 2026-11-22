@@ -1,3 +1,4 @@
+import { theQuietHoursNow } from '../../common/the-clock';
 import { theTeamsOpenRound } from '../board/which-round-is-open';
 import { CheckInStatus } from '@prisma/client';
 import { awayUntilOn, type Stretch } from '../suites/who-is-away';
@@ -63,14 +64,13 @@ export interface WhatItTakes {
   cadenceDays?: number[] | null;
 }
 
-export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): HowItIsGoing {
+export function howACheckInIsGoing(it: WhatItTakes, now: Date = theQuietHoursNow()): HowItIsGoing {
   /*
    * NOT LET IN YET, NOT WAITED ON (decision 77). A row still to answer, belonging to somebody an admin
    * has not let in, neither keeps a round from being done nor holds the open round back. Anything
    * they did answer still counts.
    */
   const sessions = theSessionRowsOf(it.checkIns as any[], (it.participants ?? []) as any[]) as typeof it.checkIns;
-  const roundsDone = theRoundsDone(sessions as any[], it.leave, now);
 
   /*
    * Cut to three sentences here rather than on a screen, because a screen cannot tell where a
@@ -122,6 +122,8 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
      read "0 of 2 answered this round" to somebody who had just answered (21 Sep 2026). */
   const openRoundRaw = sessions.length ? theTeamsOpenRound(sessions as any, (it.participants ?? []) as any) : 1;
   const openRound = it.round ?? (roundsPlanned && roundsPlanned > 0 ? Math.min(openRoundRaw, roundsPlanned) : openRoundRaw);
+  /* Done from the same clock the count reads: a session the clock has moved past is over (theRoundsDone). */
+  const roundsDone = theRoundsDone(sessions as any[], it.leave, now, openRound);
   const glance = atAGlance(
     {
       roundsDone,

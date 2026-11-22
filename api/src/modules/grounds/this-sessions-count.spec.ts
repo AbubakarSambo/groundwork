@@ -178,12 +178,12 @@ describe('somebody with no name is counted, never called "Someone", in every sta
     { id: 'p3', userId: 'u3' },
   ];
   it('one nameless person who has not started', () => {
-    expect(whoSaid([people[1]], [], 2, ['p2'], new Set(), 'u-reader')).toEqual(['One person hasn’t started yet']);
+    expect(whoSaid([people[1]], [], 2, ['p2'], new Set(), 'u-reader')).toEqual(['one person hasn’t started yet']);
   });
   it('a named person and two nameless people who have not started', () => {
     expect(whoSaid(people, [], 2, ['p1', 'p2', 'p3'], new Set(), 'u-reader')).toEqual(['Neema and 2 other people haven’t started yet']);
   });
   it('a nameless person who did not check in before it closed', () => {
-    expect(whoSaid([people[1]], [], 2, ['p2'], new Set(['p2']), 'u-reader')).toEqual(['One person didn’t check in before it closed']);
+    expect(whoSaid([people[1]], [], 2, ['p2'], new Set(['p2']), 'u-reader')).toEqual(['one person didn’t check in before it closed']);
   });
 });

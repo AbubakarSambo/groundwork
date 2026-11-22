@@ -1,6 +1,8 @@
+import { theQuietHoursNow } from '../../common/the-clock';
 import { sessionsAPauseOpened } from './a-round-that-could-be-answered';
 import { theyHaveReplied } from './an-answer-includes-a-refusal';
 import { theSessionClock, holdsTheClock, type TheSessionClock } from '../board/one-count-for-the-sessions';
+import { inTheTeamsNumbering } from '../board/which-round-is-open';
 import { owesThisSession } from './the-lead-checks-in-when-they-choose';
 import { isNotLetInYet, whoIsNotLetInYet, markedNotLetIn } from './who-an-admin-did-not-let-in';
 import { whoHasNotJoinedYet } from './invited-not-joined-yet';
@@ -135,7 +137,8 @@ export function whoSaid(people: any[], rows: any[], session: number, notAnswered
     const names = xs.filter((n) => n !== SOMEONE);
     const nameless = xs.length - names.length;
     const others = nameless === 0 ? [] : [nameless === 1 ? `one other person` : `${nameless} other people`];
-    const subject = names.length ? andList([...names, ...others]) : nameless === 1 ? 'One person' : `${nameless} people`;
+    /* Lower case: the clause follows the count ("4 of 5 have checked in; one person hasn't started yet."), and `whoSays` capitalises it where it starts a sentence. */
+    const subject = names.length ? andList([...names, ...others]) : nameless === 1 ? 'one person' : `${nameless} people`;
     const singular = (names.length + (nameless ? 1 : 0)) === 1 && xs.length === 1 && names[0] !== 'you';
     return `${subject} ${singular ? one1 : many}`;
   };
@@ -175,11 +178,12 @@ export function theSessionAndItsCount(
   g: WhatTheCountReads,
   opts: { now?: Date; handOn?: boolean; leave?: Map<string, Stretch[]>; names?: { readerUserId?: string | null }; pausedFrom?: Date | string | null } = {},
 ): { clock: TheSessionClock; count: ThisSession; bySession: Record<number, TheServedCount> } {
-  const now = opts.now ?? new Date();
+  const now = opts.now ?? theQuietHoursNow();
   const participants = (g.participants ?? []) as any[];
   /* A round the pause opened was never sent to anybody, so no reader counts it: not the header's round, not the glance, not any session's count (run 10). */
   const thePauseOpened = sessionsAPauseOpened((g.checkIns ?? []) as any[], opts.pausedFrom);
-  const checkInsAsked = ((g.checkIns ?? []) as any[]).filter((c) => !thePauseOpened.has(Number(c.sessionNumber)));
+  /* In the team's numbering, so somebody added late is counted in the session the team is on (inTheTeamsNumbering). */
+  const checkInsAsked = inTheTeamsNumbering(((g.checkIns ?? []) as any[]).filter((c) => !thePauseOpened.has(Number(c.sessionNumber))));
   const rows = checkInsAsked.filter((c) => !c.isSetup);
   const planned = thePlannedSessionsOf(g);
   const clock = theSessionClock(rows, whoHoldsTheClock(participants), planned, now, opts.handOn ?? true);

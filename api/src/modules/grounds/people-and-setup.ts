@@ -1,4 +1,4 @@
-import { thePlannedSessionsOf } from './this-sessions-count';
+import { thePlannedSessionsOf, theSessionAndItsCount } from './this-sessions-count';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { howOftenItRuns } from './the-check-ins-own-schedule';
 import { aDayInItsZone } from '../board/a-day-said-in-full';
@@ -268,7 +268,9 @@ export async function readPeopleAndSetup(
   const problems = theSetupProblems({ rows, leadUserId: ground.initiatorId, reader: isLead ? 'lead' : 'admin', organisationName: ground.organization?.name ?? 'your organisation', askedOnWhatsApp, phones, mayReadTheAddress });
 
   const leave = await leaveOfThePeopleOn(prisma, [ground.id]).catch(() => undefined);
-  const rounds = theRoundsDone(theSessionRowsOf(ground.checkIns ?? [], rows), leave, now);
+  /* Done by the same clock the board's header reads (theSessionAndItsCount), so "N of 12 sessions done" and "Check-in M of 12" agree. */
+  const theClock = theSessionAndItsCount({ participants: rows as any[], checkIns: ground.checkIns ?? [], scenario: ground.scenario, timelineDays: ground.timelineDays, cadence: ground.cadence, cadenceDays: (ground as any).cadenceDays, runsUntilEnded: ground.runsUntilEnded }, { now, leave }).clock.currentSession;
+  const rounds = theRoundsDone(theSessionRowsOf(ground.checkIns ?? [], rows), leave, now, theClock);
   /* The same function the member's page and the board read; a lead who is a party reads her own count here too. */
   const yourSessionsDone = mine ? theSessionsDoneBy(ground.checkIns ?? [], mine.id) : 0;
   const sessions = ground.cadence === 'ONE_TIME'
