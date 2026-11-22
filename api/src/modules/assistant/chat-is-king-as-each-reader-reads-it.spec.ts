@@ -85,7 +85,7 @@ describe('a person’s history, asked for by name', () => {
     const r = await ask(theAssistant('lead-1'), 'How has Mercy been performing?');
     expect(r.lane).toBe('performance_history');
     expect(r.said).toContain('This is Mercy’s history in "Sales team, Q4"');
-    expect(r.said).toMatch(/Mercy has checked in for 5 of the \d+ check-ins due, \d+ of them on time and \d+ with specific answers\./);
+    expect(r.said).toMatch(/Mercy has done 5 of \d+ check-ins, \d+ on time and \d+ with specific answers\./);
     expect(r.said).toContain('This is the same page you see under My work for this check-in, and only you can read it here.');
     expect(r.said).not.toContain('Kevin');
     expect(r.said).not.toMatch(/\b(PIP|at risk|low performer|rating)\b/i);
@@ -119,7 +119,7 @@ describe('a person’s history, asked for by name', () => {
   it('Mercy asking about herself reads her own page, in the second person', async () => {
     const r = await ask(theAssistant('u-mercy'), 'Show me the performance history for myself');
     expect(r.said).toContain('This is your history in "Sales team, Q4"');
-    expect(r.said).toContain('You have checked in for 5 of');
+    expect(r.said).toContain('You have done 5 of');
     expect(r.said).toContain('nobody else reads it through me');
     expect(r.said).not.toContain('what you have told me about them');
   });

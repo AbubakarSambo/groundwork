@@ -64,8 +64,8 @@ export function aHistorySaid(p: AHistoryPage): string {
     /* Where judgements are off, on time and specific are not read at all, so they are not said as nought (release test, 21 November 2026:
        "Amani has done 0 of 2 check-ins, 0 on time and 0 with specific answers"). */
     out.push(p.judgementsOff
-      ? `${who} ${has} checked in for ${p.checkIns.done} of the ${p.checkIns.due} check-ins due.`
-      : `${who} ${has} checked in for ${p.checkIns.done} of the ${p.checkIns.due} check-ins due, ${p.checkIns.onTime} of them on time and ${p.checkIns.specific} with specific answers.`);
+      ? `${who} ${has} done ${p.checkIns.done} of ${p.checkIns.due} check-ins.`
+      : `${who} ${has} done ${p.checkIns.done} of ${p.checkIns.due} check-ins, ${p.checkIns.onTime} on time and ${p.checkIns.specific} with specific answers.`);
   } else {
     out.push(`There is no finished check-in for ${p.self ? 'you' : p.firstName} here yet, so there is no history to read.`);
   }
