@@ -25,6 +25,8 @@ export interface AWaitToJudge {
   onLabel: string | null;
   what: string;
   createdAt: Date | string;
+  /** The conversation it was read from. */
+  sourceCheckInId?: string | null;
 }
 export interface AWitness {
   /** A line on record, a work item, or a correction that was backed. */
@@ -37,6 +39,8 @@ export interface AWitness {
   text: string;
   /** People this is by, as user ids (one person in several check-ins is one person). */
   byUserId?: string | null;
+  /** The conversation a line was said in; none for a work item or a correction. */
+  checkInId?: string | null;
 }
 export interface AWaitOver { id: string; clearedAt: Date; witnessId: string }
 
@@ -45,7 +49,7 @@ export const WAIT_OVER_PROMPT = `You keep the record of a team's work. Each wait
 
 A wait is over when the record shows the thing came, happened, was done, was given, was decided, or is no longer needed, in any words: a fee note paid was raised, a reply filed means the revisions to it were done, "Jamii paid FN-007" ends a wait for confirmation that FN-007 was raised, "I approved the KES 4,500 price" ends a wait for a decision on that price. It is also over when the one waiting says they are not waiting for it any more, or the one it waits on says, believably, that nothing is owed.
 
-A wait is not over when the record only shows a promise, a plan, a hope, a reminder or a chase, or when only part of the thing came: one person's proof does not end a wait on the whole team. It is not over from a line about a different thing, a different customer or a different deal (FN-006 is not FN-007; a sale to Juja Hardware says nothing about a price somebody else is waiting on). Something else that happened to the same thing does not answer what was asked about it: a fee note raised does not give the day it will be paid, and a promise to tell somebody is not telling them. When lines disagree, the newest line from somebody who would know wins, and a line with a document or a slip weighs more than a line without.
+A wait is not over when the record only shows a promise, a plan, a hope, a reminder or a chase, or when only part of the thing came: one person's proof does not end a wait on the whole team. A work item's stage ends a wait only when the wait was for that very stage: a deal marked Won ends a wait for the contract to be signed, never a wait for its delivery schedule, its price or anything else about that customer. It is not over from a line about a different thing, a different customer or a different deal (FN-006 is not FN-007; a sale to Juja Hardware says nothing about a price somebody else is waiting on). Something else that happened to the same thing does not answer what was asked about it: a fee note raised does not give the day it will be paid, and a promise to tell somebody is not telling them. When lines disagree, the newest line from somebody who would know wins, and a line with a document or a slip weighs more than a line without.
 
 Name, for each wait you end, the one line or item that shows it, by its id from the list, and say in one short sentence why that line ends that wait. Never end a wait without one. When you are not sure, leave it open.`;
 
@@ -114,9 +118,16 @@ export const theNamingWords = (t: string): string[] => {
 export function theWitnessesFor(waits: { w: AWaitToJudge; names: string[]; userIds: string[] }[], all: AWitness[], perWait = 30): AWitness[] {
   const chosen = new Map<string, AWitness>();
   for (const { w, names, userIds } of waits) {
+    /*
+     * NOTHING FROM THE CONVERSATION THAT RAISED IT (release test, 21 November 2026, bugs 35 and 40). That conversation was read whole,
+     * and its reading is that the wait is open: that is why the row exists. Handed back its own lines, the model ended Wairimu's wait
+     * for delivery slots at the very moment it was raised, from "a second Kilimani run is possible from 1 December", her own words
+     * beside it. A wait is ended only by something said somewhere else, or later.
+     */
+    const elsewhere = all.filter((x) => !(w.sourceCheckInId && x.checkInId && x.checkInId === w.sourceCheckInId));
     const thing = theNamingWords(w.what);
     const people = names.flatMap((n) => theNamingWords(n));
-    const scored = all
+    const scored = elsewhere
       .map((x) => {
         const said = new Set(theNamingWords(x.text));
         const thingHits = thing.filter((t) => said.has(t)).length;
@@ -168,7 +179,7 @@ export async function clearTheWaitsTheRecordEnds(
   const labelOf = new Map(shared.map((g) => [g.id, String(g.label ?? 'a check-in')]));
   const waits: AWaitToJudge[] = (await prisma.groundDependency.findMany({
     where: { groundId: { in: ids }, status: { in: ['WAITING', 'BLOCKING'] }, clearedAt: null },
-    select: { id: true, groundId: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, createdAt: true },
+    select: { id: true, groundId: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, createdAt: true, sourceCheckInId: true },
   })) ?? [];
   const people: any[] = (await prisma.groundParticipant.findMany({
     where: { groundId: { in: ids } },
@@ -190,7 +201,7 @@ export async function clearTheWaitsTheRecordEnds(
   };
   const lines: any[] = (await prisma.recordEntry.findMany({
     where: { disputedAt: null, participant: { groundId: { in: ids } } },
-    select: { id: true, participantId: true, type: true, text: true, createdAt: true, participant: { select: { groundId: true, userId: true } } },
+    select: { id: true, participantId: true, checkInId: true, type: true, text: true, createdAt: true, participant: { select: { groundId: true, userId: true } } },
   })) ?? [];
   const items: any[] = (await Promise.resolve(prisma.workItem?.findMany?.({
     where: { groundId: { in: ids }, stage: { not: null } },
@@ -199,7 +210,7 @@ export async function clearTheWaitsTheRecordEnds(
   const all: AWitness[] = [
     ...lines.map((l) => ({
       id: l.id, who: nameOf(l.participantId), kind: KIND[String(l.type)] ?? 'a line', where: labelOf.get(l.participant?.groundId) ?? 'a check-in',
-      on: l.createdAt, text: String(l.text ?? '').replace(/\[INFERRED:[^\]]*\]/g, '').trim(), byUserId: l.participant?.userId ?? null,
+      on: l.createdAt, text: String(l.text ?? '').replace(/\[INFERRED:[^\]]*\]/g, '').trim(), byUserId: l.participant?.userId ?? null, checkInId: l.checkInId ?? null,
     })),
     ...items.map((i) => ({ id: i.id, who: 'the record', kind: 'work item', where: labelOf.get(i.groundId) ?? 'a check-in', on: i.updatedAt, text: `${i.kind} ${i.name} is at the stage "${i.stage}"` })),
     ...extra,

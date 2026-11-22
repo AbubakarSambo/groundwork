@@ -40,6 +40,19 @@ describe('what the model is handed', () => {
   });
 });
 
+/* Release test, 21 November 2026, bugs 35 and 40: Wairimu's wait for delivery slots was ended the moment it was raised, by her own words in
+   the same check-in. The conversation that raised a wait is never handed back as what ends it. */
+describe('nothing from the conversation that raised a wait ends it', () => {
+  const SLOTS: AWaitToJudge = { id: 'w-slots', groundId: 'g-sales', fromParticipantId: 'p-wairimu', onParticipantId: null, onLabel: 'operations', what: 'delivery slots', createdAt: at('2026-11-22'), sourceCheckInId: 'c-wairimu-3' };
+  const SAME: AWitness = { id: 'l-run', who: 'Wairimu Njoroge', kind: 'a time they gave', where: 'Sales team, Q4', on: at('2026-11-22'), text: 'a second Kilimani run is possible from 1 December, so the delivery slots ease', byUserId: 'u-wairimu', checkInId: 'c-wairimu-3' };
+  const LATER: AWitness = { id: 'l-slots', who: 'Wairimu Njoroge', kind: 'what happened', where: 'Sales team, Q4', on: at('2026-11-29'), text: 'Operations gave us the extra delivery slots on Monday.', byUserId: 'u-wairimu', checkInId: 'c-wairimu-4' };
+  it('her own words beside it are not handed to the model; what she says in a later check-in is', () => {
+    const ids = theWitnessesFor([{ w: SLOTS, names: ['Wairimu Njoroge', 'operations'], userIds: ['u-wairimu'] }], [SAME, LATER]).map((x) => x.id);
+    expect(ids).not.toContain('l-run');
+    expect(ids).toContain('l-slots');
+  });
+});
+
 describe('the waits the record ends are cleared across the organisation', () => {
   function aBed() {
     const updated: { id: string; clearedAt: Date }[] = [];
