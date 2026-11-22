@@ -22,7 +22,8 @@ describe('the switch is off for every organisation until it is switched on', () 
     const statements = sql.split('\n').filter((l) => l.trim() && !l.trim().startsWith('--'));
     expect(statements).toEqual(['ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "release_1_sales_board_on" BOOLEAN NOT NULL DEFAULT false;']);
     const schema = readFileSync(join(API, 'prisma/schema.prisma'), 'utf8');
-    expect(schema).toContain('release1SalesBoardOn   Boolean   @default(false) @map("release_1_sales_board_on")');
+    /* Changed 22 November 2026: everything built is switched on (Hafsah); the column's default is now true, and the later migration sets it on for every organisation. */
+    expect(schema).toContain('release1SalesBoardOn   Boolean   @default(true) @map("release_1_sales_board_on")');
   });
 
   it('reads on only when the organisation\'s row says true', async () => {

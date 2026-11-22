@@ -72,8 +72,13 @@ describe('the first question fits the situation, and the context tab exists', ()
     expect(SRC).toMatch(/buildSetupPrompt\(ONBOARD_SYSTEM, scenarioForTheQuestion, momentInput\)/);
   });
 
-  it('and only on the first turn, so it costs one call where it matters', () => {
-    expect(SRC).toMatch(/const firstTurn = \(messages as \{ role: string \}\[\]\)\.filter\(\(m\) => m\.role === 'user'\)\.length <= 1/);
+  /* Changed 22 November 2026: it ran on the first turn only, so an unsure first read was never read again and the check-in was saved as a
+     new project. It now reads on every turn until a situation is known, and not once the screen sends one back. */
+  it('and on every turn until a situation is known, never once one is', () => {
+    expect(SRC).not.toMatch(/const firstTurn =/);
+    /* And while the kind of work is not read yet, with the situation already read kept (22 November 2026, the kind's one reading). */
+    expect(SRC).toMatch(/const reading = \(!scenarioInput \|\| !soFar\?\.kindOfWork\) && theirWords\.trim\(\)\.length > 12/);
+    expect(SRC).toMatch(/const scenarioForTheQuestion = scenarioInput \? scenarioInput : reading\?\.scenario/);
   });
 
   /*

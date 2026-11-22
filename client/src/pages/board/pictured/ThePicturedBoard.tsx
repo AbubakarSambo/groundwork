@@ -5,7 +5,7 @@ import { EveryTraderAndWhatShowsIt } from './TheLoansBoard'
 import { EveryTicketAndWhatShowsIt, EachAreaOfTheWork, theIncidentsBySiteAndType, isATicketsKind, theTicketGrid } from './TheTicketsBoard'
 import { WomenAndDropOff } from './TheProgrammeBoard'
 import { WhereNextRanked } from './TheWhereNextBoard'
-import { TheSituationsNote, WhatEachSidePromised, TheRisks, WhatHappenedDayByDay, WhatKeepsBeingRaised, TheSituationsWorkPlan, EachAccountSideBySide, KnownBelievedUnknown, whoAnsweredThisRound } from './TheSituationsSections'
+import { TheSituationsNote, WhatEachSidePromised, TheRisks, WhatHappenedDayByDay, WhatKeepsBeingRaised, TheSituationsWorkPlan, EachAccountSideBySide, KnownBelievedUnknown, ForYouToDecide, whoAnsweredThisRound } from './TheSituationsSections'
 import { useMemo, useState, type ReactNode } from 'react'
 import { WhatIsClosing } from './TheMorningOnTheBoard'
 import { Link } from 'react-router-dom'
@@ -49,7 +49,7 @@ export type APicturedSection =
   | 'participantNote' | 'priorities' | 'yourPart' | 'teamReport' | 'companyBoard' | 'template'
   | 'plan' | 'money' | 'stakeholders' | 'projectComingUp' | 'offTrack'
   | 'readTop' | 'readEnd'
-  | 'theDecision' | 'accounts' | 'knownBelievedUnknown'
+  | 'theDecision' | 'accounts' | 'knownBelievedUnknown' | 'forYouToDecide'
   | 'suggestion' | 'theCase'
   | 'fillsIn' | 'agreedAndApart' | 'firstSteps' | 'mayBeRelevant'
   | 'headlineTargets' | 'everySale' | 'byTeam' | 'themes' | 'saidVersusDone' | 'founderFigures'
@@ -809,7 +809,8 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
     teamReport: () => <TheTeamsReport b={b} groundId={p.groundId} sessionRows={p.sessionRows} leadFirstName={p.leadFirstName ?? null} heading={p.reportHeading ?? 'The team’s report'} />,
     theDecision: () => <TheDecision b={b} />,
     accounts: () => <EachAccountSideBySide b={b} />,
-    knownBelievedUnknown: () => <KnownBelievedUnknown b={b} unknown={p.unknown ?? []} leadFirstName={p.leadFirstName ?? null} />,
+    knownBelievedUnknown: () => <KnownBelievedUnknown b={b} unknown={p.unknown ?? []} />,
+    forYouToDecide: () => <ForYouToDecide b={b} leadFirstName={p.leadFirstName ?? null} />,
     suggestion: () => <TheSuggestion b={b} groundId={p.groundId} personId={p.personId ?? null} />,
     theCase: () => <TheirCase b={b} groundId={p.groundId} personId={p.personId ?? null} />,
     headlineTargets: () => <TheHeadlineAndEachTarget b={b} withBar={b.kindOfWork === 'sales org' || b.kindOfWork === "founder's own check-in" || b.kindOfWork === 'trader training programme'} barBesideEachTarget={b.kindOfWork === "founder's own check-in"} />,

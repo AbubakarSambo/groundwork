@@ -245,6 +245,28 @@ export class LeaveBoardService {
     @Optional() private readonly told?: ARequestToldOnWhatsApp,
   ) {}
 
+  /**
+   * WHETHER THIS READER MAY OPEN THE LEAVE BOARD: an admin, a lead, whoever holds the HR duty, or a member the rules could name to
+   * decide. One rule, read by the board itself and served on /suites/mine, so a page never asks for a board it will be refused
+   * (page loads, 22 November 2026).
+   */
+  async howTheyOpenTheBoard(reader: Reader, knownRole?: string | null, knownAnswers?: any, knownHr?: boolean): Promise<'admin' | 'lead' | 'approver' | 'hr' | null> {
+    const role = knownRole !== undefined ? knownRole : await this.roleOf(reader);
+    if (!role || role === 'GUEST') return null;
+    if (role === 'ADMIN') return 'admin';
+    if (role === 'LEAD') return 'lead';
+    const answers = knownAnswers ?? (await this.suiteAnswers(reader.organizationId));
+    const named = role === 'MEMBER' && (await couldBeNamed(this.prisma, [...everyRuleIn(theStepsFor('leave', answers)), ...(answers.rules.thresholds ?? []).flatMap((t: any) => everyRuleIn(t.steps)), ...(answers.rules.kinds ?? []).flatMap((k: any) => everyRuleIn(k.steps ?? []))], reader.organizationId, { userId: reader.userId, role }));
+    if (named) return 'approver';
+    const holdsHr = knownHr ?? (await readDuties(this.prisma, reader.organizationId)).hr === reader.userId;
+    return holdsHr ? 'hr' : null;
+  }
+
+  /** Whether this reader may open the leave board, by the one rule above. */
+  async mayOpenTheBoard(reader: Reader): Promise<boolean> {
+    return (await this.howTheyOpenTheBoard(reader)) !== null;
+  }
+
   async board(reader: Reader, today = new Date()): Promise<{ reader: BoardReader; waiting: Waiting[]; off: Off[]; toldToHr: ToldToHr[] }> {
     const ask = await askNameOf(this.prisma, reader.organizationId);
     const answers = await this.suiteAnswers(reader.organizationId);
@@ -257,11 +279,8 @@ export class LeaveBoardService {
      * rules could name opens the board as an approver and is served only what waits for them; any
      * other member, and a guest, are refused, as before.
      */
-    const asApprover = role !== 'ADMIN' && role !== 'LEAD';
-    const mayBeNamed = asApprover && role === 'MEMBER' && (await couldBeNamed(this.prisma, [...everyRuleIn(theStepsFor('leave', answers)), ...(answers.rules.thresholds ?? []).flatMap((t) => everyRuleIn(t.steps)), ...(answers.rules.kinds ?? []).flatMap((k) => everyRuleIn(k.steps ?? []))], reader.organizationId, { userId: reader.userId, role }));
-    if (asApprover && !mayBeNamed && !holdsHr) {
-      throw new ForbiddenException(LEAVE_REFUSED.onlyAdminsAndLeads);
-    }
+    const way = await this.howTheyOpenTheBoard(reader, role, answers, holdsHr);
+    if (!way) throw new ForbiddenException(LEAVE_REFUSED.onlyAdminsAndLeads);
 
     const rows = (await this.prisma.leaveRequest.findMany({
       where: { organizationId: reader.organizationId, status: { in: ['waiting', 'approved'] } },
@@ -373,7 +392,7 @@ export class LeaveBoardService {
     }
 
     return {
-      reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : mayBeNamed ? 'approver' : 'hr',
+      reader: way,
       waiting: waiting.filter((w) => w.name), off: off.filter((o) => o.name), toldToHr,
     };
   }

@@ -8,7 +8,7 @@ import { todayApi, type Need } from '@/api/today'
 import { outstandingNotAlreadyShown } from './outstanding-not-already-shown'
 import { withComingUpTellingTwoApart } from './tell-apart-coming-up'
 import { useAuthStore } from '@/stores/auth'
-import { Page, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp, Panel, Skeleton } from '@/components/gw/ui'
+import { Page, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp, Panel, Held } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { AdminFirstRun } from '@/pages/grounds/an-admin-lands-on-a-check-in-list'
 import { partOfTheDay, whenItComes } from './when-it-comes'
@@ -18,14 +18,16 @@ import { YouAreIn } from './YouAreIn'
 import { NameYourOrganisation } from './NameYourOrganisation'
 import { TheReasonYouMissed } from './TheReasonYouMissed'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
-import { QueueLink } from '@/pages/suites/QueuePage'
+import { QueueLink, RequestLinks } from '@/pages/suites/QueuePage'
 import { yourRequestsApi, reviewsApi } from '@/api/suites'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { todayGreetingLine } from '@/lib/the-greeting-line-does-not-claim-what-needs-you-does-not'
 import { useAnUnfinishedSetup } from '@/pages/auth/entry-handover'
 import { TheSetupNotSavedYet } from '@/components/gw/TheSetupNotSavedYet'
+import { useTheDesignPass } from '@/lib/the-design-pass'
+import { ShowAll } from '@/components/gw/ui/ShowAll'
 
 /**
  * TODAY (C1, #/today). The wording is copied from docs/prototype/screens/C1-today-and-check-ins/
@@ -63,6 +65,12 @@ import { TheSetupNotSavedYet } from '@/components/gw/TheSetupNotSavedYet'
  */
 export function TodayPage() {
   const user = useAuthStore(s => s.user)
+  /*
+   * THE DESIGN PASS (21 November 2026): Today answers "where are we, what needs me, who needs me" in a glance, as the prototype's
+   * does. "What needs you" comes first, after the line under the greeting, and stops at three with "And N more". The first thing to
+   * start is the one navy button; every other action is a quiet link. The admin's set-up stays as it was (Hafsah, 21 November).
+   */
+  const designPass = useTheDesignPass()
   const [params] = useSearchParams()
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['today'],
@@ -206,6 +214,32 @@ export function TodayPage() {
     onError: () => toast.error('That didn’t send. Try again.'),
   })
 
+  /* The rows of "What needs you", in order: drawn whole with the switch off, or the first three and "And N more" with it on. */
+  const firstStart = needs.findIndex((m: Need) => m.action.label === 'Start it')
+  const needRows: ReactNode[] = [
+    ...(unfinished ? [<TheSetupNotSavedYet key="unfinished" unfinished={unfinished} primary />] : []),
+    ...needs.map((n: Need, i: number) => (
+      <EdgeRow
+        key={n.key}
+        kind={n.kind}
+        /* One line of title: a second sentence goes to the detail line when there is none (Hafsah, 25 October). */
+        title={aSentenceAsARow(n.title, n.detail).title}
+        detail={aSentenceAsARow(n.title, n.detail).detail}
+        to={n.action.to}
+        actions={<>
+          {/* ONE NAVY BUTTON (Hafsah, 30 September): only the first "Start it", the most important, is navy. With the design pass on,
+              every other action is a quiet link. */}
+          <Button kind={!unfinished && n.action.label === 'Start it' && i === firstStart ? 'primary' : designPass ? 'quiet' : 'secondary'} size="small" to={n.action.to}>{n.action.label}</Button>
+          {n.missedReason && <TheReasonYouMissed checkInId={n.missedReason.checkInId} given={n.missedReason.given} />}
+        </>}
+      />
+    )),
+    ...moreRows.map((r) => (
+      <EdgeRow key={r.key} kind={r.kind} title={r.title} detail={r.detail} to={r.action?.to}
+        actions={r.action ? <Button kind={designPass ? 'quiet' : 'secondary'} size="small" to={r.action.to}>{r.action.label}</Button> : undefined} />
+    )),
+  ]
+
   return (
     <Page>
       <div className="gwui-side gw-today">
@@ -221,10 +255,14 @@ export function TodayPage() {
               {/* "Send it to him on WhatsApp" (C1), said with their name: the board's own nudge, for the one person not checked in yet. */}
               {lineNudge && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => nudge.mutate()} disabled={nudge.isPending || nudge.isSuccess}>{nudge.isSuccess ? 'Sent.' : `Remind ${lineNudge.firstName}`}</button></>}
               {lineResend && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => resend.mutate()} disabled={resend.isPending || resend.isSuccess}>{resend.isSuccess ? 'Sent again.' : resendLabel}</button></>}
-              {lineReadyToSend && <>{' '}<button type="button" className="btn primary sm gw-inline-btn gwui-in-a-sentence" onClick={() => sendReady.mutate()} disabled={sendReady.isPending || sendReady.isSuccess}>{sendReady.isPending ? 'Sending…' : sendReady.isSuccess ? 'Sent.' : lineReadyToSend.label}</button></>}
+              {lineReadyToSend && <>{' '}<button type="button" className={`btn ${designPass ? 'quiet' : 'primary'} sm gw-inline-btn gwui-in-a-sentence`} onClick={() => sendReady.mutate()} disabled={sendReady.isPending || sendReady.isSuccess}>{sendReady.isPending ? 'Sending…' : sendReady.isSuccess ? 'Sent.' : lineReadyToSend.label}</button></>}
             </>}
           />
 
+          {/* Everything under the greeting is drawn whole once /today and the reads its parts make are in (page loads, 22 November 2026,
+              cause C): the three-row placeholder inside "What needs you" was shorter than the list that replaced it, so everything
+              under it jumped down. */}
+          <Held waiting={isLoading} alsoFor={[['appeals']]} what="Getting what needs you" count={5}>
           {/* An organisation still called by the name Groundwork made up ("Hafsah's workspace") is named here, by an admin (26 October). */}
           <NameYourOrganisation />
 
@@ -237,7 +275,7 @@ export function TodayPage() {
 
           {/* SINCE YESTERDAY (C1): what moved since the round before, for the check-in the line is about. It comes first, so the page opens with
               what has moved and then says what needs you (design playbook, rule 4: lead with what is going well, then what needs attention). */}
-          {data?.sinceYesterday && (
+          {!designPass && data?.sinceYesterday && (
             <Section heading={data.sinceYesterday.heading}>
               <Panel>
                 <p className="t-body">{data.sinceYesterday.says}</p>
@@ -248,35 +286,14 @@ export function TodayPage() {
 
           {/* ONE LIST, AS THE PROTOTYPE: what the lead's nudge adds (needs you, overdue on the team, risks) are rows in
               "What needs you", most important first, never sections of their own. */}
-          <Section heading="What needs you" note={allNeeds > 1 ? `${allNeeds} things, most important first` : undefined}>
+          <Section heading="What needs you" note={allNeeds > 1 ? `${allNeeds} things, most important first` : undefined}
+            action={designPass ? <RequestLinks userId={user?.id} requests={{ show: aSuiteIsOnForYou, label: requestsLinkLabel }} /> : undefined}>
             {data && allNeeds === 0 && <Empty>Nothing needs you right now.</Empty>}
             {allNeeds > 0 && (
               <EdgeList label="What needs you">
-                {unfinished && <TheSetupNotSavedYet unfinished={unfinished} primary />}
-                {/* ONE NAVY BUTTON (Hafsah, 30 September): the prototype's own Today draws every "Start it"
-                    navy, but with two check-ins open that is two navy buttons at once. Only the first,
-                    the most important, is navy; the rest are white. */}
-                {needs.map((n: Need, i: number) => (
-                  <EdgeRow
-                    key={n.key}
-                    kind={n.kind}
-                    /* One line of title: a second sentence goes to the detail line when there is none (Hafsah, 25 October). */
-                    title={aSentenceAsARow(n.title, n.detail).title}
-                    detail={aSentenceAsARow(n.title, n.detail).detail}
-                    to={n.action.to}
-                    actions={<>
-                      <Button kind={!unfinished && n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={n.action.to}>{n.action.label}</Button>
-                      {n.missedReason && <TheReasonYouMissed checkInId={n.missedReason.checkInId} given={n.missedReason.given} />}
-                    </>}
-                  />
-                ))}
-                {moreRows.map((r) => (
-                  <EdgeRow key={r.key} kind={r.kind} title={r.title} detail={r.detail} to={r.action?.to}
-                    actions={r.action ? <Button kind="secondary" size="small" to={r.action.to}>{r.action.label}</Button> : undefined} />
-                ))}
+                {designPass ? <ShowAll items={needRows} render={(r) => r} /> : needRows}
               </EdgeList>
             )}
-            {isLoading && <Skeleton what="Getting what needs you" shape="rows" />}
             {isError && (
               <div>
                 <Note tone="error">What needs you didn’t load. Try again.</Note>
@@ -287,9 +304,22 @@ export function TodayPage() {
             {data?.checkInOnWhatsApp && (
               <CheckInOnWhatsApp link={data.checkInOnWhatsApp.link} label={data.checkInOnWhatsApp.label} says={data.checkInOnWhatsApp.says} testId="today-check-in-on-whatsapp" />
             )}
-            {aSuiteIsOnForYou && <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">{requestsLinkLabel}</Link></p>}
-            <QueueLink userId={user?.id} />
+            {designPass ? null : (
+              <>
+                {aSuiteIsOnForYou && <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">{requestsLinkLabel}</Link></p>}
+                <QueueLink userId={user?.id} />
+              </>
+            )}
           </Section>
+
+          {designPass && data?.sinceYesterday && (
+            <Section heading={data.sinceYesterday.heading}>
+              <Panel>
+                <p className="t-body">{data.sinceYesterday.says}</p>
+                {data.sinceYesterday.also && <p className="t-small mut">{data.sinceYesterday.also}</p>}
+              </Panel>
+            </Section>
+          )}
 
           {/*
             A PERSON'S OWN REVIEW APPEAL (decision 113, engine workspace, 9 October: "the review
@@ -323,10 +353,11 @@ export function TodayPage() {
             that changes every day comes first, and the one-time welcome comes after it.
           */}
           <AdminFirstRun />
+          </Held>
         </div>
 
         {comingUp.length > 0 && (
-          <ComingUp items={withComingUpTellingTwoApart(comingUp).map(c => ({
+          <ComingUp first={designPass ? 3 : undefined} items={withComingUpTellingTwoApart(comingUp).map(c => ({
             when: whenItComes(c.at, now),
             what: c.apart ? `${c.what} (${c.apart})` : c.what,
             to: c.to,

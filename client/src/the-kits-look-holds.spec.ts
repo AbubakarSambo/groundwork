@@ -32,6 +32,11 @@ walk(SRC)
 const PROTO_CSS = join(SRC, 'styles/prototype.css')
 const PROTO = readFileSync(PROTO_CSS, 'utf8')
 files.splice(files.indexOf(PROTO_CSS), 1)
+/* 21 November (Hafsah: "port the boards one-to-one from the prototype's markup and app.css"): pages/board/prototype/the-prototype-boards.css
+   is the same stylesheet, copied verbatim by docs/boards-21-nov/tools/scope-the-prototype-css.py and scoped to html.design-pass .gw-proto,
+   so it is the prototype's own too, and not scanned as product code. Every rule the product writes stays scanned. */
+const PORTED_PROTO_CSS = join(SRC, 'pages/board/prototype/the-prototype-boards.css')
+if (files.includes(PORTED_PROTO_CSS)) files.splice(files.indexOf(PORTED_PROTO_CSS), 1)
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
 const source = (p: string) => strip(readFileSync(p, 'utf8'))
 const rel = (p: string) => relative(SRC, p)
@@ -326,7 +331,9 @@ describe('everything you can tap is at least 44px tall', () => {
     expect(rule(TOKENS, '.gw-rl-ic, .gw-rl-top .gw-tap44')).toMatch(/width: 44px; height: 44px;/)
     expect(rule(UI_CSS, '.gwui-choice')).toMatch(/min-height: 44px;/)
     expect(rule(TOKENS, '.gw-rl-nav')).toMatch(/min-height: 44px;/)
-    expect(rule(UI_CSS, '.gwui-tap-44')).toMatch(/min-height: 44px;/)
+    /* 21 November 2026: .gwui-tap-44 no longer grows the box round its words to 44px, which pulled a link inside a sentence off
+       its line (Hafsah, on Start). Its 44px is now the invisible tap target drawn round it, the same as a switch's. */
+    expect(tapTargets.has('gwui-tap-44')).toBe(true)
     expect(rule(UI_CSS, '.gwui-icon-btn')).toMatch(/width: 44px; height: 44px;/)
     /* Feedback is a <button> sized by its padding, so the floor holds it: it never opts out. */
     expect(source(join(SRC, 'components/gw/AppShell.tsx'))).toMatch(/'gw-feedback-btn'/)

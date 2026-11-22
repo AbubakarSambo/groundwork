@@ -1,5 +1,5 @@
 import type { SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
-import { theCountOf, type TheCountAsServed } from '@/lib/the-one-count'
+import { theCountOf, howManyCheckedIn, type TheCountAsServed } from '@/lib/the-one-count'
 
 
 /** A session the clock closed where the person said nothing (closedReason 'auto_closed', no turn of theirs). Rows served without either field read as before. */
@@ -102,11 +102,13 @@ export function buildSessionRows(
       (c) => c.sessionNumber === n && c.status === 'COMPLETED'
         && everybody.some((p) => p.id === c.participantId && p.userId === userId),
     )
+    /* "3 of 4 checked in" is the served count, as it is (howManyCheckedIn): the check-ins page, Today and every board read the same numbers. */
+    const served = howManyCheckedIn(ground, n)
     return {
       sessionNumber: n,
       myCheckInId: mine?.id ?? null,
-      answered: onIt.filter((id) => answeredIds.has(id)).length,
-      total: onIt.length,
+      answered: served?.answered ?? 0,
+      total: served?.of ?? 0,
       closed,
       shared: isSessionShared(report, n),
       /* The reader is "you", never their own name (the wording rule); everybody else as labelled. */

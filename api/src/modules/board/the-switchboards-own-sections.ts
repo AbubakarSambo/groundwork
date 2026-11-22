@@ -10,6 +10,7 @@ import { holdsItSaid, theReaderSaidAsYou, aThingWithoutItsHolder } from './a-hol
 import { aCommitmentSaid, looksLikeATimeOrADate, inOurVoice } from '../reports/what-the-record-shows-over-time';
 import { aNumberPeopleCanRead } from './an-aim-is-a-sentence-about-somebody';
 import { aPartyOutside, theSameThing } from './a-thing-is-not-somebody';
+import { inASentence } from './a-phrase-inside-a-sentence';
 
 /**
  * THE SWITCHBOARD'S OWN SECTIONS: THE ONES NO OTHER FIELD OF THE BOARD CARRIES (request 70).
@@ -158,10 +159,6 @@ const saidAsDate = (iso: string): string => {
   return `${d} ${months[m - 1]}${new Date().getUTCFullYear() === y ? '' : ` ${y}`}`;
 };
 
-const inASentence = (phrase: string): string => {
-  const t = (phrase ?? '').trim().replace(/[.!?]+$/, '');
-  return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
-};
 
 const listed = (ns: string[]) => (ns.length <= 1 ? ns.join('') : `${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`);
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -924,7 +921,8 @@ export function whoWaitedOnWhom(handoffs: AHandoff[], r: WhoIsReading): AWait[] 
     .map((d) => {
       const who = whoIs(r, d.fromParticipantId);
       const on = whoIsWaitedOn(r, d);
-      const what = inASentence(d.what);
+      /* The holder once, as every other wait in this file says it (21 November: "waiting on the Quickmart buyer for a reply from the buyer at Quickmart"). */
+      const what = inASentence(on ? aThingWithoutItsHolder(d.what, d.onLabel) : d.what);
       const since = day(d.createdAt);
       const clearedOn = d.clearedAt ? day(d.clearedAt) : null;
       const cleared = !isOpen(d);

@@ -21,7 +21,7 @@ import type { SuitesForAnAdmin, SuitesForALead, SuitesForADutyHolder, AdminSuite
    every existing test keeps its default (no override) unless a test sets it. */
 const reviewsBoard: any = vi.fn(() => Promise.resolve({ every: null as string | null, next: [] as any[] }))
 vi.mock('@/api/suites', () => ({
-  suitesApi: { get: vi.fn(), switch: vi.fn(), mine: vi.fn(async () => ({ leave: true, spend: true, time: true, reviews: true, any: true, says: '' })) },
+  suitesApi: { get: vi.fn(), switch: vi.fn(), mine: vi.fn(async () => ({ leave: true, spend: true, time: true, reviews: true, any: true, says: '', maySeeSuites: true, mayOpenTheLeaveBoard: true })) }, /* Changed 22 November 2026: whether the page opens is served on /suites/mine. */
   reviewsApi: { board: () => reviewsBoard() },
   /* The spending card says the whole route in the server's words (Hafsah's plan of 2 November, step 0). */
   spendRulesApi: { get: vi.fn(async () => ({ rules: {}, people: [], said: [

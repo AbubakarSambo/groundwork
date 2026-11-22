@@ -73,7 +73,7 @@ export interface TheForWhom {
   teams: string[]
   people: { id: string; name: string }[]
 }
-export interface SuitesOnForYou { leave: boolean; spend: boolean; time: boolean; reviews: boolean; any: boolean; says: string }
+export interface SuitesOnForYou { leave: boolean; spend: boolean; time: boolean; reviews: boolean; any: boolean; says: string; maySeeSuites?: boolean; mayOpenTheLeaveBoard?: boolean }
 
 /** One new person on the onboarding board (GET /suites/onboard/board). */
 export interface NewPerson {

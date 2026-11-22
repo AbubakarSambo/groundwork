@@ -19,6 +19,7 @@ export const THE_ORGANISATION_SWITCHES = [
   { key: 'release8SituationsOn', name: 'Release 8, the remaining situations' },
   { key: 'release9PolicyOn', name: 'Release 9, the policy board and setup from documents' },
   { key: 'personJudgementsOn', name: 'What the lead reads about each person' },
+  { key: 'designPassOn', name: 'The new designs and the boards ported from the prototype' },
 ] as const;
 
 export type AnOrganisationSwitch = (typeof THE_ORGANISATION_SWITCHES)[number]['key'];

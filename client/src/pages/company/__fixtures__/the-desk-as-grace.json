@@ -1,0 +1,272 @@
+{
+ "name": "Msingi Foods",
+ "line": "15 people work here, and there were 3 check-ins this week.",
+ "strategy": null,
+ "priorities": [
+  {
+   "id": "6b58b536-330e-4fd8-af8f-a1093a403a98",
+   "number": 1,
+   "title": "Get 40 more shops buying from us every week",
+   "owner": "Wairimu Njoroge",
+   "tag": null,
+   "fedBy": "Fed by Sales team, Q4",
+   "staleSays": null,
+   "reading": {
+    "tag": "Nothing is moving it yet",
+    "says": "No check-in feeds this priority yet, so nothing on the record can show it moving. Once a check-in reports against it, the record can show how it is going."
+   },
+   "levels": [
+    {
+     "id": "6b58b536-330e-4fd8-af8f-a1093a403a98",
+     "depth": 0,
+     "level": "Priority 1",
+     "title": "Get 40 more shops buying from us every week",
+     "changedHere": null,
+     "fedBy": "Fed by Sales team, Q4"
+    }
+   ],
+   "measure": "Shops ordering weekly",
+   "target": "40"
+  },
+  {
+   "id": "7657f324-4bed-4480-a8ca-40d9a552cfd1",
+   "number": 2,
+   "title": "Cut the time an order takes to reach a shop to two days",
+   "owner": "Baraka Mutua",
+   "tag": null,
+   "fedBy": "No team feeds it",
+   "staleSays": null,
+   "reading": {
+    "tag": "Nothing is moving it yet",
+    "says": "No check-in feeds this priority yet, so nothing on the record can show it moving. Once a check-in reports against it, the record can show how it is going."
+   },
+   "levels": [
+    {
+     "id": "7657f324-4bed-4480-a8ca-40d9a552cfd1",
+     "depth": 0,
+     "level": "Priority 2",
+     "title": "Cut the time an order takes to reach a shop to two days",
+     "changedHere": null,
+     "fedBy": null
+    }
+   ],
+   "measure": "Days from order to delivery",
+   "target": "2"
+  },
+  {
+   "id": "f84afd83-dc18-47d2-9595-80223f8bdd32",
+   "number": 3,
+   "title": "Bring the cost of a delivery down to 850 shillings",
+   "owner": "Baraka Mutua",
+   "tag": null,
+   "fedBy": "No team feeds it",
+   "staleSays": null,
+   "reading": {
+    "tag": "Nothing is moving it yet",
+    "says": "No check-in feeds this priority yet, so nothing on the record can show it moving. Once a check-in reports against it, the record can show how it is going."
+   },
+   "levels": [
+    {
+     "id": "f84afd83-dc18-47d2-9595-80223f8bdd32",
+     "depth": 0,
+     "level": "Priority 3",
+     "title": "Bring the cost of a delivery down to 850 shillings",
+     "changedHere": null,
+     "fedBy": null
+    }
+   ],
+   "measure": "Cost per delivery",
+   "target": "850"
+  },
+  {
+   "id": "34bc7e05-4b15-4010-a31e-fa0099648778",
+   "number": 4,
+   "title": "Have every depot on the new stock system by the end of the quarter",
+   "owner": "Kito Dube",
+   "tag": null,
+   "fedBy": "No team feeds it",
+   "staleSays": null,
+   "reading": {
+    "tag": "Nothing is moving it yet",
+    "says": "No check-in feeds this priority yet, so nothing on the record can show it moving. Once a check-in reports against it, the record can show how it is going."
+   },
+   "levels": [
+    {
+     "id": "34bc7e05-4b15-4010-a31e-fa0099648778",
+     "depth": 0,
+     "level": "Priority 4",
+     "title": "Have every depot on the new stock system by the end of the quarter",
+     "changedHere": null,
+     "fedBy": null
+    }
+   ],
+   "measure": "Depots on the new system",
+   "target": "4"
+  }
+ ],
+ "readsTargets": true,
+ "notReaching": [
+  {
+   "id": "nothing-under-6b58b536-330e-4fd8-af8f-a1093a403a98",
+   "observation": "Priority 1 has an owner, but nothing is underneath it and no check-in feeds it.",
+   "question": "Which team should take on priority 1, \u201cGet 40 more shops buying from us every week\u201d?",
+   "forWhom": "For Wairimu Njoroge, Head of sales"
+  },
+  {
+   "id": "nothing-under-7657f324-4bed-4480-a8ca-40d9a552cfd1",
+   "observation": "Priority 2 has an owner, but nothing is underneath it and no check-in feeds it.",
+   "question": "Which team should take on priority 2, \u201cCut the time an order takes to reach a shop to two days\u201d?",
+   "forWhom": "For Baraka Mutua, Head of operations"
+  },
+  {
+   "id": "nothing-under-f84afd83-dc18-47d2-9595-80223f8bdd32",
+   "observation": "Priority 3 has an owner, but nothing is underneath it and no check-in feeds it.",
+   "question": "Which team should take on priority 3, \u201cBring the cost of a delivery down to 850 shillings\u201d?",
+   "forWhom": "For Baraka Mutua, Head of operations"
+  },
+  {
+   "id": "nothing-under-34bc7e05-4b15-4010-a31e-fa0099648778",
+   "observation": "Priority 4 has an owner, but nothing is underneath it and no check-in feeds it.",
+   "question": "Which team should take on priority 4, \u201cHave every depot on the new stock system by the end of the quarter\u201d?",
+   "forWhom": "For Kito Dube, Depot supervisor"
+  }
+ ],
+ "namedByTeams": [],
+ "saidAndShown": [],
+ "whatWeKeep": {
+  "items": []
+ },
+ "desk": {
+  "documents": [
+   {
+    "key": "desk:msingi-leave-policy",
+    "title": "msingi-leave-policy",
+    "summary": "This document outlines Msingi Foods' leave policies and expense procedures. It specifies annual leave allowances for different staff, details sick leave entitlements, and explains how to claim fuel expenses and seek approval for large spending.",
+    "added": "Wairimu Njoroge added this on 20 November 2026."
+   }
+  ],
+  "directory": [
+   {
+    "id": "ff2dac3a-6620-4db6-a0d4-e1027927a55e",
+    "name": "Amani Wekesa",
+    "jobTitle": "Account manager",
+    "team": null,
+    "reportsTo": null,
+    "phone": "+254700100004"
+   },
+   {
+    "id": "eb4ffeb3-e28c-42fa-b758-be6253248204",
+    "name": "Baraka Mutua",
+    "jobTitle": "Head of operations",
+    "team": null,
+    "reportsTo": null,
+    "phone": "+254700100003"
+   },
+   {
+    "id": "4773e646-0cda-4028-9b08-802607bbf40a",
+    "name": "Chidi Okeke",
+    "jobTitle": "Account manager",
+    "team": null,
+    "reportsTo": null,
+    "phone": "+254700100005"
+   },
+   {
+    "id": "5ff1f34d-cfb6-4aa1-a156-479e3ffdd21c",
+    "name": "Fatuma Bello",
+    "jobTitle": "Finance officer",
+    "team": null,
+    "reportsTo": null,
+    "phone": "+254700100013"
+   },
+   {
+    "id": "6530011a-27e7-475b-baab-383efb4d1588",
+    "name": "Grace Achieng",
+    "jobTitle": "Managing director",
+    "team": null,
+    "reportsTo": null,
+    "phone": "+254700100001"
+   },
+   {
+    "id": "2f116dfd-9195-4907-9e1c-64d16a02fa1e",
+    "name": "Imani Hassan",
+    "jobTitle": "Operations analyst (new)",
+    "team": null,
+    "reportsTo": null,
+    "phone": "+254700100012"
+   },
+   {
+    "id": "8d3821bc-d282-4057-85c0-8eda98e9e963",
+    "name": "Juma Otieno",
+    "jobTitle": "Sales executive",
+    "team": null,
+    "reportsTo": null,
+    "phone": null
+   },
+   {
+    "id": "8b5fba37-1784-4e9e-af8e-870004c0b9a6",
+    "name": "Kito Dube",
+    "jobTitle": "Depot supervisor",
+    "team": null,
+    "reportsTo": null,
+    "phone": "+254700100009"
+   },
+   {
+    "id": "68d7b1d1-f6e7-4aef-915b-572bd1598bee",
+    "name": "Lerato Nkosi",
+    "jobTitle": "Logistics officer",
+    "team": null,
+    "reportsTo": null,
+    "phone": "+254700100010"
+   },
+   {
+    "id": "a22cf224-16cd-482b-8fe0-2d3ec2709623",
+    "name": "Neema Kamau",
+    "jobTitle": "Account manager",
+    "team": null,
+    "reportsTo": null,
+    "phone": "+254700100008"
+   },
+   {
+    "id": "4568bf07-f895-4034-b169-36285fa36c1c",
+    "name": "Peter Mwangi",
+    "jobTitle": "HR officer",
+    "team": null,
+    "reportsTo": null,
+    "phone": "+254700100014"
+   },
+   {
+    "id": "20d1b81b-9c36-4233-9754-51f470661687",
+    "name": "Sade Balogun",
+    "jobTitle": "Customer support",
+    "team": null,
+    "reportsTo": null,
+    "phone": null
+   },
+   {
+    "id": "15bbe520-403a-4355-9fee-6c2704574595",
+    "name": "Tobi Adeyemi",
+    "jobTitle": "Engineer",
+    "team": null,
+    "reportsTo": null,
+    "phone": null
+   },
+   {
+    "id": "dde2b746-a547-4a98-90f2-d0304ad671d6",
+    "name": "Wairimu Njoroge",
+    "jobTitle": "Head of sales",
+    "team": null,
+    "reportsTo": null,
+    "phone": "+254700100002"
+   },
+   {
+    "id": "511f31bd-16c4-48ce-918f-9197788c36ac",
+    "name": "Zawadi Mwangi",
+    "jobTitle": "Sales executive",
+    "team": null,
+    "reportsTo": null,
+    "phone": "+254700100006"
+   }
+  ],
+  "mayAdd": true
+ }
+}

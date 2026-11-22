@@ -234,10 +234,12 @@ export function plainReading(f: PriorityFacts, tag: string): string {
     parts.push(feeding === 0 ? 'and no check-in feeds it.' : `and ${plural(feeding, 'check-in feeds', 'check-ins feed')} it.`);
     return parts.join(' ');
   }
-  if (feeding === 0) return 'No check-in feeds this priority yet, so nothing on the record can show it moving. Once a check-in reports against it, the record can show how it is going.';
+  /* One short line from the record, as the prototype's card gives (Hafsah, 21 November: the Desk read the same long sentence four times). */
+  if (feeding === 0) return 'No check-in reports against it yet.';
   parts.push(`${plural(feeding, 'check-in feeds', 'check-ins feed')} this priority, and ${plural(f.finishedLast30, 'was', 'were')} finished in the last 30 days.`);
-  if (f.blocked > 0) parts.push(`${plural(f.blocked, 'handoff is', 'handoffs are')} stopping work on it.`);
-  else if (f.waiting > 0) parts.push(`${plural(f.waiting, 'handoff is', 'handoffs are')} waiting on other work.`);
+  /* Plain words on the Desk, never "handoff" (the coordinator's wording, 22 November 2026, as the mails say it). */
+  if (f.blocked > 0) parts.push(`${plural(f.blocked, 'thing people are waiting on is', 'things people are waiting on are')} stopping work on it.`);
+  else if (f.waiting > 0) parts.push(`People are waiting on ${plural(f.waiting, 'thing', 'things')} for it.`);
   if (f.overdue) parts.push('Its date has passed and it is not marked as done.');
   return parts.join(' ');
 }
@@ -438,8 +440,16 @@ function levelsFrom(input: PictureInput, model: TheModelsPicture | null | undefi
 /* The model's record, and what changes the picture                                            */
 /* ------------------------------------------------------------------------------------------ */
 
+/*
+ * HOW THE PICTURE IS WRITTEN, AS PART OF WHAT IT WAS BUILT FROM (21 November 2026). A change to how a reading is worded
+ * (plainReading's one short line) changed nothing in the record, so every stored picture kept the old words until the record
+ * itself moved. Raise this whenever a writer here changes, and each picture is written again the next time it is looked at.
+ */
+export const HOW_THE_PICTURE_IS_WRITTEN = 2;
+
 export function theInputKey(input: PictureInput): string {
   const rows = [
+    `W|${HOW_THE_PICTURE_IS_WRITTEN}`,
     ...input.priorities.map((p) => ['P', p.id, p.number, p.title, p.ownerExternalId ?? '', p.ownerKnown === false ? 'unknown' : '', p.overdue, p.hasChildren, p.feedingGroundIds.slice().sort().join(','), p.finishedLast30, p.blocked, p.waiting, p.teams.slice().sort().join(',')].join('|')),
     ...input.handoffs.map((h) => ['H', h.id, h.groundId, h.team ?? '', h.about, h.status, h.priorityNumbers.join(','), h.waitsOnSomebody ?? ''].join('|')),
     ...input.subjects.map((s) => ['S', s.id, s.type, s.title, s.ownerExternalId ?? '', s.parentExternalId ?? '', s.overdue, s.measure ?? ''].join('|')),
@@ -582,7 +592,7 @@ function namedByTeamsFrom(input: PictureInput, model: TheModelsPicture | null | 
       const says = aSentenceTheRecordSupports(
         (g.teams ?? []).find((t) => (t?.team ?? '').trim().toLowerCase() === team.toLowerCase())?.says,
         { allowedNumbers: [mine.length, checkIns], names: input.names, sources, max: 220 },
-      ) ?? `${team} raised this in ${plural(checkIns, 'check-in', 'check-ins')}, with ${plural(mine.length, 'open handoff', 'open handoffs')}.`;
+      ) ?? `${team} raised this in ${plural(checkIns, 'check-in', 'check-ins')}, with ${plural(mine.length, 'thing people are still waiting on', 'things people are still waiting on')}.`;
       return { team, says, restsOn: [...new Set(mine.map((h) => h.groundId))].sort() };
     });
     const priorityNumbers = [...new Set(hs.flatMap((h) => h.priorityNumbers))];
@@ -605,7 +615,7 @@ function saidAndShownFrom(input: PictureInput, model: TheModelsPicture | null | 
   return input.priorities.filter((p) => showCountsFor(p, input)).map((p) => {
     const k = p.finishedLast30;
     const plain = `${k === 0 ? 'None' : `${k}`} of the ${total} check-ins finished in the last 30 days that belong to a priority ${k === 1 ? 'was' : 'were'} about this one.`
-      + (p.blocked + p.waiting > 0 ? ` ${plural(p.blocked + p.waiting, 'handoff is', 'handoffs are')} open in them.` : '');
+      + (p.blocked + p.waiting > 0 ? ` People are waiting on ${plural(p.blocked + p.waiting, 'thing', 'things')} in them.` : '');
     const given = aSentenceTheRecordSupports(model?.showing?.find((r) => r?.priorityId === p.id)?.says, {
       allowedNumbers: [k, total, p.blocked, p.waiting, p.blocked + p.waiting, p.number, p.feedingGroundIds.length, 30, 1, 2, 3],
       names: input.names, sources, max: 320, needsANumber: true,

@@ -25,6 +25,17 @@ export function YourTeamPersonByPerson({ groundId, team }: { groundId: string; t
   )
 }
 
+/**
+ * ONE PERSON'S PART OF IT, ON THEIR OWN PAGE (B5-the-board/person-page.txt). With the design pass on, the board's "The team today"
+ * links each name to their page, and what the record shows about them, with Praise and Start a plan, is drawn there, not repeated
+ * for everybody down the board. Served to the lead alone, as on the board.
+ */
+export function TheirPartOfYourTeam({ groundId, team, participantId }: { groundId: string; team: YourTeamServed | null | undefined; participantId: string }) {
+  const p = (team?.people ?? []).find((x) => x.participantId === participantId)
+  if (!p) return null
+  return <Section heading="What the record shows"><ThePerson groundId={groundId} p={p} /></Section>
+}
+
 function ThePerson({ groundId, p }: { groundId: string; p: APersonOnYourBoard }) {
   const otherCoaching = (p.record?.coaching ?? []).filter((c) => !p.whereTheyStand?.evidence.includes(c.said))
   const list = (items: string[]) => <ul className="gwui-panel-list">{items.map((l) => <li key={l}>{l}</li>)}</ul>

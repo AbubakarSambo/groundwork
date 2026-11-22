@@ -102,7 +102,9 @@ describe('Grace, an admin, on Growth', () => {
 
   it('every plan comes from the table, hers says "Your plan", and the others "Move to this"', async () => {
     renderIt()
-    await waitFor(() => expect(text()).toContain('$1,650/mo'))
+    /* The page is drawn whole once its reads are in (page loads, 22 November 2026); until then it is out of sight. */
+    await waitFor(() => expect(screen.queryByText('Getting your plan and billing')).toBeNull())
+    expect(text()).toContain('$1,650/mo')
     expect(screen.getAllByText('Move to this')).toHaveLength(4)
     expect(screen.getByText('Your plan', { selector: 'span' })).toBeTruthy()
     expect(text()).toContain('Up to 500 people')
@@ -413,7 +415,7 @@ describe('a plan too small for the organisation says so (screen fault 4b)', () =
 
   it('Kijani Foods, 8 people, reads a warning under Starter (cap 5), and nothing under Growth (cap 100)', async () => {
     renderIt()
-    await waitFor(() => expect(screen.getAllByText('Move to this').length).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Move to this' }).length).toBeGreaterThan(0))
     expect(screen.getByText('This plan is for up to 5 people, and Baridi Appliances has 8.')).toBeTruthy()
     const growthCard = screen.getByText('Growth').closest('.gwui-plan-card')!
     expect(growthCard.textContent).not.toMatch(/is for up to/)

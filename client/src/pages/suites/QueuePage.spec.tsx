@@ -71,7 +71,8 @@ const refusal = (status: number, message: string) => Object.assign(new Error(Str
 const rows = () => within(screen.getByRole('list', { name: 'Waiting for approval' })).getAllByRole('listitem')
 const rowOf = (name: string) => rows().find(li => li.textContent?.includes(name))!
 
-beforeEach(() => { vi.clearAllMocks() })
+/* Changed 22 November 2026: the page reads which suites are on before it asks for the queue; leave and spending are on unless a test says so. */
+beforeEach(() => { vi.clearAllMocks(); (suitesApi.mine as any).mockResolvedValue({ leave: true, spend: true, time: false, reviews: false, any: true, says: '' }) })
 
 describe('what is drawn', () => {
   it('reads the heading, the server’s top sentence, and each request’s own sentences', async () => {

@@ -808,13 +808,13 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         // describes it flatly looks identical to someone who did not do it, and
         // on this kind of ground there is no colleague who could tell them apart.
         reasonParts.push(
-          'Nobody else on this ground sees this person\'s work, so nobody else has said anything to check this against. Read it as what one person said, not as confirmed.',
+          'Nobody else in this check-in sees this person\'s work, so nobody else has said anything to check this against. Read it as what one person said, not as confirmed.',
         );
       } else if (!peopleWorkTogether && completed >= 3) {
         /* The setting says they work separately and somebody named their work anyway. That is worth
            more than either fact alone, and hiding it would leave the read quieter than the record. */
         reasonParts.push(
-          'This check-in does not assume people see each other\'s work, so what somebody else named here carries more than it would on a ground where everybody watches everybody.',
+          'This check-in does not assume people see each other\'s work, so what somebody else named here carries more than it would in a check-in where everybody watches everybody.',
         );
       }
       if (map) {

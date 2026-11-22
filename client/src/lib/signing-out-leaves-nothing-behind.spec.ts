@@ -51,7 +51,7 @@ describe('what the app writes to storage', () => {
   })
 
   it('and the keys that stay are each about the browser, not the person', () => {
-    expect([...WHAT_STAYS].sort()).toEqual(['gw-feedback-button-position', 'gw-ob-v2'])
+    expect([...WHAT_STAYS].sort()).toEqual(['gw-design-pass', 'gw-feedback-button-position', 'gw-ob-v2'])
   })
 })
 

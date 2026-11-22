@@ -161,6 +161,8 @@ interface OnboardingSelections {
   decision?: string
   brief?: string
   classifiedScenario?: string
+  /** The kind of work, from the same reading as the situation; the check-in is saved with it. */
+  kindOfWork?: string
   /** The kind's name, from the server's one owner of situation names (the scenario table). */
   kindName?: string
   /** The name they gave in so many words ("Call it ..."), and the days and length they said: the rest of the server's reading. */
@@ -1613,14 +1615,14 @@ export function EntryChatPage() {
     setChoosingAnotherKind(false)
     setPickedSituation(null)
     setPickedScenario(null)
-    setOnboardingSelections((prev) => ({ ...prev, classifiedScenario: undefined, kindName: undefined }))
+    setOnboardingSelections((prev) => ({ ...prev, classifiedScenario: undefined, kindName: undefined, kindOfWork: undefined }))
     setOnboardingHistory((h) => [...h, { role: 'assistant', content: SAY_WHAT_IT_IS }])
   }
   function useAnotherKind(card: { scenario: string; label: string }) {
     setChoosingAnotherKind(false)
     setPickedSituation(card.label)
     setPickedScenario(card.scenario)
-    setOnboardingSelections((prev) => ({ ...prev, classifiedScenario: card.scenario, kindName: undefined }))
+    setOnboardingSelections((prev) => ({ ...prev, classifiedScenario: card.scenario, kindName: undefined, kindOfWork: undefined }))
     setOnboardingHistory((h) => [...h, { role: 'assistant', content: `Then I will set this up as “${sentenceCase(card.label)}”. Everything you have told me so far is kept.` }])
   }
 
@@ -3036,6 +3038,8 @@ export function EntryChatPage() {
         scenario: isAnchorDraft()
           ? 'HELP_TEAM_UNDERSTAND'
           : (onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined),
+        /* The kind of work the setup read with the situation: the one reading of it, saved with the check-in. */
+        kindOfWork: isAnchorDraft() ? undefined : onboardingSelections.kindOfWork,
         cadence,
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
         cadenceChosen,

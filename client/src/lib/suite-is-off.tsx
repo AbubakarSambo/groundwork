@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { theDesignPassAppliesHere } from '@/lib/the-design-pass'
 
 /**
  * WHEN A SUITE IS OFF, AN ADMIN IS TOLD WHERE TO SWITCH IT ON (walkthrough pass 2, item 3).
@@ -53,4 +54,12 @@ export function SuiteOffMessage({ message, role }: { message: string; role?: str
   const trimmed = message.trim()
   const beforeTheAdminSentence = trimmed.replace(/An admin switches it on under Suites\.?\s*$/, '')
   return <>{beforeTheAdminSentence}You can switch it on under <Link to="/settings/suites">Suites</Link>.</>
+}
+
+/**
+ * The design pass (21 November 2026): a suite that is switched off is not something gone wrong, so its
+ * sentence is a plain note, not red. Red is kept for real problems. With the pass off it stays as it was.
+ */
+export function theToneForARefusal(message?: string | null): 'error' | 'muted' {
+  return theDesignPassAppliesHere() && isSuiteOffMessage(message) ? 'muted' : 'error'
 }

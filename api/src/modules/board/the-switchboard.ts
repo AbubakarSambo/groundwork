@@ -115,8 +115,14 @@ export const THE_SWITCHBOARD: readonly ASwitchboardRow[] = [
    * OKR_ALIGNMENT), behind the Release 4 switch, which is off for every organisation until staff switch it on. Their reports are
    * today's: this row picks only the board, so the report is the short team report.
    */
-  ...(['support tickets', 'incidents', 'engineering tasks'] as const).map((type): ASwitchboardRow => ({
-    scenario: GroundScenario.OKR_ALIGNMENT, type, board: 'the tickets board',
+  /*
+   * AN ENGINEERING RELEASE IS A NEW PROJECT, AS THE PROTOTYPE DRAWS IT (Hafsah, 22 November 2026: the boards follow the prototype
+   * verbatim, and it answers every board question). Its example, "Engineering release", is "Get a new project off to a good start"
+   * (engineering-release-as-lead.html), so "new project kicking off - mobile app release v2" runs as a new project. This overrides the
+   * 15 November ruling that put it under "Set goals and keep the team on track", for this kind only.
+   */
+  ...([['support tickets', GroundScenario.OKR_ALIGNMENT], ['incidents', GroundScenario.OKR_ALIGNMENT], ['engineering tasks', GroundScenario.NEW_PROJECT]] as const).map(([type, scenario]): ASwitchboardRow => ({
+    scenario, type, board: 'the tickets board',
     reports: { team: 'short', own: true, weekly: true },
     switch: 'release4TeamsOn', release: 'Release 4', built: true,
   })),

@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { Page, PageTitle, Section, Panel, Button, Note, Empty, Tag, RowList, Row, Skeleton } from '@/components/gw/ui'
-import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
+import { maySeeSuites, SuiteOffMessage, theToneForARefusal } from '@/lib/suite-is-off'
 
 /**
  * PERFORMANCE REVIEWS (E4, #/suite/reviews, group 2 piece 4). The wording is copied from
@@ -117,7 +117,7 @@ export function ReviewsBoardPage() {
       )}
       {isError && !(yours.length > 0 && (refused?.status === 403 || refused?.status === 404)) && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>
+          <Note tone={theToneForARefusal(refused.data?.message ?? 'Only an admin or a lead can open this board.')}><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The board did not load.</Note>

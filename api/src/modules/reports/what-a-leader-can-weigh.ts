@@ -130,7 +130,7 @@ export function whatALeaderCanWeigh(input: WeighInput): WeighSection | null {
  * that difference is most of what this product is for.
  */
 export const THIS_IS_MATERIAL_NOT_A_VERDICT =
-  'This is what the ground can tell you, against what you said you were looking for. It does not add up to an answer, and it is not meant to: what it does is make sure the conversation starts from the same place the ground did.';
+  'This is what the check-in can tell you, against what you said you were looking for. It does not add up to an answer, and it is not meant to: what it does is make sure the conversation starts from the same place the check-in did.';
 
 /**
  * G10's subject question, settled in the direction the whole product points.
@@ -147,7 +147,7 @@ export function headingFor(viewer: 'the lead' | 'the subject' | 'somebody else')
     case 'the lead':
       return 'What you said you were looking for, and what the record holds';
     case 'the subject':
-      return 'What this ground was measured against';
+      return 'What this check-in was measured against';
     case 'somebody else':
       // Not theirs to read. A colleague reading the material behind a decision
       // about somebody else is the thing the whole wall exists to prevent.

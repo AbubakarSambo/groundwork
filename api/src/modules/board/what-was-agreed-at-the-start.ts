@@ -1,4 +1,5 @@
 import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { AUTHORED_AT_SETUP } from '../grounds/what-setup-agreed';
 import { theWorkPlan, whoIs, type ACommitment, type ASession, type WhoIsReading } from './the-switchboards-own-sections';
 
 /**
@@ -97,12 +98,25 @@ function stepSaid(dueSaid: string | null | undefined): string | null {
 
 const ORDER = ['Day 1', 'By day 30', 'By day 60', 'By day 90', 'After day 90'];
 
-/** A goal somebody has not been told about, or has not been asked about, was not agreed. */
-function wasAgreed(g: AnAgreedGoal): boolean {
+/**
+ * A goal somebody has not been told about was not agreed, nor one they said they were unsure of. A goal the lead set at set-up is what
+ * was agreed at the start, though nobody has asked the person about it yet (release test, 21 November 2026: the goals a lead gave at
+ * set-up never reached "What was agreed at the start"). A goal the lead set later and has not asked about is not.
+ */
+function wasAgreed(g: AnAgreedGoal, dayOne: number | null): boolean {
   if (notToldYet(g)) return false;
   const a = String(g.awareness ?? '').toUpperCase();
-  if ((a === 'UNSURE' || a === 'NOT_ASKED') && g.authoredBy !== 'self') return false;
+  if (g.authoredBy === 'self') return true;
+  if (a === 'UNSURE') return false;
+  if (a === 'NOT_ASKED') return setAtTheStart(g, dayOne);
   return true;
+}
+
+/** Set by the lead at set-up: written by setup itself, or written on or before day one. */
+function setAtTheStart(g: AnAgreedGoal, dayOne: number | null): boolean {
+  if (g.authoredBy === AUTHORED_AT_SETUP) return true;
+  const made = theDayNumber(g.createdAt);
+  return made !== null && dayOne !== null && made <= dayOne;
 }
 
 /**
@@ -130,14 +144,14 @@ export function whatWasAgreedAtTheStart(a: {
   const rows: AStartingRow[] = [];
 
   for (const g of a.goals) {
-    if (!subjects.has(g.participantId) || !r.personMayBeRead(g.participantId) || !wasAgreed(g)) continue;
+    if (!subjects.has(g.participantId) || !r.personMayBeRead(g.participantId) || !wasAgreed(g, dayOne)) continue;
     const what = clean(g.text ?? '');
     if (!what) continue;
     const kind = String(g.kind ?? '').toUpperCase();
     if (kind === 'REFERENCE' || kind === 'COMMITMENT') continue;
     const whose = whoIs(r, g.participantId);
     const due = theDayNumber(g.dueDate);
-    const when = due !== null && dayOne !== null ? stepOfDay(due - dayOne + 1) : stepSaid(g.dueSaid) ?? 'Day 1';
+    const when = due !== null && dayOne !== null ? stepOfDay(due - dayOne + 1) : stepSaid(g.dueSaid) ?? stepSaid(what) ?? 'Day 1';
     if (aPromiseNotAGoal(what)) {
       rows.push({ when, whose, says: `${whose === 'You' ? 'You' : whose} said, "${what.replace(/[.!?]+$/, '')}."`, what: null, kind: 'commitment' });
       continue;
@@ -156,7 +170,7 @@ export function whatWasAgreedAtTheStart(a: {
 
   if (!rows.length) return NOTHING_WAS_AGREED_YET;
   rows.sort((x, y) => ORDER.indexOf(x.when) - ORDER.indexOf(y.when));
-  const agreed = a.goals.filter((g) => subjects.has(g.participantId) && r.personMayBeRead(g.participantId) && wasAgreed(g) && clean(g.text ?? '') && !['REFERENCE', 'COMMITMENT'].includes(String(g.kind ?? '').toUpperCase()));
+  const agreed = a.goals.filter((g) => subjects.has(g.participantId) && r.personMayBeRead(g.participantId) && wasAgreed(g, dayOne) && clean(g.text ?? '') && !['REFERENCE', 'COMMITMENT'].includes(String(g.kind ?? '').toUpperCase()));
   const confirmedOnDayOne = new Set(agreed.map((g) => g.participantId)).size === 1 && dayOne !== null && agreed.length > 0
     && agreed.every((g) => String(g.awareness ?? '').toUpperCase() === 'CONFIRMED' && theDayNumber(g.createdAt) === dayOne);
   return { heading: 'What was agreed at the start', rows, ...(confirmedOnDayOne ? { confirmed: 'Confirmed by both on day 1' } : {}) };

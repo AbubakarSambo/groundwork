@@ -13,8 +13,13 @@ import './index.css'
 import './styles/prototype.css'
 import './styles/product.css'
 import './styles/design-rules.css'
+/* The design pass of 21 November, off unless this browser switched it on (lib/the-design-pass.ts). */
+import './styles/the-design-pass.css'
+import { startTheDesignPass } from './lib/the-design-pass'
 import './lib/posthog'
 import { registerServiceWorker } from './lib/service-worker'
+
+startTheDesignPass()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

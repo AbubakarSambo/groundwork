@@ -16,6 +16,7 @@ const OFF = { release1SalesBoardOn: false, release2CollectionsOn: false };
 const R2 = { release1SalesBoardOn: false, release2CollectionsOn: true };
 
 describe('the table', () => {
+  /* Changed 22 November 2026: an engineering release runs as a new project, as the prototype draws it (Hafsah). */
   it('has the rows the release plan names, and no others yet', () => {
     expect(THE_SWITCHBOARD.map((r) => [r.scenario, r.type, r.board, r.switch, r.release, r.built])).toEqual([
       ['OKR_ALIGNMENT', 'sales team', 'the sales board', 'release1SalesBoardOn', 'Release 1', true],
@@ -26,7 +27,7 @@ describe('the table', () => {
       /* The tickets family, behind Release 4's switch (pilot, November 2026): support, operations and engineering share one board. */
       ['OKR_ALIGNMENT', 'support tickets', 'the tickets board', 'release4TeamsOn', 'Release 4', true],
       ['OKR_ALIGNMENT', 'incidents', 'the tickets board', 'release4TeamsOn', 'Release 4', true],
-      ['OKR_ALIGNMENT', 'engineering tasks', 'the tickets board', 'release4TeamsOn', 'Release 4', true],
+      ['NEW_PROJECT', 'engineering tasks', 'the tickets board', 'release4TeamsOn', 'Release 4', true],
       /* The programme family, behind the same switch (pilot, November 2026): a trader programme, a government programme and a where-next workshop. */
       ['COHORT_CHECK', 'trader programme', 'the programme board', 'release4TeamsOn', 'Release 4', true],
       ['PULSE_CHECK', 'government programme', 'the programme board', 'release4TeamsOn', 'Release 4', true],

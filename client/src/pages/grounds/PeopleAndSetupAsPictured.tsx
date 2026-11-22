@@ -1,5 +1,5 @@
 import { isTheDirectMorningOn } from '@/lib/the-direct-morning'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import React, { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -29,6 +29,24 @@ import {
   peersVisibilitySentence, yourSessionsSentence,
 } from './CheckInPeopleAndSetup'
 import '@/pages/board/pictured/pictured-board.css'
+import { useTheDesignPass } from '@/lib/the-design-pass'
+import { ShowAll } from '@/components/gw/ui/ShowAll'
+import { Paged } from '@/components/gw/ui/Paged'
+
+/**
+ * THE DESIGN PASS (21 November 2026): a card round a section is a box in a box once the page is in its tab, so with the pass on a
+ * section's content stands on the page with hairlines, and nothing explains the page. Everything stays visible.
+ */
+function Card({ children, ...rest }: { children: ReactNode } & React.HTMLAttributes<HTMLElement>) {
+  const designPass = useTheDesignPass()
+  if (designPass) return <div {...rest}>{children}</div>
+  return <Panel {...rest}>{children}</Panel>
+}
+
+/** A note that explains the page: drawn only with the design pass off. */
+function Explains({ children }: { children: ReactNode }) {
+  return useTheDesignPass() ? null : <Note>{children}</Note>
+}
 
 /**
  * PEOPLE AND SETUP, AS THE B8 PICTURES DRAW IT (Release 1B, pull request 1 of 3; Hafsah's people-and-setup.md of 17 October
@@ -92,6 +110,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const g: any = ground
   /* The direct morning (lib/the-direct-morning.tsx), from the check-in this page holds: no explanation of how Groundwork uses the setup. */
   const direct = isTheDirectMorningOn(g)
+  const designPass = useTheDesignPass()
   const qc = useQueryClient()
   const canEditRunOrAdmin = typeof g?.mayChangeSetup === 'boolean' ? g.mayChangeSetup === true : (isInitiator || isOrgAdmin)
   const canEditLeadOnly = isInitiator
@@ -112,7 +131,8 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const recordReminderDays: number[] = (g?.chaseAfterDays ?? [1]) as number[]
   const onRecord = useMemo(() => ({
     label: g?.label ?? '',
-    kindOfWork: g?.kindOfWork ?? '',
+    /* The one kind, as the server serves it for this page: the kind the board draws (people-and-setup.ts). */
+    kindOfWork: page?.kindOfWork ?? '',
     remind: remindKeyOf(!!g?.chasingStopped, recordReminderDays),
     remindOther: recordReminderDays.join(', '),
     tellTheLead: !!g?.tellTheLead,
@@ -124,7 +144,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
     workTogether: g?.peopleWorkTogether == null ? '' : g.peopleWorkTogether ? 'yes' : 'no',
     numbersShared: props.numbersShared,
     sharesAt: g?.reportSharesAt ? 'self' : 'you',
-  }), [g?.label, g?.kindOfWork, g?.chasingStopped, recordReminderDays.join(','), g?.tellTheLead, g?.overWhatsApp, g?.simplerWords, props.expectsUnblocking, props.peersVisible, props.contactHidden, g?.peopleWorkTogether, props.numbersShared, g?.reportSharesAt])
+  }), [g?.label, page?.kindOfWork, g?.chasingStopped, recordReminderDays.join(','), g?.tellTheLead, g?.overWhatsApp, g?.simplerWords, props.expectsUnblocking, props.peersVisible, props.contactHidden, g?.peopleWorkTogether, props.numbersShared, g?.reportSharesAt])
   const [draft, setDraft] = useState(onRecord)
   useEffect(() => { setDraft(onRecord) }, [onRecord])
   const [roles, setRoles] = useState<Record<string, string>>({})
@@ -256,11 +276,94 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const nobodyElseAnswered = !(props.whoIsInThisParties ?? []).some((p) => p.done && !p.isSelf)
   const n = sessionsUpToTheEnd(props) ?? sessionsFor(props.timelineDaysDraft, props.cadenceDraft) ?? 1
 
+  /* What it is: before who is in it with the switch off, after it with the design pass on (the people are the main thing). */
+  const whatItIs = (
+    <>
+        <Section heading="What it is">
+          <Card>
+            {/* B8: the three fields side by side, each label above its field. */}
+            <div className="gwui-three-fields">
+              <AFieldWithItsLabel
+                label="Name"
+                value={canEditRunOrAdmin
+                  ? <TextField aria-label="Name" value={draft.label} onChange={(e) => set('label', e.target.value)} />
+                  : g?.label}
+              />
+              <AFieldWithItsLabel label="Scenario" value={g?.scenario ? scenarioLabel(g.scenario, g.brief) : 'Not set.'} />
+              {typeServed ? (
+              <AFieldWithItsLabel
+                label="Kind of work"
+                value={typeServed.mayConfirm
+                  ? (
+                    <Select aria-label="Kind of work" value={typeDraft} onChange={(e) => setTypeDraft(e.target.value)}>
+                      {!typeDraft && <option value="">Not known yet</option>}
+                      {typeServed.offered.map((t) => <option key={t.type} value={t.type}>{t.label}</option>)}
+                    </Select>
+                  )
+                  : (typeServed.offered.find((t) => t.type === typeServed.type)?.label ?? 'Nobody has said yet.')}
+              />
+              ) : (
+              <AFieldWithItsLabel
+                label="Kind of work"
+                value={canEditRunOrAdmin && page
+                  ? (
+                    <Select aria-label="Kind of work" value={draft.kindOfWork} onChange={(e) => set('kindOfWork', e.target.value)}>
+                      <option value="">Not known yet</option>
+                      {page.kindsOffered.map((k) => <option key={k} value={k}>{(KIND_OF_WORK_OPTION_LABEL as Record<string, string>)[k] ?? k}</option>)}
+                    </Select>
+                  )
+                  : (page?.kindOfWork ? ((KIND_OF_WORK_OPTION_LABEL as Record<string, string>)[page.kindOfWork] ?? page.kindOfWork) : 'Nobody has said yet.')}
+              />
+              )}
+            </div>
+            {templatesQ.data?.on && (
+              <div className="gw-mt-4">
+                <AFieldWithItsLabel
+                  label="Template"
+                  value={canEditRunOrAdmin
+                    ? (
+                      <Select aria-label="Template" value={(g as any)?.templateId ?? ''} disabled={attachTemplate.isPending} onChange={(e) => attachTemplate.mutate(e.target.value || null)}>
+                        <option value="">None</option>
+                        {templatesQ.data.templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </Select>
+                    )
+                    : (templatesQ.data.templates.find((t) => t.id === (g as any)?.templateId)?.name ?? 'None')}
+                />
+                <Link to="/templates" className="t-small">See every template, and what each tracks</Link>
+              </div>
+            )}
+            {typeServed && <Note>{typeServed.says}</Note>}
+            {!direct && <Explains>The scenario and kind of work decide the board, the reports, and what each check-in asks about.</Explains>}
+          </Card>
+        </Section>
+    </>
+  )
+
   return (
     <div className="wrap gw-stack gwui-b-tab">
       {/* 1. HOW THIS CHECK-IN RUNS */}
       {/* B8: a small uppercase label, then the one line in Literata. */}
-      <Panel as="section" aria-label="How this check-in runs">
+      {/* THE DESIGN PASS: the one line on how it runs, then what to put right as hairline rows, three and "And N more". */}
+      {designPass && (
+        <section aria-label="How this check-in runs">
+          {page ? <p className="gwui-b8-line">{page.howItRuns}</p> : servedFailed ? <Note>This part of the page could not be loaded. Try again in a moment.</Note> : null}
+          {(page?.problems ?? []).length > 0 && (
+            <ul className="dp-rows" aria-label="What to put right">
+              <ShowAll items={page!.problems} render={(pr) => (
+                <li key={`${pr.participantId}-${pr.fix}-${pr.says}`} className="dp-row">
+                  <span className="dp-row-main"><span className="dp-row-line">{pr.says}</span></span>
+                  <span className="dp-row-acts">
+                    {pr.fix && FIX_SAID[pr.fix] && <button type="button" className="gwui-plain-link" onClick={() => fixIt(pr)}>{FIX_SAID[pr.fix]}</button>}
+                    {pr.fix === 'let-them-in' && <Link className="gwui-plain-link" to="/org/members">Let them in on People</Link>}
+                    {pr.fix === 'view-plans' && <Link className="gwui-plain-link" to="/billing">View plans</Link>}
+                  </span>
+                </li>
+              )} />
+            </ul>
+          )}
+        </section>
+      )}
+      {!designPass && <Panel as="section" aria-label="How this check-in runs">
         <Stack gap={8}>
           <h2 className="gwui-ci-prior-label gwui-m-0">How this check-in runs</h2>
           {page ? <p className="gwui-b8-line">{page.howItRuns}</p> : servedFailed ? <Note>This part of the page could not be loaded. Try again in a moment.</Note> : null}
@@ -275,66 +378,10 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             </div>
           ))}
         </Stack>
-      </Panel>
+      </Panel>}
 
       {/* 2. WHAT IT IS */}
-      <Section heading="What it is">
-        <Panel>
-          {/* B8: the three fields side by side, each label above its field. */}
-          <div className="gwui-three-fields">
-            <AFieldWithItsLabel
-              label="Name"
-              value={canEditRunOrAdmin
-                ? <TextField aria-label="Name" value={draft.label} onChange={(e) => set('label', e.target.value)} />
-                : g?.label}
-            />
-            <AFieldWithItsLabel label="Scenario" value={g?.scenario ? scenarioLabel(g.scenario, g.brief) : 'Not set.'} />
-            {typeServed ? (
-            <AFieldWithItsLabel
-              label="Kind of work"
-              value={typeServed.mayConfirm
-                ? (
-                  <Select aria-label="Kind of work" value={typeDraft} onChange={(e) => setTypeDraft(e.target.value)}>
-                    {!typeDraft && <option value="">Not known yet</option>}
-                    {typeServed.offered.map((t) => <option key={t.type} value={t.type}>{t.label}</option>)}
-                  </Select>
-                )
-                : (typeServed.offered.find((t) => t.type === typeServed.type)?.label ?? 'Nobody has said yet.')}
-            />
-            ) : (
-            <AFieldWithItsLabel
-              label="Kind of work"
-              value={canEditRunOrAdmin && page
-                ? (
-                  <Select aria-label="Kind of work" value={draft.kindOfWork} onChange={(e) => set('kindOfWork', e.target.value)}>
-                    <option value="">Not known yet</option>
-                    {page.kindsOffered.map((k) => <option key={k} value={k}>{(KIND_OF_WORK_OPTION_LABEL as Record<string, string>)[k] ?? k}</option>)}
-                  </Select>
-                )
-                : (g?.kindOfWork ? ((KIND_OF_WORK_OPTION_LABEL as Record<string, string>)[g.kindOfWork] ?? g.kindOfWork) : 'Nobody has said yet.')}
-            />
-            )}
-          </div>
-          {templatesQ.data?.on && (
-            <div className="gw-mt-4">
-              <AFieldWithItsLabel
-                label="Template"
-                value={canEditRunOrAdmin
-                  ? (
-                    <Select aria-label="Template" value={(g as any)?.templateId ?? ''} disabled={attachTemplate.isPending} onChange={(e) => attachTemplate.mutate(e.target.value || null)}>
-                      <option value="">None</option>
-                      {templatesQ.data.templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </Select>
-                  )
-                  : (templatesQ.data.templates.find((t) => t.id === (g as any)?.templateId)?.name ?? 'None')}
-              />
-              <Link to="/templates" className="t-small">See every template, and what each tracks</Link>
-            </div>
-          )}
-          {typeServed && <Note>{typeServed.says}</Note>}
-          {!direct && <Note>The scenario and kind of work decide the board, the reports, and what each check-in asks about.</Note>}
-        </Panel>
-      </Section>
+      {!designPass && whatItIs}
 
       {/* 3. WHO'S IN IT */}
       <Section
@@ -342,7 +389,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
         note={whosInItSays(counted)}
         action={isInitiator ? (
           <FlexRow gap={8} wrap>
-            {g?.joinToken && <Button kind="secondary" size="small" onClick={() => setShowLink((v) => !v)}>Join link and QR code</Button>}
+            {g?.joinToken && <Button kind={designPass ? 'quiet' : 'secondary'} size="small" onClick={() => setShowLink((v) => !v)}>Join link and QR code</Button>}
             <Button size="small" onClick={() => setShowAdd((v) => !v)}>Add people</Button>
           </FlexRow>
         ) : undefined}
@@ -357,83 +404,134 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
               addManyParticipants={props.addManyParticipants} onShareCode={props.onShareCode}
             />
           )}
-          <PeopleTable>
-            <PeopleTableHead extraColumns="minmax(170px, 1fr) 190px 210px" labels={['Person', 'Their role here', 'Phone number', 'Getting started']} />
-            {[...participants].sort((a, b) => (a.userId === g?.initiatorId ? -1 : b.userId === g?.initiatorId ? 1 : 0)).map((p: any) => {
-              const row = whereThisPersonIs(p, {
-                ground: g, isInitiator, isOrgAdmin, isNotCounted, sessionParties: props.whoIsInThisParties, notOpenYet: props.whoIsInThisNotOpenYet,
-                fixingEmailId: props.fixingEmailId, setFixingEmailId: props.setFixingEmailId, fixingEmailValue: props.fixingEmailValue,
-                setFixingEmailValue: props.setFixingEmailValue, fixEmail: props.fixEmail, resendInvite: props.resendInvite,
-              })
-              const isLead = p.userId === g?.initiatorId
-              const stage = ((started?.people ?? []) as { participantId: string; reached: number; says: string }[]).find((s) => s.participantId === p.id)
-              const onWhatsApp = ((numbers ?? []) as any[]).find((x) => x.participantId === p.id)
-              const phone = onWhatsApp?.phone ?? null
-              const problem = row.statusText !== 'Checking in' && row.statusText !== 'Runs it'
-              return (
-                <div id={`person-${p.id}`} key={p.id}>
-                  <PersonRow
-                    extraColumns="minmax(170px, 1fr) 190px 210px"
-                    /* The name, "Runs it" or "Checks in", and the address the invitation went to, as A4 draws it under every name
-                       (restored, 30 October 2026: on hover only, nobody on a phone could read it). */
-                    person={{ initials: initialsOf(row.name), name: row.name, level: isLead ? 'Runs it' : 'Checks in', email: p.userId ? p.email : undefined }}
-                    help={row.help}
-                  >
-                    <span>
+          {/* THE DESIGN PASS: each person one quiet row. Their name and whether they run it or check in,
+              then where they are in getting started, their phone number with Change, and their role here in a full-width field. */}
+          {designPass && (
+            <ul className="dp-rows" aria-label="Who's in it">
+              {/* Ten a page, every page reachable, the one shared list part. */}
+              <Paged label="who's in it" items={[...participants].sort((a, b) => (a.userId === g?.initiatorId ? -1 : b.userId === g?.initiatorId ? 1 : 0))} render={(p: any) => {
+                const row = whereThisPersonIs(p, {
+                  ground: g, isInitiator, isOrgAdmin, isNotCounted, sessionParties: props.whoIsInThisParties, notOpenYet: props.whoIsInThisNotOpenYet,
+                  fixingEmailId: props.fixingEmailId, setFixingEmailId: props.setFixingEmailId, fixingEmailValue: props.fixingEmailValue,
+                  setFixingEmailValue: props.setFixingEmailValue, fixEmail: props.fixEmail, resendInvite: props.resendInvite,
+                })
+                const isLead = p.userId === g?.initiatorId
+                const stage = ((started?.people ?? []) as { participantId: string; reached: number; says: string }[]).find((x) => x.participantId === p.id)
+                const onWhatsApp = ((numbers ?? []) as any[]).find((x) => x.participantId === p.id)
+                const phone = onWhatsApp?.phone ?? null
+                const problem = row.statusText !== 'Checking in' && row.statusText !== 'Runs it'
+                const where = [stage?.says, row.sessionLine, row.when].filter(Boolean).join(' ')
+                return (
+                  <li id={`person-${p.id}`} key={p.id} className="dp-row">
+                    <span className="dp-row-main">
+                      <span className="dp-row-title">{row.name}</span>
+                      <span className="dp-row-line">{`${isLead ? 'Runs it.' : 'Checks in.'}${p.userId && p.email ? ` ${p.email}.` : ''}${!problem ? ` ${stage ? STAGE_SAID[stage.reached] : row.statusText}.` : ''}${where ? ` ${where}` : ''}`}</span>
+                      <span className="dp-row-line">
+                        {numberFor === p.id
+                          ? <TheirNumber groundId={id} participantId={p.id} name={row.name} phone={phone} onDone={() => setNumberFor(null)} />
+                          : phone
+                            ? <>{`Their phone number is ${aNumberAsShown(phone)}.`}{props.whatsAppIsOn && onWhatsApp?.says ? ` ${onWhatsApp.says}` : null}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button></>
+                            : <>No phone number yet.{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Add a number</button></>}
+                      </span>
+                      {row.help && <span className="dp-row-line">{row.help.text}{row.help.action ? <>{' '}{row.help.action}</> : null}</span>}
+                    </span>
+                    {problem && <span className="dp-row-acts"><Tag tone={row.tone}>{row.statusText}</Tag></span>}
+                    <span className="dp-row-body">
                       {isInitiator
                         ? <TextField
                             ref={(el: HTMLInputElement | null) => { roleRefs.current[p.id] = el }}
                             aria-label={`Their role here, for ${row.name}`}
-                            placeholder="Nobody has described it yet"
+                            placeholder="Their role here, in a few words"
                             value={roles[p.id] ?? p.roleAsDescribed ?? ''}
                             onChange={(e) => setRoles((r) => ({ ...r, [p.id]: e.target.value }))}
                           />
-                        : (page?.roleDescribed?.[p.id] ? `${leadFirst.charAt(0).toUpperCase()}${leadFirst.slice(1)} has described it.` : 'Nobody has described it yet.')}
+                        : <span className="dp-row-line">{page?.roleDescribed?.[p.id] ? `${leadFirst.charAt(0).toUpperCase()}${leadFirst.slice(1)} has described their role here.` : 'Nobody has described their role here yet.'}</span>}
                     </span>
-                    <span>
-                      {numberFor === p.id
-                        ? <TheirNumber groundId={id} participantId={p.id} name={row.name} phone={phone} onDone={() => setNumberFor(null)} />
-                        : phone
-                          ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button>{props.whatsAppIsOn && onWhatsApp?.says ? <span className="gwui-note">{onWhatsApp.says}</span> : null}</>
-                          : <>None yet{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Add a number</button></>}
-                    </span>
-                    <Stack gap={4}>
-                      {stage && (
-                        <span className="pb-rely-bars" aria-hidden="true">
-                          {[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= stage.reached ? 'on' : undefined} />)}
-                        </span>
-                      )}
-                      <Tag tone={problem ? row.tone : 'proven'}>{problem || !stage ? row.statusText : STAGE_SAID[stage.reached]}</Tag>
-                      {/* Where they are, their session and when they last did something, as one quiet line anyone can read, on a phone
-                          too (restored, 30 October 2026: it was for screen readers and hover only). */}
-                      {[stage?.says, row.sessionLine, row.when].some(Boolean) && <Text size="13" ink="sub" as="p">{[stage?.says, row.sessionLine, row.when].filter(Boolean).join(' ')}</Text>}
-                    </Stack>
-                  </PersonRow>
-                </div>
-              )
-            })}
-          </PeopleTable>
+                  </li>
+                )
+              }} />
+            </ul>
+          )}
+          {!designPass && (
+            <PeopleTable>
+              <PeopleTableHead extraColumns="minmax(170px, 1fr) 190px 210px" labels={['Person', 'Their role here', 'Phone number', 'Getting started']} />
+              {[...participants].sort((a, b) => (a.userId === g?.initiatorId ? -1 : b.userId === g?.initiatorId ? 1 : 0)).map((p: any) => {
+                const row = whereThisPersonIs(p, {
+                  ground: g, isInitiator, isOrgAdmin, isNotCounted, sessionParties: props.whoIsInThisParties, notOpenYet: props.whoIsInThisNotOpenYet,
+                  fixingEmailId: props.fixingEmailId, setFixingEmailId: props.setFixingEmailId, fixingEmailValue: props.fixingEmailValue,
+                  setFixingEmailValue: props.setFixingEmailValue, fixEmail: props.fixEmail, resendInvite: props.resendInvite,
+                })
+                const isLead = p.userId === g?.initiatorId
+                const stage = ((started?.people ?? []) as { participantId: string; reached: number; says: string }[]).find((s) => s.participantId === p.id)
+                const onWhatsApp = ((numbers ?? []) as any[]).find((x) => x.participantId === p.id)
+                const phone = onWhatsApp?.phone ?? null
+                const problem = row.statusText !== 'Checking in' && row.statusText !== 'Runs it'
+                return (
+                  <div id={`person-${p.id}`} key={p.id}>
+                    <PersonRow
+                      extraColumns="minmax(170px, 1fr) 190px 210px"
+                      /* The name, "Runs it" or "Checks in", and the address the invitation went to, as A4 draws it under every name
+                         (restored, 30 October 2026: on hover only, nobody on a phone could read it). */
+                      person={{ initials: initialsOf(row.name), name: row.name, level: isLead ? 'Runs it' : 'Checks in', email: p.userId ? p.email : undefined }}
+                      help={row.help}
+                    >
+                      <span>
+                        {isInitiator
+                          ? <TextField
+                              ref={(el: HTMLInputElement | null) => { roleRefs.current[p.id] = el }}
+                              aria-label={`Their role here, for ${row.name}`}
+                              placeholder="Nobody has described it yet"
+                              value={roles[p.id] ?? p.roleAsDescribed ?? ''}
+                              onChange={(e) => setRoles((r) => ({ ...r, [p.id]: e.target.value }))}
+                            />
+                          : (page?.roleDescribed?.[p.id] ? `${leadFirst.charAt(0).toUpperCase()}${leadFirst.slice(1)} has described it.` : 'Nobody has described it yet.')}
+                      </span>
+                      <span>
+                        {numberFor === p.id
+                          ? <TheirNumber groundId={id} participantId={p.id} name={row.name} phone={phone} onDone={() => setNumberFor(null)} />
+                          : phone
+                            ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button>{props.whatsAppIsOn && onWhatsApp?.says ? <span className="gwui-note">{onWhatsApp.says}</span> : null}</>
+                            : <>None yet{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Add a number</button></>}
+                      </span>
+                      <Stack gap={4}>
+                        {stage && (
+                          <span className="pb-rely-bars" aria-hidden="true">
+                            {[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= stage.reached ? 'on' : undefined} />)}
+                          </span>
+                        )}
+                        <Tag tone={problem ? row.tone : 'proven'}>{problem || !stage ? row.statusText : STAGE_SAID[stage.reached]}</Tag>
+                        {/* Where they are, their session and when they last did something, as one quiet line anyone can read, on a phone
+                            too (restored, 30 October 2026: it was for screen readers and hover only). */}
+                        {[stage?.says, row.sessionLine, row.when].some(Boolean) && <Text size="13" ink="sub" as="p">{[stage?.says, row.sessionLine, row.when].filter(Boolean).join(' ')}</Text>}
+                      </Stack>
+                    </PersonRow>
+                  </div>
+                )
+              })}
+            </PeopleTable>
+          )}
           <Note>
             Getting started goes from Invited, to Reached, to Verified, to First check-in, to Coming back. Their role here shapes
             the questions their check-in asks. Their role in your organisation is set in People.
           </Note>
-          {props.whatsAppIsOn && <Note>Groundwork writes to each person on WhatsApp once their number is here, and they can answer there.</Note>}
+          {props.whatsAppIsOn && <Explains>Groundwork writes to each person on WhatsApp once their number is here, and they can answer there.</Explains>}
           {!direct && (
-          <Note>
+          <Explains>
             {props.whoIsInThisPeersHidden
               ? 'People on this check-in answer without seeing each other. You can see who is here.'
               : viewerIsAParty === false
                 ? 'When everyone has checked in, the report shows where the team agrees, where it differs, and what to do next.'
                 : 'When everyone has checked in, the report shows where you agree, where you differ, and what to do next.'}
-          </Note>
+          </Explains>
           )}
         </Stack>
       </Section>
+      {designPass && whatItIs}
 
       {/* 4. WHEN IT RUNS */}
       <div id="how-long-this-runs" />
       <Section heading="When it runs">
-        <Panel>
+        <Card>
           <Stack gap={12}>
             {canEditRunOrAdmin ? (
               <>
@@ -465,7 +563,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                   <Button kind="secondary" size="small" onClick={() => { endsRef.current?.focus(); endsRef.current?.showPicker?.() }}>Give it more time</Button>
                 </FlexRow>
                 {props.canOfferStartDate && (
-                  <Note>Check-in 1 opens on the start day, and anybody you add before it is invited on it. Leave it empty to open the check-in as soon as people are added.</Note>
+                  <Explains>Check-in 1 opens on the start day, and anybody you add before it is invited on it. Leave it empty to open the check-in as soon as people are added.</Explains>
                 )}
                 {(cadenceKey === 'weekday' || cadenceKey === 'day') && (
                   <WhichDaysTheyWork value={props.workingDaysDraft} onChange={props.setWorkingDaysDraft} />
@@ -496,7 +594,11 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                 <FieldRow label="Your status" value={statusSentence(whatThisStatusMeans(g?.status))} />
                 <FieldRow
                   label="Your check-ins"
-                  value={(participants.find((p) => p.userId === user?.id)?.managingOnly) ? 'You check in when you choose. Use Check in yourself any time.' : yourSessionsSentence(mySessionsDone, plannedSessions)}
+                  value={(participants.find((p) => p.userId === user?.id)?.managingOnly) ? 'You check in when you choose. Use Check in yourself any time.' : [
+                    yourSessionsSentence(mySessionsDone, plannedSessions),
+                    /* Beside "1 of 12 sessions done" above, her own count read as the team's; the team's, as served, says which is which. */
+                    page && typeof page.teamSessionsDone === 'number' ? `The team has finished ${page.teamSessionsDone}.` : null,
+                  ].filter(Boolean).join(' ')}
                 />
               </FieldRows>
             )}
@@ -525,14 +627,14 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                 <FieldRow label="Reminders" value={g?.chasingStopped ? 'Off. Nobody is reminded.' : chasingSentence(recordReminderDays)} />
               </FieldRows>
             )}
-            <Note>Never more than one reminder a day. Quiet hours end at 7am. At the last check-in, everyone is asked how this should close.</Note>
+            <Explains>Never more than one reminder a day. Quiet hours end at 7am. At the last check-in, everyone is asked how this should close.</Explains>
           </Stack>
-        </Panel>
+        </Card>
       </Section>
 
       {/* 5. HOW PEOPLE ANSWER */}
       <Section heading="How people answer">
-        <Panel>
+        <Card>
           <FieldRows>
             <FieldRow
               label="Where"
@@ -558,19 +660,19 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             onChange={(on) => set('expectsUnblocking', on)}
             disabled={!canEditRunOrAdmin}
           />
-          <Note>
+          <Explains>
             {draft.expectsUnblocking
               ? `A blocker is recorded with what has already been done about it, and the person is offered ways through on their own report. ${isInitiator ? 'You see it too, as one thing to ask for.' : 'Their lead sees the same thing as one thing to ask for.'}`
               : 'What is in their way is recorded, and nothing is asked about what they tried. For people with no standing to chase anybody, or a check-in that is there to hear what happened.'}
-          </Note>
-        </Panel>
+          </Explains>
+        </Card>
       </Section>
 
       {/* 6. STARTING POINT */}
       <Section heading="Starting point">
         <Stack gap={10}>
           <StartingPointPanel groundId={id} canRecord={isInitiator} />
-          <Note>Recorded once, from your first check-in. It stays as written, and the board measures progress from it.</Note>
+          <Explains>Recorded once, from your first check-in. It stays as written, and the board measures progress from it.</Explains>
           {/* "What doing well looks like" is under About this work on References and resources now (Release 1B, pull request 2
               of 3), with its versions and wording; this page is drawn only where that tab is too. */}
         </Stack>
@@ -578,7 +680,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
 
       {/* 7. WHO SEES WHAT */}
       <Section heading="Who sees what">
-        <Panel>
+        <Card>
           <FieldRows>
             <OneChoice
               label="Each other’s check-ins" canChange={canEditRunOrAdmin} value={draft.peersVisible ? 'named' : 'unnamed'}
@@ -622,7 +724,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             />
             <FieldRow label="Others with access" value={page?.othersWithAccess ?? ''} />
           </FieldRows>
-        </Panel>
+        </Card>
       </Section>
 
       {/* 8. RECENT CHANGES */}
@@ -630,12 +732,12 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
         <Stack gap={4}>
           {props.settingsChangeCount > 0
             ? [...(g?.settingsChanges ?? [])].reverse().map((c: any, i: number) => <Note key={i}>{settingsChangeSentence(c)}</Note>)
-            : <Note>Changes to how long it runs and how often are noted with who made them and the date.</Note>}
+            : designPass ? <Note>No changes yet.</Note> : <Note>Changes to how long it runs and how often are noted with who made them and the date.</Note>}
         </Stack>
       </Section>
 
       {/* 9. ENDING */}
-      <Panel as="section" aria-label="Ending it">
+      <Card aria-label="Ending it">
         {isInitiator ? (
           <Stack gap={10}>
             <FlexRow gap={12} justify="space-between" align="center" wrap>
@@ -671,7 +773,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             <a className="btn sec red" href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(g?.label ?? '')}`}>Ask us to end this check-in</a>
           </FlexRow>
         )}
-      </Panel>
+      </Card>
 
       {/* THE SAVE BAR: nothing applies until it is saved. */}
       {anyChange && (

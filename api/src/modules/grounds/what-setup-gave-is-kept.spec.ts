@@ -32,11 +32,12 @@ const THE_ASSESSMENT = {
   dates: [item('t1', 'what', 'the stock count', undefined, { when: 'Friday 14 November' })],
 };
 
-function aService(assessment: any = THE_ASSESSMENT) {
+function aService(assessment: any = THE_ASSESSMENT, scenario = 'OKR_ALIGNMENT') {
   const service = Object.create(GroundsService.prototype) as any;
   service.prisma = {
     checkIn: { findUnique: jest.fn(async () => ({ sessionReport: assessment })) },
     groundParticipant: { findMany: jest.fn(async () => [{ id: 'p-kwame', userId: 'u-kwame', email: 'kwame@x.test', nameGiven: null, managingOnly: false, user: { firstName: 'Kwame', lastName: 'Mensah' } }]) },
+    ground: { findUnique: jest.fn(async () => ({ scenario })) },
   };
   service.whatAPasteGives = jest.fn(async () => null);
   service.writeWhatThePasteGave = jest.fn(async () => true);
@@ -88,5 +89,27 @@ describe('when a setup becomes a check-in', () => {
     service.baselineEntryCandidates = jest.fn(async () => ({ candidates: [{ text: 'Something else said in session one.', type: 'CLAIM' }], alreadyRecorded: [{ text: 'Already there.' }] }));
     await service.keepWhatSetupGave('g1', 'u-jamal', 'ci-setup');
     expect(service.recordBaselineEntries).not.toHaveBeenCalled();
+  });
+
+  /*
+   * A NEW HIRE'S GOALS GIVEN AT SET-UP ARE HIS (release test, 21 November 2026). "By day 30 he runs the morning stock count alone" was
+   * kept only as the first line of what success looks like, and the new hire's board read "Nothing was agreed at the start yet". On a
+   * check-in about one person, every success line is that person's goal, written as the lead's expectation set at setup.
+   */
+  it('on a new hire\'s check-in, every success line becomes the new hire\'s goal; on a team\'s, none does', async () => {
+    const twoGoals = { ...THE_ASSESSMENT, setup: { ...THE_SETUP, success: [
+      item('s2', 'success', 'By day 30, Kwame Mensah runs the morning stock count alone.'),
+      item('s8', 'success', 'By day 90, Kwame Mensah handles deliveries for the whole depot.'),
+    ] } };
+    const hire = aService(twoGoals, 'NEW_HIRE');
+    await hire.keepWhatSetupGave('g1', 'u-esther', 'ci-setup');
+    const written = hire.writeWhatThePasteGave.mock.calls[0][1];
+    expect(written.forPeople).toEqual([
+      { who: 'Kwame Mensah', participantId: 'p-kwame', expectation: 'By day 30, Kwame Mensah runs the morning stock count alone.', targets: [] },
+      { who: 'Kwame Mensah', participantId: 'p-kwame', expectation: 'By day 90, Kwame Mensah handles deliveries for the whole depot.', targets: [] },
+    ]);
+    const team = aService(twoGoals, 'OKR_ALIGNMENT');
+    await team.keepWhatSetupGave('g1', 'u-esther', 'ci-setup');
+    expect(team.writeWhatThePasteGave.mock.calls[0][1].forPeople).toEqual([]);
   });
 });

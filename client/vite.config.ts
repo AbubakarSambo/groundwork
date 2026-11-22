@@ -1,7 +1,12 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vite'
+import { defineConfig, searchForWorkspaceRoot } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import fs from 'fs'
+
+/* Where node_modules really is. A second working copy links its node_modules to another copy's, and the dev server refused to serve
+   files from there (the fonts, "outside of Vite serving allow list"), so that copy drew every page in fallback fonts. */
+const theModules = (() => { try { return fs.realpathSync(path.resolve(__dirname, 'node_modules')) } catch { return path.resolve(__dirname, 'node_modules') } })()
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -20,6 +25,7 @@ export default defineConfig({
      * runs) are untouched.
      */
     host: 'localhost',
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), theModules] },
     proxy: {
       '/api': {
         /**

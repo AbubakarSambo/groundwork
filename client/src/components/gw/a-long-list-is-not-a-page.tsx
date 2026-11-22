@@ -13,6 +13,7 @@
  * count is the point: "and 94 more" tells a lead something that ninety-four rows do not.
  */
 import { useState } from 'react'
+import { useTheDesignPass } from '@/lib/the-design-pass'
 
 export function ShowAFew<T>({
   rows,
@@ -28,7 +29,9 @@ export function ShowAFew<T>({
   children: (row: T, index: number) => React.ReactNode
 }) {
   const [all, setAll] = useState(false)
-  const shown = all ? rows : rows.slice(0, few)
+  /* The design pass ("nothing gone and no folding"): every row is shown, with nothing behind a "Show more". */
+  const designPass = useTheDesignPass()
+  const shown = all || designPass ? rows : rows.slice(0, few)
   const hidden = rows.length - shown.length
   return (
     <>
@@ -45,7 +48,7 @@ export function ShowAFew<T>({
           Show {hidden} more {what}
         </button>
       )}
-      {all && rows.length > few && (
+      {all && !designPass && rows.length > few && (
         <button
           onClick={() => setAll(false)}
           style={{

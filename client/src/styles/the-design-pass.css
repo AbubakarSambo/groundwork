@@ -1,0 +1,399 @@
+/*
+ * THE DESIGN PASS OF 21 NOVEMBER 2026 (docs/design-pass-21-nov/README.md).
+ *
+ * Every rule here is under `html.design-pass`, so with the switch off (the default) nothing here
+ * applies and every page looks exactly as it did. The class is never on a board page
+ * (lib/the-design-pass.ts), so nothing here can reach a board either.
+ *
+ * Each block says what was wrong on which page, seen in the before screenshots.
+ */
+
+/* ── LINKS: one look for a link that stands on its own ─────────────────────────────────────────
+   Before: "Open its board" was underlined and "See or change its settings" beside it was bold and
+   not underlined; "Your own requests" on Today was underlined, the prototype's links are not. Now a
+   link standing on its own is navy, bold and not underlined, and underlined only under the finger
+   or the keyboard, as the prototype draws "Read what each team said". */
+html.design-pass .gwui-plain-link { text-decoration: none; }
+html.design-pass .gwui-plain-link:hover,
+html.design-pass .gwui-plain-link:focus-visible { text-decoration: underline; }
+
+/* A quiet button lines up with the words above it. Before: "Read it in full" on the Desk and "See or
+   change its settings" on Suites sat 8 to 12 pixels in from the text they belong to. */
+/* The boards and the Desk ported from the prototype (.gw-proto) carry the prototype's own buttons and fields, so these rules stop at their edge (Hafsah, 21 November). */
+html.design-pass .btn.quiet:not(.gw-proto *) { padding-left: 0; padding-right: 0; }
+html.design-pass .gw-acts .btn.quiet,
+html.design-pass .gwui-edge-acts .btn.quiet { padding-left: 8px; padding-right: 8px; }
+
+/* ── TAP TARGETS ─────────────────────────────────────────────────────────────────────────────
+   Before: the breadcrumb links ("Suites", "Check-ins", "People") were 21 pixels tall on a computer,
+   the radio buttons and tick boxes 13 pixels, "Who gets it" and "What you wrote" 17 pixels.
+   The breadcrumb keeps its one-line height and takes a 44px target around it. */
+html.design-pass .crumb a { position: relative; }
+html.design-pass .crumb a::after { content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: max(100%, 44px); transform: translateY(-50%); }
+html.design-pass input[type='radio'],
+html.design-pass input[type='checkbox'] { width: 20px; height: 20px; accent-color: var(--gw-navy); flex: none; }
+html.design-pass a.t-small,
+html.design-pass .gw-link { display: inline-flex; align-items: center; min-height: 44px; }
+/* "See all", "Open" and the like beside a section's heading. */
+html.design-pass .sec-h > a,
+html.design-pass .sec-h > span > a { display: inline-flex; align-items: center; min-height: 44px; }
+
+/* ── A FILE TO CHOOSE ────────────────────────────────────────────────────────────────────────
+   Before: the browser's own grey "Choose File  No file chosen" on the Desk and the spend request.
+   Now a secondary button that says "Choose a file", and the file's name, or that none is chosen yet,
+   beside it (components/gw/ChooseAFile.tsx). */
+html.design-pass .dp-file { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+html.design-pass .dp-file input[type='file'] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+html.design-pass .dp-file-name { font-size: 14px; line-height: 20px; color: var(--gw-sub); overflow-wrap: anywhere; min-width: 0; }
+html.design-pass .dp-file input[type='file']:focus-visible + .btn { outline: 3px solid var(--gw-focus-ring); outline-offset: 2px; }
+
+/* ── FORMS: a label sits with its field, and fields stand apart ─────────────────────────────
+   Before: on the Desk's "Add a document", "A file", "Its title" and "Or paste the text" ran straight
+   into the field above, with no space between one question and the next. */
+html.design-pass .dp-form { display: flex; flex-direction: column; gap: 16px; }
+html.design-pass .dp-field { display: flex; flex-direction: column; gap: 4px; }
+html.design-pass .dp-field > label { margin: 0; }
+
+/* ── THE COMPOSER: the +, the box and send on one line ───────────────────────────────────────
+   Before: the box was two lines tall when empty, so "+" sat at the bottom left, the words "Type your
+   answer" floated at the top, and send hung at the bottom right. Now the box is one line tall until
+   somebody writes more, and the three line up. */
+html.design-pass .gw-composer-box { align-items: center; }
+html.design-pass .gw-composer .gw-composer-box textarea.input { min-height: 44px; padding: 10px 8px; }
+html.design-pass .gw-composer-box .ci-sq { flex: none; }
+
+/* ── "GROUNDWORK IS WRITING…" ────────────────────────────────────────────────────────────────
+   Before: 14px in the faint brown, paler than everything else in the conversation. Now it reads at the
+   size and colour of the messages around it, with the dots in navy. */
+html.design-pass .gwui-writing { font-size: 16px; color: var(--gw-text); }
+html.design-pass .gwui-writing-dot { background: var(--gw-navy); }
+
+/* ── THE CHECK-IN ON A PHONE ─────────────────────────────────────────────────────────────────
+   Before: the conversation's card started 2 pixels off the left edge of the screen and stopped 32
+   pixels short of the right one. Now it fills the width, edge to edge, with no side lines. */
+@media (max-width: 640px) {
+  html.design-pass .gwui-ci-tab-body { margin-left: -16px; margin-right: -16px; width: auto !important; } /* the lead's page sets width: 100% inline */
+  html.design-pass .gwui-page-shell > .gwui-ci-tab-body { margin: 0; width: 100% !important; }
+  html.design-pass .gwui-ci-in-tab .ci-card { border-left: 0; border-right: 0; border-radius: 0; }
+}
+
+/* ── ASK ON A PHONE ──────────────────────────────────────────────────────────────────────────
+   Before: six suggested questions, each on its own line, filled the middle of the screen, so the
+   conversation itself had a few lines left between the header and the box. Now they are one row you
+   slide along, and the header is tighter. */
+@media (max-width: 640px) {
+  html.design-pass .chatpage .gw-chips,
+  html.design-pass .gw-ask-drawer .gw-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; margin-right: -16px; padding-right: 16px; scrollbar-width: none; }
+  html.design-pass .chatpage .gw-chips > *,
+  html.design-pass .gw-ask-drawer .gw-chips > * { flex: none; }
+  html.design-pass .chatpage .asst-h { padding: 8px 12px; row-gap: 2px; }
+  html.design-pass .chatpage .asst-h > .t-tiny { margin-top: 0; }
+}
+
+/* ── TODAY: the admin's welcome card ─────────────────────────────────────────────────────────
+   Before: a heavy black 2px frame with four bordered cards inside it, a box of boxes, louder than
+   "What needs you" above it. Now one quiet card with a hairline, and the four ways in as rows split by
+   thin rules, each a full-width line you tap. */
+html.design-pass .gwui-welcome-card { box-shadow: inset 0 0 0 1px var(--gw-border); padding: 16px 24px; }
+html.design-pass .gwui-welcome-card-head h2 { font-size: 21px; font-weight: 500; }
+html.design-pass .gwui-welcome-doors { display: block; border-top: 1px solid var(--gw-border); }
+html.design-pass .gwui-welcome-doors > li { border-bottom: 1px solid var(--gw-border); }
+html.design-pass .gwui-welcome-door { border: 0; border-radius: 0; padding: 12px 0; min-height: 44px; }
+html.design-pass .gwui-welcome-door:hover,
+html.design-pass .gwui-welcome-door:focus-visible { background: none; }
+html.design-pass .gwui-welcome-door:hover b { text-decoration: underline; }
+
+/* ── SENDING THE REPORT (a check-in's My work) ───────────────────────────────────────────────
+   Before: "What they receive" was a 12px navy label, the two choices 13 and 12px, the radio
+   buttons 13px, and "Who gets it" a 17px-tall line of 12px navy text. Now the page's own sizes, and
+   each choice is a whole line you tap. */
+html.design-pass .dp-legend { padding: 0; font-size: 14px; line-height: 20px; font-weight: 700; color: var(--gw-text); }
+html.design-pass .dp-choice { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; min-height: 44px; cursor: pointer; }
+html.design-pass .dp-choice > input { margin-top: 2px; }
+html.design-pass .dp-choice-title { display: block; font-size: 16px; line-height: 24px; font-weight: 700; color: var(--gw-text); }
+html.design-pass .dp-choice-says { display: block; font-size: 14px; line-height: 20px; color: var(--gw-sub); }
+html.design-pass .dp-summary { font-size: 14px; font-weight: 700; color: var(--gw-navy); cursor: pointer; }
+html.design-pass .dp-list { margin: 4px 0 0; padding-left: 20px; font-size: 14px; line-height: 20px; color: var(--gw-sub); }
+
+/* ── FIELDS ARE AS WIDE AS WHAT GOES IN THEM ────────────────────────────────────────────────
+   Before: on Spending, the Suites settings and the leave policy, a team's name, an amount or one
+   person's name was typed into a box 880 pixels wide. On a computer a one-line field or a picker is
+   at most 480 pixels; a box for a paragraph keeps the width. */
+@media (min-width: 641px) {
+  html.design-pass main :is(select.input, input.input, .gwui-input, select):not(.gw-composer *):not(textarea) { max-width: 480px; }
+}
+
+/* A form's own top rule, when the form is the first thing in its panel. Before: "Set a team's budget for
+   this month" opened on a line with nothing above it. */
+html.design-pass .panel > .gwui-suite-ask:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+
+/* (A link inside a sentence staying in the sentence is now fixed for everyone, in .gwui-plain-link itself, gw-ui.css.) */
+
+/* ── START: the question and its box ─────────────────────────────────────────────────────
+   Before: the box began on the line under "A goal, a new hire, a decision", touching it. */
+html.design-pass .gwui-door > * + * { margin-top: 24px; }
+
+/* ── CHECK-INS: a check-in's name sits on its own line ───────────────────────────────────────
+   Before: "Sales team, Q4" stood in a 44px box with its words centred, so a gap opened between the name
+   and "Run by Wairimu Njoroge" under it. The 44px stays for the finger as a target drawn around the name,
+   so the name and its line read together, on one line or two. */
+
+/* ── THE DESK ────────────────────────────────────────────────────────────────────────────────
+   Before: a whole "Add a document" form sat above the documents, a box with the browser's raw file
+   field in it. Now one "Add a document" button opens it (CompanyPage.tsx), with room under it before
+   the list. A priority's lines had no space between them, so owner, reading, team and measure ran
+   together as one block; each is now its own line with a little air. */
+html.design-pass .dp-add { margin-bottom: 16px; }
+html.design-pass section.panel[aria-label^='Priority'] > * + * { margin-top: 8px; }
+html.design-pass section.panel[aria-label^='Priority'] > h3 { margin-top: 12px; }
+
+/* ── PEOPLE: columns that do not run into each other ─────────────────────────────────────────
+   Before: "Remove" was cut off at the right edge, "Can open check-ins" ran into Status, "Management" ran
+   into "Owner", and a phone number ran into the check-ins beside it, because the columns had no space
+   between them and a long number could not wrap. Now there are 8px between columns, the status column is wide enough for its widest tag, and a long
+   line wraps inside its own column (the widths are in EveryoneHere.tsx). */
+html.design-pass .gwui-people-head,
+html.design-pass .gwui-person-row { column-gap: 8px; }
+html.design-pass .gwui-person-row > * { min-width: 0; overflow-wrap: anywhere; }
+
+/* ── SUITES: a suite's links, one under another ─────────────────────────────────────────────
+   Before: "Open its board" was underlined and "See or change its settings" under it was indented and not,
+   and on Spending and budgets the two ran into one line. Now each is its own line, flush with the words
+   above it, in the same look. */
+html.design-pass .gwui-suite-head > div:first-child { display: flex; flex-direction: column; align-items: flex-start; }
+html.design-pass .gwui-suite-head > div:first-child > h3 + * { margin-top: 0; }
+
+/* A row of links needs room between them. Before: "Who has answered" and "Each person's work" on a
+   check-in's My work were 8px apart and read as one phrase. */
+html.design-pass .gwui-button-row:has(> .gwui-plain-link) { column-gap: 24px; }
+
+/* A button standing in a paragraph of its own gets room above and below it. Before: on a review, "Update
+   from the record" touched the paragraph above it and the line under it. */
+html.design-pass p.gwui-panel-text:has(> .btn) { margin-top: 8px; margin-bottom: 8px; }
+
+/* ── WHERE DO YOU WORK (a new admin's first page) ───────────────────────────────────────────
+   Before: a dashed box inside the white card, with a 28px "+" square and a small white "Create". A box in a
+   box, and the one thing to do looked like the least important thing on it. Now the choices are rows
+   split by thin rules, and with nothing to join, "Create" is the navy button (WhereDoYouWork.tsx). */
+html.design-pass .gwui-auth-card .gw-org-rows { gap: 0; border-top: 1px solid var(--gw-border); }
+html.design-pass .gwui-auth-card .gw-org-row { border: 0; border-bottom: 1px solid var(--gw-border); border-radius: 0; padding: 12px 0; background: transparent; }
+
+/* "What is Groundwork?" under a link that did not work was 13px and 20px tall. */
+html.design-pass .gwui-fine > a:only-child { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; font-weight: 700; color: var(--gw-navy); text-decoration: none; }
+
+/* ── THE LEAVE POLICY SETTINGS ───────────────────────────────────────────────────────────────
+   Before: "See or change its settings" on Leave requests opened the whole leave policy, forty fields and
+   paragraphs, inside a card a third of the page wide, so it ran down the screen in a strip 300 pixels
+   wide beside two empty columns. A suite whose settings are open now takes the whole row. */
+html.design-pass :is(.gwui-cards-3, .gwui-cards-2) > .panel:has(.gwui-suite-ask) { grid-column: 1 / -1; }
+
+/* ── TODAY: "Get <organisation> going" ──────────────────────────────────────────────────────
+   Before: on a phone "Start a check-in" broke as "Start a check- / in" inside its button, and each step's
+   rule touched its words. Now each step has room above and below, the heading matches the welcome card's
+   (Literata at its regular weight), and a button keeps its words on one line. */
+html.design-pass .gwui-get-going { padding: 16px 24px; }
+html.design-pass .gwui-get-going-head h2 { font-weight: 500; }
+html.design-pass .gwui-get-going li { padding: 8px 0; }
+html.design-pass .gwui-get-going li .btn { white-space: nowrap; flex: none; }
+
+/* A table's last column is where its action sits. Before: on Performance reviews "Open the review" broke onto
+   two lines, underlined, while every other action on the page is a bold link on one line. */
+html.design-pass td:last-child > a:only-child { white-space: nowrap; font-weight: 700; text-decoration: none; }
+html.design-pass td:last-child > a:only-child:hover { text-decoration: underline; }
+
+/* ── A CHECK-IN'S PEOPLE AND SETUP ──────────────────────────────────────────────────────────
+   Before: "Use simpler words" and "When someone is blocked" ran into each other with no space or rule
+   between them, each a tick box far off at the right edge. Two switch rows in a row now sit apart, split by a
+   thin rule, as they do everywhere else. */
+html.design-pass .gwui-switch-row + .gwui-switch-row { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--gw-border); }
+
+/* ── CONNECTIONS ON A PHONE ──────────────────────────────────────────────────────────────────
+   Before: "Channel address" and "Channel name (optional)" sat side by side at 390 pixels, each cut off
+   mid-word. On a phone a row of fields and its button stand one under another, full width. */
+@media (max-width: 640px) {
+  html.design-pass .gwui-invite-actions { flex-direction: column; align-items: stretch; }
+  html.design-pass .gwui-invite-actions > * { width: 100%; max-width: none; flex: none; }
+  html.design-pass .gwui-invite-actions > :is(.btn.quiet, a:not(.btn)) { width: auto; align-self: flex-start; }
+}
+html.design-pass .dp-fieldset { border: 0; padding: 0; margin: 12px 0 0; }
+html.design-pass .dp-details { margin-top: 8px; }
+
+/* ── A NEW ORGANISATION ──────────────────────────────────────────────────────────────────────
+   Before: "Not shown to your team. You can add it later." was pulled 8 pixels up into the billing email box
+   above it (an inline margin on OrgNewPage.tsx). It now sits under the box with room before "Create it". */
+html.design-pass label:has(#org-new-billing) { margin-bottom: 0; }
+html.design-pass label:has(#org-new-billing) + .gw-auth-small { margin: 8px 0 24px !important; }
+
+/* ── A ROW WITH ITS BUTTONS, ON A PHONE ──────────────────────────────────────────────────────
+   Before: on Leave requests at 390 pixels, a request's sentences were squeezed into half the width with
+   "Approve" and "Decline" in a column beside them. On a phone a row is one column: the words, then the buttons. */
+@media (max-width: 640px) {
+  html.design-pass li.gwui-row > .gwui-edge-acts { grid-column: 1; } /* the edge list's own phone rule put it in a second column */
+}
+/* A button in a settings form keeps its own width. Before: in the leave policy "Add it" stretched across the
+   whole form with its word in the middle, far from the field it adds. */
+html.design-pass :is(.gwui-suite-ask, .gwui-suite-ask-alone) > .btn,
+html.design-pass :is(.gwui-suite-ask, .gwui-suite-ask-alone) .gwui-suite-q > .btn { align-self: flex-start; }
+
+/* ══ THE REBUILD (21 November 2026, second pass): one row, one list, one empty state ═══════════════════════
+   The first pass restyled; Hafsah rejected it as lazy. These are the shared parts the rebuilt pages (Today, the
+   Desk, People, a check-in's People and setup, Suites and the leave policy) are drawn from. Nothing is folded away
+   (Hafsah, 21 November): everything a page shows stays visible, quieter and better ordered. */
+
+/* Secondary text that has to be read. Before: the brown-grey (#7D6A55, #85705A) was faint on cream, on the
+   switched-off notes, the "Nobody yet" lines and every muted note. Now it is the same readable brown as the
+   rest of the secondary text. */
+html.design-pass { --gw-muted: #4E4236; --faint: #4E4236; --muted: #4E4236; }
+
+/* ONE QUIET ROW (dp-row): a name or title first and largest, one line under it, its actions as links at the
+   right, a hairline under it. On a phone the actions go under the words. */
+html.design-pass .dp-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--gw-border); }
+html.design-pass .dp-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 4px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--gw-border); min-height: 48px; }
+html.design-pass .dp-row-main { min-width: 0; }
+html.design-pass .dp-row-title { display: block; font-size: 16px; line-height: 24px; font-weight: 700; color: var(--gw-text); overflow-wrap: anywhere; }
+html.design-pass .dp-row-line { display: block; font-size: 14px; line-height: 20px; color: var(--gw-sub); overflow-wrap: anywhere; margin: 0; }
+html.design-pass .dp-row-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; column-gap: 16px; }
+html.design-pass .dp-row-acts > :is(a, button) { min-height: 44px; display: inline-flex; align-items: center; }
+html.design-pass .dp-row-body { grid-column: 1 / -1; }
+/* On a phone a row's actions (Open and Remove, a switch) stay at its right, beside the name, not on a line of their own. */
+@media (max-width: 640px) {
+  html.design-pass .dp-row { column-gap: 12px; align-items: start; }
+  html.design-pass .dp-row-acts { flex-direction: column; align-items: flex-end; }
+}
+
+/* ONE EMPTY STATE: a line saying what will appear, and its one action. */
+html.design-pass .dp-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 0; }
+html.design-pass .dp-empty > p { margin: 0; }
+
+/* A line of quiet links under a section (Today's "Your own requests", People's "Send the guide"). */
+html.design-pass .dp-links { display: flex; flex-wrap: wrap; column-gap: 24px; align-items: center; }
+html.design-pass .dp-links > p { margin: 0; }
+/* You, ported (TheYouBoardAsPictured): the prototype's "Your data" panel, its sentence and "Download it" on one line. */
+html.design-pass .dp-your-data { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: center; }
+
+/* A page's one main action, at the top of the page, under the title. */
+html.design-pass .dp-page-action { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
+
+/* NO FOLD LINES (Hafsah, 21 November: "remove the fold line"). Folded, FoldedLine and Box draw no toggle with the pass
+   on: their words are a plain heading or row, and what they held is shown. A list of what were fold lines is a list of
+   hairline rows, with no box round it. */
+html.design-pass .gwui-folds { border: 0; border-radius: 0; background: transparent; overflow: visible; border-top: 1px solid var(--gw-border); }
+html.design-pass .dp-unfolded { margin: 0; }
+html.design-pass .dp-unfolded-h { font-size: 18px; line-height: 24px; font-weight: 700; color: var(--gw-text); margin: 0 0 8px; }
+html.design-pass .dp-unfolded-body > * + * { margin-top: 12px; }
+html.design-pass .dp-unfolded-row > .dp-row-body > * + * { margin-top: 12px; }
+html.design-pass .dp-unfolded-row > .dp-row-body:empty { display: none; }
+
+/* THE LEAVE POLICY: each part under its own heading, split by a hairline; a type of leave or an office is a group of
+   fields with a hairline above it, never the browser's grey box round a fieldset. */
+html.design-pass .dp-part-h { font-size: 18px; line-height: 24px; font-weight: 700; color: var(--gw-text); margin: 0; }
+html.design-pass .dp-leave-policy > form,
+html.design-pass .dp-leave-policy > div[aria-label] { padding-top: 16px; border-top: 1px solid var(--gw-border); display: flex; flex-direction: column; gap: 12px; }
+html.design-pass .dp-leave-policy fieldset { border: 0; margin: 0; padding: 12px 0 0; border-top: 1px solid var(--gw-border); min-width: 0; }
+html.design-pass .dp-leave-policy > form > .btn { align-self: flex-start; }
+/* A note inside a quiet row (a person's phone number on People) sits with the row's other lines, not a line below them. */
+html.design-pass .dp-row-main > .gwui-note { margin-top: 0; }
+
+/* A CHOSEN OPTION NEVER LOOKS LIKE A BUTTON (Hafsah, 21 November). Before: a chosen choice (the working days, Who can open
+   a check-in, People's filters) was a solid navy block, the same as the page's one navy button. Now it is ringed in navy
+   on white, with navy words, and the solid navy is kept for the one action. */
+html.design-pass .gwui-choice-on { background: var(--gw-card); color: var(--gw-navy); box-shadow: inset 0 0 0 2px var(--gw-navy); }
+html.design-pass .gwui-choice-stacked.gwui-choice-on .gwui-choice-desc { color: var(--gw-sub); }
+/* A link at the end of a row's sentence ("Change", "Add a number") stays on the sentence's line; its 44px target is drawn
+   round it, so the line does not grow. */
+html.design-pass .dp-row-line > .btn.quiet { display: inline; min-height: 0; position: relative; padding: 0; }
+html.design-pass .dp-row-line > .btn.quiet::after { content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: 44px; transform: translateY(-50%); }
+html.design-pass .dp-row-main > .gwui-note > .btn.quiet { display: inline; min-height: 0; position: relative; padding: 0; vertical-align: baseline; }
+html.design-pass .dp-row-main > .gwui-note > .btn.quiet::after { content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: 44px; transform: translateY(-50%); }
+
+/* ONE TYPE SCALE: Literata for titles and big numbers only. Before: a check-in's People and setup drew its section
+   headings ("What it is", "How people answer") in Literata, where every other page's section heading ("What needs you")
+   is Atkinson Hyperlegible bold. Now they are the same. */
+html.design-pass .gwui-b-tab .sec-h .t-h2 { font-family: var(--gw-font-ui); font-weight: 700; }
+
+/* THE BOARDS, AS THE PROTOTYPE DRAWS THEM (Hafsah, 21 November: "follow the prototype verbatim"). Measured with getComputedStyle on
+   groundwork-prototype.html#/c/sales/board at 1280 against the product's sales board: the question is the small muted line above
+   the answer, the answer is 32px Literata, the note under the deals and the board's foot lines are 14.5px, and a tag is 13.5px with
+   13px corners. Only on the pictured boards (.pb), so no other page's type scale moves. */
+html.design-pass .pb .pb-q { font-size: 14.5px; line-height: 22px; color: var(--muted); }
+html.design-pass .pb .pb-answer { font-size: 32px; line-height: 40px; }
+html.design-pass .pb .pb-below,
+html.design-pass .pb .pb-foot { font-size: 14.5px; }
+html.design-pass .pb .tag { font-size: 13.5px; border-radius: 13px; }
+
+/* A NEW ORGANISATION (Ruth's path). Before: the placeholders ("For example, Baridi Foundation") were the same weight and
+   nearly the same brown as a real answer, so the fields looked filled in; and "How many people will use it?" sat right
+   under the name field. Now a placeholder is regular weight and paler than an answer, and each field has room above it. */
+html.design-pass .gw-auth-input::placeholder { color: #8A7A68; font-weight: 400; opacity: 1; }
+html.design-pass .gw-auth-fld + .gw-auth-fld { margin-top: 8px; }
+
+/* ONE BUTTON HEIGHT (Hafsah, 21 November). Before: "Invite a colleague" and the sidebar's "Start a check-in" were fat
+   buttons, and buttons came in 36, 44 and 54 pixels. Now every button is 40 pixels high, and the 44-pixel tap area is
+   drawn round it, invisibly, so nothing gets harder to press. */
+html.design-pass .btn:not(.quiet):not(.gw-proto *) { min-height: 40px; position: relative; }
+html.design-pass .btn.big:not(.quiet):not(.gw-proto *) { min-height: 40px; font-size: 16px; line-height: 24px; padding: 0 20px; }
+html.design-pass .btn.sm:not(.quiet):not(.gw-proto *) { min-height: 40px; }
+html.design-pass .btn:not(.quiet):not(.gw-proto *)::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max(100%, 44px); transform: translateY(-50%); }
+
+/* ONE FIELD STYLE. Before: the search field and the pickers had a dark, heavy border and stood 48 pixels high, taller
+   than the buttons beside them. Now a field is 40 pixels high with a hairline border in the prototype's colour, and a
+   light navy ring when it is in use. */
+html.design-pass :is(.gwui-input, .input, .gw-auth-input):not(textarea):not(.gw-proto *) { min-height: 40px; height: 40px; }
+html.design-pass :is(.gwui-input, .input, .gw-auth-input):not(.gw-proto *) { border: 1px solid var(--rule2, #DFD3BE); box-shadow: none; }
+html.design-pass select:is(.gwui-input, .input, .gw-auth-input)[multiple] { height: auto; }
+html.design-pass :is(.gwui-input, .input, .gw-auth-input):focus:not(.gw-proto *),
+html.design-pass :is(.gwui-input, .input, .gw-auth-input):focus-visible:not(.gw-proto *) { outline: 0; border-color: var(--gw-navy); box-shadow: 0 0 0 3px rgba(12, 68, 124, 0.18); }
+
+/* A list's count, with room above (the filters) and below (the list's first rule). */
+html.design-pass .dp-count { margin: 4px 0 8px; font-size: 14px; line-height: 20px; color: var(--gw-sub); }
+html.design-pass .gwui-filters-row { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; }
+
+/* TEN ROWS A PAGE (Paged): the count and Previous, the page numbers and Next, quiet, at the foot of the list. */
+html.design-pass .dp-pages { list-style: none; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; padding: 12px 0; }
+html.design-pass .dp-pages-count { font-size: 14px; line-height: 20px; color: var(--gw-sub); }
+html.design-pass .dp-pages-links { display: flex; flex-wrap: wrap; gap: 0 4px; }
+html.design-pass .dp-pages-links > button { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-weight: 400; }
+html.design-pass .dp-pages-links > button[aria-current='page'] { font-weight: 700; color: var(--gw-text); text-decoration: underline; }
+html.design-pass .dp-pages-links > button:disabled { color: var(--gw-sub); cursor: default; text-decoration: none; }
+
+/* YOUR OWN REQUESTS and EVERYTHING WAITING FOR YOU (RequestLinks): one line, the normal link weight, beside what they
+   belong to. */
+html.design-pass .dp-links-quiet { column-gap: 20px; }
+html.design-pass .dp-links-quiet .gwui-plain-link { font-weight: 400; font-size: 14px; }
+html.design-pass .gw-pt-row { align-items: center; }
+
+/* The two request links: plain links on one line (they wrap together on a phone), each with a 44px target drawn round it. */
+html.design-pass .dp-links-quiet { row-gap: 4px; }
+
+/* ONE SMALL SWITCH (Hafsah, 21 November). Before: the on/off switches on People, Suites and Connections were drawn about
+   64 by 36 pixels, in green, the biggest thing on each row. Now one switch everywhere: 36 by 20 pixels, navy when on,
+   a hairline grey when off, with its 44-pixel tap area drawn round it, invisibly. */
+html.design-pass .gwui-toggle { width: 36px; height: 20px; min-width: 36px; min-height: 0; padding: 2px; border-radius: 10px; background: var(--gw-border); box-shadow: inset 0 0 0 1px var(--rule2, #DFD3BE); }
+html.design-pass .gwui-toggle-on { background: var(--gw-navy); box-shadow: none; }
+html.design-pass .gwui-toggle-knob { width: 16px; height: 16px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06); }
+html.design-pass .gwui-toggle::after { left: -4px; right: -4px; height: 44px; }
+html.design-pass .dp-row-acts > .gwui-toggle { min-height: 0; height: 20px; align-self: center; }
+
+/* YOU: the cards in each section ("Where you stand", "Your goals", "Your data") are hairline sections, not boxes inside the
+   page's sections. The wrapper is drawn with the pass off too, and has no style then. */
+html.design-pass .dp-flat > * + * { margin-top: var(--gw-space-section); }
+html.design-pass .dp-flat .panel { background: transparent; border: 0; border-top: 1px solid var(--gw-border); border-radius: 0; padding-left: 0; padding-right: 0; box-shadow: none; }
+
+/* PEOPLE: on a computer, each person's row is the table again, quiet: their name, who they report to, their email and
+   phone number first, then Team, Role, Status and Check-ins under the table's own headings, and Open and Remove at the
+   right. No pills except a status that needs something. On a phone the headings go, and the same facts are said in
+   sentences under the name. */
+html.design-pass .dp-people-head { display: none; }
+html.design-pass .dp-people .dp-cell { display: none; }
+@media (min-width: 900px) {
+  html.design-pass .dp-people-row { grid-template-columns: minmax(0, 2.8fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.4fr) 128px; column-gap: 16px; align-items: start; }
+  html.design-pass .dp-people-head { display: grid; font-size: 13px; line-height: 18px; font-weight: 700; color: var(--gw-sub); min-height: 0; padding: 8px 0; }
+  html.design-pass .dp-people .dp-cell { display: block; font-size: 14px; line-height: 20px; color: var(--gw-text); overflow-wrap: anywhere; padding-top: 2px; }
+  html.design-pass .dp-people .dp-on-a-phone { display: none; }
+}
+
+/* ONE PERSON'S PAGE: the roles as radio rows split by hairlines; the team field and a quiet Save on one line, no box. */
+html.design-pass .dp-choice-row { border-bottom: 1px solid var(--gw-border); padding: 12px 0; }
+html.design-pass .dp-choice-row:first-of-type { border-top: 1px solid var(--gw-border); }
+html.design-pass .dp-inline-form { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+html.design-pass .dp-inline-form > .gwui-input { max-width: 320px; }

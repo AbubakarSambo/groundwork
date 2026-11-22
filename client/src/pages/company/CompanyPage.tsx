@@ -8,9 +8,14 @@ import {
 } from '@/api/company'
 import { useAuthStore } from '@/stores/auth'
 import { useAskStore } from '@/stores/ask'
+import { useTheDesignPass } from '@/lib/the-design-pass'
+import { ChooseAFile } from '@/components/gw/ChooseAFile'
 import {
   Page as PageFrame, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row, SubHeading, Skeleton, FieldLabel, TextField, TextArea,
 } from '@/components/gw/ui'
+import { ShowAll } from '@/components/gw/ui/ShowAll'
+import { TheDeskAsPictured } from './TheDeskAsPictured'
+import { Paged } from '@/components/gw/ui/Paged'
 import { TheGoalsYouCanChange } from './TheGoalsYouCanChange'
 
 /**
@@ -34,6 +39,8 @@ import { TheGoalsYouCanChange } from './TheGoalsYouCanChange'
 export function CompanyPage() {
   const user = useAuthStore(s => s.user)
   const showAsk = useAskStore(s => s.show)
+  /* The design pass: Ask is the prototype's secondary button, so the page has no navy button above its own content. */
+  const designPass = useTheDesignPass()
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['company'],
     queryFn: companyApi.get,
@@ -46,6 +53,35 @@ export function CompanyPage() {
   const name = data?.name || user?.organizationName || 'your organisation'
   const directionOn = useQuery({ queryKey: ['direction'], queryFn: directionApi.read, retry: false, staleTime: 60_000, enabled: !!page }).data?.on === true
   const policyOn = useQuery({ queryKey: ['policy'], queryFn: policyApi.board, retry: false, staleTime: 60_000, enabled: !!page }).data?.on === true
+
+  /* With the design switch on, the Desk is the prototype's own board, ported from its markup (TheDeskAsPictured), with the Desk's
+     documents and who works here after it, so nothing is removed. */
+  if (designPass && page) {
+    return (
+      <PageFrame>
+        <TheDeskAsPictured
+          page={page}
+          name={name}
+          showAsk={showAsk}
+          askWith={(q) => useAskStore.getState().showWith(q)}
+          links={(directionOn || policyOn) ? (
+            <>
+              {directionOn && <Link className="btn sec" to="/direction">The company’s direction</Link>}
+              {policyOn && <Link className="btn sec" to="/policies">The policy board</Link>}
+            </>
+          ) : null}
+          theDesksOwnParts={(
+            <>
+              {/* The goals editor (wip/you-and-desk): the Desk's own, after the prototype's sections, since the prototype has no place for it. */}
+              <div id="goals"><TheGoalsYouCanChange /></div>
+              <div id="documents"><TheDocuments name={name} documents={page.desk?.documents ?? []} mayAdd={page.desk?.mayAdd === true} /></div>
+              <div id="who-works-here"><TheDirectory people={page.desk?.directory ?? []} /></div>
+            </>
+          )}
+        />
+      </PageFrame>
+    )
+  }
 
   return (
     <PageFrame>
@@ -85,6 +121,22 @@ export function CompanyPage() {
 /* ---------- 1. Policies, handbook, procedures and documents ---------- */
 
 function TheDocuments({ name, documents, mayAdd }: { name: string; documents: DeskDocument[]; mayAdd: boolean }) {
+  const designPass = useTheDesignPass()
+  if (designPass) {
+    /* Each document is one quiet row: its title, its summary and when it was added, and "Read it in full". */
+    return (
+      <Section heading="Policies, handbook and documents">
+        {mayAdd && <AddADocument />}
+        {documents.length === 0 ? (
+          <Empty>Nothing has been added to the Desk yet.</Empty>
+        ) : (
+          <ul className="dp-rows" aria-label={`${name} documents`}>
+            <ShowAll items={documents} render={(d) => <ADocumentRow key={d.key} d={d} />} />
+          </ul>
+        )}
+      </Section>
+    )
+  }
   return (
     <Section heading="Policies, handbook and documents">
       {mayAdd && <AddADocument />}
@@ -119,8 +171,34 @@ function ADocument({ d }: { d: DeskDocument }) {
   )
 }
 
+/** The design pass: one quiet row a document, everything visible. The title first, its summary and when it was added under it, and
+    "Read it in full" as a quiet link. */
+function ADocumentRow({ d }: { d: DeskDocument }) {
+  const [open, setOpen] = useState(false)
+  const full = useQuery({ queryKey: ['desk-document', d.key], queryFn: () => companyApi.document(d.key), enabled: open, retry: false, staleTime: 60_000 })
+  return (
+    <li className="dp-row">
+      <span className="dp-row-main">
+        <span className="dp-row-title">{d.title}</span>
+        <span className="dp-row-line">{[d.summary ?? 'There is no summary of this document yet.', d.added].filter(Boolean).join(' ')}</span>
+      </span>
+      <span className="dp-row-acts">
+        <button type="button" className="gwui-plain-link" onClick={() => setOpen(o => !o)} aria-expanded={open}>{open ? 'Close it' : 'Read it in full'}</button>
+      </span>
+      {open && (
+        <span className="dp-row-body">
+          {full.isLoading && <Skeleton what={`Getting ${d.title}`} shape="lines" />}
+          {full.isError && <Note tone="error">{d.title} did not open. Try again in a moment.</Note>}
+          {full.data && <div className="gwui-panel-text gwui-pre-line" aria-label={`${d.title} in full`}>{full.data.text}</div>}
+        </span>
+      )}
+    </li>
+  )
+}
+
 function AddADocument() {
   const qc = useQueryClient()
+  const designPass = useTheDesignPass()
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
   const [text, setText] = useState('')
@@ -134,6 +212,40 @@ function AddADocument() {
   })
   const said = (add.error as { response?: { data?: { message?: string | string[] } } } | null)?.response?.data?.message
   const ready = !!file || (!!title.trim() && !!text.trim())
+  if (designPass) {
+    /* Open, as it is with the switch off: the form is on the page, quieter, with nothing to press first.
+       PRIMARY-BUTTONS-NEVER-TOGETHER: "Add it to the Desk" is drawn only with the switch on, inside the ported Desk, where Ask is the
+       prototype's secondary button; "Ask about the whole organisation" is the primary only with the switch off. A reader sees one. */
+    return (
+      <Panel as="section" aria-label="Add a document">
+        <div className="dp-form">
+          <SubHeading as="h3">Add a document</SubHeading>
+          <p className="gwui-panel-text">Choose a file, or give it a title and paste the text. It is read, a short summary is written, and both are kept on the Desk.</p>
+          <div className="dp-field">
+            <FieldLabel htmlFor="desk-file">A file (PDF, Word or text)</FieldLabel>
+            <ChooseAFile id="desk-file" inputKey={inputKey} accept=".pdf,.doc,.docx,.txt,.md,.rtf,application/pdf,text/plain" file={file} onChoose={setFile} />
+          </div>
+          <div className="dp-field">
+            <FieldLabel htmlFor="desk-title">Its title</FieldLabel>
+            <TextField id="desk-title" value={title} onChange={e => setTitle(e.target.value)} placeholder={file ? 'The file’s own name is used if you leave this empty' : 'For example, Leave policy'} />
+          </div>
+          {!file && (
+            <div className="dp-field">
+              <FieldLabel htmlFor="desk-text">Or paste the text</FieldLabel>
+              <TextArea id="desk-text" value={text} onChange={e => setText(e.target.value)} rows={6} />
+            </div>
+          )}
+          <div className="gwui-sentence-row">
+            <Button kind="primary" onClick={() => add.mutate()} disabled={!ready || add.isPending}>
+              {add.isPending ? 'Reading it' : 'Add it to the Desk'}
+            </Button>
+          </div>
+          {add.isError && <Note tone="error">{Array.isArray(said) ? said.join(' ') : said || 'That document was not added. Try again in a moment.'}</Note>}
+          {add.isSuccess && <Note tone="green" role="status">{add.data.title} is on the Desk now.</Note>}
+        </div>
+      </Panel>
+    )
+  }
   return (
     <Panel as="section" aria-label="Add a document">
       <SubHeading as="h3">Add a document</SubHeading>
@@ -162,14 +274,38 @@ function AddADocument() {
 /* ---------- 2. Who works here ---------- */
 
 /** One person's line in plain sentences: "Sales lead in Sales. Reports to Grace Wanjiru. Their phone number is +254 700 000 001." */
-export function aDirectoryLine(p: DirectoryEntry): string {
+export function aDirectoryLine(p: DirectoryEntry, isYou = false): string {
   const where = p.jobTitle && p.team ? `${p.jobTitle} in ${p.team}.` : p.jobTitle ? `${p.jobTitle}.` : p.team ? `Works in ${p.team}.` : ''
   const to = p.reportsTo ? `Reports to ${p.reportsTo}.` : ''
-  const phone = p.phone ? `Their phone number is ${p.phone}.` : ''
+  const phone = p.phone ? `${isYou ? 'Your' : 'Their'} phone number is ${p.phone}.` : ''
   return [where, to, phone].filter(Boolean).join(' ')
 }
 
 function TheDirectory({ people }: { people: DirectoryEntry[] }) {
+  const designPass = useTheDesignPass()
+  const me = useAuthStore(s => s.user?.id)
+  if (designPass) {
+    /* One quiet row a person: the name first, then one line. Ten a page, with every page reachable: it is the directory people come to look somebody up
+       in, so it is not cut at three; it comes last, under the strategy and the documents. Your own row says "Your phone number". */
+    return (
+      <Section heading="Who works here">
+        {people.length === 0 ? (
+          <Empty>Nobody is listed here yet.</Empty>
+        ) : (
+          <ul className="dp-rows" aria-label="Who works here">
+            <Paged items={people} label="who works here" render={(p) => (
+              <li key={p.id} className="dp-row">
+                <span className="dp-row-main">
+                  <span className="dp-row-title">{p.name}</span>
+                  <span className="dp-row-line">{aDirectoryLine(p, p.id === me)}</span>
+                </span>
+              </li>
+            )} />
+          </ul>
+        )}
+      </Section>
+    )
+  }
   return (
     <Section heading="Who works here">
       {people.length === 0 ? (

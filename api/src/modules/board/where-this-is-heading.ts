@@ -2,6 +2,7 @@ import { GroundScenario } from '@prisma/client';
 import { endStatesForGround, theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
 import { THE_SCENARIO_TABLE } from '../conversation/the-scenario-table';
 import { theDayInWords } from './the-headline-and-where-each-target-stands';
+import { isAWholeSentence } from '../reports/what-people-said-differently-about';
 
 /**
  * WHERE THIS IS HEADING, AND RECORD THE DECISION (request 108 d; the close of every example board in
@@ -111,6 +112,12 @@ export function whereThisIsHeading(a: {
            * "what changed since last time" reached for the same fault (request 151, E1). It
            * already says people differ, so nothing is added after it.
            */
+          /* "How progress against the team's target is described" has a verb, but it is a question asked as a thing, not a
+             sentence (live copy, 21 November: it stood alone under "The signals behind them"). It is said after "about". Whether a
+             noun clause says something of itself ("Who has the final authority ... is not agreed", item 18) is read by the one
+             owner of that reading, isAWholeSentence, as What needs you reads it. */
+          const aQuestionAsAThing = /^(?:Whether|What|How|Who|When|Where|Which|Why|If)\b/i.test(topic) && !isAWholeSentence(topic) && topic.split(/\s+/).length <= 20 && !/[.!?]/.test(topic);
+          if (aQuestionAsAThing) return `People in this check-in said different things about ${topic.charAt(0).toLowerCase() + topic.slice(1)}.`;
           const isAlreadyASentence = HAS_A_VERB_OF_ITS_OWN.test(topic);
           if (topic && isAlreadyASentence && topic.split(/\s+/).length <= 20) {
             return `${topic.charAt(0).toUpperCase()}${topic.slice(1)}.`;

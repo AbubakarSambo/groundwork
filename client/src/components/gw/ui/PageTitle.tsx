@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { Avatar } from './Avatar'
+import { useTheDesignPass } from '../../../lib/the-design-pass'
 import './gw-ui.css'
 
 /**
@@ -21,7 +22,7 @@ import './gw-ui.css'
  */
 export type Crumb = { label: string; to?: string }
 
-export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, subtitleTone = 'muted', subtitleRole, meta, action, center, updated }: {
+export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle: givenSubtitle, explains, subtitleTone = 'muted', subtitleRole, meta, action, center, updated }: {
   /** The line above the title, e.g. the organisation's name. */
   eyebrow?: string
   /** e.g. [{ label: 'People', to: '/org/members' }, { label: 'Miriam Wanjiku' }]. */
@@ -40,6 +41,11 @@ export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, su
    * links and reports to **wairimu@baridi.co.ke**." - and need the address itself bold.
    */
   subtitle?: React.ReactNode
+  /**
+   * The subtitle explains the page or the tool rather than saying a fact ("Ready-made tools for other kinds of team work..."). With
+   * the design pass on, such a line is not drawn (guide, section 3: "No explaining the tool").
+   */
+  explains?: boolean
   /** 'ink' for the prototype's darker line under "Almost in", "Out of time" and expired-link. */
   subtitleTone?: 'muted' | 'ink'
   /** `'status'` so a screen reader announces the subtitle as it arrives, for a title-less loading line. */
@@ -55,6 +61,8 @@ export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, su
   /** A board's "Last updated on …" line: small, muted, on the title's own row (beside it, or directly under it on a phone with no gap). */
   updated?: string
 }) {
+  const designPass = useTheDesignPass()
+  const subtitle = explains && designPass ? undefined : givenSubtitle
   /* The prototype's page head: the crumb (.crumb), then the title (.t-title) with its lines under it and the page's
      actions at the right, as on the reports and the board. */
   return (

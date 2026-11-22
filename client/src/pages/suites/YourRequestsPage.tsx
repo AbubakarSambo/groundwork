@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { yourRequestsApi, reviewsApi, type YourRequest, type YourHours, type YourReview } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
-import { Page, PageTitle, Section, Button, Note, Callout, Empty, RowList, Row, Tag, FieldLabel, TextArea, Skeleton } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Button, Note, Callout, Empty, RowList, Row, Tag, FieldLabel, TextArea, Held } from '@/components/gw/ui'
 import { maySwitchSuitesOn, SuiteOffMessage } from '@/lib/suite-is-off'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -74,6 +74,10 @@ export function YourRequestsPage() {
 
       {sentMessage && <Callout tone="success" role="status">{sentMessage}</Callout>}
 
+      {/* THE PAGE IS DRAWN WHOLE, ONCE ITS READS ARE IN (page loads, 22 November 2026, cause D). Each section drew a three-row
+          placeholder taller than its one-line answer, so the page jumped up four times. One placeholder holds the page until
+          every read it starts is answered, and the sections are then drawn together, so nothing moves under the reader. */}
+      <Held waiting={!suitesOn.known || [leave, spending, hours, reviews].some((q) => q.isLoading)} what="Getting your requests" shape="lines" count={2}>
       <SuiteSection heading="Your leave" q={leave} isOff={suitesOn.known && !suitesOn.leave} off="The leave suite is not switched on. An admin switches it on under Suites." role={user?.role}
         action={<Button kind="secondary" size="small" to="/suite/leave/new">Request leave</Button>}>
         {data => (
@@ -104,6 +108,7 @@ export function YourRequestsPage() {
           </RowList>
         </Section>
       )}
+      </Held>
     </Page>
   )
 }
@@ -165,7 +170,6 @@ function SuiteSection<T>({ heading, q, isOff, off, role, action, children }: {
     if (!maySwitchSuitesOn(role)) return null
     return <Section heading={heading}><Empty><SuiteOffMessage message={off} role={role} /></Empty></Section>
   }
-  if (q.isLoading) return <Section heading={heading}><Skeleton what="Getting this page" shape="rows" /></Section>
   if (q.isError) {
     const refused = refusalOf(q.error)
     if (refused?.status === 403 || refused?.status === 404) {

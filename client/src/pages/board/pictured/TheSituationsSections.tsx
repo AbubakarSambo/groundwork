@@ -154,7 +154,7 @@ export function EachAccountSideBySide({ b }: { b: Any }) {
                 <Tag tone={isIn ? 'proven' : 'attention'}>{isIn ? 'In' : 'Waiting'}</Tag>
               </div>
               {isIn
-                ? (view ? <p className="pb-read" style={{ marginTop: 10 }}>{`“${view}”`}</p> : <p className="gwui-panel-text">Answered, with no view of the decision on record.</p>)
+                ? (view ? <p className="pb-read" style={{ marginTop: 10 }}>{`“${view}”`}</p> : <p className="gwui-panel-text">Answered, and has not given a view of their own yet.</p>)
                 : <p className="gwui-panel-text" style={{ marginTop: 10 }}>Hasn’t answered yet.</p>}
             </Panel>
           )
@@ -165,7 +165,7 @@ export function EachAccountSideBySide({ b }: { b: Any }) {
 }
 
 /** "What’s known, believed and unknown": what a document shows, what somebody said, and what is still to find out. */
-export function KnownBelievedUnknown({ b, unknown, leadFirstName }: { b: Any; unknown: string[]; leadFirstName: string | null }) {
+export function KnownBelievedUnknown({ b, unknown }: { b: Any; unknown: string[] }) {
   const all: Any[] = (b.whoOwnsWhat ?? []).flatMap((w: Any) => (w.items ?? []).map((i: Any) => ({ ...i, who: w.name })))
   /* Known is what proof backs: a document behind the line, or a claim the record settles anywhere (the server's `settled`, read from
      the one pattern layer). Everything else is somebody's word, said as that, never judged here as unbacked (fix plan, group 4). */
@@ -173,9 +173,6 @@ export function KnownBelievedUnknown({ b, unknown, leadFirstName }: { b: Any; un
   const known = all.filter((i) => backed(i) && i.type !== 'INTENT' && /said,/.test(i.text ?? '')).map((i) => wordsOf(i.text))
   const believed = all.filter((i) => !backed(i) && /said,/.test(i.text ?? '') && (i.type === 'WORRY' || i.type === 'TENSION' || i.type === 'PROGRESS')).map((i) => `${wordsOf(i.text)} (${i.who === 'You' ? 'you said it' : `${firstNameOf(i.who)} said it`})`)
   if (!known.length && !believed.length && !unknown.length) return null
-  const { answered } = whoAnsweredThisRound(b)
-  const people: Any[] = (b.participants ?? []).filter((x: Any) => !x.managingOnly)
-  const waitingFor = people.filter((x) => !answered.has(x.id)).map((x) => firstNameOf(x.name))
   return (
     <Section heading="What’s known, believed and unknown">
       <div className="pb-cards3">
@@ -187,10 +184,24 @@ export function KnownBelievedUnknown({ b, unknown, leadFirstName }: { b: Any; un
           </div>
         ))}
       </div>
-      <div className="pb-decides">
-        <b>{`For ${b.canEditFrame ? 'you' : leadFirstName ?? 'the person who runs it'} to decide${waitingFor.length ? ` once ${waitingFor.join(' and ')}’s answer is in` : ''}.`}</b>
-      </div>
     </Section>
+  )
+}
+
+/*
+ * "For Wairimu to decide once Omar’s account is in." The decision board's own line (answered-once.txt), its own section after what is
+ * known, believed and unknown. It was the end of that section, so every board that drew the section said it, and a sales board with no
+ * decision on record read "For you to decide once Juma and Neema’s answer is in." (release test, 22 November 2026, bug 5). Only the
+ * board that draws the decision draws this.
+ */
+export function ForYouToDecide({ b, leadFirstName }: { b: Any; leadFirstName: string | null }) {
+  const { answered } = whoAnsweredThisRound(b)
+  const people: Any[] = (b.participants ?? []).filter((x: Any) => !x.managingOnly)
+  const waitingFor = people.filter((x) => !answered.has(x.id)).map((x) => firstNameOf(x.name))
+  return (
+    <div className="pb-decides">
+      <b>{`For ${b.canEditFrame ? 'you' : leadFirstName ?? 'the person who runs it'} to decide${waitingFor.length ? ` once ${waitingFor.join(' and ')}’s answer is in` : ''}.`}</b>
+    </div>
   )
 }
 

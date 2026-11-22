@@ -11,6 +11,7 @@ import { cleanText } from './what-the-record-actually-holds';
 import { PrismaService } from '../prisma/prisma.service';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-built-at-the-read';
 import { anArticleSaidMidSentence } from '../board/a-holder-in-their-own-words';
+import { inASentence } from '../board/a-phrase-inside-a-sentence';
 
 /*
  * A TILE SHOWS A WHOLE SENTENCE, OR NONE.
@@ -26,10 +27,6 @@ import { anArticleSaidMidSentence } from '../board/a-holder-in-their-own-words';
  */
 const A_TILE_HOLDS = 160;
 /* A phrase put inside a sentence: a topic that opens with "Whether" or "The" reads from a lower-case letter. */
-const inASentence = (phrase: string): string => {
-  const t = (phrase ?? '').trim().replace(/[.!?]+$/, '');
-  return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
-};
 
 /* A line that opens a sentence of its own starts with a capital. */
 const up = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);

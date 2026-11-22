@@ -219,8 +219,11 @@ export class SuitesController {
 
   @Get('mine')
   @ApiOperation({ summary: 'Which of leave, spending and hours are switched on for you, in one call: three yes-or-no answers and a sentence. A suite that is off is a no here, never an error, so one suite being off never hides another.' })
-  whichAreOnForYou(@CurrentUser() user: CurrentUserData) {
-    return this.suites.forYourRequests({ userId: user.id, organizationId: user.organizationId });
+  async whichAreOnForYou(@CurrentUser() user: CurrentUserData) {
+    const reader = { userId: user.id, organizationId: user.organizationId };
+    const mine = await this.suites.forYourRequests(reader);
+    /* Whether the leave board will open for this reader, by the board's own rule, so the page never asks for a board it is refused. */
+    return { ...mine, mayOpenTheLeaveBoard: mine.leave && (await this.leave.mayOpenTheBoard(reader).catch(() => false)) };
   }
 
   @Get('onboard/board')

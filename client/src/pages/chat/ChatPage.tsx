@@ -706,7 +706,6 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
   useEffect(() => {
     if (checkInId && !opened && openedRef.current !== checkInId) {
       let cancelled = false
-      const jitter = Math.random() * 2000
       const t = setTimeout(async () => {
         /* The guard is taken when the open really starts, not when it is scheduled: React's
            development mode runs this effect twice, and a guard taken at scheduling let the first
@@ -794,7 +793,7 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
          * where falling through to open() is exactly the case the privacy screen is FOR.
          */
         if (!cancelled) { setKnowWhatIsHere(true); openSession.mutate() }
-      }, jitter)
+      }, 0)
 
       /**
        * A WATCHDOG, because an opening that never arrives is a dead screen.
@@ -1297,7 +1296,7 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
       >
           {/* From mount, not from the mutation: the transcript fetch sits behind a deliberate jitter of up to
               two seconds, and openSession.isPending cannot be true until after it, so every arrival opened on
-              a blank screen. The jitter stays; the sentence starts earlier. */}
+              a blank screen. The jitter is gone (22 November 2026); the sentence still shows from mount. */}
           {openingNow && (
             /*
              * THE SAME "GROUNDWORK IS WRITING…" EVERY OTHER CHAT SHOWS (journey test, 12 October 2026).

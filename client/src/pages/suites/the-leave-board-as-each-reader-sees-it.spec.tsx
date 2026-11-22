@@ -13,7 +13,8 @@ import type { LeaveBoard } from '@/api/suites'
  * person reads, in the prototype's words (suite-leave.txt), and that only the approver is offered
  * Approve and Decline.
  */
-vi.mock('@/api/suites', () => ({ leaveBoardApi: { get: vi.fn(), decide: vi.fn(), ask: vi.fn() } }))
+/* Changed 22 November 2026: the page reads, on /suites/mine, whether the suite is on and whether this reader may open the board, before asking for it. */
+vi.mock('@/api/suites', () => ({ leaveBoardApi: { get: vi.fn(), decide: vi.fn(), ask: vi.fn() }, suitesApi: { mine: vi.fn(async () => ({ leave: true, spend: true, time: true, reviews: true, any: true, says: '', maySeeSuites: true, mayOpenTheLeaveBoard: true })) } }))
 import { leaveBoardApi } from '@/api/suites'
 
 /* The shape and the sentences the server writes (the-leave-board.service.ts, a-leave-request-as-the-approver-reads-it.ts). */

@@ -5,13 +5,14 @@ import { TheSpendingRoute } from './ApprovalStepsByAmount'
 import { suitesApi, reviewsApi, yourRequestsApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
-import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select, Modal, Skeleton } from '@/components/gw/ui'
-import { QueueLink } from './QueuePage'
+import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select, Modal, Held } from '@/components/gw/ui'
+import { QueueLink, RequestLinks } from './QueuePage'
 import { WhoLooksAfterWhat } from './WhoLooksAfterWhat'
 import { WhatIsMissing } from './WhatIsMissing'
 import { ForSomePeople } from './ForSomePeople'
 import { TheLeavePolicy } from './TheLeavePolicy'
 import { everySays } from './ReviewsBoardPage'
+import { useTheDesignPass } from '@/lib/the-design-pass'
 
 /**
  * B-140: THE SAME MADE-UP CADENCE B-119 ALREADY FIXED ON THE REVIEWS BOARD, STILL HERE. The
@@ -100,12 +101,14 @@ const CHECKED = ['leave', 'time', 'spend', 'reviews']
 
 export function SuitesPage() {
   const user = useAuthStore(s => s.user)
+  const suitesOn = useSuitesOnForYou()
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['suites'],
     queryFn: suitesApi.get,
-    enabled: !!user,
+    enabled: !!user && suitesOn.known && suitesOn.maySeeSuites,
     retry: false,
   })
+  const refusedBeforeAsking = suitesOn.known && !suitesOn.maySeeSuites ? 'Only an admin or a lead can open the suites.' : null
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
   const orgName = user?.organization?.name?.trim() || user?.organizationName || ''
   /* "Your own leave and spending requests" only where a suite is on for this person: with both
@@ -114,18 +117,23 @@ export function SuitesPage() {
      and the two pages agree on when the link shows.
      FAULT 1 OF THE LIVE WALK (6 October): hours gates it the same way, and the link's own words
      change with it - "Your own requests" once hours are part of what it opens. */
-  const suitesOn = useSuitesOnForYou()
   const yourLeave = useQuery({ queryKey: ['your-leave'], queryFn: yourRequestsApi.leave, enabled: !!user && suitesOn.leave, retry: false, staleTime: 60_000 })
   const yourSpending = useQuery({ queryKey: ['your-spending'], queryFn: yourRequestsApi.spending, enabled: !!user && suitesOn.spending, retry: false, staleTime: 60_000 })
   const yourHours = useQuery({ queryKey: ['your-hours'], queryFn: yourRequestsApi.hours, enabled: !!user && suitesOn.hours, retry: false, staleTime: 60_000 })
   const aSuiteIsOnForYou = yourLeave.isSuccess || yourSpending.isSuccess || yourHours.isSuccess
   const requestsLinkLabel = yourHours.isSuccess ? 'Your own requests' : 'Your own leave and spending requests'
+  const designPass = useTheDesignPass()
 
   return (
     <Page>
+      {/* DRAWN WHOLE ONCE ITS READS ARE IN (page loads, 22 November 2026, cause H): the subtitle, the board and the link to your own
+          requests each came in after the placeholder and moved the page. */}
+      <Held waiting={isLoading || (!!user && !suitesOn.known) || yourLeave.isLoading || yourSpending.isLoading || yourHours.isLoading} what="Getting this page">
       <PageTitle
         eyebrow={orgName || undefined}
         title="Suites"
+        action={designPass ? <RequestLinks userId={user?.id} requests={{ show: aSuiteIsOnForYou, label: requestsLinkLabel }} /> : undefined}
+        explains
         subtitle={
           data?.reader === 'admin'
             ? 'Ready-made tools for other kinds of team work. Switch on only what you need. Each one adds a single board, and people use it by talking to Groundwork, not by filling in forms. Only admins see this page.'
@@ -137,7 +145,8 @@ export function SuitesPage() {
         }
       />
 
-      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
+      {/* Refused before asking, by the rule the server serves on /suites/mine, in the words the server would say (page loads, 22 November 2026). */}
+      {refusedBeforeAsking && <Note tone="error">{refusedBeforeAsking}</Note>}
       {isError && (
         refused?.status === 403 ? (
           <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open the suites.'}</Note>
@@ -155,20 +164,35 @@ export function SuitesPage() {
       {/* Every reader has requests of their own, including a member, whom this page otherwise
           refuses - but only once a suite is actually on for them (fault 2, live re-walk): with
           both leave and spending off, this opened a page that only says the suite is off. */}
-      {aSuiteIsOnForYou && (
+      {!designPass && aSuiteIsOnForYou && (
         <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">{requestsLinkLabel}</Link></p>
       )}
-      <QueueLink userId={user?.id} />
+      {!designPass && <QueueLink userId={user?.id} />}
+      </Held>
     </Page>
   )
 }
 
 function ForALead({ page }: { page: SuitesForALead }) {
   const setUp = page.youSetUp ?? []
+  const designPass = useTheDesignPass()
   if (page.suites.length === 0 && setUp.length === 0) return <Empty>None are switched on yet.</Empty>
   return (
     <>
-      {page.suites.length === 0 ? <Empty>None are switched on yet.</Empty> : (
+      {page.suites.length === 0 ? <Empty>None are switched on yet.</Empty> : designPass ? (
+        /* The design pass: each suite one quiet row, its line and its board's link, not a card. */
+        <ul className="dp-rows" aria-label="Suites switched on">
+          {page.suites.map(s => (
+            <li key={s.key} className="dp-row" aria-label={s.name}>
+              <div className="dp-row-main">
+                <span className="dp-row-title">{s.name}</span>
+                <SuiteLine s={s} />
+              </div>
+              {BOARDS[s.key] && <span className="dp-row-acts"><Link className="gwui-plain-link" to={BOARDS[s.key].to}>Open its board</Link></span>}
+            </li>
+          ))}
+        </ul>
+      ) : (
         <div className="gwui-cards-3">
           {page.suites.map(s => (
             <Panel as="section" key={s.key} aria-label={s.name}>
@@ -190,6 +214,14 @@ function ForADutyHolder({ page }: { page: SuitesForADutyHolder }) {
 }
 
 function SuitesYouSetUp({ suites, people }: { suites: AdminSuite[]; people: SuitesForAnAdmin['people'] }) {
+  const designPass = useTheDesignPass()
+  if (designPass) {
+    return (
+      <Section heading="Suites you set up">
+        <ul className="dp-rows" aria-label="Suites you set up">{suites.map(s => <ASuite key={s.key} s={s} people={people} forYou />)}</ul>
+      </Section>
+    )
+  }
   return (
     <Section heading="Suites you set up" note="Your organisation has asked you to set these up.">
       <div className={suites.length === 1 ? undefined : 'gwui-cards-3'}>
@@ -200,6 +232,37 @@ function SuitesYouSetUp({ suites, people }: { suites: AdminSuite[]; people: Suit
 }
 
 function ForAnAdmin({ page }: { page: SuitesForAnAdmin }) {
+  const designPass = useTheDesignPass()
+  if (designPass) {
+    /*
+     * THE DESIGN PASS: each group a list of quiet rows, one a suite: its name and what it does, its board's link, its switch at the
+     * right (the switch says on or off, so no On/Off tag beside it), and "See or change its settings" opening its form under the
+     * row, full width. "Already part of Groundwork" stays, every row of it, without the line explaining it.
+     */
+    return (
+      <>
+        {page.groups.map(g => (
+          <Section key={g.name} heading={g.name}>
+            <ul className="dp-rows" aria-label={g.name}>{g.suites.map(s => <ASuite key={s.key} s={s} people={page.people} />)}</ul>
+          </Section>
+        ))}
+        <WhoLooksAfterWhat />
+        <Section heading="Already part of Groundwork">
+          <ul className="dp-rows" aria-label="Already part of Groundwork">
+            {ALREADY_PART.map(a => (
+              <li key={a.name} className="dp-row">
+                <span className="dp-row-main">
+                  <span className="dp-row-title">{a.name}</span>
+                  <span className="dp-row-line">{a.line}</span>
+                </span>
+                <span className="dp-row-acts"><Link className="gwui-plain-link" to={a.to}>{a.where}</Link></span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      </>
+    )
+  }
   return (
     <>
       {page.groups.map(g => (
@@ -289,6 +352,61 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
    */
   const hadAnswersBefore = !!s.answers && Object.keys(s.answers).length > 0
   const someUnreadable = hadAnswersBefore && s.questions.some(q => (answers[q.id] ?? '') === '')
+  const designPass = useTheDesignPass()
+
+  const theForm = asking && (
+    <form
+      className={designPass ? 'gwui-suite-ask-alone' : 'gwui-suite-ask'}
+      onSubmit={e => { e.preventDefault(); if (allAnswered) flip.mutate({ on: true, given: answers }) }}
+    >
+      {!designPass && <p className="gwui-panel-text">{s.on ? 'Change your answers below, then save them.' : 'Answer these first, and it switches on.'}</p>}
+      {someUnreadable && (
+        <Note tone="muted">Some of these were set up before this page existed, so they show blank below. Choose them now, and saving sets them from what you choose.</Note>
+      )}
+      {s.questions.map(q => (
+        <AQuestion key={q.id} suite={s.key} q={q} value={answers[q.id] ?? ''} people={people}
+          onChange={v => setAnswers(a => ({ ...a, [q.id]: v }))} />
+      ))}
+      <div className="gwui-edge-acts">
+        <Button kind="primary" size="small" type="submit" disabled={!allAnswered || flip.isPending}>{s.on ? 'Save' : 'Switch it on'}</Button>
+        <Button kind="quiet" size="small" onClick={() => { setAsking(false); setProblem(null) }}>Cancel</Button>
+      </div>
+    </form>
+  )
+  const confirmOff = confirmingOff && (
+    <Modal title={`Switch ${s.name} off?`} onClose={() => setConfirmingOff(false)}>
+      <p className="gwui-panel-text">Anything waiting in it stays as it is, and nobody can add to it until it is switched on again.</p>
+      <div className="gwui-edge-acts">
+        <Button kind="secondary" size="small" disabled={flip.isPending} onClick={() => { setConfirmingOff(false); flip.mutate({ on: false }) }}>Switch it off</Button>
+        <Button kind="quiet" size="small" onClick={() => setConfirmingOff(false)}>Cancel</Button>
+      </div>
+    </Modal>
+  )
+
+  if (designPass) {
+    return (
+      <li className="dp-row" aria-label={s.name}>
+        <div className="dp-row-main">
+          <span className="dp-row-title">{s.name}</span>
+          <SuiteLine s={s} />
+          <div className="dp-links">
+            {s.on && BOARDS[s.key] && <Link className="gwui-plain-link" to={forYou && s.key === 'spend' ? '/suite/spend/finance' : BOARDS[s.key].to}>{forYou && s.key === 'spend' ? 'Open the requests for finance' : 'Open its board'}</Link>}
+            {s.on && s.questions.length > 0 && !asking && <button type="button" className="gwui-plain-link" onClick={openSettings}>See or change its settings</button>}
+          </div>
+        </div>
+        <span className="dp-row-acts"><Toggle on={s.on} onChange={pressed} label={s.name} disabled={flip.isPending || asking} /></span>
+        <div className="dp-row-body">
+          {s.on && s.key === 'spend' && !asking && <TheSpendingRoute />}
+          {s.on && CHECKED.includes(s.key) && <WhatIsMissing suite={s.key} />}
+          {theForm}
+          {asking && s.on && <ForSomePeople suite={s.key} />}
+          {asking && s.on && s.key === 'leave' && <TheLeavePolicy />}
+          {problem && <Note tone="error">{problem}</Note>}
+        </div>
+        {confirmOff}
+      </li>
+    )
+  }
 
   return (
     <Panel as="section" aria-label={s.name}>
@@ -309,44 +427,15 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
         </div>
       </div>
 
-      {asking && (
-        <form
-          className="gwui-suite-ask"
-          onSubmit={e => { e.preventDefault(); if (allAnswered) flip.mutate({ on: true, given: answers }) }}
-        >
-          <p className="gwui-panel-text">{s.on ? 'Change your answers below, then save them.' : 'Answer these first, and it switches on.'}</p>
-          {someUnreadable && (
-            <Note tone="muted">Some of these were set up before this page existed, so they show blank below. Choose them now, and saving sets them from what you choose.</Note>
-          )}
-          {s.questions.map(q => (
-            <AQuestion key={q.id} suite={s.key} q={q} value={answers[q.id] ?? ''} people={people}
-              onChange={v => setAnswers(a => ({ ...a, [q.id]: v }))} />
-          ))}
-          <div className="gwui-edge-acts">
-            <Button kind="primary" size="small" type="submit" disabled={!allAnswered || flip.isPending}>{s.on ? 'Save' : 'Switch it on'}</Button>
-            <Button kind="quiet" size="small" onClick={() => { setAsking(false); setProblem(null) }}>Cancel</Button>
-          </div>
-        </form>
-      )}
+      {theForm}
       {/* Batch S, S1: the number set for some people, beside the settings it differs from. Its own form, saved on its own. */}
       {asking && s.on && <ForSomePeople suite={s.key} />}
       {/* The whole leave policy, in the server's sentences, and each part of it to change (21 November 2026). */}
       {asking && s.on && s.key === 'leave' && <TheLeavePolicy />}
       {problem && <Note tone="error">{problem}</Note>}
 
-      {confirmingOff && (
-        <Modal title={`Switch ${s.name} off?`} onClose={() => setConfirmingOff(false)}>
-          <p className="gwui-panel-text">Anything waiting in it stays as it is, and nobody can add to it until it is switched on again.</p>
-          <div className="gwui-edge-acts">
-            {/* ONE NAVY BUTTON PER PAGE: "Switch it on"/"Save" already carries that role on this
-                page (in the form above, when a suite is being switched on or its answers changed),
-                so this confirmation's own button stays secondary, the same way every other
-                row-level action here does (Approve, Mark done, Change). */}
-            <Button kind="secondary" size="small" disabled={flip.isPending} onClick={() => { setConfirmingOff(false); flip.mutate({ on: false }) }}>Switch it off</Button>
-            <Button kind="quiet" size="small" onClick={() => setConfirmingOff(false)}>Cancel</Button>
-          </div>
-        </Modal>
-      )}
+      {/* ONE NAVY BUTTON PER PAGE: the confirmation's own button stays secondary (see confirmOff above). */}
+      {confirmOff}
     </Panel>
   )
 }

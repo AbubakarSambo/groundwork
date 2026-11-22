@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import './gw-ui.css'
+import { ShowAll } from './ShowAll'
 
 /**
  * COMING UP (prototype: Today's own sidebar list, app.css `.side` for the two-column layout and
@@ -13,19 +14,22 @@ export interface ComingUpItem {
   to: string
 }
 
-export function ComingUp({ items, heading = 'Coming up' }: { items: ComingUpItem[]; heading?: string }) {
+export function ComingUp({ items, heading = 'Coming up', first }: { items: ComingUpItem[]; heading?: string; /** Show this many, then "And N more" (the design pass). */ first?: number }) {
   return (
     /* The prototype's "Coming up": a small heading, then rows with thin rules, the day beside what happens. */
     <aside aria-labelledby="gwui-comingup-h" className="gw-aside">
       <section className="sec">
         <h2 id="gwui-comingup-h" className="t-h3">{heading}</h2>
         <div>
-          {items.map(i => (
-            <div key={i.when + i.what} className="gw-when-row">
-              <b className="t-small">{i.when}</b>
-              <Link className="t-small" to={i.to}>{i.what}</Link>
-            </div>
-          ))}
+          {(() => {
+            const row = (i: ComingUpItem) => (
+              <div key={i.when + i.what} className="gw-when-row">
+                <b className="t-small">{i.when}</b>
+                <Link className="t-small" to={i.to}>{i.what}</Link>
+              </div>
+            )
+            return first ? <ShowAll items={items} first={first} render={row} /> : items.map(row)
+          })()}
         </div>
       </section>
     </aside>

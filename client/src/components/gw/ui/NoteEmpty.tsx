@@ -1,5 +1,6 @@
 import React from 'react'
 import { Panel } from './Panel'
+import { useTheDesignPass } from '../../../lib/the-design-pass'
 import './gw-ui.css'
 
 /**
@@ -99,8 +100,19 @@ export function Empty({ title, children, action }: {
   children: React.ReactNode
   action?: React.ReactNode
 }) {
+  /* The design pass: an empty state is its title, its line and its one action, with no card round them. */
+  const designPass = useTheDesignPass()
   if (!title) {
     return <p className="gwui-empty-line gw-line">{children}</p>
+  }
+  if (designPass) {
+    return (
+      <div className="dp-empty">
+        <p className="t-body"><b>{title}</b></p>
+        <p className="gwui-panel-text">{children}</p>
+        {action}
+      </div>
+    )
   }
   return (
     <Panel>

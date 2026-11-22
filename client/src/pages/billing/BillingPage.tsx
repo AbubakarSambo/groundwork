@@ -16,7 +16,7 @@ import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { aPersonsSentenceForAServerError } from '@/lib/a-persons-sentence-for-a-server-error'
 import { ADoorYouCannotOpen } from '@/components/gw/a-door-you-cannot-open-says-so'
 import {
-  Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Button, Tag, Note, TextField, FieldLabel, SwitchRow, Skeleton
+  Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Button, Tag, Note, TextField, FieldLabel, SwitchRow, Held
 } from '@/components/gw/ui'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE', 'ENTERPRISE']
@@ -139,14 +139,14 @@ export function BillingPage() {
 
   const { data: grounds = [], isLoading: groundsLoading } = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: isAdmin })
   const { data: codes = [], isLoading: codesLoading } = useQuery({ queryKey: ['contributor-codes'], queryFn: billingApi.getContributorCodes, enabled: isAdmin })
-  const { data: billingStatus } = useQuery({ queryKey: ['billing-status'], queryFn: billingApi.status, enabled: isAdmin })
-  const { data: livePricing } = useQuery({ queryKey: ['public-pricing'], queryFn: billingApi.getPricing, enabled: isAdmin, staleTime: 60 * 1000 })
+  const { data: billingStatus, isLoading: statusLoading } = useQuery({ queryKey: ['billing-status'], queryFn: billingApi.status, enabled: isAdmin })
+  const { data: livePricing, isLoading: pricingLoading } = useQuery({ queryKey: ['public-pricing'], queryFn: billingApi.getPricing, enabled: isAdmin, staleTime: 60 * 1000 })
   /* U.6 (Hafsah): WhatsApp is mentioned only while it is switched on, platform-wide - GET
      /auth/whatsapp, the same check every other screen makes before saying its name. Without it,
      this page kept the organisation's own add-on (price, switch, usage) on screen even with
      WhatsApp off across all of Groundwork, which no admin can act on. */
   const whatsappIsOn = useWhatsAppIsOn()
-  const { data: whatsapp } = useQuery({ queryKey: ['billing-whatsapp'], queryFn: billingApi.getWhatsApp, enabled: isAdmin && whatsappIsOn })
+  const { data: whatsapp, isLoading: whatsappLoading } = useQuery({ queryKey: ['billing-whatsapp'], queryFn: billingApi.getWhatsApp, enabled: isAdmin && whatsappIsOn })
   const setWhatsAppMut = useMutation({
     mutationFn: (on: boolean) => billingApi.setWhatsApp(on),
     onSuccess: (r) => qc.setQueryData(['billing-whatsapp'], r),
@@ -244,10 +244,6 @@ export function BillingPage() {
     return <ADoorYouCannotOpen may={false} what="open Plan and billing"><></></ADoorYouCannotOpen>
   }
 
-  if (groundsLoading || codesLoading) {
-    return <Page><Skeleton what="Getting your plan and billing" shape="cards" /></Page>
-  }
-
   const orgName = (user as any)?.organization?.name?.trim() || (user as any)?.organizationName || ''
   const covers = whatCoversThem(billingStatus)
   /*
@@ -295,6 +291,9 @@ export function BillingPage() {
           Plan-and-billing page draws no sentence under its title at all - "Your plan, and how many
           people it covers." was the product's own invention. */}
       <PageTitle eyebrow={orgName} title="Plan and billing" />
+      {/* DRAWN WHOLE ONCE ITS READS ARE IN (page loads, 22 November 2026, cause G): the page used to be drawn once the check-ins and
+          codes were in, and the plan's status and prices came after and moved it. */}
+      <Held waiting={groundsLoading || codesLoading || statusLoading || pricingLoading || whatsappLoading} what="Getting your plan and billing" shape="cards">
 
       {notices.map((n) => (
         <Panel key={n.key}>
@@ -795,6 +794,7 @@ export function BillingPage() {
       )}
 
       {isAdmin && <ThingsWeDoByHand />}
+      </Held>
     </Page>
   )
 }

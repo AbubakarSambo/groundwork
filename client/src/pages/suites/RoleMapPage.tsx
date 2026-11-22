@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { roleMapApi } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Panel, Button, Note, Empty, Skeleton } from '@/components/gw/ui'
-import { SuiteOffMessage } from '@/lib/suite-is-off'
+import { SuiteOffMessage, theToneForARefusal } from '@/lib/suite-is-off'
 
 /**
  * THE ROLE MAP (E6, #/suite/roles, group 2 piece 4). ADMINS ONLY, on the server. The wording is
@@ -57,7 +57,7 @@ export function RoleMapPage() {
       {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin can open this board.'} role={user?.role} /></Note>
+          <Note tone={theToneForARefusal(refused.data?.message ?? 'Only an admin can open this board.')}><SuiteOffMessage message={refused.data?.message ?? 'Only an admin can open this board.'} role={user?.role} /></Note>
         ) : (
           <div>
             <Note tone="error">The board did not load.</Note>

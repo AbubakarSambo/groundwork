@@ -42,6 +42,8 @@ export interface WhatSetupKnows {
   classifiedScenario?: string;
   /** The kind's name, from the one owner of situation names (the scenario table). */
   kindName?: string;
+  /** The kind of work, from the same reading as the situation (which-situation-this-is.ts), and the one the check-in is saved with. */
+  kindOfWork?: string;
 }
 
 /** The old name, kept for the anchor's own reading, which shares the shape. */
@@ -97,6 +99,9 @@ export function whatSetupKnowsNow(before: WhatSetupKnows | null | undefined, rea
     if (roles) out.peopleRoles = roles;
   }
   /* The kind is read once and then stays; "It's something else" is the lead clearing it. */
+  /* The kind of work is read with the situation, and once read it stays, as the situation does. */
+  const work = was.kindOfWork || now.kindOfWork;
+  if (work) out.kindOfWork = work;
   const kind = was.classifiedScenario || now.classifiedScenario;
   if (kind) {
     out.classifiedScenario = kind;

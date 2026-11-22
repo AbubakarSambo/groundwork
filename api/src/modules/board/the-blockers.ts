@@ -9,6 +9,7 @@ import {
   whoIs, whoIsWaitedOn, thatWaitsOn, aClaimOnlyTheSpeakerMakes, theirAccountOfTheWait, theTimeGivenSaid,
 } from './the-switchboards-own-sections';
 import { aPartyOutside } from './a-thing-is-not-somebody';
+import { inASentence } from './a-phrase-inside-a-sentence';
 
 /**
  * BLOCKERS, ONE SECTION, ONE ENTRY PER BLOCKER (request 105; the prototype's "Blockers. Each with its
@@ -134,11 +135,6 @@ export function aPromiseAboutThisWait(
 }
 
 const listed = (ns: string[]) => (ns.length <= 1 ? ns.join('') : `${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`);
-const inASentence = (phrase: string): string => {
-  const t = (phrase ?? '').trim().replace(/[.!?]+$/, '');
-  /* A pronoun that starts what they said is lower case inside the product's sentence: "Once it is cleared, he wants five units." (Drop Access, 18 October). */
-  return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|These|Those|Our|Their|His|Her|Its|He|She|It|They|There)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
-};
 const isAre = (who: string) => (who === 'You' ? 'are' : 'is');
 const mid = (who: string) => (who === 'You' ? 'you' : /^(A|Another|One) colleague/.test(who) ? who.charAt(0).toLowerCase() + who.slice(1) : who);
 
