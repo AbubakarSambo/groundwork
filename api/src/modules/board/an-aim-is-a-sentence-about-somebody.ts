@@ -350,10 +350,18 @@ export const THE_NAME_TO_DO = /^(\p{Lu}[\p{L}'’-]*(?:\s+\p{Lu}[\p{L}'’-]*)?)
  * points per week." because only a few doing words were known. The one word before the number goes, unless it says how big the number is
  * ("over 5", "about 20") or is written in capitals ("KES 600,000").
  */
+/*
+ * AND ONLY WHERE THE REST HAS NO VERB OF ITS OWN (re-test, 22 November 2026 evening). "The three teams will achieve a combined revenue of
+ * 12 million for the period." lost its "The", started in lower case, and read "The team is aiming for three teams will achieve ...". A
+ * word before the number is a doing word only where what follows is just the thing counted ("4 Drop Access points per week"); where what
+ * follows has somebody doing something ("three teams will achieve ..."), that word is the start of the sentence's own subject, and the
+ * name is a sentence already, read as itself.
+ */
 export function aThingToDoIsWhatItCounts(t: string): string {
   const m = /^([A-Za-z][a-z]+)(?:\s+(?:in|on|up|out))?\s+(?=\d|(?:one|two|three|four|five|six|seven|eight|nine|ten|twenty|thirty|forty|fifty)\b)/.exec(t);
   if (!m || /^(?:over|under|about|around|up|at|only|below|above|nearly|almost|exactly|roughly|some|least|most|by|in|on|for|to)$/i.test(m[1])) return t;
-  return t.slice(m[0].length);
+  const rest = t.slice(m[0].length);
+  return A_PERSON_OR_A_VERB.test(rest) ? t : rest;
 }
 
 /*

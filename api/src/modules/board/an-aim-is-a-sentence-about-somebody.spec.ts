@@ -216,3 +216,31 @@ describe('a sentence that says its own number is kept, whatever its verb', () =>
     expect(said('Activate 4 points a week', 4, 'Brian Otieno')).toBe('Brian Otieno is aiming for 4 points a week.');
   });
 });
+
+/* RE-TEST, 22 NOVEMBER 2026 EVENING: the new lead's board read "The team is aiming for three teams will achieve a combined revenue of 12
+   million for the period." The "The" before "three" was cut as if it were a doing word. Every name the set-ups of that run stored, as each
+   reader's board says it (the board's withNames only swaps labels, and none of these holds a label). */
+describe('an aim already written as a sentence reads as itself', () => {
+  const said = (name: string, target: number | null, holder: string | null = null) => anAimAsASentence(name, { speaker: 'Pat Lead', holder, target });
+  it('keeps "The three teams will achieve ..." whole', () => {
+    expect(said('The three teams will achieve a combined revenue of 12 million for the period.', 12_000_000))
+      .toBe('The three teams will achieve a combined revenue of 12 million for the period.');
+    expect(aThingToDoIsWhatItCounts('The three teams will achieve a combined revenue of 12 million for the period.'))
+      .toBe('The three teams will achieve a combined revenue of 12 million for the period.');
+  });
+  it('keeps every other sentence the set-ups stored that day', () => {
+    for (const [name, n] of [
+      ['The team is aiming for 50 new accounts per region in Q1.', 50],
+      ['The team makes all deliveries within 2 days.', 2],
+      ['The team keeps the cost per drop under 850.', 850],
+      ['The team is aiming to reach 10,000 farmers in 3 counties this year.', 10_000],
+      ['The team will pick two markets to enter next quarter.', 2],
+      ['The team aims to hit 1 million in revenue.', 1_000_000],
+    ] as Array<[string, number]>) expect(said(name, n)).toBe(name);
+  });
+  it('still cuts a doing word whose rest is only the thing counted', () => {
+    expect(aThingToDoIsWhatItCounts('Sell 8 freezers per week')).toBe('8 freezers per week');
+    expect(aThingToDoIsWhatItCounts('Activate 4 Drop Access points per week')).toBe('4 Drop Access points per week');
+    expect(said('Activate 4 points a week', 4, 'Brian Otieno')).toBe('Brian Otieno is aiming for 4 points a week.');
+  });
+});
