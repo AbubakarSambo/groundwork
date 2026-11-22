@@ -37,6 +37,6 @@ export const A_CV_MAY_BE: Record<string, string> = {
   'application/msword': 'doc',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
 };
-export const MOST_A_CV_MAY_WEIGH = 10 * 1024 * 1024;
+export { MOST_A_FILE_MAY_WEIGH as MOST_A_CV_MAY_WEIGH } from '../../common/the-most-a-file-may-weigh';
 
 export const NOT_A_CV = 'A CV has to be a PDF or a Word file. Choose one of those and add it again.';

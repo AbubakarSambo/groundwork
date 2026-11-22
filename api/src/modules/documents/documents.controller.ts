@@ -1,4 +1,5 @@
 import { Controller, Post, Patch, Get, Delete, Param, Query, Body, Headers, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { ONE_FILE } from '../../common/the-most-a-file-may-weigh';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes } from '@nestjs/swagger';
 import { IsArray, IsString } from 'class-validator';
@@ -25,7 +26,7 @@ export class InviteDocumentsController {
   @Post('invite-upload')
   @ApiOperation({ summary: 'Upload a document using an invite token (no auth required). Token in the x-invite-token header or the `token` form field.' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('file', ONE_FILE))
   uploadByToken(
     @Headers('x-invite-token') headerToken: string | undefined,
     @Body() body: { token?: string } | undefined,
@@ -47,7 +48,7 @@ export class SetupDocumentsController {
   @Post()
   @ApiOperation({ summary: 'Read a file (PDF, Word, Excel, PowerPoint, photo or text) during setup and give back its text. Nothing is stored.' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('file', ONE_FILE))
   read(@UploadedFile() file: Express.Multer.File) {
     return this.docs.readForSetup(file);
   }
@@ -62,7 +63,7 @@ export class DocumentsController {
   @Post()
   @ApiOperation({ summary: 'Upload a document (PDF or TXT) for this ground' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('file', ONE_FILE))
   upload(
     @Param('groundId') groundId: string,
     @UploadedFile() file: Express.Multer.File,

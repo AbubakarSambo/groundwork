@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { ONE_FILE } from '../../common/the-most-a-file-may-weigh';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsIn, IsNotEmpty, IsOptional, IsString, IsUUID, Matches, MaxLength, ValidateIf } from 'class-validator';
@@ -96,7 +97,7 @@ export class AskController {
 
   @Post('document')
   @HttpCode(200)
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('file', ONE_FILE))
   @ApiOperation({ summary: 'An admin adds a document for the whole organisation. It is read and said back; nothing is added until the yes.' })
   async documentForTheOrganisation(@CurrentUser() user: CurrentUserData, @UploadedFile() file: Express.Multer.File) {
     return this.ask.addADocumentForTheOrganisation(this.asker(user), file);

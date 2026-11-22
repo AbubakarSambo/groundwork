@@ -51,8 +51,9 @@ describe('any other exception class name that leaks', () => {
   it('loses the class name and keeps the sentence', () => {
     // Same fault, different exception, and there will be others - so the rule is
     // about the shape rather than about this one throttle.
+    /* The class name goes, and the upload library's "File too large" is said with the limit (22 November 2026). */
     expect(respond(new HttpException('PayloadTooLargeError: File too large', 413)).message)
-      .toBe('File too large.');
+      .toBe('That file is larger than 25 MB, which is the most one file can be, so nothing was added. Choose a smaller file, or split it into parts and add each one.');
   });
 
   it('leaves an ordinary message exactly alone', () => {

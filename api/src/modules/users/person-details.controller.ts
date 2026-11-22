@@ -9,7 +9,7 @@ import { MOST_A_CV_MAY_WEIGH } from './who-reads-a-persons-details';
 /**
  * A PERSON'S CV AND EMERGENCY CONTACT (Hafsah, 21 November 2026). Not admin-only by decorator: the person reads and changes
  * their own, and the rule in who-reads-a-persons-details.ts decides each request. The upload takes a file the way the Desk's
- * own upload does (one `file` field, 10 MB at most).
+ * own upload does (one `file` field, MOST_A_FILE_MAY_WEIGH at most).
  */
 @ApiTags('Users')
 @ApiBearerAuth()

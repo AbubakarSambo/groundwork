@@ -1,4 +1,5 @@
 import { Body, Controller, ForbiddenException, Get, HttpCode, Optional, Param, Post, Put, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { ONE_FILE } from '../../common/the-most-a-file-may-weigh';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrentUser, CurrentUserData } from '../../common';
@@ -41,7 +42,7 @@ export class CompanyController {
 
   @Post('documents')
   @HttpCode(200)
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('file', ONE_FILE))
   @ApiOperation({ summary: 'An admin or a lead adds a document to the Desk, as a file or pasted text. It is read and summarised, and kept.' })
   async addADocument(@CurrentUser() user: CurrentUserData, @UploadedFile() file: Express.Multer.File, @Body() body: { title?: string; text?: string }) {
     return this.company.addADocument({ userId: user.id, organizationId: user.organizationId, role: user.role }, { file, title: body?.title, text: body?.text });
