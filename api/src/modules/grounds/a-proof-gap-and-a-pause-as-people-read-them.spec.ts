@@ -45,7 +45,8 @@ describe('Joel in a pause', () => {
   const lucy = { id: 'p-lucy', userId: 'u-lucy', partyType: 'INITIATOR', user: { firstName: 'Lucy' } };
   const ground: any = {
     id: 'g1', organizationId: 'o1', label: 'Sales updates', status: 'ACTIVE', initiatorId: 'u-lucy', participants: [lucy, joel], cadence: 'WEEKLY',
-    checkIns: [{ id: 'c1', participantId: 'p-joel', sessionNumber: 9, status: 'NOT_STARTED', availableFrom: '2027-01-19T00:00:00Z', isSetup: false, turns: [] }],
+    /* Joel's finished eighth session is on the list, so his ninth reads as his next (theirOwnSessionNumberIn), not as somebody added late. */
+    checkIns: [{ id: 'c0', participantId: 'p-joel', sessionNumber: 8, status: 'COMPLETED', availableFrom: '2027-01-12T00:00:00Z', completedAt: '2027-01-13T00:00:00Z', isSetup: false, turns: [] }, { id: 'c1', participantId: 'p-joel', sessionNumber: 9, status: 'NOT_STARTED', availableFrom: '2027-01-19T00:00:00Z', isSetup: false, turns: [] }],
     glance: { progress: { openRound: 9 } },
   };
   const now = new Date('2027-01-20T10:00:00Z');

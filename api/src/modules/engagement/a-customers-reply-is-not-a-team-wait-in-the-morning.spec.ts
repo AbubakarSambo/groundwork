@@ -74,7 +74,8 @@ describe('Grace\'s morning summary', () => {
     expect(t.params[0]).toBe('Grace');
     /* Mercy's wait on Joseph is her account until Joseph's own promise confirms it (decision 137), so it reads as a risk here. */
     /* Changed 18 October (Drop Access run 1, item 18): a message no longer carries "Not backed: ... could have messaged ..." (clipped, judging, and untrue in the run); it says what was tried, in full with its day, or nothing. */
-    expect(t.params[1]).toBe('These are risks. Mercy says the work is waiting on Joseph for the sample units. Kevin has been waiting on Jane for the deposit before anything is delivered since Wednesday 14 October.');
+    /* Changed 22 November 2026 (release test, bug 34, commit 2b308fa48): this summary speaks with the morning's approved labels (Hafsah, 21 October: "Needs you today:", "Closing:", "Your team:"), the same as the direct morning, so the lead reads one shape every morning. A risk is said under "Your team:" with what is overdue, never with a label of its own. */
+    expect(t.params[1]).toBe('Your team: Mercy says the work is waiting on Joseph for the sample units. Kevin has been waiting on Jane for the deposit before anything is delivered since Wednesday 14 October.');
     expect(TEMPLATES['lead-summary'].name).toBe('lead_daily_summary');
     expect(TEMPLATES['lead-summary'].body).toBe("Good morning {{1}}. Here is today's summary of your check-ins. {{2}} You can open your board for the full picture here {{3}} If you would rather not hear from us here again today, reply \"not now\".");
   });

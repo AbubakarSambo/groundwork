@@ -101,7 +101,8 @@ describe('item 14: one item for one decision, from the record\'s ids', () => {
     const o = await whatIsOutstandingFor(theRecord(now), LEAD, { boards: {} as any, release: new Date('2026-01-01') }, now);
     expect(o.needsYou).toHaveLength(1);
     expect(o.needsYou[0].about).toEqual({ kind: 'decision', ids: ['86186c63-7d38-4d39-864a-c1ef9234dfe4', '8ad5d462-3f40-437f-a7d1-33a93f1558d5', '84ac0a7a-8a7b-45c2-9e3e-c23355af1726'] });
-    expect(said(o)).toBe('These need you. Joseph is waiting on you for a decision on the KES 4,500 price for Juja Hardware since Wednesday 14 October. You said you would do it by Friday 16 October, so it is three days late.');
+    /* Changed 22 November 2026 (release test, bug 34, commit 2b308fa48): this summary speaks with the morning's approved labels (Hafsah, 21 October: "Needs you today:", "Closing:", "Your team:"), the same as the direct morning, so the lead reads one shape every morning. A risk is said under "Your team:" with what is overdue, never with a label of its own. */
+    expect(said(o)).toBe('Needs you today: Joseph is waiting on you for a decision on the KES 4,500 price for Juja Hardware since Wednesday 14 October. You said you would do it by Friday 16 October, so it is three days late.');
   });
 });
 
@@ -110,21 +111,22 @@ describe('item 15: the risks part says what the record says is at risk', () => {
     const now = new Date('2026-10-26T08:00:00Z');
     const o = await whatIsOutstandingFor(theRecord(now), LEAD, { boards: {} as any, release: new Date('2026-01-01') }, now);
     expect(o.risks.map((r) => r.text.replace('{in}', ''))).toEqual(["Mercy is waiting on Accounts for confirmation of Rose's KES 5,000 deposit for Mama Mboga Mart, which was due on Friday 23 October and is three days late."]);
-    expect(said(o)).toBe("These need you. Joseph is waiting on you for a decision on the KES 4,500 price for Juja Hardware since Wednesday 14 October. You said you would do it by Friday 16 October, so it is ten days late. These are risks. Mercy is waiting on Accounts for confirmation of Rose's KES 5,000 deposit for Mama Mboga Mart, which was due on Friday 23 October and is three days late.");
+    expect(said(o)).toBe("Needs you today: Joseph is waiting on you for a decision on the KES 4,500 price for Juja Hardware since Wednesday 14 October. You said you would do it by Friday 16 October, so it is ten days late. Your team: Mercy is waiting on Accounts for confirmation of Rose's KES 5,000 deposit for Mama Mboga Mart, which was due on Friday 23 October and is three days late.");
   });
   it('when the first part is long, every part still gets its first line before any part gets a second', () => {
     const long = (n: number) => ({ text: `Joseph is waiting on you for thing number ${n}, which has a long description so that it takes up a good part of the room in the message ${'and more words '.repeat(4)}.` });
     const o: WhatIsOutstanding = { needsYou: [long(1), long(2), long(3)], overdueOnYourTeam: [{ text: 'Kevin said “I will send the quote”. That was due by Friday 16 October and is one day late.' }], risks: [{ text: 'Mama Pima has not answered Joseph since Monday 19 October.' }], releaseOne: true };
     const p = said(o);
-    expect(p).toContain('These are overdue on your team. Kevin said');
-    expect(p).toContain('These are risks. Mama Pima has not answered Joseph since Monday 19 October.');
+    expect(p).toContain('Your team: Kevin said');
+    expect(p).toContain('one day late. Mama Pima has not answered Joseph since Monday 19 October.');
+    expect(p.split('Your team:')).toHaveLength(2);
     expect(p).toMatch(/There is more, and the link shows all of it\.$/);
   });
-  it('nothing at risk is nothing said: no "These are risks." on a day the record holds none', async () => {
+  it('nothing at risk is nothing said: no "Your team:" on a day the record holds nothing overdue and no risk', async () => {
     const now = new Date('2026-10-19T08:00:00Z');
     const o = await whatIsOutstandingFor(theRecord(now), LEAD, { boards: {} as any, release: new Date('2026-01-01') }, now);
     expect(o.risks).toEqual([]);
-    expect(said(o)).not.toContain('These are risks.');
+    expect(said(o)).not.toContain('Your team:');
   });
 });
 
@@ -139,6 +141,7 @@ describe('with Release 1\'s switch off for the organisation, the summary is put 
   it('the lines are taken part by part, as before', () => {
     const long = (n: number) => ({ text: `Joseph is waiting on you for thing number ${n}, which has a long description so that it takes up a good part of the room in the message ${'and more words '.repeat(4)}.` });
     const o: WhatIsOutstanding = { needsYou: [long(1), long(2), long(3)], overdueOnYourTeam: [{ text: 'Kevin said “I will send the quote”. That was due by Friday 16 October and is one day late.' }], risks: [{ text: 'Mama Pima has not answered Joseph since Monday 19 October.' }] };
-    expect(said(o)).not.toContain('These are risks.');
+    /* The risk is not reached part by part. Its old label is gone (bug 34), so the test looks for the risk itself. */
+    expect(said(o)).not.toContain('Mama Pima has not answered');
   });
 });
