@@ -2719,7 +2719,13 @@ export class BoardService {
             const shortDay = new Intl.DateTimeFormat('en-GB', { timeZone: zone, day: 'numeric', month: 'short' }).format(new Date(before.completedAt)).replace('Sept', 'Sep');
             return { ...row, line: words ? `On ${on}, ${first} said, “${words}”` : `${first} last checked in on ${on}.`, checkedInToday: false, lastIn: shortDay };
           }
-          if (!c) return { ...row, line: daily ? HAS_NOT_CHECKED_IN_TODAY : 'Hasn’t checked in yet.', checkedInToday: false };
+          if (!c) {
+            /* Whether they have answered this session is the one count's (theSessionAndItsCount), the rule every count of it reads: an
+               answer by declining is an answer, and is said as one, never as "Hasn't checked in yet" beside a count that has them in. */
+            const thisRound = theOneCount.bySession[theOneCount.clock.currentSession];
+            if (!daily && thisRound?.declined?.includes(row.participantId)) return { ...row, line: 'Said they would not check in this time.', checkedInToday: false };
+            return { ...row, line: daily ? HAS_NOT_CHECKED_IN_TODAY : 'Hasn’t checked in yet.', checkedInToday: false };
+          }
           const line = isInitiator
             ? theirLine((said as any[]).filter((l) => l.checkInId === c.id).map((l) => ({ text: cleanText(String(l.text ?? '')), type: l.type ?? null, createdAt: l.createdAt })), deals.filter((d) => d.ownerParticipantId === row.participantId).map((d) => String(d.name ?? '')))
             : null;
