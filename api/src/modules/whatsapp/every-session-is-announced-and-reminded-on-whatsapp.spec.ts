@@ -309,7 +309,7 @@ describe('"Start" and "Not now", typed or tapped', () => {
   it('"Start" begins the check-in and is not taken as an answer', async () => {
     const h = anInboundHarness({ open: [{ id: 'ci-1', label: 'the sales team', status: 'NOT_STARTED' }] });
     await h.service.handle('org-1', tapped('Start'), 'ours');
-    expect(h.conversation.open).toHaveBeenCalledWith('ci-1', 'u-1');
+    expect(h.conversation.open).toHaveBeenCalledWith('ci-1', 'u-1', undefined); // no answer written for them: "Start" is not an answer
     expect(h.conversation.sendMessage).not.toHaveBeenCalled();
     expect(h.said[0]).toBe('the sales team, session 1. You can write "ask" at any time to talk to Ask Groundwork, "back" to come back to your check-in, and "switch" to choose another check-in.\n\nWhat moved since last time?');
   });
