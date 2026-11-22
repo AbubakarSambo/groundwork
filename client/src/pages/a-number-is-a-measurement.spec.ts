@@ -82,7 +82,8 @@ describe('the label says what is counted', () => {
     /* "Depth: {turns} ..." became a full sentence in the U.8 review (no label, no dot-joined
        clause): "You gave {turns} answer(s)." with "More answers make the report stronger."
        appended below four. Still labels the turn count as depth of participation, not specificity. */
-    expect(entry).toContain('You gave ${turns} ${turns === 1 ? \'answer\' : \'answers\'}.')
+    /* 22 November 2026: the save card that counted the answers is gone, and nothing on the entry page counts them now. */
+    expect(entry).not.toContain('You gave ${turns}')
     /* UPDATED (Hafsah, 3 November 2026, "the conversation screens"; f9a83cd1c): the "Change how many check-ins" control beside the
        conversation went with everything else beside it, so there is no label left to check. */
     expect(entry).not.toContain('does not\n                yet extract cadence')

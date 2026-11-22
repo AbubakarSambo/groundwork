@@ -52,7 +52,7 @@ describe('Add people to this check-in, with WhatsApp off and on', () => {
     whatsappOn = false
     render(at(<Form />))
     fireEvent.change(screen.getByLabelText('Your team, one per line'), { target: { value: 'Amani Otieno, amani@kito.test, +254 712 345 678' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add everyone' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }) /* setup.txt's one "Add" (22 November 2026) */)
     await waitFor(() => expect(groundsApi.addTheirWhatsAppNumber).toHaveBeenCalledWith('g1', 'p-amani', '+254 712 345 678'))
     expect(groundsApi.addParticipant).toHaveBeenCalledWith('g1', { email: 'amani@kito.test', displayName: 'Amani Otieno' })
   })
@@ -62,7 +62,7 @@ describe('Add people to this check-in, with WhatsApp off and on', () => {
     vi.mocked(groundsApi.addTheirWhatsAppNumber).mockRejectedValueOnce({ response: { data: { message: 'The WhatsApp number could not be saved.' } } })
     render(at(<Form />))
     fireEvent.change(screen.getByLabelText('Your team, one per line'), { target: { value: 'Amani Otieno, amani@kito.test, 0712' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Add everyone' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }) /* setup.txt's one "Add" (22 November 2026) */)
     await waitFor(() => expect(toast.error).toHaveBeenCalled())
     expect(String(vi.mocked(toast.error).mock.calls[0][0])).toMatch(/phone number did not save, but .* is on the check-in/)
     expect(String(vi.mocked(toast.error).mock.calls[0][0])).not.toMatch(/WhatsApp/)

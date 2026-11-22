@@ -63,7 +63,6 @@ describe('the added list and the waiting sentence keep the name given', () => {
     renderPage()
     /* 22 November 2026: the people step is on the setup page, behind Change. */
     fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
-    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
     await addThroughTheTeamBox('Musa Bello, musa@anchor.test')
     saveWithMyEmail()
@@ -79,7 +78,6 @@ describe('the added list and the waiting sentence keep the name given', () => {
     renderPage()
     /* 22 November 2026: the people step is on the setup page, behind Change. */
     fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
-    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
     await addThroughTheTeamBox('Musa Bello, musa@anchor.test')
     saveWithMyEmail()
@@ -93,7 +91,6 @@ describe('the added list and the waiting sentence keep the name given', () => {
     renderPage()
     /* 22 November 2026: the people step is on the setup page, behind Change. */
     fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0])
-    fireEvent.click((await screen.findAllByRole('button', { name: /^Change/ }))[0]) /* 22 November 2026: the people step is on the setup page */
     await screen.findByText('Who needs to be part of this?')
     await addThroughTheTeamBox('bello@example.test')
     saveWithMyEmail()

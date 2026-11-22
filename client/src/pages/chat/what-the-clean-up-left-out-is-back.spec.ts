@@ -13,7 +13,8 @@ describe('what the clean-up left out is back', () => {
     expect(chat).toContain('Not right? Correct this')
   })
   it('somebody added in setup can be removed before anything is sent', () => {
-    expect(entry).toContain('aria-label={`Remove ${shownEntry(e)}`}')
-    expect(entry).toContain('setInviteAdded(prev => prev.filter(x => x !== e))')
+    /* 22 November 2026: on the setup page, one row per person with × (setup.txt). */
+    expect(entry).toContain('aria-label={`Take ${name || head} off`}')
+    expect(entry).toContain('setInviteAdded((prev) => prev.filter((x) => x !== e))')
   })
 })

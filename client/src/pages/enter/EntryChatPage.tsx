@@ -3472,6 +3472,8 @@ export function EntryChatPage() {
         onAdd={(people) => { const box = theBoxAsRead(people); takeTheBoxIntoTheList(box); return box.leftOut }}
       />
       {isAnchorDraft() && peopleOnTheList >= thePeopleStepRules.mayAdd && <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>}
+      {/* Said where people are added, as before (not changed here: the plan's own sentence belongs to the billing work). */}
+      {!isAnchorDraft() && <Note tone="muted">How many people you can add depends on your plan, not on the check-in.</Note>}
       {inviteAdded.length > 0 && (
         <RowList label="Who’s in it">
           {inviteAdded.map((e) => {

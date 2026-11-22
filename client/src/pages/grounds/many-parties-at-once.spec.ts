@@ -19,7 +19,8 @@ const BOX = readFileSync(join(__dirname, '../../components/gw/TheTeamBox.tsx'), 
 describe('many parties at once', () => {
   it('takes the whole team in one box, one person per line, and adds them in one press', () => {
     expect(BOX).toContain('One per line: a name, an email and a phone number.')
-    expect(BOX).toContain("'Add everyone'")
+    /* setup.txt's one "Add" (22 November 2026), and what is still typed is added on leaving too. */
+    expect(BOX).toContain("'Add'")
     expect(ROSTER).toContain('<TheTeamBox')
     expect(ROSTER).not.toContain('+ Add another')
   })
@@ -41,7 +42,7 @@ describe('many parties at once', () => {
     expect(ROSTER).toMatch(/is on the check-in\. Their invitation goes out on the start date\./)
     expect(ROSTER).toMatch(/did not send\. They are on the check-in/)
     expect(ROSTER).toMatch(/could not be added\. Check the email and try again\./)
-    expect(BOX).toMatch(/Add an email for \$\{andList\(needEmail\)\}, then press Add everyone again\./)
+    expect(BOX).toMatch(/Add an email for \$\{andList\(needEmail\)\}, then press Add again\./)
   })
 
   it('and a total failure says what became of the list', () => {

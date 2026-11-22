@@ -19,7 +19,8 @@ describe('guarded submits', () => {
     /* 4d-3: the save card's own button is a plain sentence now, not an arrow (CLAUDE.md's wording
        rule - "no pieces joined with... arrows"), and the shared Button part reads its own
        disabled/pending state, so the guard only needs the label itself. */
-    expect(entry).toContain("{saving ? 'Saving…' : 'Save my check-in'}")
+    /* 22 November 2026: start-chat.txt's "Save it", on the one form somebody signed out has. */
+    expect(entry).toContain("{saving ? 'Saving…' : isAnchorDraft() ? thePeopleStepRules.button : KEEP_THIS_CONVERSATION.save}")
   })
   it('choosing a password returns while a save is pending', () => {
     expect(read('auth/ChoosePasswordPage.tsx')).toMatch(/function submit\(\) \{\s*if \(save\.isPending\) return/)

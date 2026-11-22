@@ -55,7 +55,8 @@ describe('both places that close a session use it', () => {
     expect(read('../../pages/chat/ChatPage.tsx')).toContain('<SlowStep steps={CLOSING_STEPS} />')
   })
 
-  it('and the entry flow, which is where it started', () => {
-    expect(read('../../pages/enter/EntryChatPage.tsx')).toContain('<SlowStep steps={CLOSING_STEPS} />')
+  /* Changed 22 November 2026: the entry flow no longer waits on a report (the server makes it when setup is saved), so it has no wait to name. */
+  it('and the entry flow, which no longer waits on a report at all', () => {
+    expect(read('../../pages/enter/EntryChatPage.tsx')).not.toContain('CLOSING_STEPS')
   })
 })

@@ -92,8 +92,9 @@ describe('the line before saving (U.6 review)', () => {
     const src = readFileSync(join(__dirname, '..', 'enter', 'EntryChatPage.tsx'), 'utf8')
     expect(src).not.toContain('your invites go out the moment you open it')
     /* UPDATED (Hafsah's blocker, 31 October 2026): the count includes the people in the team box, which the save takes. */
-    expect(src).toContain("{`I'll email you a confirmation link. ${whatOpeningTheLinkDoes(peopleOnTheList, startsLater ? checkInBy : null)}`}")
-    expect(`I'll email you a confirmation link. ${whatOpeningTheLinkDoes(1, '2026-10-05')}`)
-      .toBe("I'll email you a confirmation link. Opening it saves your check-in. Then you see who was invited and who has to wait. Nobody is invited before Monday 5 October.")
+    /* Changed 22 November 2026: said once the email is given, in "Check your email", the one block somebody signed out reads after. */
+    expect(src).toContain("Open it to save this check-in. ${whatOpeningTheLinkDoes(peopleOnTheList, startsLater ? checkInBy : null)}")
+    expect(whatOpeningTheLinkDoes(1, '2026-10-05'))
+      .toBe("Opening it saves your check-in. Then you see who was invited and who has to wait. Nobody is invited before Monday 5 October.")
   })
 })

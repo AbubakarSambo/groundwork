@@ -83,6 +83,7 @@ describe('nothing that describes the mechanism assumes two parties', () => {
     /* The ladder that carried this sentence is gone; what remains must not speak of 'the other party'. */
     expect(report).not.toMatch(/the other (party|person|side)/i)
     const page = strip(readFileSync(join(__dirname, '../../pages/enter/EntryChatPage.tsx'), 'utf8'))
-    expect(page).toMatch(/everyone gets the shared report/)
+    /* 22 November 2026: the save card's sentence is gone; the entry page still never speaks of "the other party". */
+    expect(page).not.toMatch(/the other (party|person|side)/i)
   })
 })

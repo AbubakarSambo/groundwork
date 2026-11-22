@@ -84,7 +84,8 @@ describe('waits are statuses', () => {
     /* 4d-3: the generating-report wait moved from an inline `style={{ marginBottom: 18 }}` to the
        named class `gwui-ec-savecard-status` (CLAUDE.md: no inline style props on a rebuilt range) -
        the guarantee this checks, `role="status" aria-live="polite"`, is unchanged. */
-    expect(entry).toMatch(/<div className="gwui-ec-savecard-status" role="status" aria-live="polite">/)
+    /* 22 November 2026: setup no longer waits on its report (the server makes it when setup is saved), so there is no wait to announce. */
+    expect(entry).not.toContain('gwui-ec-savecard-status')
     /**
      * ROUND 5, ITEM B: ChatPage.tsx's message list moved into ConversationCard.tsx's own scrolling
      * body (components/gw/ui/ConversationCard.tsx), which sets `aria-live="polite"` unconditionally

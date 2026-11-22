@@ -25,8 +25,10 @@ const PARTY = read('..', '..', 'components', 'gw', 'SharedReportForAParty.tsx')
 const CHAT = read('..', 'chat', 'ChatPage.tsx')
 
 describe('the report that opens is the report they read', () => {
-  it('is one component, and the end of the entry session draws it', () => {
-    expect(ENTRY).toContain('<TheReportYouSawAtTheEnd')
+  /* Changed 22 November 2026: setup no longer draws a report (Hafsah: never inside setup); the first report is the server's, read on
+     the check-in with the same component. */
+  it('is one component, and setup no longer draws a copy of its own', () => {
+    expect(ENTRY).not.toContain('<TheReportYouSawAtTheEnd')
   })
 
   it('and the page that opens one later draws the same component, where one was stored', () => {
