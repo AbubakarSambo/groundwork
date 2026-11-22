@@ -274,6 +274,9 @@ const THE_CONTEXT_LANES = new Set<string>(['add_context', 'context_line', 'lead_
  * Deliberately generous at the short end - one word is a first name - and strict about length,
  * because the cost of guessing wrong is reading a person's question back to them as a colleague.
  */
+/** A person's name as people write one: one to four words, each starting with a capital ("Zuri", "Nia Odhiambo"). Read by its shape, never by who exists. */
+const A_NAME_AS_WRITTEN = /^\p{Lu}[\p{L}'’.-]*(?:\s+\p{Lu}[\p{L}'’.-]*){0,3}$/u;
+
 export function looksLikeAName(q: string): boolean {
   const t = (q ?? '').trim();
   if (!t || t.length > 60) return false;
@@ -5283,7 +5286,13 @@ export class AssistantService {
       /* An update told to Ask ("sold 12 today") is told where it belongs, never answered as a question about the record (release test, Ask #27). */
       case 'an_update': return rules('an_update', text(await this.whereAnUpdateGoes(organizationId, userId)));
       /* Everything else in the guide is done by its own lane, the one the rules reach too (answerInTheLane). */
-      default: return this.answerInTheLane((GUIDE_BY_KEY.get(key)?.lane ?? key) as Lane, route(message).subject ?? about ?? undefined, organizationId, personId, who, userId, undefined, message);
+      default: {
+        const lane = (GUIDE_BY_KEY.get(key)?.lane ?? key) as Lane;
+        /* One person's history takes a name. What the model says a message is about ("letting someone go") is a name only when it is written as one; otherwise
+           nobody is named, and the question is answered from the record (Drop Access, 22 November 2026). A name that is written, real or not, reads as before. */
+        const about2 = lane === 'performance_history' && about && !A_NAME_AS_WRITTEN.test(about.trim()) ? null : about;
+        return this.answerInTheLane(lane, route(message).subject ?? about2 ?? undefined, organizationId, personId, who, userId, undefined, message);
+      }
     }
   }
   /** The model's draft of a request, read against today and what waits for this reader (a-request-read-by-the-model.ts). Empty without a model. */

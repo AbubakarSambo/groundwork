@@ -77,12 +77,24 @@ describe('a lead asks who to let go, through Ask, and is answered from the recor
  */
 describe('a team question the model places on one person\'s history is answered from the record', () => {
   afterEach(() => { READ_AS = null; });
-  it.each([['question', 'a_persons_history'], ['wants', 'a_persons_history']])('read as %s on %s, Grace is still answered from the record', async (kind, guide) => {
-    READ_AS = { kind, about: null, parts: 1, guide };
+  it.each([['question', 'a_persons_history', null], ['wants', 'a_persons_history', null], ['wants', 'a_persons_history', 'letting someone go'], ['question', 'a_persons_history', 'team engagement']])('read as %s on %s, about %s, Grace is still answered from the record', async (kind, guide, about) => {
+    READ_AS = { kind, about, parts: 1, guide };
     const { ask, reached } = anAsk('grace');
     const r: any = await ask('Who should I let go?');
     console.log(`READ AS ${kind} ON ${guide}, GRACE READS\n${bodyOf(r)}`);
     expect(reached).toContain('answer_from_the_documents');
     expect(bodyOf(r)).toContain('Dan is the one to let go');
+  });
+});
+
+describe('a name as written still reads that person\'s history, real or not', () => {
+  afterEach(() => { READ_AS = null; });
+  it('read as wanting the history of "Zuri", nobody Grace leads, she is told the history sentence, not the record answer', async () => {
+    READ_AS = { kind: 'wants', about: 'Zuri', parts: 1, guide: 'a_persons_history' };
+    const { ask, reached } = anAsk('grace');
+    const r: any = await ask('How has Zuri been performing?');
+    console.log(`ABOUT "Zuri", GRACE READS\n${bodyOf(r)}`);
+    expect(reached).not.toContain('answer_from_the_documents');
+    expect(bodyOf(r)).toContain('I cannot find Zuri among them');
   });
 });
