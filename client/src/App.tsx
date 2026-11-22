@@ -5,6 +5,7 @@ import { Release4Boards } from '@/pages/preview/Release4Boards'
 import { ScenarioBoards } from '@/pages/preview/ScenarioBoards'
 import PartsSamplePage from '@/pages/dev/PartsSamplePage'
 import ConversationPreviewPage from '@/pages/dev/ConversationPreviewPage'
+import DesignSystemPage from '@/pages/dev/DesignSystemPage'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Link } from 'react-router-dom'
 import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
@@ -682,6 +683,11 @@ export default function App() {
               shared parts with fixed words instead. See ConversationPreviewPage.tsx.
             */}
             {import.meta.env.DEV && <Route path="/dev/conversation" element={<ConversationPreviewPage />} />}
+            {/*
+              THE DESIGN SYSTEM'S LIVING REFERENCE (Hafsah, 23 November 2026), development only - same guard
+              as /dev/parts. Every building block, drawn as a rebuilt page draws it, to build each journey against.
+            */}
+            {import.meta.env.DEV && <Route path="/design" element={<DesignSystemPage />} />}
             <Route path="/boards" element={<RequireOrgSetup><TeamBoardsPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
             {/* One person in a check-in, for whoever runs it (person-page.jpg), opened from "The team today". */}
