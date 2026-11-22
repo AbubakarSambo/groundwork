@@ -1,4 +1,4 @@
-import { aNumberPeopleCanRead } from './an-aim-is-a-sentence-about-somebody';
+import { aNumberPeopleCanRead, theThingItsNumberCounts } from './an-aim-is-a-sentence-about-somebody';
 import { isADispatchNotADeal } from './each-deal-in-its-group';
 import { proofNamesTheDeal } from './one-deal-per-customer';
 import { RECORDS_FOR_EACH_KIND, stagesFor, plainFields } from './the-kind-of-work';
@@ -68,9 +68,16 @@ export function whatASalesAimCounts(name: string | null | undefined): WhatTheAim
   /* "7 units in November", "KES 300,000 this month": counted in that month only (quarter test, Faith's goal counted all time). */
   const inAMonth = theMonthItCounts(t);
   if (MONEY.test(t)) return A_SALE.test(t) ? { counts: 'value', ...inAMonth, thing: 'value' } : null;
-  if (UNITS.test(t)) return { counts: 'units', ...inAMonth, thing: 'units' };
-  if (SALES_OR_DEALS.test(t)) return { counts: 'sales', ...inAMonth, thing: 'sales' };
   const sold = t.match(SELL_A_THING);
+  /*
+   * THE THING ITS NUMBER COUNTS DECIDES (re-test, 22 November evening, R-7). "Each person on the sales team builds a waitlist of 15 shops
+   * by 31 December" was counted as sales because "sales team" holds the word, so the morning and the weekly letter read "2 of 15 sold, 0
+   * paid, 13 short" of a waitlist. Where "sales", "deals" or "orders" is only a word in the name and the aim's number counts another thing
+   * it names ("15 shops"), with nothing saying that thing is sold, the deals do not count it, and it keeps the count it has.
+   */
+  const counted = theThingItsNumberCounts(t)?.word.toLowerCase() ?? null;
+  if (UNITS.test(t)) return { counts: 'units', ...inAMonth, thing: 'units' };
+  if (SALES_OR_DEALS.test(t) && !(counted && !sold && !/^(?:sales?|deals?|orders?|new)$/.test(counted))) return { counts: 'sales', ...inAMonth, thing: 'sales' };
   if (sold && !/\b(?:target|aim|goal)\b/i.test(sold[1])) return { counts: 'units', ...inAMonth, thing: sold[1].trim().toLowerCase() };
   return null;
 }
