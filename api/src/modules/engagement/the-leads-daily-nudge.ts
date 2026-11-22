@@ -179,7 +179,6 @@ export const theNudgeParts = (o: WhatIsOutstanding): TheNudgeParts => ({
   risks: atMostThreeLines(o.risks),
 });
 
-const HEADINGS = { needsYou: 'Needs you', overdueOnYourTeam: 'Overdue on your team', risks: 'Risks' } as const;
 
 /** The email's subject: how many things, in each part, as a plain fact. */
 export function theNudgeSubject(o: WhatIsOutstanding): string {
@@ -218,14 +217,8 @@ function theMainItemInAWords(o: WhatIsOutstanding): string | null {
  * The message as an ordinary WhatsApp message, for a lead who wrote to Groundwork in the last 24 hours: each part on its own, each line on its own line.
  */
 export function theWindowForm(firstName: string | null | undefined, o: WhatIsOutstanding, link: string): string {
-  const p = theNudgeParts(o);
-  const blocks: string[] = [`Good morning ${firstName?.trim() || 'there'}. Here is what is outstanding today.`];
-  for (const key of ['needsYou', 'overdueOnYourTeam', 'risks'] as const) {
-    if (p[key].length) blocks.push([HEADINGS[key], ...p[key]].join('\n'));
-    if (key === 'needsYou' && (o.dueToday ?? []).length) blocks.push(['Due today and tomorrow', ...atMostThreeLines(o.dueToday!)].join('\n'));
-  }
-  blocks.push(`You can see everything here ${link}`);
-  return blocks.join('\n\n');
+  /* The same words inside the 24 hours as outside them (bug 34): one shape on the phone, whichever way it goes. */
+  return theTemplateParagraph(firstName, o, link).text;
 }
 
 /**
@@ -240,13 +233,17 @@ export function theTemplateParagraph(firstName: string | null | undefined, o: Wh
   /* The whole message must fit inside Meta's 1,024 characters, and also inside the 800 the very first message to a number may carry (decision 106 item 2), or its end, with the link, would be cut. */
   const room = Math.min(A_TEMPLATE_BODY_LIMIT, ITS_OWN_WORDS_AT_MOST) - fixed - 4;
   const p = theNudgeParts(o);
+  /*
+   * THE MORNING'S OWN FOUR LABELS (release test, 22 November 2026, bug 34; Hafsah, 21 October: "Target:", "Needs you today:", "Closing:",
+   * "Your team:"). This summary goes when the direct morning has nothing of its own, and it said "These need you." and "These are risks.",
+   * so the lead read two shapes on two mornings. It speaks with the same labels now; a target is the direct morning's alone.
+   */
   const lead: Record<keyof TheNudgeParts | 'dueToday', string> = {
-    /* Quality pass, 18 October, M-1: on a sales check-in with Release 1's switch on, "Two things need you today." in place of "These need you." */
-    needsYou: o.saidAsACount ? `${capital(aNumberInWords(o.needsYou.length))} ${o.needsYou.length === 1 ? 'thing needs' : 'things need'} you today.` : 'These need you.',
-    overdueOnYourTeam: 'These are overdue on your team.',
-    risks: 'These are risks.',
-    /* What is due says its own day ("Tomorrow, ..."), so it has no opening of its own (M-3). */
-    dueToday: '',
+    needsYou: 'Needs you today:',
+    dueToday: 'Closing:',
+    overdueOnYourTeam: 'Your team:',
+    /* Said under "Your team:" with what is overdue on it, never a second label of its own. */
+    risks: p.overdueOnYourTeam.length ? '' : 'Your team:',
   };
   /*
    * EVERY PART GETS ITS FIRST LINE BEFORE ANY PART GETS ITS SECOND (Drop Access run 1, item 15). The lines were taken part by part,

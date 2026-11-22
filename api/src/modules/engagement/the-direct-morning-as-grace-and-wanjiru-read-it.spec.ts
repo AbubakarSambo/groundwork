@@ -115,14 +115,9 @@ describe('the summary she is sent, with the switch on', () => {
     expect(first.length).toBeLessThanOrEqual(800);
     expect(first).toMatch(/^Good morning Grace\. Here is today's summary of your check-ins\. Target: 75 of 120 sold, 47 paid, 45 short, and the open deals cover 40\./);
     expect(first).toContain(`${BASE}/grounds/${DROP}/board`);
-    /* Inside the 24 hours: the same four parts, each on its own lines. */
-    expect(text).toBe([
-      'Good morning Grace.',
-      'Will we reach 120 units sold by 30 October?\n75 of 120 sold, 47 paid, 45 short, and the open deals cover 40.',
-      'What needs you today\nJuja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph.\nPeter has been waiting on you since Thursday for a specific area to focus on.\nPeter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will.',
-      'Your team today\nJoseph said 3 times that something was sold or paid with nothing on file, and took 2 back later. Groundwork asked for the proof and has coached Joseph since Monday 12 October, and nothing has changed, so call Joseph.',
-      `Your board is here ${BASE}/grounds/${DROP}/board`,
-    ].join('\n\n'));
+    /* Changed 22 November 2026 (release test, bugs 86 and 34): inside the 24 hours it is the same approved paragraph as the template, so
+       the lead reads "Target: / Needs you today: / Your team:" either way, never the email's headings. */
+    expect(text).toBe(TEMPLATES['lead-summary'].body.replace('{{1}}', 'Grace').replace('{{2}}', ctx.params[1]).replace('{{3}}', ctx.params[2]));
     /* Once a day: the 9am sweep does not send it again. */
     const again = await sendTheLeadsDailyNudges(d.deps, new Date('2026-10-20T08:00:00Z'));
     expect(again.tried).toBe(0);
