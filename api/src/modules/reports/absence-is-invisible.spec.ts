@@ -131,7 +131,8 @@ describe('who reads it, and under what heading', () => {
     // so there is nothing here the subject has not effectively seen. But "what
     // your manager is weighing about you", read alone the night before a
     // decision, is a heavy thing to hand somebody with no conversation attached.
-    expect(headingFor('the subject')).toBe('What this ground was measured against');
+    /* "ground" is never on screen (release test, 21 November 2026, bug 41). */
+    expect(headingFor('the subject')).toBe('What this check-in was measured against');
   });
 
   it('and a colleague sees nothing', () => {
@@ -142,6 +143,6 @@ describe('who reads it, and under what heading', () => {
 
   it('the section says it is material, not an answer', () => {
     expect(THIS_IS_MATERIAL_NOT_A_VERDICT).toMatch(/does not add up to an answer/);
-    expect(THIS_IS_MATERIAL_NOT_A_VERDICT).toMatch(/the conversation starts from the same place the ground did/);
+    expect(THIS_IS_MATERIAL_NOT_A_VERDICT).toMatch(/the conversation starts from the same place the check-in did/);
   });
 });

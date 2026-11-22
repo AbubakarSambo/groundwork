@@ -68,6 +68,8 @@ describe('a new project ported from the prototype, as Baraka reads it', { timeou
     expect(text).toContain('No target is set yet.')
     expect(text).toContain('The one thing slowing me down')
     expect(text).not.toContain('Baraka has')
+    /* The word "ground" is never on screen: the targets prompt says "this check-in" (release test, 21 November 2026, bug 41). */
+    expect(text).not.toMatch(/\bground\b/i)
     expect(container.querySelector('.askdock input[aria-label="Ask about this board"]')).not.toBeNull()
   })
 })

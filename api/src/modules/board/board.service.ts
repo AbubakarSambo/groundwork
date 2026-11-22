@@ -2267,7 +2267,7 @@ export class BoardService {
     // who can fix it.
     if (has('objectives') && (out.objectives ?? []).length === 0 && isInitiator) {
       out.objectivesPrompt =
-        'No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this ground is aiming for.';
+        'No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this check-in is aiming for.';
     }
 
     /*

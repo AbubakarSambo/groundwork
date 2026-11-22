@@ -54,6 +54,7 @@ describe('the no-second-account caveat', () => {
   });
 
   it('and where there is one, says what that is worth instead', () => {
-    expect(SRC).toContain('carries more than it would on a ground where everybody watches everybody');
+    /* "ground" is never on screen (release test, 21 November 2026, bug 41): the sentence says "a check-in". */
+    expect(SRC).toContain('carries more than it would in a check-in where everybody watches everybody');
   });
 });

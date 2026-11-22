@@ -660,7 +660,7 @@
  ],
  "dependencies": [],
  "decisions": [],
- "objectivesPrompt": "No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this ground is aiming for.",
+ "objectivesPrompt": "No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this check-in is aiming for.",
  "whatTheRoomIsAbout": null,
  "whatTheRoomIsAboutNote": "This is read when a round closes. Nothing has closed yet, so there is nothing to add up.",
  "quickRead": [
