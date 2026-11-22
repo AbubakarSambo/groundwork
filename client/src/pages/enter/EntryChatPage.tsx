@@ -1155,7 +1155,8 @@ export function groupOf(card: { cardKey: string; scenario: string }): string {
  * takes and how to stop, added in front of the first message she reads, which stays as it was; and one line when setup is done.
  */
 /* The target journey's opening, one line (F5, stage 2), with the measured length from its one owner. */
-export const THE_SETUP_LINE = `This takes ${SETUP_TAKES}. You can stop any time with End check-in.`
+/* It names no button (release test, 22 November 2026, bug 8), the same as the check-in's own first line (api the-opening-line.ts). */
+export const THE_SETUP_LINE = `This takes ${SETUP_TAKES}. You can stop any time.`
 export function theSetupIsDoneSaying(firstOpensOn: string | null): string {
   const d = firstOpensOn ? new Date(`${firstOpensOn}T12:00:00Z`) : null
   const day = d && !isNaN(d.getTime()) ? whenItWas(d, 'weekdayAndDay', 'UTC') : null
