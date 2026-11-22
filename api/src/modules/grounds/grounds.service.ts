@@ -67,6 +67,7 @@ import * as crypto from 'crypto';
 import { aKindMayBeGiven, theBoardKindsOffered, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
 import { askNameOf } from '../assistant/ask-name';
 import { readTheSituationAndTheKind, THE_SCENARIOS_IN_WORDS } from '../entry/which-situation-this-is';
+import { whatTheLeadSaidAtSetUp } from './what-the-lead-said-at-set-up';
 import { KINDS_OF_WORK, oneOfTheKinds, isASalesKind, theSetupWords } from '../board/the-kind-of-work';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf, theDaysItRunsOn } from './which-days-this-team-works';
@@ -5753,7 +5754,7 @@ export class GroundsService {
        * THE ONE READING (which-situation-this-is.ts readTheSituationAndTheKind), the same call and prompt as the door's, on what the
        * check-in is for and the words the lead or the admin wrote. A sales team runs in any situation, so the kind read is kept as read.
        */
-      const words = theSetupWords(g, THE_SCENARIOS_IN_WORDS[(g as any).scenario as keyof typeof THE_SCENARIOS_IN_WORDS] ?? null);
+      const words = theSetupWords(g, THE_SCENARIOS_IN_WORDS[(g as any).scenario as keyof typeof THE_SCENARIOS_IN_WORDS] ?? null, await whatTheLeadSaidAtSetUp(this.prisma, groundId));
       if (!words.trim()) return;
       const read = (await readTheSituationAndTheKind(this.anthropic, words))?.kind ?? null;
       /*
