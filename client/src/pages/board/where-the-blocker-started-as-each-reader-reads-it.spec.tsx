@@ -38,7 +38,7 @@ describe('where the blocker started', () => {
   it('draws each step the engine sends, where it started, and the decision with who decides', async () => {
     open([{
       id: 't1', waitingOn: null, decidedBy: 'Amani decides.',
-      whereItStarted: 'the request went to Finance without the references.', decisionNeeded: 'sign off the credit terms this week?',
+      whereItStarted: 'Where it started: the request went to Finance without the references.', decisionNeeded: 'Decision needed: sign off the credit terms this week?',
       steps: [
         { kind: 'Need', checkIn: 'Sales team, Q3', checkInId: 'g-sales', owner: 'Miriam Wanjiku', text: 'Westgate Deli’s deposit' },
         { kind: 'Question', checkIn: 'Finance, Q3', checkInId: 'g-fin', owner: 'Grace Achieng', text: 'Who are their references?' },
@@ -47,7 +47,8 @@ describe('where the blocker started', () => {
     expect(await screen.findByRole('heading', { name: 'Where the blocker started' })).toBeTruthy()
     expect(await screen.findByText('Westgate Deli’s deposit')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Finance, Q3' })).toBeTruthy()
-    expect(screen.getByText('the request went to Finance without the references.')).toBeTruthy()
+    expect(screen.getByText('Where it started: the request went to Finance without the references.')).toBeTruthy()
+    expect(screen.queryByText(/Where it started: Where it started/)).toBeNull()
     expect(screen.getByText('Decision needed: sign off the credit terms this week?')).toBeTruthy()
     expect(screen.getByText('Amani decides.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Ask Miriam' })).toBeTruthy()
@@ -59,6 +60,17 @@ describe('where the blocker started', () => {
     expect(await screen.findByText('This is waiting on Finance since 14 September.')).toBeTruthy()
     expect(screen.queryByText(/Where it started/)).toBeNull()
     expect(screen.queryByText(/Decision needed/)).toBeNull()
+  })
+
+  it('a wait on somebody outside the check-in with no chain yet reads as its one step and who it waits on (release test 22 November, bug 24)', async () => {
+    open([{ id: 'd-baraka', decidedBy: null, whereItStarted: null, decisionNeeded: null,
+      waitingOn: 'This is waiting on Baraka since 20 November, and nothing on record follows it further yet.',
+      steps: [{ kind: 'need', checkIn: 'Sales team, Q3', checkInId: 'g-sales', owner: 'Amani Wekesa', text: 'The delivery schedule for Kilimani Fresh' }] }])
+    expect(await screen.findByText('The delivery schedule for Kilimani Fresh')).toBeTruthy()
+    expect(screen.getByText('Need')).toBeTruthy()
+    expect(screen.getByText('Amani Wekesa')).toBeTruthy()
+    expect(screen.getByText('This is waiting on Baraka since 20 November, and nothing on record follows it further yet.')).toBeTruthy()
+    expect(screen.queryByText(/Nothing on record follows a blocker here/)).toBeNull()
   })
 
   it('says so in a sentence when nothing is traced', async () => {
