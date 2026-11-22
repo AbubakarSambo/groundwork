@@ -5765,6 +5765,11 @@ model GroundDocument {
   origin           String? @db.VarChar(24)
   // The uploader described it; this is whether the file reads as what they said: { matches, reads, checkedAt }.
   descriptionCheck Json?   @map("description_check")
+  /// WHAT A LONG DOCUMENT SAYS, READ WHOLE. A document longer than one model read is read in parts at upload, and the parts are
+  /// kept here as one reading of the whole of it, with its facts, numbers, names and dates. Every reader reads the document through
+  /// whatADocumentSays: the text itself when it fits one read, this when it does not. Null on a document that fits. See
+  /// what-a-document-says.ts.
+  synthesis        String? @db.Text
 
   // WHO CAN SEE THIS. Nobody decided the current behaviour: documents.list
   // filters on participantId, so every document is private to whoever uploaded
