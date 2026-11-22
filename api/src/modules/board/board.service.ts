@@ -30,7 +30,6 @@ import { aPartyOutside, aWaitOnOneself, theWaitsAsABoardReadsThem } from './a-th
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
 import { whoSeesThisDifferently } from './who-sees-this-differently';
 import { whatEachSessionSays } from './one-count-for-the-sessions';
-import { inTheTeamsNumbering } from './which-round-is-open';
 import { aWaitSaidInFull } from './a-wait-said-in-full';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { theBlockers } from './the-blockers';
@@ -214,7 +213,7 @@ import { type ToLookAt } from './the-same-thing-for-three-check-ins';
 import { theSameThingFromTheRows } from './the-same-thing-read-from-the-record';
 import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
 import { whatTheLeadShouldKnow, targetsFor } from './whose-number-is-whose-business';
-import { whichRoundIsOpen, theTeamsOpenRound } from './which-round-is-open';
+import { whichRoundIsOpen, theTeamsOpenRound, inTheTeamsNumbering } from './which-round-is-open';
 import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-splits-by-what-people-did';
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
@@ -1346,8 +1345,9 @@ export class BoardService {
        * and Today are (request 97 a), so "Session 1 of 12" never sits beside "Session 2 opened on ...".
        * See one-count-for-the-sessions.
        */
-      const planned = thePlannedSessionsOf(ground as any) ?? null;
-      /* The team's session, the latest begun, from the one count above (theSessionAndItsCount), so the header and Today read one session. */
+      /* The one session clock (theSessionAndItsCount, above), the same one the board's count, the list, the check-in page and Ask read, never a
+         second working-out of it here (release test, 21 November 2026, bug 32: "Session 1 of 12" beside "All 3 sessions"). */
+      const planned = theOneCount.clock.plannedSessions;
       const theRound = theOneCount.clock.currentSession;
       const roundNumbers = Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b);
       /* The header is drawn from these two numbers ("Session 1 of 12."); see theHeaderSays for its words. */
