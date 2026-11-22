@@ -344,6 +344,7 @@ import { keepThePromisesSaidDone } from './a-promise-said-done-is-kept';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
 import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collections';
 import { FROM_YOUR_CHECK_IN, theWordsItCameFrom, theTargetAsALine, type ATargetToHold } from '../grounds/the-leads-targets-wait-for-her-yes';
+import { theChangeToMake, putTheChangeOnTheGoal, keepAGoalChange, theGoalChangesOn, theChangeThatMadeThisGoal, theChangeAsASentence, type AGoalChangeSaid, type AGoalOnRecord } from '../grounds/a-goal-changed-by-its-lead';
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
@@ -505,7 +506,9 @@ const WHAT_THE_BRIEF_IS_READ_FROM = {
   initiator: { select: { firstName: true, lastName: true } },
   whoSeesTargets: true,
   /* WHO SET EACH TARGET AND WHICH WAY IT GOES (decision 69), so it is said about them and not as the reader's own. */
-  objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true }, orderBy: { sortOrder: 'asc' as const } },
+  objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true }, orderBy: { sortOrder: 'asc' as const } },
+  /* When and why a goal changed (a-goal-changed-by-its-lead). */
+  groundAuditLog: true,
   /* And the people, by first name, under the same naming rule as everywhere else. */
   peersVisibleToEachOther: true,
   participants: { select: { id: true, partyType: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
@@ -753,10 +756,13 @@ export class ConversationService {
   }
 
   private theTargetsAsSentences(
-    rows: { name: string; target: number | null; ownerParticipantId?: string | null; setByParticipantId?: string | null; direction?: string | null }[],
-    ground: { participants?: any[]; scenario?: any; peersVisibleToEachOther?: boolean | null } | null,
+    rows: { id?: string; name: string; target: number | null; ownerParticipantId?: string | null; setByParticipantId?: string | null; direction?: string | null }[],
+    ground: { participants?: any[]; scenario?: any; peersVisibleToEachOther?: boolean | null; groundAuditLog?: unknown } | null,
     readerParticipantId: string | null,
-  ): { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null }[] {
+  ): { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null; changed?: string | null }[] {
+    /* When and why a goal its lead changed became what it is, from the one log of changes (a-goal-changed-by-its-lead). */
+    const changes = theGoalChangesOn(ground?.groundAuditLog);
+    const firstNames = ((ground?.participants ?? []) as any[]).map((p) => (p?.user?.firstName ?? p?.nameGiven ?? '').trim()).filter(Boolean);
     const people = (ground?.participants ?? []) as any[];
     const first = (p: any) => (p?.user?.firstName ?? p?.nameGiven ?? '').trim() || null;
     const reader = people.find((p) => p.id === readerParticipantId);
@@ -772,6 +778,8 @@ export class ConversationService {
       }),
       target: o.target ?? null,
       direction: asADirection(o.direction),
+      /* Only where its lead changed it: every other goal is served exactly as before. */
+      ...(() => { const c = o.id ? theChangeThatMadeThisGoal(changes, o.id) : null; return c ? { changed: theChangeAsASentence(c, firstNames, reader?.partyType === PartyType.INITIATOR) } : {}; })(),
     }));
   }
 
@@ -4287,7 +4295,7 @@ export class ConversationService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
       include: {
-        objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true }, orderBy: { sortOrder: 'asc' } },
         /* The product's finding per person, for the lead's side of the disagreement. */
         report: { select: { findings: true, sharedAs: true } },
         /**
@@ -10411,6 +10419,7 @@ ${told}` : '';
     }>(EXPECTATION_PROMPT, [{ role: 'user', content: `${theSpeakerLine(me)}\n\n${theirTargetsOnRecord.length ? `Their targets on record:\n${theirTargetsOnRecord.map((t) => `[${t.id}] ${t.name}${typeof t.target === 'number' ? `, ${t.target}` : ''}`).join('\n')}\n\n` : ''}${transcript}` }], EXPECTATION_SCHEMA as any);
     if (!result) return;
 
+
     /** The same resolver as work mentions: a name that matches nobody is dropped, never guessed. */
     const others = ground.participants.filter((p) => p.id !== participantId && !p.managingOnly);
     const resolve = (name: string): string | null => {
@@ -10644,7 +10653,7 @@ ${told}` : '';
     if (corrected && Number.isFinite(own!.target) && own!.target > 0 && numbersInTheirWords.has(Math.round(own!.target))) {
       if (corrected.target !== Math.round(own!.target)) {
         await this.prisma.groundObjective.update({ where: { id: corrected.id }, data: { target: Math.round(own!.target) } });
-        await this.keepTheChangeOfATarget(groundId, { objectiveId: corrected.id, from: corrected.target, to: Math.round(own!.target), byParticipantId: participantId, said: theirOwnTurns[theirOwnTurns.length - 1] ?? null });
+        await keepAGoalChange(this.prisma, groundId, { objectiveId: corrected.id, from: corrected.target, to: Math.round(own!.target), byParticipantId: participantId, said: theirOwnTurns[theirOwnTurns.length - 1] ?? null });
         this.logger.log(`Ground ${groundId}: a target of ${participantId} changed from ${corrected.target} to ${Math.round(own!.target)}, in their words.`);
       }
     } else if (own?.name?.trim() && Number.isFinite(own.target) && own.target > 0) {
@@ -10771,9 +10780,32 @@ ${told}` : '';
       .filter((t) => !anAimHeldByAnotherPerson(t as any, a.about.who))
       .map((t) => ({ name: String(t.aim ?? t.words ?? '').trim(), target: typeof t.target === 'number' ? t.target : null }))
       .filter((t) => t.name);
-    if (!aims.length) return;
     const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } });
-    await this.keepTheTeamsAims(checkIn.groundId, checkIn.participantId, aims, [...(setup?.words ?? []), ...turns.map((t) => t.content ?? '')]);
+    const herWords = [...(setup?.words ?? []), ...turns.map((t) => t.content ?? '')];
+    /* A goal she changed, with her yes, changes the one goal on record; it is never kept as a new aim beside it (a-goal-changed-by-its-lead). */
+    const changes = (a.targets ?? []).filter((t: any) => Array.isArray(t.replaces) && t.replaces.length);
+    if (changes.length) await this.changeTheGoalsSheChanged(checkIn, changes as any[], herWords);
+    const kept = aims.filter((t) => !changes.some((c: any) => String(c.aim ?? c.words ?? '').trim() === t.name));
+    if (!kept.length) return;
+    await this.keepTheTeamsAims(checkIn.groundId, checkIn.participantId, kept, herWords);
+  }
+
+  /** Each goal the lead changed, with her yes: the one goal row changes, what it was and why are kept once (a-goal-changed-by-its-lead). */
+  private async changeTheGoalsSheChanged(checkIn: { id: string; participantId: string; groundId: string }, said: AGoalChangeSaid[], herWords: string[]): Promise<void> {
+    const groundId = checkIn.groundId;
+    const [onRecord, ground, session] = await Promise.all([
+      this.prisma.groundObjective.findMany({ where: { groundId }, select: { id: true, name: true, target: true, ownerParticipantId: true } }),
+      this.prisma.ground.findUnique({ where: { id: groundId }, select: { participants: { select: { id: true, user: { select: { firstName: true } } } } } }),
+      this.prisma.checkIn.findUnique({ where: { id: checkIn.id }, select: { sessionNumber: true } }),
+    ]);
+    const { numbersInTheirWords } = await this.whatTheySaidAndGave(groundId, checkIn.participantId, herWords, true);
+    const people = ((ground as any)?.participants ?? []).map((p: any) => ({ id: p.id, firstName: p.user?.firstName ?? null }));
+    for (const one of said) {
+      const change = theChangeToMake(one, onRecord as AGoalOnRecord[], people, (n) => numbersInTheirWords.has(n));
+      if (!change) continue;
+      await putTheChangeOnTheGoal(this.prisma, groundId, change, { participantId: checkIn.participantId, said: herWords[herWords.length - 1] ?? null, sessionNumber: session?.sessionNumber ?? null }, people);
+      this.logger.log(`Ground ${groundId}: the lead changed a goal, with her yes (${change.drop.length + 1} replaced).`);
+    }
   }
 
   /**
@@ -10843,14 +10875,6 @@ ${told}` : '';
     return { readable, privateFigures, numbersInTheirWords, theirWordsAsText, sumsOnlyARequestSaid };
   }
 
-  /** A target's number changed in somebody's words: kept in the check-in's log, beside what was there, so its history stays. */
-  private async keepTheChangeOfATarget(groundId: string, change: { objectiveId: string; from: number | null; to: number; byParticipantId: string; said: string | null }): Promise<void> {
-    const g: any = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { groundAuditLog: true } as any }).catch(() => null);
-    const raw = g?.groundAuditLog;
-    const log: any = raw && !Array.isArray(raw) && typeof raw === 'object' ? { ...raw } : { timeline: Array.isArray(raw) ? raw : [], contextNotes: [] };
-    log.targetChanges = [...(Array.isArray(log.targetChanges) ? log.targetChanges : []), { ...change, said: change.said?.slice(0, 400) ?? null, at: new Date().toISOString() }];
-    await this.prisma.ground.update({ where: { id: groundId }, data: { groundAuditLog: log } as any }).catch(() => undefined);
-  }
 
   /** On a sales check-in with Release 1's sales board on, the targets read from the lead's words wait for her yes. */
   private async theLeadsTargetsWaitForHerYes(groundId: string): Promise<boolean> {

@@ -210,14 +210,25 @@ const theFirstPartAlone = (what: string): string | null => {
  */
 const THEIR_OWN_SENTENCE = /^(?:i|i'm|i'll|i've|my|we|we'll|our|this week|next week|today|tomorrow)\b|\b(?:i will|i'll|i can|i am|i'm|my plan)\b/i;
 const A_NUMBER = '(?:\\d+(?:[.,]\\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|hundred)';
+/**
+ * THE THING A NUMBER COUNTS, the word after the aim's first number ("kits" in "five kits to the shops", "drop" in "Activate 4 Drop
+ * Access points"), or null where the number counts nothing named ("on track for 30", "30 by October", "30 per week").
+ */
+export function theThingItsNumberCounts(name: string): { word: string; at: number; length: number } | null {
+  const t = String(name ?? '').replace(/\s+/g, ' ').trim();
+  const m = new RegExp(`\\b${A_NUMBER}\\s+([a-z][a-z'-]*)`, 'i').exec(t);
+  if (!m || /^(to|for|of|and|or|a|the|on|in|by|this|next|more|times?|per|each|every)$/i.test(m[1])) return null;
+  return { word: m[1], at: m.index, length: m[0].length };
+}
+
 export function anAimIsAThing(name: string): string {
   const t = String(name ?? '').replace(/\s+/g, ' ').trim();
   if (!THEIR_OWN_SENTENCE.test(t)) return t;
-  const m = new RegExp(`\\b${A_NUMBER}\\s+([a-z][a-z'-]*)`, 'i').exec(t);
-  if (!m || /^(to|for|of|and|or|a|the|on|in|by|this|next|more|times?)$/i.test(m[1])) return '';
+  const thing = theThingItsNumberCounts(t);
+  if (!thing) return '';
   /* The place they named stays with the thing ("3 shops in Kilimani" is "shops in Kilimani"): it is their own words. */
-  const where = /^\s+((?:in|at|across|around)\s+\p{Lu}[\p{L}'-]*(?:\s+\p{Lu}[\p{L}'-]*)*)/u.exec(t.slice(m.index + m[0].length));
-  return m[1].toLowerCase() + (where ? ` ${where[1]}` : '');
+  const where = /^\s+((?:in|at|across|around)\s+\p{Lu}[\p{L}'-]*(?:\s+\p{Lu}[\p{L}'-]*)*)/u.exec(t.slice(thing.at + thing.length));
+  return thing.word.toLowerCase() + (where ? ` ${where[1]}` : '');
 }
 
 /*
@@ -332,9 +343,16 @@ export const THE_NAME_TO_DO = /^(\p{Lu}[\p{L}'’-]*(?:\s+\p{Lu}[\p{L}'’-]*)?)
  * The name of an aim, as one full sentence about a person, in labels. The board names it for the
  * reader with `withNames` after this.
  */
-/** "Sell 40 units" is "40 units"; "Open 10 new leads weekly" is "10 new leads weekly". Only a verb straight before a number. */
+/*
+ * A THING TO DO IS WHAT IT COUNTS (Drop Access re-read, 22 November 2026). "Sell 8 freezers per week" is "8 freezers per week", and so
+ * is any doing word before the number: "Activate 4 Drop Access points per week" read "Brian Otieno is aiming for 4 Activate 4 Drop Access
+ * points per week." because only a few doing words were known. The one word before the number goes, unless it says how big the number is
+ * ("over 5", "about 20") or is written in capitals ("KES 600,000").
+ */
 export function aThingToDoIsWhatItCounts(t: string): string {
-  return t.replace(/^(?:sell|open|close|sign|get|reach|hit|make|win|bring\s+in|find|add|do)\s+(?=\d|(?:one|two|three|four|five|six|seven|eight|nine|ten|twenty|thirty|forty|fifty)\b)/i, '');
+  const m = /^([A-Za-z][a-z]+)(?:\s+(?:in|on|up|out))?\s+(?=\d|(?:one|two|three|four|five|six|seven|eight|nine|ten|twenty|thirty|forty|fifty)\b)/.exec(t);
+  if (!m || /^(?:over|under|about|around|up|at|only|below|above|nearly|almost|exactly|roughly|some|least|most|by|in|on|for|to)$/i.test(m[1])) return t;
+  return t.slice(m[0].length);
 }
 
 export function anAimAsASentence(name: string, who: WhoAnAimIsAbout): string {

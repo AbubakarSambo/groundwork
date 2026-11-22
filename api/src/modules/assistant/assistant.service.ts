@@ -299,6 +299,8 @@ function aSourceInPlainWords(sys: string, _stale: boolean): string {
 import { isAQuestion, answerFromTheDocuments, NO_DOCUMENTS_TO_READ } from './a-question-is-answered-from-the-documents';
 import { theDirectReportsOf } from '../suites/who-may-decide';
 import { openTheLeadsCheckIn } from '../grounds/check-in-yourself';
+import { GOAL_CHANGE_KIND, theGoalChangeSheSaid, theChangeFrom, theChangeSaidBack, theChangeMade, THE_GOAL_LEFT_AS_IT_WAS, type ACheckInSheRuns } from './a-goal-changed-in-ask';
+import { putTheChangeOnTheGoal } from '../grounds/a-goal-changed-by-its-lead';
 /** "I want to do my own check-in", "check in myself", "my check-in now". */
 const A_WISH_TO_CHECK_IN_MYSELF = /\b(?:(?:do|start|begin|answer)\s+my\s+(?:own\s+)?check[\s-]?in|check[\s-]?in\s+(?:myself|for\s+myself)|my\s+own\s+check[\s-]?in)\b/i;
 /** A how-to answer's offer to do it, waiting for the yes (Batch S, S5). */
@@ -690,6 +692,11 @@ export class AssistantService {
     if (who) {
       const continued = await this.continueTheDraft(organizationId, who, message, async () => (await this.placed(organizationId, message)).lane !== 'unplaced');
       if (continued) return continued;
+    }
+    /* A goal its lead changes by saying so in Ask is said back for her yes, as in her check-in, never filed as words kept in Ask (a-goal-changed-in-ask.ts). */
+    if (userId && who && !forceAddContext && (understood ? !['question', 'greeting', 'thanks', 'agreement', 'finished', 'help', 'how_to'].includes(understood.kind) : !isAQuestion(message))) {
+      const proposed = await this.aGoalChangeSaidBack(organizationId, who, userId, groundId ?? null, message).catch(() => null);
+      if (proposed) return proposed;
     }
 
     /*
@@ -3632,6 +3639,9 @@ export class AssistantService {
     }
     if (parked.kind === ROLE_INTERVIEW_CONFIRM_KIND) {
       return this.resolveParkedInterviewConfirm(organizationId, who, parked, decision);
+    }
+    if (parked.kind === GOAL_CHANGE_KIND) {
+      return this.resolveParkedGoalChange(organizationId, who, parked, decision);
     }
 
     if (decision === 'decline') {
@@ -6965,6 +6975,58 @@ export class AssistantService {
    * yes, because what a person could change when the question was asked is not what they may change
    * now: the commitment may have closed, or the check-in may have passed to somebody else.
    */
+  /** The running check-ins this person runs, with their goals on record and their people: what a goal change in Ask is read against. */
+  private async theCheckInsSheRuns(organizationId: string, userId: string, groundId: string | null): Promise<(ACheckInSheRuns & { leadParticipantId: string | null })[]> {
+    const rows: any[] = await Promise.resolve((this.prisma as any).ground?.findMany?.({
+      where: { organizationId, initiatorId: userId, status: { notIn: ['RESOLVED', 'CLOSED'] }, ...(groundId ? { id: groundId } : {}) },
+      select: {
+        id: true, label: true,
+        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true } },
+        participants: { select: { id: true, partyType: true, nameGiven: true, user: { select: { id: true, firstName: true } } } },
+      },
+      orderBy: { createdAt: 'desc' }, take: 5,
+    })).catch(() => []) ?? [];
+    return rows.map((g) => ({
+      id: g.id, label: g.label ?? 'your team', goals: g.objectives ?? [],
+      people: (g.participants ?? []).map((p: any) => ({ id: p.id, firstName: (p.user?.firstName ?? p.nameGiven ?? '').trim() || null })),
+      leadParticipantId: (g.participants ?? []).find((p: any) => p.user?.id === userId)?.id ?? null,
+    }));
+  }
+
+  /** A goal change said in Ask: read against the goals on record, said back, and kept waiting for her yes. Null where the message changes no goal. */
+  private async aGoalChangeSaidBack(organizationId: string, who: string, userId: string, groundId: string | null, message: string): Promise<Reply | null> {
+    const grounds = await this.theCheckInsSheRuns(organizationId, userId, groundId);
+    if (!grounds.some((g) => g.goals.length && g.leadParticipantId)) return null;
+    const found = await theGoalChangeSheSaid(this.engine as any, this.prompts as any, message, grounds.filter((g) => g.leadParticipantId));
+    if (!found) return null;
+    const summary = theChangeSaidBack(found);
+    const proposal = await this.prisma.assistantProposal.create({
+      data: { organizationId, personExternalId: who, kind: GOAL_CHANGE_KIND, state: 'PARKED', summary, payload: { groundId: found.ground.id, said: found.said, message: message.slice(0, 2000) } as never },
+    });
+    return { lane: 'set_an_objective', composedBy: 'rules', blocks: [text(summary), { type: 'proposal', proposalId: proposal.id, summary }] };
+  }
+
+  /** Her yes to a goal change said in Ask: checked again against the goals on record now, and made by the one writer of goal changes. */
+  private async resolveParkedGoalChange(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    const settle = (state: 'ACCEPTED' | 'DECLINED' | 'DROPPED') => this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state, resolvedAt: new Date() } }).catch(() => undefined);
+    if (decision === 'decline') {
+      await settle('DECLINED');
+      return rules('set_an_objective', text(THE_GOAL_LEFT_AS_IT_WAS));
+    }
+    const p = parked.payload as { groundId: string; said: any; message: string };
+    const userId = await this.signedInAs(organizationId, who);
+    const ground = userId ? (await this.theCheckInsSheRuns(organizationId, userId, p.groundId))[0] : null;
+    const found = ground?.leadParticipantId ? theChangeFrom({ changes: true, ...p.said }, p.message, [ground]) : null;
+    if (!ground?.leadParticipantId || !found) {
+      await settle('DROPPED');
+      return rules('set_an_objective', text('The goals on that check-in have changed since you said this, so I have not changed anything. Say the change again and I will say it back.'));
+    }
+    const session: any = await Promise.resolve((this.prisma as any).checkIn?.findFirst?.({ where: { groundId: ground.id }, orderBy: { sessionNumber: 'desc' }, select: { sessionNumber: true } })).catch(() => null);
+    await putTheChangeOnTheGoal(this.prisma, ground.id, found.change, { participantId: ground.leadParticipantId, said: p.message, sessionNumber: session?.sessionNumber ?? null }, ground.people);
+    await settle('ACCEPTED');
+    return rules('set_an_objective', text(theChangeMade(ground.label, found.change.name)));
+  }
+
   private async resolveParkedChange(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     const lane: Lane = parked.kind === 'move_deadline' ? 'move_a_deadline' : parked.kind === 'add_commitment' ? 'add_a_commitment' : 'tick_off_a_to_do';
     const settle = (state: 'ACCEPTED' | 'DECLINED' | 'DROPPED') =>

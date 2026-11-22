@@ -106,4 +106,12 @@ describe('HowItIsGoing: "in the way", since a fixed day rather than a count that
     }} />)
     expect(screen.getByText('1 thing is in the way, the oldest being the price list, waiting 2 days.')).toBeTruthy()
   })
+  it('says what stops the team\'s work instead of "Nothing is in the way." when a goal changed because the work stopped (Drop Access, 22 November)', () => {
+    render(<HowItIsGoing glance={{
+      progress: { roundsDone: 1, roundsPlanned: 12, answeredThisRound: 0, ofPeople: 3 },
+      inTheWay: { count: 0, oldest: null, daysWaiting: null, stopped: 'On 22 November the goal changed, because freezers are out of stock.' },
+    }} />)
+    expect(screen.getByText('On 22 November the goal changed, because freezers are out of stock.')).toBeTruthy()
+    expect(screen.queryByText('Nothing is in the way.')).toBeNull()
+  })
 })

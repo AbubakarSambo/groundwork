@@ -1951,6 +1951,16 @@ export const READ_THE_AIMS = `   One item per aim, keeping what they said it is 
    are genuinely different stay as two.
 
    Only what they actually said it is for. If they never said, return an empty list.
+
+   A GOAL THE LEAD CHANGED IS THAT GOAL, NOT A NEW ONE. Where THE GOALS ON RECORD are listed, the lead can
+   change them: "freezers are out of stock, so the goal this week is a waitlist of 50 names". When she
+   changes a goal and says yes once Groundwork has said the change back (or asks for it plainly and agrees
+   when it is put to her), the new aim carries:
+   - replaces: the ids of every goal on record it takes the place of. Ten freezers a week for each of two
+     people is two ids, both replaced by the one waitlist.
+   - because: why it changed, in her words, as one plain sentence ("Freezers are out of stock until next month.").
+   - stopsTheWork: true where that reason stops the work itself (a stock-out, a closed road, a broken machine).
+   Leave replaces out for an aim that sits beside the goals on record, and for a change she has not agreed to.
 `;
 
 export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING this check-in, capture two things. What the check-in as a whole is aiming at is read by the conversation's assessment, not here.
@@ -3746,7 +3756,7 @@ export interface PromptContext {
    * against that, which is how a person could be pressed for specifics about the wrong thing - and
    * why a report could read somebody against a number nobody had shown either of them.
    */
-  objectives?: { name: string; target: number | null }[];
+  objectives?: { name: string; target: number | null; changed?: string | null }[];
   priorContext?: string | null;
   priorSession?: string | null;
   resolutionState?: string | null;
@@ -4403,12 +4413,21 @@ export function buildIntakeBlock(ctx: PromptContext): string {
           (ctx.objectives ?? [])
             .map((o) => {
               const name = (o.name ?? '').trim();
-              if (/[.!?]$/.test(name)) return o.target != null && !/\d/.test(name) ? `${name} The number is ${o.target.toLocaleString('en-US')}.` : name;
-              return o.target != null ? `${name} (target ${o.target.toLocaleString('en-US')})` : name;
+              const changed = o.changed ? ` ${o.changed}` : '';
+              if (/[.!?]$/.test(name)) return (o.target != null && !/\d/.test(name) ? `${name} The number is ${o.target.toLocaleString('en-US')}.` : name) + changed;
+              return (o.target != null ? `${name} (target ${o.target.toLocaleString('en-US')})` : name) + changed;
             })
             .join((ctx.objectives ?? []).some((o) => /[.!?]$/.test((o.name ?? '').trim())) ? ' ' : '; ')
         : 'none stated'
     }`,
+    /* A goal its lead changed (a-goal-changed-by-its-lead): the team is told and asked about it, in the conversation's own words. */
+    ...((ctx.objectives ?? []).some((o) => o.changed) && ctx.partyType !== PartyType.INITIATOR
+      ? ['A GOAL CHANGED: a goal above says when and why it changed. The person you are talking to may not know yet. Early on, tell them the new goal and why in one plain sentence, then ask how they are doing on it and how they are getting there. Their numbers against the old goal are not asked for any more.']
+      : []),
+    /* Only the lead changes a goal by saying so, and only with her yes (a-goal-changed-by-its-lead). */
+    ...(ctx.partyType === PartyType.INITIATOR && (ctx.objectives ?? []).length
+      ? ['CHANGING A GOAL: the person you are talking to runs this check-in and can change a goal above by saying so, for example because something stops the work. When they do, say back plainly what will change, from which goal to which goal and why, and end that message by asking whether that is right. Change nothing until they say yes. Once they do, tell them it is changed and that each person will be asked about the new goal in their next check-in.']
+      : []),
     /**
      * WHAT THIS PERSON IS WORKING TO, AND WHETHER THEY HAVE EVER SEEN IT.
      *

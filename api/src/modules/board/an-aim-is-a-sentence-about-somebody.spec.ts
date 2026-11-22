@@ -1,7 +1,7 @@
 import { PartyType } from '@prisma/client';
 import { boardAs, person } from './the-switchboards-sections-harness';
 import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
-import { theNumbersPeopleCanRead, aboutTheSpeaker } from './an-aim-is-a-sentence-about-somebody';
+import { theNumbersPeopleCanRead, aboutTheSpeaker, anAimAsASentence, aThingToDoIsWhatItCounts } from './an-aim-is-a-sentence-about-somebody';
 
 /**
  * THE NAME OF EVERY AIM, AS EACH PERSON READS IT ON THE BOARD (review of 1 October 2026, row 113).
@@ -185,5 +185,18 @@ describe('a name with no verb, and "my" in the lead\'s own line, as each reader 
       'The team is keeping spending on field visits to no more than 180,000.',
       'Bisi Adeyemi needs the team to stop missing documents.',
     ]);
+  });
+});
+
+/* DROP ACCESS RE-READ, 22 NOVEMBER 2026: the number was said twice and the doing word kept, "Brian Otieno is aiming for 4 Activate 4 Drop Access points per week." */
+describe('a thing to do is what it counts, whatever the doing word', () => {
+  it('reads "Activate 4 Drop Access points per week" as the 4 points, said once', () => {
+    expect(anAimAsASentence('Activate 4 Drop Access points per week', { speaker: 'Wairimu', holder: 'Brian Otieno', target: 4 })).toBe('Brian Otieno is aiming for 4 Drop Access points per week.');
+    expect(anAimAsASentence('Sell 8 freezers per week', { speaker: 'Wairimu', holder: 'Brian Otieno', target: 8 })).toBe('Brian Otieno is aiming for 8 freezers per week.');
+  });
+  it('keeps a word that says how big the number is, and a currency in capitals', () => {
+    expect(aThingToDoIsWhatItCounts('Over 5 complaints')).toBe('Over 5 complaints');
+    expect(aThingToDoIsWhatItCounts('KES 600,000 in sales')).toBe('KES 600,000 in sales');
+    expect(aThingToDoIsWhatItCounts('Bring in 5 new clients')).toBe('5 new clients');
   });
 });

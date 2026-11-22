@@ -1,4 +1,5 @@
 import { theQuietHoursNow } from '../../common/the-clock';
+import { theGoalChangesOn, theChangeThatMadeThisGoal, theChangeAsASentence } from '../grounds/a-goal-changed-by-its-lead';
 import { aRoundIsCounted, sessionsAPauseOpened } from '../grounds/a-round-that-could-be-answered';
 import { whenTheseOrganisationsPaused, thePausesThatAreOver } from '../billing/the-trial-grace';
 import { thePlannedSessionsOf } from '../grounds/this-sessions-count';
@@ -1336,6 +1337,17 @@ export class BoardService {
       };
     }
 
+    /*
+     * WHAT STOPS THE TEAM'S WORK, SAID AT THE TOP OF THE BOARD (Drop Access, 22 November). "Freezers are out of stock" is not one
+     * person's wait on another, so no wait row holds it, and the glance read "Nothing is in the way." over a team whose goal it had
+     * just changed. The newest goal change whose reason stops the work is said here, with its day and what it changed, from the one
+     * log of goal changes (a-goal-changed-by-its-lead), to whoever reads the board's goals.
+     */
+    if (out.howItIsGoing?.glance?.inTheWay) {
+      const stopped = theGoalChangesOn((ground as any).groundAuditLog).filter((c) => c.stopsTheWork && c.toName).pop();
+      if (stopped) out.howItIsGoing.glance.inTheWay = { ...out.howItIsGoing.glance.inTheWay, stopped: theChangeAsASentence(stopped, (ground.participants as any[]).map((p) => String(p?.user?.firstName ?? p?.nameGiven ?? '').trim()).filter(Boolean), runsThisGround) };
+    }
+
     if (has('phaseSpine')) {
       /*
        * ONE COUNT, FROM THE BOARD'S OWN CLOCK (request 107 e). The header and every session's line are
@@ -1540,6 +1552,8 @@ export class BoardService {
           .filter((x) => (theyRunIt || x.participantId === me?.id) && (ground.participants as any[]).some((p) => p.id === x.participantId))
           .map((x) => ({ participantId: x.participantId, name: nameOf(x.participantId), count: x.count, said: x.said, atSession: x.sessionNumber })),
         delta: theFirstCount(o) ? 0 : o.count - o.prevCount,
+        /* When and why its lead changed this goal, from the one log of changes, to whoever may read the goal (a-goal-changed-by-its-lead). */
+        changed: (() => { const c = theChangeThatMadeThisGoal(theGoalChangesOn((ground as any).groundAuditLog), o.id); return c ? theChangeAsASentence(c, (ground.participants as any[]).map((p) => String(p?.user?.firstName ?? p?.nameGiven ?? '').trim()).filter(Boolean), runsThisGround) : null; })(),
         isNew: o.addedAtSession != null && o.addedAtSession >= maxSession,
         /* The model's suggested count is not a source of a figure any more (batch 2, group 2; staging S1): none is served. A figure
            is the record's, and the line it came from is served only where it landed (suggestedSaid with no suggestedCount). */

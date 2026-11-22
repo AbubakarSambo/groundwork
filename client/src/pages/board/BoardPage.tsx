@@ -2465,6 +2465,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         </button>
                       </FlexRow>
                     )}
+                    {/* When and why its lead changed this goal, said by the engine (a-goal-changed-by-its-lead). */}
+                    {(o as any).changed && <div className="gwui-fs-13 gwui-ink-sub gwui-mt-6">{(o as any).changed}</div>}
                     {/* A new target means nothing until people have checked in against it. */}
                     {o.isNew && o.askedOf && (
                       <div className="gwui-fs-13 gwui-ink-sub gwui-mt-6">

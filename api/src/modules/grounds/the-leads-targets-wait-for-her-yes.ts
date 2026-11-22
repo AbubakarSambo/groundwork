@@ -1,4 +1,5 @@
 import { flatten, numbersIn } from './a-plan-is-many-proposals';
+import { aThingToDoIsWhatItCounts } from '../board/an-aim-is-a-sentence-about-somebody';
 
 /**
  * THE TARGETS FROM THE LEAD'S OWN WORDS WAIT FOR HER YES (Hafsah, 18 October 2026: "Targets: at the end of setup, one confirm card
@@ -47,11 +48,14 @@ const lower = (s: string) => (/^[A-Z][a-z]/.test(s) ? s.charAt(0).toLowerCase() 
 export function theTargetAsALine(t: ATargetToHold): string {
   const name = t.name.trim().replace(/[.\s]+$/, '');
   const whose = t.personName ? `${t.personName}’s` : 'The team’s';
+  /* "Sell 8 freezers per week" is "8 freezers per week", read the way the board reads it: the card read "Brian Otieno’s target is 8 sell 8
+     freezers per week." (Drop Access re-read, 22 November). */
+  const thing = aThingToDoIsWhatItCounts(name);
   /* A name the extraction wrote as a sentence ("Kevin sells 40 water dispensers by 30 October") is kept as she would read it. */
-  const isASentence = /^[A-Z][a-z]/.test(name) && name.split(/\s+/).length > 5
+  const isASentence = thing === name && /^[A-Z][a-z]/.test(name) && name.split(/\s+/).length > 5
     && (typeof t.target !== 'number' || new RegExp(`\\s${t.target}\\b`).test(name));
   if (isASentence) return typeof t.target === 'number' ? `${ended(name)} The number is ${t.target.toLocaleString('en-GB')}.` : ended(name);
-  if (typeof t.target !== 'number') return `${whose} target is ${lower(name)}.`;
-  const startsWithTheNumber = new RegExp(`^${t.target}\\b`).test(name);
-  return startsWithTheNumber ? `${whose} target is ${lower(name)}.` : `${whose} target is ${t.target.toLocaleString('en-GB')} ${lower(name)}.`;
+  if (typeof t.target !== 'number') return `${whose} target is ${lower(thing)}.`;
+  const startsWithTheNumber = new RegExp(`^${t.target}\\b`).test(thing);
+  return startsWithTheNumber ? `${whose} target is ${lower(thing)}.` : `${whose} target is ${t.target.toLocaleString('en-GB')} ${lower(thing)}.`;
 }
