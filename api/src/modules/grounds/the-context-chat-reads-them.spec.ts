@@ -70,7 +70,7 @@ describe('and it is wired', () => {
 
   it('reads the documents rather than counting them', () => {
     expect(SRC).toContain('const openDocuments = await this.prisma.groundDocument.findMany(');
-    expect(SRC).toContain('select: { fileName: true, content: true, uploaderNote: true }');
+    expect(SRC).toContain('select: { fileName: true, content: true, uploaderNote: true, ...WITH_ITS_READING }');
   });
 
   it('bounds them the way the check-in does, and says what did not fit', () => {

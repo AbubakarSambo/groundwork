@@ -58,8 +58,7 @@ export interface WhatADocumentHolds {
   dates: { what: string; when: string }[];
 }
 
-/** How much of a document is read for this. A sheet of targets is small; a strategy deck is not this. */
-export const MOST_OF_A_DOCUMENT_WE_READ = 60_000;
+/* How much of a document is read for this is one read, the same as every reader (what-a-document-says: ONE_READ). */
 
 export const WHAT_A_DOCUMENT_HOLDS_PROMPT = `You are reading one document somebody attached to a work check-in. Find only what the check-in can hold: numbers people are working to, numbers the whole group is held to, and dates.
 

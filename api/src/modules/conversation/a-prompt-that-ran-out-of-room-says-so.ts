@@ -20,6 +20,7 @@
  */
 
 import { passagesThatMatter } from '../knowledge/passages-that-matter';
+import { ONE_READ, theWordsToRead, notReadWholeYet } from '../documents/what-a-document-says';
 
 export interface Attached {
   fileName: string;
@@ -31,15 +32,17 @@ export interface Attached {
    * unattributed exactly as every document used to.
    */
   provenance?: string | null;
+  /** The reading of the whole of a long document, when there is one (what-a-document-says). Read in its place. */
+  synthesis?: string | null;
 }
 
 /**
- * HOW MUCH DOCUMENT GOES IN, IN CHARACTERS.
+ * HOW MUCH DOCUMENT GOES IN, IN CHARACTERS: one read, the same number every reader of a document uses (what-a-document-says).
  *
  * Deliberately generous - the great majority of check-ins never come near it - and deliberately
  * finite, because "as much as arrives" is not a limit, it is the absence of one.
  */
-export const ROOM_FOR_DOCUMENTS = 60_000;
+export const ROOM_FOR_DOCUMENTS = ONE_READ;
 
 /** Below this a document is not worth including at all: a fragment reads as the whole thing. */
 export const TOO_SHORT_TO_BOTHER = 400;
@@ -68,7 +71,9 @@ export function whatFitsInTheRoom(docs: Attached[], room = ROOM_FOR_DOCUMENTS, a
   const leftOut: string[] = [];
   let spent = 0;
 
-  for (const d of docs) {
+  for (const one of docs) {
+    /* A long document goes in as the reading of the whole of it, which is then fitted like any other text. */
+    const d = { ...one, content: theWordsToRead(one) };
     const asked = d.uploaderNote?.trim()
       ? `They asked for this to be read for: ${d.uploaderNote.trim()}\n`
       : '';
@@ -107,7 +112,7 @@ export function whatFitsInTheRoom(docs: Attached[], room = ROOM_FOR_DOCUMENTS, a
     const percent = Math.round((kept.length / d.content.length) * 100);
     const how = chosen.byMatch
       ? `You have ${chosen.kept} of its ${chosen.of} passages, the ones that share words with what is being discussed`
-      : 'You have the first part of it';
+      : notReadWholeYet(one) ? 'You have the first part of it, because the rest has not been read yet' : 'You have the first part of it';
     parts.push(
       `${head}${quotedAsData(kept)}\n[This document is longer than this. ${how} - about ${percent} percent - and not the rest.`
       + ' If what you need is not here, say so and ask them for the part you need rather than guessing at it.]',

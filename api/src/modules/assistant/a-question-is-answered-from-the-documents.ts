@@ -15,6 +15,7 @@ import { quotedAsData } from '../conversation/a-prompt-that-ran-out-of-room-says
  * those documents, written the same way, so a number and its unit reach the person exactly as the document wrote
  * them ("KES 12,400", "16%", "KES 466,450.00"). An answer that carries a figure no document holds is not said.
  */
+import { ONE_READ, asMuchAsFits, theWordsToRead, WITH_ITS_READING } from '../documents/what-a-document-says';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { aDaySaidInFull } from '../board/a-day-said-in-full';
 import { howOftenItRuns } from '../grounds/the-check-ins-own-schedule';
@@ -98,8 +99,6 @@ const couldNotFindIt = (whyNot: unknown): string => {
 export const askCouldNotFindIt = (said: string): boolean => said === NO_DOCUMENTS_TO_READ || said.endsWith(WHAT_ASK_CAN_DO);
 export const NO_DOCUMENTS_TO_READ = 'There are no documents here that you can open yet, so I cannot answer that from them. Add one with Choose a file and ask me again.';
 
-const MOST_WE_READ_FROM_ONE = 12_000;
-const MOST_WE_READ_IN_ALL = 40_000;
 
 /* The figures in a text as digits, so "KES 496,000" and "496,000" are the same figure and "16%" is 16. */
 const figuresIn = (t: string): string[] => (String(t ?? '').match(/\d[\d,]*(?:\.\d+)?/g) ?? []).map((d) => d.replace(/,/g, '').replace(/\.0+$/, ''));
@@ -137,11 +136,13 @@ export async function theDocumentsTheyMayOpen(
     const docs = ((await prisma.groundDocument?.findMany?.({
       where: documentWhereFor(g.id, reader, contextEnabled),
       orderBy: { createdAt: 'desc' },
-      select: { fileName: true, content: true, isConversation: true },
-    }).catch?.(() => [])) ?? []) as { fileName: string; content: string | null; isConversation?: boolean }[];
+      select: { fileName: true, content: true, isConversation: true, ...WITH_ITS_READING },
+    }).catch?.(() => [])) ?? []) as { fileName: string; content: string | null; synthesis?: string | null; isConversation?: boolean }[];
     for (const d of docs) {
       if (d.isConversation || !(d.content ?? '').trim()) continue;
-      out.push({ fileName: d.fileName, content: String(d.content).slice(0, MOST_WE_READ_FROM_ONE) });
+      /* The whole of it, or the reading of the whole of a long one; a quotation from a reading is checked against the document's own words. */
+      const words = theWordsToRead(d);
+      out.push({ fileName: d.fileName, content: words, ...(words !== d.content ? { mayBeQuoted: [String(d.content)] } : {}) });
     }
   }
   return out;
@@ -275,7 +276,7 @@ export async function theRecordTheyMayRead(
     const sales = isASalesKind(g.kindOfWork) ? await theSalesOnRecord(prisma, g, people, nameOf, isLead, now).catch(() => [] as string[]) : [];
     const goals = await theGoalsOnRecord(prisma, g, people, nameOf, isLead).catch(() => [] as string[]);
     const content = [...sales, ...goals, ...lines].join('\n');
-    out.push({ fileName: `the record of ${g.label}`, content: content.slice(0, MOST_WE_READ_FROM_ONE), mayBeQuoted: facts.filter((f) => f.saidWordForWord).map((f) => f.words) });
+    out.push({ fileName: `the record of ${g.label}`, content, mayBeQuoted: facts.filter((f) => f.saidWordForWord).map((f) => f.words) });
   }
   /* A SENIOR PERSON'S OWN YEAR (Batch D, R2): the record her year-end draft is built from, for her and for whoever acts for her, and for nobody else. */
   out.push(...(await herYearEndRecordForAsk(prisma, { organizationId: input.organizationId, userId: input.userId, now, question: input.question }).catch(() => [])));
@@ -399,13 +400,14 @@ export async function answerFromTheDocuments(
   const theirPeople = await thePeopleTheAskerIsResponsibleFor(deps.prisma, input).catch((): ThePeopleTheyLead => ({ names: [], checkInsTheyRun: [] }));
   const theirs = theirPeople.names;
   const responsibleFor: ADocumentToAnswerFrom = { fileName: 'THE PEOPLE YOU ARE RESPONSIBLE FOR', content: sayThePeopleTheyLead(theirPeople) };
-  let room = MOST_WE_READ_IN_ALL;
+  let room = ONE_READ;
   const given: ADocumentToAnswerFrom[] = [responsibleFor];
-  /* The documents that share the question's words go first, so a short question is not answered from whatever was added last (A6). */
+  /* The documents that share the question's words go first, so a short question is not answered from whatever was added last (A6). One
+     read is shared by all of them; what does not fit is said to be left out, never cut silently (what-a-document-says). */
   for (const d of theMostLikelyFirst(documents, input.question)) {
-    if (room <= 0) break;
-    given.push({ ...d, content: d.content.slice(0, room) });
-    room -= d.content.length;
+    const content = room >= 400 ? asMuchAsFits(d.content, room) : `[${d.fileName} did not fit in this read, so nothing of it is here. If the answer may be in it, say that you could not read all of it.]`;
+    given.push({ ...d, content, ...(room < 400 ? { mayBeQuoted: [] } : {}) });
+    room -= content.length;
   }
   const ask = (also = '') => deps.engine.extract(
     ANSWER_FROM_THE_DOCUMENTS_PROMPT,

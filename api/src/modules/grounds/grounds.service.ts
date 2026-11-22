@@ -59,6 +59,7 @@ import { ModuleRef } from '@nestjs/core';
 import { seatsIn } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
 import { whatTheDocumentsSay, stillNeedsSomethingInWriting } from './what-the-documents-say';
+import { WITH_ITS_READING } from '../documents/what-a-document-says';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from '../conversation/a-prompt-that-ran-out-of-room-says-so';
 import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS } from '../whatsapp/a-connection-that-works';
 import { daysRemaining, deadlineOf, clockStartsAt, theLastDayOf } from './when-the-clock-starts';
@@ -3423,7 +3424,7 @@ export class GroundsService {
         groundId,
         OR: [{ visibility: 'OPEN' }, { participant: { userId: requestingUserId } }],
       },
-      select: { fileName: true, content: true, uploaderNote: true },
+      select: { fileName: true, content: true, uploaderNote: true, ...WITH_ITS_READING },
       orderBy: { createdAt: 'desc' },
     }).catch(() => [] as { fileName: string; content: string; uploaderNote: string | null }[]);
 

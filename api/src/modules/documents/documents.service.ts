@@ -3,7 +3,7 @@ import { theNumberAsWritten, theSameWords } from '../grounds/a-dump-is-many-thin
 import { theFigureAsWritten } from './a-number-keeps-its-unit';
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { PDFParse } = require('pdf-parse') as { PDFParse: new (opts: { data: Buffer }) => { getText: () => Promise<{ text: string }>; destroy: () => Promise<void> } };
+const { PDFParse } = require('pdf-parse') as { PDFParse: new (opts: { data: Buffer }) => { getText: () => Promise<{ text: string; total?: number }>; destroy: () => Promise<void> } };
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const mammoth = require('mammoth') as { extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }> };
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -32,9 +32,11 @@ import {
 } from '../alignment/the-agreement-arrives-as-a-document';
 import { assertInviteLinkStillOpens } from '../participants/an-invite-link-still-opens';
 import {
-  WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, MOST_OF_A_DOCUMENT_WE_READ,
+  WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA,
   theContextWeHave, theDocumentLine, BANK_DETAILS_LEFT_OUT, whoThisNameIs, theNameWeUseFor, aSentence, type WhatADocumentHolds, type WhatLanded,
 } from './what-a-document-holds';
+import { whatADocumentSays, notReadWholeYet, readTheWholeOfIt, whileItIsRead, inTurn, type ADocumentsText } from './what-a-document-says';
+import { MOST_A_FILE_MAY_WEIGH, A_FILE_TOO_LARGE } from '../../common/the-most-a-file-may-weigh';
 
 const ALLOWED_MIME = [
   'application/pdf',
@@ -65,7 +67,8 @@ const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingm
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'] as const;
-const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+/** Pages of a scan read by sight in one call: what one answer holds whole, with room to spare. */
+const PAGES_READ_BY_SIGHT_AT_ONCE = 8;
 
 /**
  * WHAT A BROWSER CALLS A FILE IS NOT WHAT THE FILE IS.
@@ -267,7 +270,9 @@ export class DocumentsService {
     if (!file?.buffer?.length) throw new BadRequestException('Choose a file to add.');
     const text = (await this.extractContent(file)).trim();
     if (!text) throw new BadRequestException('Nothing could be read from that file. Paste the text instead.');
-    return { name: file.originalname, text: text.slice(0, 40_000) };
+    /* A long file is read whole here, while they wait, because nothing is kept to read it later (what-a-document-says). */
+    const whole = await readTheWholeOfIt(this.anthropic, text, file.originalname).catch(() => null);
+    return { name: file.originalname, text: whatADocumentSays({ content: text, synthesis: whole }) };
   }
 
   /**
@@ -312,9 +317,10 @@ export class DocumentsService {
        * was not a PDF threw "Invalid PDF structure" out of the parser, and the person read "Something went wrong on our side".
        */
       let text: string;
+      let pages = 0;
       try {
         const parser = new PDFParse({ data: file.buffer });
-        text = await parser.getText().then((r) => r.text?.trim() ?? '').finally(() => parser.destroy());
+        text = await parser.getText().then((r) => { pages = Number(r.total ?? 0); return r.text?.trim() ?? ''; }).finally(() => parser.destroy());
       } catch {
         throw new BadRequestException(A_PDF_WE_CANNOT_OPEN);
       }
@@ -323,7 +329,7 @@ export class DocumentsService {
          vision fallback never ran. Substance, not presence, decides. */
       if (this.hasSubstance(text)) return text;
       this.lastPdfWasAScan = true;
-      return this.mediaToText(file.buffer, 'application/pdf', file.originalname);
+      return this.mediaToText(file.buffer, 'application/pdf', file.originalname, pages);
     }
     if (file.mimetype === DOCX_MIME) {
       const result = await mammoth.extractRawText({ buffer: file.buffer });
@@ -357,8 +363,9 @@ export class DocumentsService {
    * A document with no terms in it is the common case even here - a covering email, a schedule of
    * figures, a signed page. `theTermsInIt` returns nothing and nothing is written.
    */
-  private async readTheAgreementInIt(groundId: string, content: string) {
-    if (!content?.trim()) return;
+  private async readTheAgreementInIt(groundId: string, doc: ADocumentsText) {
+    const content = String(doc.content ?? '');
+    if (!content.trim()) return;
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { scenario: true, organizationId: true, label: true },
@@ -367,7 +374,7 @@ export class DocumentsService {
 
     const said = await this.anthropic.extract<{ terms?: unknown }>(
       TERMS_IN_A_DOCUMENT_PROMPT,
-      [{ role: 'user', content: content.slice(0, 60_000) }],
+      [{ role: 'user', content: whatADocumentSays(doc) }],
       TERMS_IN_A_DOCUMENT_SCHEMA as any,
     );
     const terms = theTermsInIt(said ?? null, content);
@@ -379,12 +386,12 @@ export class DocumentsService {
     this.logger?.log?.(`Read ${out.wrote} term(s) from a document on ${groundId}${out.why ? ` (${out.why})` : ''}.`);
   }
 
-  private async assessDocument(content: string, fileName: string): Promise<{ suggests: string[]; willDo: string[] } | null> {
+  private async assessDocument(content: string, fileName: string, synthesis: string | null = null): Promise<{ suggests: string[]; willDo: string[] } | null> {
     if (weCouldNotReadIt(content)) return null;
     try {
       const result = await this.anthropic.extract<{ suggests: string[]; willDo: string[] }>(
         ASSESSMENT_PROMPT,
-        [{ role: 'user', content: `Document: "${fileName}"\n\n${content.slice(0, 12000)}` }],
+        [{ role: 'user', content: `Document: "${fileName}"\n\n${whatADocumentSays({ content, synthesis })}` }],
         ASSESSMENT_TOOL,
       );
       if (!result?.suggests?.length) return null;
@@ -416,7 +423,7 @@ export class DocumentsService {
   /** What every upload refuses before reading: no file, too large, or a kind of file nothing here can open. */
   private refuseWhatCannotBeRead(file: Express.Multer.File): void {
     if (!file) throw new BadRequestException('No file came through, so choose a file and try again.');
-    if (file.size > MAX_BYTES) throw new BadRequestException('That file is larger than 10 MB, so choose a smaller one.');
+    if (file.size > MOST_A_FILE_MAY_WEIGH) throw new BadRequestException(A_FILE_TOO_LARGE);
     const browserWasNoHelp = UNHELPFUL_MIMES.includes(file.mimetype ?? '');
     const readableByName = browserWasNoHelp && looksLikeTextFromItsName(file.originalname);
     if (!ALLOWED_MIME.includes(file.mimetype) && !isPlainTextMime(file.mimetype) && !readableByName) {
@@ -539,8 +546,7 @@ export class DocumentsService {
      * Fire-and-forget, like the claims extraction below and for the same reason: a failure here
      * must never be why somebody could not attach a file.
      */
-    this.readTheAgreementInIt(groundId, content).catch((err) =>
-      this.logger?.warn?.(`Could not read the agreement in ${doc.fileName}: ${err?.message}`));
+    /* Read after the person is answered, from the whole of it: see readTheRestOfIt. */
 
     /*
      * AND WHATEVER NUMBERS IT HOLDS, READ ONCE, HERE, WHATEVER PAGE IT WAS ATTACHED ON. See
@@ -614,9 +620,21 @@ export class DocumentsService {
    */
   private async readTheRestOfIt(docId: string, groundId: string, participantId: string, content: string, fileName: string) {
     const startedAt = Date.now();
+    /*
+     * A LONG DOCUMENT IS READ WHOLE FIRST (22 November 2026), in parts, and kept once on the row, so the card, what it holds and the
+     * terms in it are read from all of it and every later reader reads the same reading (what-a-document-says). A document that fits one
+     * read skips this and costs nothing.
+     */
+    const synthesis = await whileItIsRead(docId, readTheWholeOfIt(this.anthropic, content, fileName)
+      .catch((err: any) => { this.logger?.warn?.(`Could not read the whole of ${fileName}: ${err?.message}`); return null; }));
+    if (synthesis) {
+      await this.prisma.groundDocument.update({ where: { id: docId }, data: { synthesis } as any })
+        .catch((err: any) => this.logger?.warn?.(`Could not keep the reading of ${fileName}: ${err?.message}`));
+    }
     const [assessment] = await Promise.all([
-      this.assessDocument(content, fileName).catch((err: any) => { this.logger?.warn?.(`Could not assess ${fileName}: ${err?.message}`); return null; }),
-      this.whatItHolds(docId, groundId, participantId, content, fileName).catch((err: any) => { this.logger?.warn?.(`Could not read what ${fileName} holds: ${err?.message}`); return null; }),
+      this.assessDocument(content, fileName, synthesis).catch((err: any) => { this.logger?.warn?.(`Could not assess ${fileName}: ${err?.message}`); return null; }),
+      this.whatItHolds(docId, groundId, participantId, content, fileName, synthesis).catch((err: any) => { this.logger?.warn?.(`Could not read what ${fileName} holds: ${err?.message}`); return null; }),
+      this.readTheAgreementInIt(groundId, { content, synthesis }).catch((err: any) => { this.logger?.warn?.(`Could not read the agreement in ${fileName}: ${err?.message}`); }),
     ]);
     if (assessment) {
       await this.prisma.groundDocument.update({ where: { id: docId }, data: { assessment: assessment as any } })
@@ -652,6 +670,7 @@ export class DocumentsService {
     participantId: string,
     content: string,
     fileName: string,
+    synthesis: string | null = null,
   ): Promise<WhatLanded | null> {
     if (!content?.trim()) return null;
     const ground = await this.prisma.ground.findUnique({
@@ -670,7 +689,7 @@ export class DocumentsService {
 
     const read = await this.anthropic.extract<WhatADocumentHolds>(
       WHAT_A_DOCUMENT_HOLDS_PROMPT,
-      [{ role: 'user', content: `Document: "${fileName}"\n\n${content.slice(0, MOST_OF_A_DOCUMENT_WE_READ)}` }],
+      [{ role: 'user', content: `Document: "${fileName}"\n\n${whatADocumentSays({ content, synthesis })}` }],
       WHAT_A_DOCUMENT_HOLDS_SCHEMA as any,
     );
     if (!read) return null;
@@ -752,8 +771,8 @@ export class DocumentsService {
       ...(Object.values(HIDDEN).some((h) => content.includes(h)) ? [{ ...BANK_DETAILS_LEFT_OUT }] : []),
       ...notTheirsToSet.map((name) => ({ what: `The numbers for ${name}`, why: 'Only the lead can set a number for someone else.' })),
       ...(notAMembersToSet ? [{ what: 'Targets for everyone in this check-in', why: 'Only the lead sets a target for everyone. The numbers stay in your file as your own evidence, in your words.' }] : []),
-      ...(content.length > MOST_OF_A_DOCUMENT_WE_READ
-        ? [{ what: 'The rest of the document', why: 'It is too long to read in full, so only the first part was read.' }]
+      ...(notReadWholeYet({ content, synthesis })
+        ? [{ what: 'The rest of the document', why: 'It is too long to read in one go and the rest of it could not be read, so only the first part was read.' }]
         : []),
     ];
     const read0: WhatLanded = {
@@ -874,7 +893,7 @@ export class DocumentsService {
        copies. Too short to judge is typed unless the text itself carries the tells. */
     if (content.trim().length < 400) return cheap ? 'generated' : 'typed';
     try {
-      const read = await this.anthropic.extract<{ origin: DocumentOrigin; because: string }>(DOCUMENT_ORIGIN_PROMPT, [{ role: 'user', content: content.slice(0, 6000) }], DOCUMENT_ORIGIN_SCHEMA);
+      const read = await this.anthropic.extract<{ origin: DocumentOrigin; because: string }>(DOCUMENT_ORIGIN_PROMPT, [{ role: 'user', content: whatADocumentSays({ content }) }], DOCUMENT_ORIGIN_SCHEMA);
       if (read?.origin === 'generated' || cheap) return 'generated';
       if (read?.origin === 'pasted') return 'pasted';
     } catch (err: any) {
@@ -892,12 +911,12 @@ export class DocumentsService {
   async checkDescription(docId: string): Promise<{ matches: boolean; reads: string } | null> {
     /* Not a card read: this feeds the check, not a list, so it selects the name under its own key rather than
        as `fileName`, which the-list-carries-what-was-read.spec treats as a card read. */
-    const doc = await this.prisma.groundDocument.findUnique({ where: { id: docId }, select: { id: true, content: true, uploaderNote: true, fileName: true, assessment: true } });
+    const doc = await this.prisma.groundDocument.findUnique({ where: { id: docId }, select: { id: true, content: true, synthesis: true, uploaderNote: true, fileName: true, assessment: true } as any }) as any;
     if (!doc?.uploaderNote?.trim() || weCouldNotReadIt(doc.content)) return null;
     try {
       const read = await this.anthropic.extract<{ matches: boolean; reads: string }>(
         DESCRIPTION_CHECK_PROMPT,
-        [{ role: 'user', content: `THEY SAID IT IS: ${doc.uploaderNote.trim()}\n\nFILE "${doc.fileName}":\n${doc.content.slice(0, 8000)}` }],
+        [{ role: 'user', content: `THEY SAID IT IS: ${doc.uploaderNote.trim()}\n\nFILE "${doc.fileName}":\n${whatADocumentSays(doc)}` }],
         DESCRIPTION_CHECK_SCHEMA,
       );
       if (!read || typeof read.matches !== 'boolean') return null;
@@ -913,15 +932,32 @@ export class DocumentsService {
     }
   }
 
-  private async mediaToText(buffer: Buffer, mimeType: string, fileName: string): Promise<string> {
+  /*
+   * A SCAN IS READ IN PAGE BATCHES (22 November 2026). A scanned PDF went to the model in one call, and one call's answer holds about ten
+   * to fifteen pages, so a long scan came back as its first pages and nothing said the rest was gone. A scan with more pages than one
+   * batch is read a batch of pages at a time, in order, and a batch that could not be read is named in the text rather than dropped.
+   */
+  private async mediaToText(buffer: Buffer, mimeType: string, fileName: string, pages = 0): Promise<string> {
     try {
       const base64 = buffer.toString('base64');
-      const text = await this.anthropic.respondWithMedia(
+      const read = (prompt: string) => this.anthropic.respondWithMedia(
         'You are extracting readable content from an uploaded file for a workplace record.',
-        'Transcribe all text visible in this file. For a chart, diagram, spreadsheet, or slide, describe the key data points, labels, and values. For a photo with no text or data, say so briefly. Do not summarize. Transcribe faithfully.',
+        prompt,
         { mimeType, base64 },
       );
-      return text || `[Attached: ${fileName} - contained no readable text or data.]`;
+      const TRANSCRIBE = 'Transcribe all text visible in this file. For a chart, diagram, spreadsheet, or slide, describe the key data points, labels, and values. For a photo with no text or data, say so briefly. Do not summarize. Transcribe faithfully.';
+      if (pages <= PAGES_READ_BY_SIGHT_AT_ONCE) {
+        const text = await read(TRANSCRIBE);
+        return text || `[Attached: ${fileName} - contained no readable text or data.]`;
+      }
+      const batches: [number, number][] = [];
+      for (let from = 1; from <= pages; from += PAGES_READ_BY_SIGHT_AT_ONCE) batches.push([from, Math.min(pages, from + PAGES_READ_BY_SIGHT_AT_ONCE - 1)]);
+      let read0 = 0;
+      const said = await inTurn(batches, 4, ([from, to]) => read(`${TRANSCRIBE}\n\nThis file has ${pages} pages. Transcribe pages ${from} to ${to} only, in order, and start each page with "-- Page N --".`)
+        .then((t) => { read0++; return t; })
+        .catch(() => `-- Pages ${from} to ${to} could not be read, so what they say is not here. --`));
+      if (!read0) return `[Attached: ${fileName} - could not be processed.]`;
+      return said.join('\n\n');
     } catch (err: any) {
       this.logger.warn(`Media extraction failed for ${fileName}: ${err?.message}`);
       return `[Attached: ${fileName} - could not be processed.]`;
@@ -984,7 +1020,7 @@ export class DocumentsService {
   /** Upload a document from a pre-auth participant identified by invite token. */
   async uploadByInviteToken(token: string, file: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file came through, so choose a file and try again.');
-    if (file.size > MAX_BYTES) throw new BadRequestException('That file is larger than 10 MB, so choose a smaller one.');
+    if (file.size > MOST_A_FILE_MAY_WEIGH) throw new BadRequestException(A_FILE_TOO_LARGE);
     if (!ALLOWED_MIME.includes(file.mimetype) && !isPlainTextMime(file.mimetype)) {
       throw new BadRequestException('Unsupported file type. Accepted: PDF, TXT, CSV, HTML, code/text, DOCX, XLSX, JPEG, PNG, HEIC.');
     }

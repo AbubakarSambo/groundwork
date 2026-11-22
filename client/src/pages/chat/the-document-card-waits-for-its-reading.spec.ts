@@ -18,6 +18,10 @@ describe('the document card waits for its reading', () => {
     expect(chat).toContain('documentsApi.list(gid)')
     expect(chat).toContain('found?.assessment?.suggests?.length')
   })
+  it('for up to five minutes, because a long document is read whole before its card is written', () => {
+    expect(chat).toContain('for (let i = 0; i < 100; i++) {')
+    expect(chat).toContain('await new Promise((r) => setTimeout(r, 3000))')
+  })
   it('and the card itself is still drawn for a message that carries it', () => {
     expect(chat).toContain('m.docAssessment ? (')
     expect(chat).toContain('<AssessmentCard')
