@@ -51,7 +51,7 @@ describe('reading the answer', () => {
 describe('the flow', () => {
   const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   it('the service reads through the one reader and the client keeps the card on a null answer', () => {
-    expect(strip(readFileSync(join(__dirname, 'entry.service.ts'), 'utf8'))).toMatch(/readTheClassification\(notAReplyToAnybody\)/);
+    expect(strip(readFileSync(join(__dirname, 'entry.service.ts'), 'utf8'))).toMatch(/readTheSituationAndTheKind\(this\.anthropic, description, mode\)/); /* Changed 22 November 2026: the one reading, shared by every path. */
     const page = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'client', 'src', 'pages', 'enter', 'EntryChatPage.tsx'), 'utf8'));
     expect(page).toMatch(/if \(sure\) setOnboardingSelections/);
   });

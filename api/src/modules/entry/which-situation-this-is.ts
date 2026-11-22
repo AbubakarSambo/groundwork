@@ -1,6 +1,7 @@
 import { GroundScenario } from '@prisma/client';
 import { THE_SCENARIO_TABLE } from '../conversation/the-scenario-table';
 import { THE_KINDS_IN_WORDS, HOW_A_KIND_IS_CHOSEN, KINDS_OF_WORK, oneOfTheKinds, type KindOfWork } from '../board/the-kind-of-work';
+import { theScenarioAKindImplies } from '../board/the-switchboard';
 
 /**
  * WHICH SITUATION THIS IS, WITH A RULE FOR THE OVERLAP AND A WAY TO SAY "NOT SURE".
@@ -94,4 +95,24 @@ export function readTheClassification(answer: { scenario?: string; confidence?: 
   const kind = oneOfTheKinds(answer.kind);
   if (!key && !kind) return null;
   return { scenario: confidence === 'high' ? key : null, confidence, ...(kind ? { kind } : {}) };
+}
+
+/** The model's reading call, as the engine's model service makes it. */
+type AModel = { extract: (system: string, history: { role: 'user' | 'assistant'; content: string }[], tool: any, options?: any) => Promise<any> };
+
+/**
+ * THE ONE READING OF A SITUATION AND ITS KIND, FOR EVERY PATH (typed situations, 22 November 2026). The door (entry classifyIntent),
+ * a check-in an admin sets up for a lead, and a lead who changes the brief all read the kind of work with this one call and this
+ * one prompt, so no two reads of the same words can disagree.
+ */
+export async function readTheSituationAndTheKind(model: AModel, words: string, mode?: string): Promise<Classification | null> {
+  const answer = await model.extract(theClassifierPrompt(words, mode), [{ role: 'user', content: 'Classify.' }], THE_CLASSIFICATION_SCHEMA, { fast: true });
+  return readTheClassification(answer);
+}
+
+/** The kind a reading gives a check-in whose situation is already set: kept where the kind runs as that situation, or as none in particular. */
+export function theKindForThisSituation(read: Classification | null | undefined, scenario: string | null | undefined): KindOfWork | null {
+  if (!read?.kind) return null;
+  const implies = theScenarioAKindImplies(read.kind);
+  return !implies || implies === scenario ? read.kind : null;
 }

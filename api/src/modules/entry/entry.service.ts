@@ -87,7 +87,7 @@ import { THE_EXTRACTION_SYSTEM, THE_EXTRACTION_TOOL, THE_CLOSING_REMINDER, allSe
 import { theLeadsReveal } from './the-anchor-reveal';
 import type { TheLeadsReveal, ThePeopleStepRules } from './the-anchor-served-shapes';
 import { draftFromASetUp, type ASetUpToStartFrom } from './a-set-up-can-start-from-a-recommendation';
-import { theClassifierPrompt, readTheClassification, THE_CLASSIFICATION_SCHEMA } from './which-situation-this-is';
+import { readTheSituationAndTheKind, theKindForThisSituation } from './which-situation-this-is';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
 import { thisAlreadyHappened, LOOK_BACK_INSTEAD } from './this-already-happened';
@@ -691,7 +691,6 @@ export class EntryService {
     const chosen = await this.chosenSituation(picked);
     description = withoutBankDetails(description);
     this.anonymousModelCall('classify-intent', description.length);
-    const prompt = theClassifierPrompt(description, mode);
     try {
       /*
        * The marker is the VARIABLE NAME, not a comment. It used to be a comment, and the repo-wide
@@ -701,8 +700,7 @@ export class EntryService {
        * A name survives stripping and reads at the call site, so whoever adds the next direct call
        * still has to say in the open which kind theirs is.
        */
-      const notAReplyToAnybody = await this.anthropic.extract(prompt, [{ role: 'user', content: 'Classify.' }], THE_CLASSIFICATION_SCHEMA, { fast: true });
-      const read = readTheClassification(notAReplyToAnybody);
+      const read = await readTheSituationAndTheKind(this.anthropic, description, mode);
       /*
        * A KIND OF WORK THE MODEL NAMES OVERRIDES THE SITUATION IT READ (Hafsah, 15 November 2026). The kind's switchboard row says which
        * situation the check-in and its report run as, so the conversation, the board and the report agree: a support desk is never
@@ -717,7 +715,8 @@ export class EntryService {
        * only one; the setup carries its kind to the save. Her chosen situation still stands, so a kind is kept with it only where the
        * kind runs as that situation, or as none in particular.
        */
-      if (chosen) return { scenario: chosen, confidence: 'high', ...(read?.kind && (!kindImplies || kindImplies === chosen) ? { kind: read.kind } : {}) };
+      const kindWithHers = chosen ? theKindForThisSituation(read, chosen) : null;
+      if (chosen) return { scenario: chosen, confidence: 'high', ...(kindWithHers ? { kind: kindWithHers } : {}) };
       if (kindImplies) return { scenario: kindImplies, confidence: 'high', kind: read!.kind };
       if (read) return { scenario: read.scenario, confidence: read.confidence, ...(read.kind ? { kind: read.kind } : {}) };
     } catch { /* fall through */ }

@@ -64,8 +64,8 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { aKindMayBeGiven, theBoardKindsOffered, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
 import { askNameOf } from '../assistant/ask-name';
-import { THE_SCENARIOS_IN_WORDS } from '../entry/which-situation-this-is';
-import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, isASalesKind, theSetupWords } from '../board/the-kind-of-work';
+import { readTheSituationAndTheKind, THE_SCENARIOS_IN_WORDS } from '../entry/which-situation-this-is';
+import { KINDS_OF_WORK, oneOfTheKinds, isASalesKind, theSetupWords } from '../board/the-kind-of-work';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf, theDaysItRunsOn } from './which-days-this-team-works';
 import { targetsFor } from '../board/whose-number-is-whose-business';
@@ -1129,6 +1129,8 @@ export class GroundsService {
 
     this.usage.emit(UsageEventType.GROUND_CREATED, { organizationId, groundId: ground.id, userId: leadUser.id }).catch(() => undefined);
     await this.tellParticipantsAboutThis(ground.id, dto.brief, (dto as { scenario?: string }).scenario);
+    /* The kind of work, read once from what the admin wrote, with the one reading the door uses. Not awaited: the check-in is made either way. */
+    void this.readTheKindOfWork(ground.id);
 
     return ground;
   }
@@ -5726,8 +5728,9 @@ export class GroundsService {
 
   /** Whether people on this check-in see each other's numbers, or only their own. */
   /**
-   * THE KIND OF WORK, READ FROM SETUP (request 76). One of the twelve kinds in
-   * board/the-kind-of-work.ts, read from the lead's own words and the brief with the model, and kept
+   * THE KIND OF WORK, READ FROM WHAT THE LEAD OR THE ADMIN WROTE (request 76): for a check-in an admin sets up for a lead, and when a
+   * lead changes the brief. A setup the lead made herself carries the door's reading to the save instead. One of the kinds in
+   * board/the-kind-of-work.ts, read with the model, and kept
    * only when the answer is exactly one of the eleven. Never over a lead's own choice: once the lead
    * has set it, only the lead changes it. Best effort: a failed read leaves it as it was.
    */
@@ -5744,15 +5747,13 @@ export class GroundsService {
       if (!g || theReadingMustLeaveIt(g.kindOfWorkSetBy)) return;
       /* A check-in that already has a kind keeps it, offered or not (docs/deploy.md, "Hidden at release"). */
       const hasOne = oneOfTheKinds(g.kindOfWork);
-      /* The situation in the words the door read it in (which-situation-this-is.ts), so the kind is read against the same understanding. */
+      /*
+       * THE ONE READING (which-situation-this-is.ts readTheSituationAndTheKind), the same call and prompt as the door's, on what the
+       * check-in is for and the words the lead or the admin wrote. A sales team runs in any situation, so the kind read is kept as read.
+       */
       const words = theSetupWords(g, THE_SCENARIOS_IN_WORDS[(g as any).scenario as keyof typeof THE_SCENARIOS_IN_WORDS] ?? null);
       if (!words.trim()) return;
-      const answer = await this.anthropic.extract<{ kind?: string }>(
-        THE_KIND_OF_WORK_PROMPT,
-        [{ role: 'user', content: words }],
-        THE_KIND_OF_WORK_SCHEMA,
-      );
-      const read = oneOfTheKinds(answer?.kind);
+      const read = (await readTheSituationAndTheKind(this.anthropic, words))?.kind ?? null;
       /*
        * A SALES CHECK-IN KEEPS THE SALES KIND IT HOLDS (Release 1). "sales team" came in beside "sales org"; a check-in read as a
        * sales org before keeps that, and one read as a sales team keeps that, when a later read of its words says the other. Only

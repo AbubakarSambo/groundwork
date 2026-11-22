@@ -4,7 +4,11 @@
  * hire get started) were read as "distribution operations" from an operations analyst's title and the word depots, so a rollout drew
  * an incidents board. The model is now told what the check-in is for, and that a purpose is not a kind of work.
  */
-import { THE_KIND_OF_WORK_PROMPT, theSetupWords } from '../board/the-kind-of-work';
+import { theSetupWords } from '../board/the-kind-of-work';
+import { theClassifierPrompt } from '../entry/which-situation-this-is';
+/* Changed 22 November 2026: the kind of work is read by the one reading (which-situation-this-is.ts), so these words are checked in its prompt; THE_KIND_OF_WORK_PROMPT is gone. */
+const THE_KIND_OF_WORK_PROMPT = theClassifierPrompt('');
+
 import { THE_SCENARIO_TABLE } from '../conversation/the-scenario-table';
 
 describe('the kind of work is read from the purpose, not the job titles', () => {

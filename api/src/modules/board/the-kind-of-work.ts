@@ -339,27 +339,6 @@ export const THE_KINDS_IN_WORDS = `- "sales team": one team selling to customers
 
 export const HOW_A_KIND_IS_CHOSEN = `Choose a kind only when the lead's words clearly say it. What the check-in is for is why the lead set it up, and it is not a kind of work: a new hire's first weeks, one person's plan, or getting a new project off to a good start, such as moving sites onto a new system, is none of these kinds, unless the lead's own words say the check-in is about that kind of work itself, such as a sales team's deals or a support desk's tickets. Never decide from the job titles of the people in it, or from a place or a word that appears in passing; what the lead says about themselves, such as "founder here", is the lead's own words and counts. When the work is selling and nothing says there are several sales teams, it is a "sales team". When the work is none of these, or you are not sure, give none. A lead who says only that something is wrong, or that they are worried, without saying who is involved or what the work is, has not named a kind: give none, so the conversation asks. A wrong kind is worse than none.`;
 
-export const THE_KIND_OF_WORK_PROMPT = `You are reading how a lead described a check-in they are setting up, to say what kind of work it is about.
-
-Choose one of these fifteen kinds, or none:
-${THE_KINDS_IN_WORDS}
-
-Give the kind's name exactly as written above. ${HOW_A_KIND_IS_CHOSEN}`;
-
-export const THE_KIND_OF_WORK_SCHEMA = {
-  name: 'emit_kind_of_work',
-  description: 'Emit the kind of work this check-in is about, or none.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      /* The model understands the lead's words; what it may answer is the fifteen names or "none", so what is saved is always one of
-         them (Hafsah, 21 November: "a sales team" was saved, matched none, and the check-in drew the general board). */
-      kind: { type: 'string', enum: [...KINDS_OF_WORK, 'none'], description: 'One of the fifteen names exactly, or "none".' },
-    },
-    required: ['kind'],
-  },
-};
-
 /**
  * The lead's words the read is given: the name, the brief, and the end they are working toward; and, where they are known,
  * the job titles of the people in it (release plan, Release 1: a sales team is detected from its words and its job titles).

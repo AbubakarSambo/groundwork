@@ -3,7 +3,7 @@ import { EntryService } from './entry.service';
 import { theClassifierPrompt, readTheClassification, THE_SCENARIOS_IN_WORDS, THE_CLASSIFICATION_SCHEMA } from './which-situation-this-is';
 import { KINDS_OF_WORK } from '../board/the-kind-of-work';
 import { whatSetupKnowsNow } from './what-setup-knows';
-import { THE_KINDS_IN_WORDS, HOW_A_KIND_IS_CHOSEN, THE_KIND_OF_WORK_PROMPT } from '../board/the-kind-of-work';
+import { THE_KINDS_IN_WORDS, HOW_A_KIND_IS_CHOSEN } from '../board/the-kind-of-work';
 import { THE_SCENARIO_TABLE } from '../conversation/the-scenario-table';
 
 /**
@@ -42,8 +42,6 @@ describe('the situations are said once, as their cards say them', () => {
     const p = theClassifierPrompt('choosing between 3 packaging vendors');
     expect(p).toContain(THE_KINDS_IN_WORDS);
     expect(p).toContain(HOW_A_KIND_IS_CHOSEN);
-    expect(THE_KIND_OF_WORK_PROMPT).toContain(THE_KINDS_IN_WORDS);
-    expect(THE_KIND_OF_WORK_PROMPT).toContain(HOW_A_KIND_IS_CHOSEN);
     expect(THE_KINDS_IN_WORDS).toContain('Choosing between a few options, such as suppliers or vendors, is a decision');
     expect(THE_KINDS_IN_WORDS).toContain('"founder\'s own check-in": a founder, owner or chief executive checking in on their own');
     /* Changed 22 November 2026: the answer's fields are the product's own lists, so a situation or kind it does not have cannot be written. */
@@ -155,5 +153,18 @@ describe('the kind travels from the door to the save', () => {
     const create = grounds.slice(grounds.indexOf('  async create('), grounds.indexOf('  async createForLead('));
     expect(create).not.toMatch(/readTheKindOfWork/);
     expect(create).toMatch(/oneOfTheKinds\(dto\.kindOfWork\)/);
+  });
+
+  it('a check-in an admin sets up for a lead, and a brief the lead changes, are read by the same one reading, with no prompt of their own', () => {
+    const { readFileSync } = require('fs');
+    const { join } = require('path');
+    const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const grounds = strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.service.ts'), 'utf8'));
+    const forLead = grounds.slice(grounds.indexOf('  async createForLead('), grounds.indexOf('  async createForLead(') + 12000);
+    expect(forLead).toMatch(/void this\.readTheKindOfWork\(ground\.id\)/);
+    const theRead = grounds.slice(grounds.indexOf('  async readTheKindOfWork('), grounds.indexOf('  async readTheKindOfWork(') + 2500);
+    expect(theRead).toMatch(/readTheSituationAndTheKind\(this\.anthropic, words\)/);
+    expect(grounds).not.toMatch(/THE_KIND_OF_WORK_PROMPT|THE_KIND_OF_WORK_SCHEMA/);
+    expect(strip(readFileSync(join(__dirname, 'entry.service.ts'), 'utf8'))).toMatch(/readTheSituationAndTheKind\(this\.anthropic, description, mode\)/);
   });
 });
