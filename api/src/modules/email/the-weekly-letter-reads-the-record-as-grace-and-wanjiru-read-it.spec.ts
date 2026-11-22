@@ -30,11 +30,13 @@ async function theLetterOf(g: 'drop' | 'fees' | 'lit', o: { directMorning: boole
 describe('Grace’s letter, Drop Access (test)', () => {
   it('says where the target stands, what moved with proof, and who needs her, with the evidence', async () => {
     const { lines } = await theLetterOf('drop', { directMorning: true });
+    /* Changed 22 November: what moved with proof is the newest four. The letter took the first four of the newest five, which dropped the newest
+       (Savannah Cafe's Friday balance in round 15), so Mercy's Friday sale gives way to her Monday line about it. */
     expect(lines).toEqual([
       'Your team is starting to move.',
       'This week, all five people checked in. Five people said what they will do next. Two things people said they would do were done. 16 handoffs are still waiting.',
       'Here is where the target stands. 75 of 120 sold, 47 paid, 45 short, and the open deals cover 40.',
-      'Here is what moved this week, with what shows it. On Friday 16 October Mercy said “Mama Rose\'s Kiosk bought one unit today for KES 5,000 cash.” A document Mercy added shows it. On Monday 19 October Kevin said “Jane paid the remaining KES 15,000 balance for the 6 Savannah Cafe units. The M-Pesa confirmation code is RCD8M1LS4W.” The M-Pesa code RCD8M1LS4W shows it. On Monday 19 October Mercy said “We have the signed purchase order.” A document Mercy added shows it. On Monday 19 October Mercy said “It confirms the order for 25 units from Greenfield Supermarket at KES 125,000, and it\'s signed.” A document Mercy added shows it.',
+      'Here is what moved this week, with what shows it. On Monday 19 October Kevin said “Jane paid the remaining KES 15,000 balance for the 6 Savannah Cafe units. The M-Pesa confirmation code is RCD8M1LS4W.” The M-Pesa code RCD8M1LS4W shows it. On Monday 19 October Mercy said “We have the signed purchase order.” A document Mercy added shows it. On Monday 19 October Mercy said “It confirms the order for 25 units from Greenfield Supermarket at KES 125,000, and it\'s signed.” A document Mercy added shows it. On Monday 19 October Mercy said “Mama Rose\'s Kiosk already paid for her unit last Friday.” A document Mercy added shows it.',
       'Here is who needs you. Joseph said 3 times that something was sold or paid with nothing on file, and took 2 back later. Groundwork asked for the proof and has coached Joseph since Monday 12 October, and nothing has changed, so call Joseph. On Wednesday 14 October Joseph said “Mama Pima paid a deposit.” On Friday 16 October Joseph said “The Mama Pima deposit hasn\'t actually come through yet, she\'s still choosing.” On Monday 12 October Joseph said “That 10-unit deal for Mama Pima is definitely part of my 30-unit target. It\'s basically closed.” On Monday 12 October Joseph said 10 units for Mama Pima Stores, and on Tuesday 13 October Joseph said “Mama Pima is 15 units now, she\'s expanding.”',
     ]);
   });
@@ -63,16 +65,12 @@ describe('Wanjiru’s letters, Muchemi & Co (test)', () => {
   });
 
   /*
-   * Changed in polish round 15 (a-day-they-checked-in.ts): each working day now counts once, from what happened that day. Read by the day,
-   * David's coaching came after his Wednesday check-in and two check-ins since got worse, so the letter names him, with the days as they
-   * were: nothing on Tuesday, and Wednesday and Thursday answered after the day each opened. The old reading counted sessions and kept
-   * him as Groundwork's to coach after "one check-in since".
+   * Changed 22 November: since run 7 (landed 20 November) the coaching "name the item, what changed and the day" is judged only on that, never on being on time, and a check-in he missed is not proof it failed (fix plan 16 November, group 5). One of his three check-ins up to Wednesday did it, and one of the two he did since did, so it got better. Wanjiru's letter does not tell her to call David.
    */
-  it('on the litigation team, David: his check-ins got worse in the two check-ins since his coaching, so Wanjiru is told, with the days', async () => {
+  it('on the litigation team, David\'s coaching got better since it was given, so the letter does not tell Wanjiru to call him', async () => {
     const { lines } = await theLetterOf('lit', { directMorning: true });
     const said = lines.join(' ');
-    expect(said).toMatch(/Here is who needs you\. David did 4 of 6 check-ins, 1 of them on time, and 2 named the item, what changed and the day\. Groundwork has coached David on it since Wednesday 14 October, and it has got worse, so call David\./);
-    expect(said).toMatch(/On Tuesday 13 October, the check-in was not done\. On Wednesday 14 October, the check-in was done after the day it opened\./);
+    expect(said).not.toMatch(/so call David/);
     expect(said).not.toMatch(/more than a day after it opened/);
   });
 });

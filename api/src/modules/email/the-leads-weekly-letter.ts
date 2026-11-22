@@ -233,7 +233,8 @@ export function theRestOfTheWeekIn(w: AWeekInOneCheckIn, roomForToDo: number): s
   const out: string[] = [];
   /* The record's own parts first, where the direct morning is on: the target, what moved with proof, and who needs her. */
   if (w.theTarget) out.push(`Here is where the target stands. ${w.theTarget}`);
-  const proved = (w.movedWithProof ?? []).slice(0, 4);
+  /* The newest four: it is oldest first, and the first four dropped Friday's balance from Savannah Cafe (release test fixes, 22 November). */
+  const proved = (w.movedWithProof ?? []).slice(-4);
   if (proved.length) out.push(`Here is what moved this week, with what shows it. ${proved.join(' ')}`);
   for (const [i, n] of (w.needsYou ?? []).slice(0, 3).entries()) out.push(`${i === 0 ? 'Here is who needs you. ' : ''}${n.says}${n.evidence.length ? ` ${n.evidence.join(' ')}` : ''}`);
   const moved = withoutRepeats(w.moved ?? []).slice(0, 3);
