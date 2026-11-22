@@ -51,7 +51,7 @@ describe('what Wairimu reads a week after the report', () => {
 
   it('when nothing was marked done, says so plainly and does not pretend a change', () => {
     const w = theFollowUpWords('Wairimu', 'Sales team, Q4', WENT_OUT, { done: 0, cleared: 0, waiting: 2, open: 0 });
-    expect(w.subject).toBe('People on "Sales team, Q4" still wait on two things, and nothing has been marked done since the report');
+    expect(w.subject).toBe('People on "Sales team, Q4" still wait on two things, and nothing has moved since the report');
     expect(w.lines[1]).toBe('Since then, nothing has been marked done or cleared.');
     expect(theFollowUpWords('W', 'X', WENT_OUT, { done: 0, cleared: 0, waiting: 0, open: 0 }).subject).toBe('Nothing has been marked done or cleared on "X" since the report went out');
   });
