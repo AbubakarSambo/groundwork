@@ -175,7 +175,7 @@ async function actForOne(prisma: any, ports: OwnerPorts, a: { organizationId: st
   /* 1. The draft is ready. */
   const bothReady = jobs.length >= 2 && jobs.every((j) => j.state === 'draft_ready');
   if (!draft && bothReady) {
-    const made = await makeTheFirstDraft(prisma, { organizationId, principalUserId, now });
+    const made = await makeTheFirstDraft(prisma, { organizationId, principalUserId, now, onlyWithSomethingToSay: true });
     if (made.made) {
       const sent = await sendTheDraft(prisma, ports, { organizationId, principalUserId, row: made.row, replyTo: a.replyTo, now });
       out.push({ principalUserId, action: 'draft_ready', detail: sent.map((s) => `${s.to}:${s.outcome}`).join(',') });

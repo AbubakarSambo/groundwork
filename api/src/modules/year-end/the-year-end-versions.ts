@@ -22,6 +22,7 @@ import { coverageOf } from '../outstanding/the-persistent-jobs';
 import { buildTheRegister } from '../outstanding/the-outstanding-register';
 import { writeItOnce } from './the-year-end-log';
 import { buildTheContentWithTheNarrative, theNarratorThatIsRunning, type TheNarrator } from './the-year-end-narrative';
+import { aDraftHasSomethingToSay } from './the-year-end-files';
 import { readTheRecordWhole, THE_WEEKS_READ } from '../outstanding/the-record-read-whole';
 import { theFilesSheKept, theMessagesSheKept, theRecentWordsOnHerRecord, whatHerMaterialCovers } from '../executive-onboarding/the-months-a-document-covers';
 
@@ -135,11 +136,13 @@ async function writeAVersion(prisma: any, a: { organizationId: string; principal
 }
 
 /** The first draft, once the record is ready. Safe to call every night: a second call finds the draft and writes nothing. */
-export async function makeTheFirstDraft(prisma: any, a: { organizationId: string; principalUserId: string; now: Date; narrator?: TheNarrator | null }): Promise<{ row: TheDraftRow; made: boolean }> {
+export async function makeTheFirstDraft(prisma: any, a: { organizationId: string; principalUserId: string; now: Date; narrator?: TheNarrator | null; onlyWithSomethingToSay?: boolean }): Promise<{ row: TheDraftRow; made: boolean }> {
   const year = a.now.getUTCFullYear();
   const there = await latestDraft(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, year });
   if (there) return { row: there, made: false };
   const content = await buildTheContentWithTheNarrative(await loadTheRecord(prisma, a), [], { narrator: a.narrator });
+  /* Made on its own, a draft with nothing in it is not made, and so never sent (bug 92). Asked for by her, it is made as it is, and says what is missing. */
+  if (a.onlyWithSomethingToSay && !aDraftHasSomethingToSay(content)) return { row: null as unknown as TheDraftRow, made: false };
   try {
     return { row: await writeAVersion(prisma, { ...a, content, status: 'draft', note: 'The first draft, built from the record.', by: null, channel: 'system', parent: null }), made: true };
   } catch (err: any) {
