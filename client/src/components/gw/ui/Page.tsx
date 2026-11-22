@@ -1,15 +1,57 @@
 import React from 'react'
+import { InTheDesignSystem } from './the-design-system'
 import './gw-ui.css'
 
 /**
  * PAGE (prototype: `main` and `.wrap`, app.css). The one page frame.
  *
- * Main padding is 32px top, 48 sides, 72 bottom (20, 18, 100 on a phone under 860px). Content is
- * up to 1150px wide, left-aligned under the page padding, never centred (design-audit.md: "Content
- * width... left-aligned"). `narrow` is for the invitation and sign-in pages: one column 360px wide,
- * centred, as today's plain arrival frame.
+ * WITH A TITLE, A REBUILT PAGE (the design system, rules 1 to 3, Hafsah, 23 November 2026): the
+ * title, at most one line under it (`lede`), the one main action at the top right, then the page's
+ * sections 32px apart. `side` adds a side column, two thirds and one third, that drops under the main
+ * column on a phone. Every value is a token (styles/tokens.css, read by blocks.css), and every
+ * building block inside draws its rebuilt look (the-design-system.ts).
+ *
+ * WITHOUT A TITLE, the page as it was: main padding 32px top, 48 sides, 72 bottom (16, 16, 100 on a
+ * phone under 860px), content up to 1150px wide, left-aligned. `narrow` is for the invitation and
+ * sign-in pages: one column 360px wide, centred. This branch goes when the last journey is rebuilt.
  */
-export function Page({ narrow, children }: { narrow?: boolean; children: React.ReactNode }) {
+export function Page({ narrow, title, lede, action, side, children }: {
+  narrow?: boolean
+  /** The page's name. Giving it makes this a rebuilt page. */
+  title?: string
+  /** At most one line under the title. */
+  lede?: string
+  /** The page's one main action, at the top right. */
+  action?: React.ReactNode
+  /** A side column, a third of the width, under the main column on a phone. */
+  side?: React.ReactNode
+  children: React.ReactNode
+}) {
+  if (title !== undefined) {
+    const body = <div className="ds-page-body">{children}</div>
+    return (
+      <InTheDesignSystem.Provider value={true}>
+        {/* `main` keeps the shell's own room for Ask beside the page; ds-page sets the padding from the tokens. */}
+        <div className="main ds-page">
+          <div className="ds-page-in">
+            <header className="ds-page-head">
+              <div className="ds-page-words">
+                <h1 className="ds-text-title">{title}</h1>
+                {lede && <p className="ds-text-body ds-page-lede">{lede}</p>}
+              </div>
+              {action}
+            </header>
+            {side ? (
+              <div className="ds-page-split">
+                {body}
+                <aside className="ds-page-side">{side}</aside>
+              </div>
+            ) : body}
+          </div>
+        </div>
+      </InTheDesignSystem.Provider>
+    )
+  }
   /*
    * A `<div>`, NOT A SECOND `<main>` (real-user walk, Kijani Foods, fault 8a). AppShell already
    * renders the page's one `<main id="main">`; this sat inside it as a second `<main>`, so every

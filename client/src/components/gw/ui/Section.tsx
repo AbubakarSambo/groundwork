@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useId } from 'react'
 import { PartBoundary } from './PartBoundary'
+import { useTheDesignSystem } from './the-design-system'
 import './gw-ui.css'
 
 /**
@@ -44,7 +45,25 @@ export function Section({ heading, note, action, foot, children, id, headingRef 
   const headingId = useId()
   const place = useContext(SectionPlacement)
   const nested = useContext(InsideASection)
-  const section = (
+  /*
+   * ON A REBUILT PAGE (rule 3): the title, its one line of explanation (`note`) under it, the content,
+   * then the section's one action after the content, 16px apart (blocks.css). `foot`, a second line,
+   * is kept after the action so nothing a caller wrote is lost, but a rebuilt section should not need it.
+   */
+  const ds = useTheDesignSystem()
+  const section = ds ? (
+    <InsideASection.Provider value={true}>
+    <section id={id} className="ds-section" aria-labelledby={headingId}>
+      <div className="ds-section-head">
+        <h2 id={headingId} ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="ds-text-section">{heading}</h2>
+        {note && <p className="ds-text-secondary">{note}</p>}
+      </div>
+      {children !== undefined && <div className="ds-section-body"><PartBoundary>{children}</PartBoundary></div>}
+      {action && <div className="ds-section-action">{action}</div>}
+      {foot && <p className="ds-text-secondary">{foot}</p>}
+    </section>
+    </InsideASection.Provider>
+  ) : (
     <InsideASection.Provider value={true}>
     <section id={id} className="sec" aria-labelledby={headingId}>
       <div className="sec-h">

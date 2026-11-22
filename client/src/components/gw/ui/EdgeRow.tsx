@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import { useTheDesignSystem } from './the-design-system'
 import './gw-ui.css'
 
 /**
@@ -33,7 +34,8 @@ export function EdgeRow({ kind, title, detail, actions, reason: givenReason, to 
   reason?: string | null
   /** Where the whole row goes when it is tapped (the prototype's phone rows have no button of their own). */
   to?: string
-  kind: EdgeKind
+  /** Why the row is here, drawn as a small dot. On a rebuilt page a plain row may leave it out. */
+  kind?: EdgeKind
   title: string
   /** Usually one sentence; the no-seat warning also lists each person waiting under it. */
   detail?: React.ReactNode
@@ -49,9 +51,27 @@ export function EdgeRow({ kind, title, detail, actions, reason: givenReason, to 
    * never, here, since the title always carries it; said only when the title does not already say
    * "ready" leaves the word in exactly where a reader needs it and nowhere it is already said.
    */
-  const reason = givenReason !== undefined ? givenReason : typeof title === 'string' && title.toLowerCase().includes('ready') ? undefined : EDGE_REASON[kind]
+  const reason = givenReason !== undefined ? givenReason : typeof title === 'string' && title.toLowerCase().includes('ready') ? undefined : (kind ? EDGE_REASON[kind] : undefined)
   /* The prototype's row in a list (.item): a coloured edge (.sp), the line and its detail (.h, .s), then the action. */
-  const edge = ({ ready: 'rec', decide: 'act', look: 'att', concern: 'con' } as Record<string, string>)[kind] ?? 'act'
+  const edge = ({ ready: 'rec', decide: 'act', look: 'att', concern: 'con' } as Record<string, string>)[kind ?? 'decide'] ?? 'act'
+  /*
+   * ON A REBUILT PAGE, THE DESIGN SYSTEM'S ROW (rule 9): a small dot when the row has a kind, the
+   * title at 18px and its detail at 14px, then its actions on the right as links (blocks.css).
+   */
+  const ds = useTheDesignSystem()
+  if (ds) {
+    return (
+      <div className={kind ? 'ds-row ds-row-dotted' : 'ds-row'} role="listitem">
+        {kind && <i className={`ds-row-dot ${edge}`} aria-hidden />}
+        <div className="ds-row-main">
+          {reason && <span className="gwui-sr-only">{reason} </span>}
+          <p className="ds-text-card">{to ? <Link to={to} className="ds-row-link">{title}</Link> : title}</p>
+          {detail && <div className="ds-text-secondary">{detail}</div>}
+        </div>
+        {actions && <div className="ds-row-actions">{actions}</div>}
+      </div>
+    )
+  }
   return (
     <div className="item" role="listitem">
       <i className={`sp ${edge}`} aria-hidden />
@@ -66,5 +86,6 @@ export function EdgeRow({ kind, title, detail, actions, reason: givenReason, to 
 }
 
 export function EdgeList({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="list" role="list" aria-label={label}>{children}</div>
+  const ds = useTheDesignSystem()
+  return <div className={ds ? 'ds-rows' : 'list'} role="list" aria-label={label}>{children}</div>
 }

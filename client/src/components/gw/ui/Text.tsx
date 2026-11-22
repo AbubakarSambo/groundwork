@@ -14,7 +14,16 @@ import './gw-ui.css'
  * `size`/`ink` are strings, not numbers, because some of the board's existing classes are not
  * whole numbers (one size is "13" and a half) - the prop names the class's own suffix exactly.
  */
-export type TextSize = '13' | '13-5' | '14' | '14-5' | '15' | '16' | '17' | '18' | '20' | '22' | '30'
+/**
+ * THE SIX SIZES OF THE DESIGN SYSTEM (rule 5, Hafsah, 23 November 2026), named for what they are for:
+ * `title` (Literata 30, 24 on a phone), `section` (21 bold), `card` (18 bold, a card's or a row's title),
+ * `body` (16), `secondary` (14, muted), `meta` (12, muted: dates, sources, counts), and `big` (Literata
+ * 38) for the greeting and a big number. They read only styles/tokens.css (blocks.css). A rebuilt page
+ * uses only these; the numbered sizes below are the board's older ones and go as its pages are rebuilt.
+ */
+export type TextRole = 'title' | 'section' | 'card' | 'body' | 'secondary' | 'meta' | 'big'
+export type TextSize = TextRole | '13' | '13-5' | '14' | '14-5' | '15' | '16' | '17' | '18' | '20' | '22' | '30'
+const ROLES: readonly string[] = ['title', 'section', 'card', 'body', 'secondary', 'meta', 'big']
 export type TextInk =
   | 'amber'
   | 'blue'
@@ -52,7 +61,7 @@ export function Text({
   lineHeight?: number
   letterSpacing?: string
   display?: 'block'
-  as?: 'div' | 'span' | 'p'
+  as?: 'div' | 'span' | 'p' | 'h2' | 'h3'
   className?: string
   children: ReactNode
 }) {
@@ -61,7 +70,7 @@ export function Text({
   if (lineHeight) style.lineHeight = lineHeight
   if (letterSpacing) style.letterSpacing = letterSpacing
   if (display) style.display = display
-  const cls = [`gwui-fs-${size}`, ink && `gwui-ink-${ink}`, className].filter(Boolean).join(' ')
+  const cls = [ROLES.includes(size) ? `ds-text-${size}` : `gwui-fs-${size}`, ink && `gwui-ink-${ink}`, className].filter(Boolean).join(' ')
   const Tag = As as ElementType
   return (
     <Tag className={cls} style={Object.keys(style).length ? style : undefined}>
