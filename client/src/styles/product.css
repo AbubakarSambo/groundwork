@@ -57,7 +57,7 @@
 .gw-greeting { display: flex; flex-direction: column; gap: 8px; }
 .gw-greeting .t-body { font-size: 18px; }
 .gw-aside { display: flex; flex-direction: column; gap: 24px; }
-.gw-when-row { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 8px 0; border-top: 1px solid var(--rule); }
+.gw-when-row { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 8px 0; border-top: 1px solid var(--rule); align-items: baseline; }
 .gw-when-row a { color: var(--ink); text-decoration: none; }
 .gw-when-row a:hover { text-decoration: underline; }
 .gw-chat-title { margin-bottom: 12px; }
