@@ -352,9 +352,15 @@ export function theSetupWords(
   g: { label?: string | null; brief?: string | null; endState?: string | null; resolutionState?: string | null },
   /** What the check-in is for, in the scenario table's words ("Get a new project off to a good start"). */
   purpose?: string | null,
+  /**
+   * What the lead said at set-up (grounds/what-the-lead-said-at-set-up.ts). A check-in set up in the chat is saved with an empty brief and
+   * end state, so without it the reading saw only "A check-in at Drop Access" and gave no kind (existing customers, 22 November 2026).
+   */
+  atSetUp?: string | null,
 ): string {
   return [
     purpose ? `What the check-in is for: ${purpose}` : '',
+    atSetUp?.trim() ? atSetUp.trim() : '',
     g.label ? `What the lead called it: ${g.label}` : '',
     g.brief ? `What the lead said about it: ${g.brief}` : '',
     g.endState ? `What they are working toward: ${g.endState}` : '',
