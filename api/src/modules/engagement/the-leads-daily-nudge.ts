@@ -909,7 +909,12 @@ export async function sendTheDirectMorningTo(
     const shortRoom = ITS_OWN_WORDS_AT_MOST - fixed - 4;
     const shortParams = [first, oneLine(theParagraph(forAPhone, shortRoom).text), link];
     const firstContact = body.replace(/\{\{(\d+)\}\}/g, (_m, n) => shortParams[Number(n) - 1] ?? '');
-    const window = [`Good morning ${first}.`, ...theEmailParts(forAPhone).map((p) => [p.heading, ...p.lines].join('\n')), `Your board is here ${link}`].join('\n\n');
+    /*
+     * ONE SHAPE ON THE PHONE, IN THE 24 HOURS OR OUT OF THEM (release test, 21 November 2026, bug 86). Inside the window the message was
+     * the email's headings and lines ("What needs you today" and so on), so only the template carried the approved "Target: / Needs you
+     * today: / Closing: / Your team:" paragraph. Both now say the template's words, with the same paragraph.
+     */
+    const window = body.replace(/\{\{(\d+)\}\}/g, (_m, n) => params[Number(n) - 1] ?? '');
     const result: any = await deps.whatsapp.sendFor(lead.organizationId, phone, window, { kind: NUDGE_KIND, params, paramsFor: { groundwork_first_contact: [firstContact] } } as any);
     if (result?.sent !== false) { await nowToldOnce(prisma, key, 'sent'); return 'sent'; }
     if (THE_DAYS_OWN_LIMITS.has(String(result?.error ?? ''))) { await nowToldOnce(prisma, key, 'held'); return 'not-now'; }
