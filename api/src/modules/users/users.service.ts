@@ -34,7 +34,7 @@ import { theNumberEachPersonIsReachedOn } from '../../common/the-number-each-per
 import { theInvitationsWaiting, keepThemWaiting, stopWaiting, type AnInvitationWaiting } from './invitations-waiting-for-a-seat';
 import { theRoleThisPersonMayGive, theRolesTheyMayGive, howPeopleJoinHere, type AnInvitedRole } from './the-role-an-invitation-gives';
 import { aLineOrNothing, NOT_IN_THIS_ORGANISATION } from './where-they-sit';
-import { theTeamsHere, theSpellingToKeep } from './the-teams-here';
+import { theTeamsFrom, theSpellingToKeep } from './the-teams-here';
 import { aReportingLineToWrite } from './who-they-report-to';
 import { thePeopleHere } from '../suites/the-people-and-their-lines';
 import { groundsAViewerMayList } from '../grounds/who-may-read-this-check-in';
@@ -321,9 +321,15 @@ export class UsersService {
     return this.howPeopleAreAdded(organizationId, adminId);
   }
 
-  /** The teams here, one spelling each, for the Team picker on People and on invitations (the-teams-here.ts). */
-  theTeams(organizationId: string) {
-    return theTeamsHere(this.prisma as any, organizationId);
+  /**
+   * The teams here, one spelling each, for the Team picker on People and on invitations (the-teams-here.ts). Read from each
+   * person's team exactly as People shows it (whereTheySit: the team set here, or else the staff directory's), so a team the
+   * directory gives, like "Sales", is on the list, and "sales" typed beside it is kept as "Sales" (release test, 21 November).
+   */
+  async theTeams(organizationId: string) {
+    const members = await this.prisma.organizationMembership.findMany({ where: { organizationId }, select: { userId: true } });
+    const sits = await this.whereTheySit(organizationId, members.map((m) => m.userId));
+    return theTeamsFrom([...sits.values()].map((s) => s.team));
   }
 
   /** How check-ins work here, in the shape the rule reads. */
@@ -471,7 +477,7 @@ export class UsersService {
      */
     const names = namesIn(pasted);
     /* The team chosen for the list, picked from the teams here (the-teams-here.ts), one spelling each. */
-    const theTeam = theSpellingToKeep(team, await theTeamsHere(this.prisma as any, organizationId));
+    const theTeam = theSpellingToKeep(team, await this.theTeams(organizationId));
     const sent: Row[] = [];
     for (const row of rows) {
       if (row.result !== 'invited') { sent.push(row); continue; }
@@ -944,7 +950,7 @@ export class UsersService {
     const data: { level?: string | null; team?: string | null; reportsToUserId?: string | null } = {};
     if (dto.level !== undefined) data.level = aLineOrNothing(dto.level);
     /* One spelling per team (the-teams-here.ts): "sales" typed where "Sales" is in use is kept as "Sales". */
-    if (dto.team !== undefined) data.team = theSpellingToKeep(dto.team, await theTeamsHere(this.prisma as any, organizationId));
+    if (dto.team !== undefined) data.team = theSpellingToKeep(dto.team, await this.theTeams(organizationId));
     /* The one writer of a reporting line (who-they-report-to.ts), the same checks Ask's "Amina reports to Joseph" goes through. */
     if (dto.reportsToUserId !== undefined) data.reportsToUserId = await aReportingLineToWrite(this.prisma, organizationId, userId, aLineOrNothing(dto.reportsToUserId));
     await this.prisma.organizationMembership.update({ where: { id: membership.id }, data });

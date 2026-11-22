@@ -73,7 +73,7 @@ export const documentsApi = {
   readForSetup: async (file: File): Promise<{ name: string; text: string }> => {
     const form = new FormData()
     form.append('file', file)
-    return (await apiClient.post<{ name: string; text: string }>('/documents/read', form, { headers: { 'Content-Type': 'multipart/form-data' } })).data
+    return (await apiClient.post<{ name: string; text: string }>('/documents/read', form)).data
   },
   upload: (groundId: string, file: File, consentConfirmed = false, uploaderNote?: string, opts: { fromTheCheckIn?: boolean } = {}) => {
     const form = new FormData()
@@ -83,9 +83,7 @@ export const documentsApi = {
     if (opts.fromTheCheckIn) form.append('fromTheCheckIn', 'true')
     /* What they want looked for in it. Optional, and kept in their words. */
     if (uploaderNote?.trim()) form.append('uploaderNote', uploaderNote.trim())
-    return apiClient.post<GroundDocument & { assumed?: string; filedAsEvidence?: { on: string | null } }>(`/grounds/${groundId}/documents`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }).then(r => r.data)
+    return apiClient.post<GroundDocument & { assumed?: string; filedAsEvidence?: { on: string | null } }>(`/grounds/${groundId}/documents`, form).then(r => r.data)
   },
 
   correctAssessment: (groundId: string, docId: string, assessment: DocumentAssessment) =>

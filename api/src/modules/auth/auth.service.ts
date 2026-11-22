@@ -1520,6 +1520,13 @@ export class AuthService {
    * token, and fetching a profile is not a reason to issue a credential.
    */
   private theUserShape(user: UserWithOrg, belongsElsewhere: boolean) {
+    const mayOpenACheckIn = mayOpen(
+      { role: user.role },
+      {
+        whoMayOpen: (user.organization.whoMayOpenCheckIns as 'NAMED_LEADS' | 'EVERYONE') ?? HOW_A_NEW_ORG_WORKS.whoMayOpen,
+        needsApproval: user.organization.checkInsNeedApproval ?? HOW_A_NEW_ORG_WORKS.needsApproval,
+      },
+    );
     return {
         id: user.id,
         email: user.email,
@@ -1545,14 +1552,10 @@ export class AuthService {
          * It is a convenience for the screen and never a permission: `create` asks the same
          * function again on every request, so a stale session cannot open anything.
          */
-        mayOpenCheckIns: mayOpen(
-          { role: user.role },
-          {
-            whoMayOpen: (user.organization.whoMayOpenCheckIns as 'NAMED_LEADS' | 'EVERYONE')
-              ?? HOW_A_NEW_ORG_WORKS.whoMayOpen,
-            needsApproval: user.organization.checkInsNeedApproval ?? HOW_A_NEW_ORG_WORKS.needsApproval,
-          },
-        ).may,
+        mayOpenCheckIns: mayOpenACheckIn.may,
+        /* And why not, in the rule's own sentence, so the door on /start says what the server says: a guest reads the guest's
+           sentence, not the one about named leads (release test, 21 November 2026, bug 95). */
+        ...(mayOpenACheckIn.may ? {} : { whyYouCannotOpenCheckIns: mayOpenACheckIn.because }),
         /**
          * WHETHER THIS PERSON MAY ADD PEOPLE HERE (Hafsah, 21 November 2026), from the same rule every invite route asks
          * (users/the-role-an-invitation-gives.ts), so People and its "Invite a colleague" show only to who the server lets in.

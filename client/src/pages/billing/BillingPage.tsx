@@ -258,6 +258,12 @@ export function BillingPage() {
   const trialSentence = theFreeTrialSentence(livePricing?.trial)
   const invoices = billingStatus?.invoices ?? []
   const usage = billingStatus?.usage
+  /*
+   * HOW MANY CHECK-INS THE PLAN COVERS, FROM THE ORGANISATION'S OWN COUNT (release test, 21 November 2026, bug 101). This read the
+   * check-ins the admin may open, so Msingi's admin read "Both of your check-ins" beside "So far there have been 3 check-ins": a first
+   * ninety days she cannot open is still the organisation's, and still on the plan. Both lines now read the server's one count.
+   */
+  const howManyCheckIns = usage?.checkIns ?? grounds.length
   const busy = createSubscriptionMut.isPending || changePlanMut.isPending
   const choosePlan = (plan: SubscriptionPlan) => (isSubscribed ? changePlanMut.mutate(plan) : createSubscriptionMut.mutate(plan))
   const scrollToPlans = () => scrollToId('billing-plans', 'start')
@@ -634,7 +640,7 @@ export function BillingPage() {
       )}
 
       <Section heading={sessionsAreNotCounted ? 'Your check-ins' : 'In progress'}>
-        {sessionsAreNotCounted && grounds.length > 0 ? (
+        {sessionsAreNotCounted && howManyCheckIns > 0 ? (
           <Panel>
             {/*
              * B-231: "All 1 of your check-ins have unlimited sessions" DID NOT READ RIGHT FOR ONE
@@ -645,11 +651,11 @@ export function BillingPage() {
              * check-ins have...".
              */}
             <p className="gwui-panel-text-muted">
-              {grounds.length === 1
+              {howManyCheckIns === 1
                 ? 'Your check-in has unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.'
-                : grounds.length === 2
+                : howManyCheckIns === 2
                 ? 'Both of your check-ins have unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.'
-                : `All ${grounds.length} of your check-ins have unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.`}
+                : `All ${howManyCheckIns} of your check-ins have unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.`}
             </p>
           </Panel>
         ) : grounds.length === 0 ? (

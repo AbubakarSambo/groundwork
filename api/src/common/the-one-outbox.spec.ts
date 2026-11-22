@@ -34,6 +34,18 @@ describe('one key per message', () => {
     expect(await mayItGo(db, invite('g-fees'))).toBe(false);
   });
 
+  it('being added to the organisation is not an invitation to a check-in, so Olu gets both on the same evening (bug 17)', async () => {
+    const db = anOutbox();
+    const key = (kind: string, about: string | null) => theOutboxKey({ channel: 'email', to: 'olu@partnerco.test', kind, about, text: 'x', at: AT });
+    /* As the mail door keys them: the sender's name is the kind. */
+    expect(await mayItGo(db, key('sendUserInvite', null))).toBe(true);
+    expect(await mayItGo(db, key('sendParticipantInvite', 'g-sales'))).toBe(true);
+    /* A second check-in's invitation the same day is still held back, as before. */
+    expect(await mayItGo(db, key('sendParticipantInvite', 'g-ward'))).toBe(false);
+    /* And a notice to a lead about an invitation is its own mail. */
+    expect(await mayItGo(db, theOutboxKey({ channel: 'email', to: 'olu@partnerco.test', kind: 'sendInviteBounced', about: 'p-1', text: 'y', at: AT }))).toBe(true);
+  });
+
   it('a reply to what somebody wrote is never held, unless the very same words go twice in a minute', async () => {
     const db = anOutbox();
     const reply = (text: string, s: number) => theOutboxKey({ channel: 'whatsapp', to: '+254722000002', kind: 'reply', text, at: new Date(AT.getTime() + s * 1000) });
