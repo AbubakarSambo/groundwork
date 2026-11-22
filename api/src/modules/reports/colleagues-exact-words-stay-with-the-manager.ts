@@ -251,6 +251,20 @@ export function whatEachPersonSaidInOurWords<T extends { lines?: unknown; lineMa
 }
 
 /**
+ * THE THEMED SECTIONS (Progress, Commitments, Risks, Asks) FOR A READER WHO IS NOT IN THE CHECK-IN, by the same decision. Each item is a record line,
+ * which keeps the person's own words where it can, and no item carries a sentence of Groundwork's own, so none is shown to this reader. The section is
+ * not emptied into an untruth: where it had items, it says how many came up and where Groundwork has put them in its own words.
+ */
+export function theSectionsInOurWords<T extends { items?: unknown[]; saying?: string }>(sections: readonly T[] | null | undefined): T[] {
+  if (!Array.isArray(sections)) return (sections ?? []) as T[];
+  return sections.map((sec) => {
+    const n = Array.isArray(sec?.items) ? sec.items.length : 0;
+    if (!sec || !n) return sec;
+    return { ...sec, items: [], saying: `${n === 1 ? 'One thing' : `${n} things`} came up here in this check-in. What each person said is told in Groundwork's own words under their name.` };
+  });
+}
+
+/**
  * "WHO OWNS WHAT" (the board's `whoOwnsWhat`), FOR THE SUBJECT.
  *
  * One row per party, each holding THAT party's own lines under `items[].text` (their-own-words-
