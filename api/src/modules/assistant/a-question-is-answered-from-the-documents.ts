@@ -29,6 +29,7 @@ import { herYearEndRecordForAsk } from '../year-end/her-year-end-record';
 import { isOneOfThem, sayThePeopleTheyLead, thePeopleTheAskerIsResponsibleFor, type ThePeopleTheyLead } from './the-people-the-asker-is-responsible-for';
 import { theGoalChangesOn, theChangeThatMadeThisGoal, theChangeAsASentence } from '../grounds/a-goal-changed-by-its-lead';
 import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
+import { whichRoundIsOpen, inTheTeamsNumbering } from '../board/which-round-is-open';
 
 /** Whether a message asks something, rather than tells something. Read by its shape, never by a model. */
 const STARTS_A_QUESTION = /^\s*(?:(?:and|so|but|also|please|ok|okay)[\s,]+)?(?:what|what's|whats|when|where|which|who|whom|whose|why|how|is|are|was|were|does|do|did|can|could|will|would|should|has|have|according to|tell me|do you know)\b/i;
@@ -60,8 +61,9 @@ Rules:
 - When asked which claims are weak, or what leadership will challenge, those are the lines only said, disputed or open, and the decisions waiting. When asked what was achieved, those are only the PROVEN lines.
 - When asked how somebody is doing, or anything that compares or judges the people on a team, in any words (who to fire, let go or exit, who engaged and who did not, who was creative, who earned a reward, who is best or worst, what a person has failed to deliver): if the people it is about are named in "THE PEOPLE YOU ARE RESPONSIBLE FOR", answer it, the way a sharp, fair manager would, from the record and nothing else.
   - For each person, name their check-ins with the day of each, say in your own words what they said, and say what the proof shows. People forget, exaggerate and are biased, the person asking included, so trust only what is proven: a claim with nothing to show it is their word, so say plainly that it has no proof, and never count it as done.
-  - Saying nothing, missing check-ins, or answering without anything specific is a pattern too: name each time it happened, with the day.
-  - Then give a plain recommendation in plain words. If the record supports letting somebody go, say "let go", "fire" or "exit" as the person asked, never a softer word. Say that the decision is theirs to make.
+  - Saying nothing, missing check-ins, or answering without anything specific is a pattern too: name each time it happened, with the day. A session the record says is still open is not missed. One miss is one instance, not a pattern.
+  - Judge only what the record can carry. A person is judged only on sessions that have closed, and against a goal only for the time they have had since the day it was set. When the record is too thin to judge anybody yet, as with a goal set days ago, a team with few closed sessions, or a miss with nothing else behind it, say that plainly first. Then say what the record does show, person by person, with each instance and its day, and what would make it possible to judge, and by when, such as the sessions still to close or proof of the work. Do not recommend letting anybody go on a record that thin.
+  - Where the record carries it, give a plain recommendation in plain words. If the record supports letting somebody go, say "let go", "fire" or "exit" as the person asked, never a softer word. Say that the decision is theirs to make.
   For anybody else, say what is still outstanding that each person owns, with the record it rests on and the day it was due. Say only what is outstanding. Never judge the person, and never say they failed.
 - When asked about the presentation or the report itself, say its version, whether it is approved, and how many slides it has.
 - A short question names things loosely. "The Kamau defence" is the defence in "Kamau v. Apex Ltd"; "Kilele" is "Kilele Hotel". Match a short name to the fuller one in the documents, and answer when one thing clearly fits.`;
@@ -198,7 +200,8 @@ export async function theRecordTheyMayRead(
     const facts = await theFactsOnRecord(prisma, { groundId: g.id, reader, participantIds: people.map((p) => p.id) });
     /* How often people check in, from the check-in itself (howOftenItRuns, the one wording), never guessed from the days things were
        said: Ask told a lead "the team checks in every Monday" of a check-in set to Monday and Thursday (assessment test, 2 November). */
-    const lines: string[] = g.cadence ? [`HOW OFTEN PEOPLE CHECK IN: ${howOftenItRuns(g)}.`] : [];
+    /* What day it is, so a goal set this morning and a session that opened today are read as new (release test, 22 November 2026, N5). */
+    const lines: string[] = [...(g.cadence ? [`HOW OFTEN PEOPLE CHECK IN: ${howOftenItRuns(g)}.`] : []), `TODAY IS ${DAY_SAID(now)}.`];
     const whoSaid = (participantId: string, said?: string) => { const p = people.find((x) => x.id === participantId); return !p ? said || 'somebody' : p.userId === input.userId ? 'you' : nameOf(p); };
     /* What the lead said in setup first: it frames the check-in, and it is short, so the team's record never pushes it out (assessment
        test, 2 November: "What rules did I set for the team?" read "the documents do not say"). The one reader decides who reads it. */
@@ -215,14 +218,26 @@ export async function theRecordTheyMayRead(
      */
     const rounds = ((await Promise.resolve(prisma.checkIn?.findMany?.({
       where: { groundId: g.id, participantId: { in: people.map((p) => p.id) } },
-      select: { participantId: true, sessionNumber: true, status: true, completedAt: true },
+      select: { participantId: true, sessionNumber: true, status: true, completedAt: true, isSetup: true, availableFrom: true, createdAt: true },
     })).catch(() => [])) ?? []) as any[];
+    /*
+     * A SESSION STILL OPEN IS NOT MISSED (release test, 22 November 2026, N5). Session 3 had opened that day, and the record said "session 3 not answered" of
+     * everybody, so Ask told Wairimu all members had missed check-ins. The team's session is the latest that has begun (whichRoundIsOpen, the one rule the
+     * board and Today read); a session before it that was not answered is missed, the open one is said as open since its day, and one not begun is left out.
+     */
+    const theOpenOne = whichRoundIsOpen(rounds, now);
+    const inTheTeams = inTheTeamsNumbering(rounds);
     const theirCheckIns = (pid: string): string | null => {
-      const mine = rounds.filter((r) => r.participantId === pid).sort((a, b) => a.sessionNumber - b.sessionNumber);
+      const mine = rounds.map((r, i) => ({ ...r, teams: inTheTeams[i]?.sessionNumber ?? r.sessionNumber }))
+        .filter((r) => r.participantId === pid && (r.status !== 'NOT_STARTED' || r.teams <= theOpenOne))
+        .sort((a, b) => a.sessionNumber - b.sessionNumber);
       if (!mine.length) return null;
+      const opened = (r: any) => r.availableFrom ?? r.createdAt;
       const each = mine.map((r) => (r.status === 'COMPLETED'
         ? `session ${r.sessionNumber} answered${r.completedAt ? ` on ${DAY_SAID(new Date(r.completedAt))}` : ''}`
-        : `session ${r.sessionNumber} not answered`));
+        : r.teams >= theOpenOne
+          ? `session ${r.sessionNumber} still open${opened(r) ? ` since ${DAY_SAID(new Date(opened(r)))}` : ''} and not answered yet`
+          : `session ${r.sessionNumber} not answered`));
       return `- Their check-ins: ${each.join(', ')}.`;
     };
     for (const p of people) {
@@ -285,7 +300,7 @@ async function theGoalsOnRecord(
   const theirs = new Set(people.map((p) => p.id));
   const rows = (((await Promise.resolve(prisma.groundObjective?.findMany?.({
     where: { groundId: g.id },
-    select: { id: true, name: true, target: true, count: true, ownerParticipantId: true, setByParticipantId: true },
+    select: { id: true, name: true, target: true, count: true, ownerParticipantId: true, setByParticipantId: true, createdAt: true },
   })).catch(() => [])) ?? []) as any[]).filter((o) => isLead || !o.ownerParticipantId || theirs.has(o.ownerParticipantId));
   const untold = isLead ? [] : (((await Promise.resolve(prisma.personObjective?.findMany?.({
     where: { groundId: g.id, awareness: 'NOT_TOLD' },
@@ -301,7 +316,9 @@ async function theGoalsOnRecord(
     const whose = !o.ownerParticipantId ? 'The team’s goal' : !isLead ? 'Your own goal' : `${owner ? nameOf(owner) : 'One person'}’s own goal`;
     const target = typeof o.target === 'number' ? ` Its target is ${aNumberPeopleCanRead(o.target)}, and ${aNumberPeopleCanRead(Number(o.count ?? 0))} is counted against it so far.` : '';
     const c = theChangeThatMadeThisGoal(changes, o.id);
-    out.push(`- ${whose} is “${String(o.name ?? '').trim().replace(/[.!?\s]+$/, '')}”.${target}${c ? ` ${theChangeAsASentence(c, names, isLead)}` : ''}`);
+    /* The day it was set, so a goal an hour old is not read as one people have failed (N5). */
+    const set = o.createdAt ? ` It was set on ${DAY_SAID(new Date(o.createdAt))}.` : '';
+    out.push(`- ${whose} is “${String(o.name ?? '').trim().replace(/[.!?\s]+$/, '')}”.${set}${target}${c ? ` ${theChangeAsASentence(c, names, isLead)}` : ''}`);
   }
   return out;
 }

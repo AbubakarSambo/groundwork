@@ -56,7 +56,8 @@ describe('a lead hears who to let go, from the record, about the people she lead
   it('the record Grace is given names each person\'s check-ins with their days, and the ones not answered', async () => {
     const [record] = await theRecordTheyMayRead(theOrganisation(), { organizationId: ORG, userId: GRACE });
     console.log(`THE RECORD GIVEN FOR GRACE\n${record.content}`);
-    expect(record.content).toContain('PERSON: Dan Mwangi\n- Their check-ins: session 1 not answered, session 2 not answered, session 3 not answered.');
+    /* Session 3 is the team's open session (everybody else has answered it, and none after it has begun), so Dan has missed two and the third is still open (N5, evening of 22 November: a session still open is not missed). */
+    expect(record.content).toContain('PERSON: Dan Mwangi\n- Their check-ins: session 1 not answered, session 2 not answered, session 3 still open and not answered yet.');
     expect(record.content).toMatch(/PERSON: Chloe Wanjiru\n- Their check-ins: session 1 answered on [^,]+2 November[^,]*, session 2 not answered, session 3 answered on [^.]+16 November/);
   });
 
