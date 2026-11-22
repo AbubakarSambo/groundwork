@@ -31,6 +31,6 @@ describe("Kevin's check-ins on his own My work", () => {
       now: at('2026-10-15T18:30:00Z'), timeZone: 'Africa/Nairobi',
     } as any, 'Sales team, Q4');
     const quality = page.performing.behaviours.find((b: any) => b.name === 'Check-in quality');
-    expect(quality.happened).toContain('3 of 3 were specific.');
+    expect(quality.happened).toContain('3 of them named the item, what changed and the day.');
   });
 });

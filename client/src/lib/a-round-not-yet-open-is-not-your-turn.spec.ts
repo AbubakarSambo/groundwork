@@ -23,25 +23,25 @@ const ground = (availableFrom: string | null) => ({
   checkIns: [{ participantId: 'p-me', sessionNumber: 2, status: 'NOT_STARTED', availableFrom }],
 })
 
+/*
+ * Since 21 November 2026 the rule is the server's (yourTurnIn in what-needs-you.ts, tested in your-turn-is-the-servers.spec.ts, where a
+ * round that opens in a fortnight is not your turn). The list serves its answer on each row, so the rail no longer depends on a date
+ * the list may or may not send: it says your turn exactly where the server served one.
+ */
 describe('a round not yet open is not your turn', () => {
-  it('a round that opens in a fortnight wants nothing from you', () => {
+  it('a round that opens in a fortnight wants nothing from you: the server serves no turn', () => {
     const later = new Date(Date.now() + 14 * 86_400_000).toISOString()
-    expect(railAttention(ground(later) as any, 'u-me').kind).toBe('none')
+    expect(railAttention({ ...ground(later), yourTurn: null } as any, 'u-me').kind).toBe('none')
   })
 
-  it('a round already open is your turn', () => {
+  it('a round already open is your turn, as served', () => {
     const earlier = new Date(Date.now() - 60_000).toISOString()
-    expect(railAttention(ground(earlier) as any, 'u-me').kind).toBe('yours')
+    expect(railAttention({ ...ground(earlier), yourTurn: { checkInId: 'c2', sessionNumber: 2, openedAt: earlier } } as any, 'u-me').kind).toBe('yours')
   })
 
-  it('and the field being ABSENT is what produced the wrong answer', () => {
-    /*
-     * This is the defect, expressed as a test. With the date missing the rule cannot tell a
-     * scheduled round from an open one, and falls to "yours" - which is the safe default for a
-     * rule, and the wrong answer for a person. The fix is in the API select, not here.
-     */
+  it('and a row without the date is no longer guessed into your turn', () => {
     const noField = { ...ground(null) }
     delete (noField.checkIns[0] as any).availableFrom
-    expect(railAttention(noField as any, 'u-me').kind).toBe('yours')
+    expect(railAttention(noField as any, 'u-me').kind).not.toBe('yours')
   })
 })

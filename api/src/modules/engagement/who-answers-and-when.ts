@@ -1,3 +1,5 @@
+import { A_SESSION_OF_THEIRS } from '../grounds/the-sessions-done';
+import { theQuietHoursNow } from '../../common/the-clock';
 import { workingDaysOf } from '../grounds/which-days-this-team-works';
 import { aRoundCouldHaveBeenAnswered, whenACheckInBegan } from '../grounds/a-round-that-could-be-answered';
 /**
@@ -60,6 +62,8 @@ export interface ASessionOnRecord {
 }
 
 export interface TheirDay {
+  /** Whether the check-in opens a session each working day, where the rows say (cadence DAILY). Only then is a miss counted in days. */
+  opensDaily?: boolean;
   participantId: string;
   /** A session of theirs is open today (it opened today or before, and was not answered before today). */
   dueToday: boolean;
@@ -125,7 +129,7 @@ const openedAt = (c: ASessionOnRecord): Date | null => (c.availableFrom ? new Da
  * round the clock closed after they gave their number is an answer; one closed with nothing from them is not.
  */
 const asHappened = (c: ASessionOnRecord) => ({ ...c, answers: Array.isArray(c.turns) ? c.turns.length : null, firstAnsweredAt: c.turns?.[0]?.createdAt ?? null });
-export const wasAnswered = (c: ASessionOnRecord): boolean => String(c.status ?? '').toUpperCase() === 'COMPLETED' && theyAnsweredIn(asHappened(c));
+export const wasAnswered = (c: ASessionOnRecord): boolean => theyAnsweredIn(asHappened(c));
 /** When they answered in it: their first answer, else when it was finished. */
 export const whenAnswered = (c: ASessionOnRecord): Date | null => whenTheyAnswered(asHappened(c));
 
@@ -228,7 +232,7 @@ export function theirDay(participantId: string, all: ASessionOnRecord[], now: Da
   }
   const gaps = runningOpened.slice(1).map((d, i) => Math.round((new Date(`${runningOpened[i]}T12:00:00Z`).getTime() - new Date(`${d}T12:00:00Z`).getTime()) / 86_400_000));
   const onTimeEvery: TheirDay['onTimeEvery'] = gaps.every((g) => g <= 4) ? 'day' : gaps.every((g) => g >= 5 && g <= 9) ? 'week' : 'time';
-  return { participantId, dueToday, answeredToday, answeredOnTimeToday, lateAfter, lateToday, lastCheckedIn, missedDays, onTimeRunning, onTimeLastDay, onTimeEvery, paused };
+  return { opensDaily: mine.length ? mine.some((c) => !!c.opensDaily) : undefined, participantId, dueToday, answeredToday, answeredOnTimeToday, lateAfter, lateToday, lastCheckedIn, missedDays, onTimeRunning, onTimeLastDay, onTimeEvery, paused };
 }
 
 /** Whether the days follow one another, counting only the days the team works. */
@@ -253,11 +257,14 @@ export function twoMissedDaysSaid(who: string, d: TheirDay, workingDays: number[
   const n = d.missedDays.length;
   if (n < 2) return null;
   const names = d.missedDays.map(aDayByName);
-  if (oneAfterAnother(d.missedDays, workingDays)) {
+  /* Days only for a check-in that opens each day: two sessions of a weekly check-in that opened on Sunday and Monday are two times it
+     opened, never "2 days" (release test, 21 November 2026: "Amani hasn't checked in for 2 days" about a weekly check-in). */
+  const gapOf = (i: number) => Math.round((new Date(`${d.missedDays[i + 1]}T12:00:00Z`).getTime() - new Date(`${d.missedDays[i]}T12:00:00Z`).getTime()) / 86_400_000);
+  const weekly = d.missedDays.slice(1).every((_, i) => gapOf(i) >= 5 && gapOf(i) <= 9);
+  if (oneAfterAnother(d.missedDays, workingDays) && (weekly || d.opensDaily !== false)) {
     /* A check-in that opens once a week is missed in weeks, not days (browser test, 21 October 2026: a borrower who checks in each
        Monday read "Peter hasn't checked in for 4 days, since Monday 28 September"). */
-    const gap = d.missedDays.length > 1 ? Math.round((new Date(`${d.missedDays[1]}T12:00:00Z`).getTime() - new Date(`${d.missedDays[0]}T12:00:00Z`).getTime()) / 86_400_000) : 1;
-    const unit = gap >= 5 && gap <= 9 ? 'weeks' : 'days';
+    const unit = weekly ? 'weeks' : 'days';
     return n === 2
       ? `${who} hasn't checked in for 2 ${unit}, on ${listed(names)}, so call ${who}.`
       : `${who} hasn't checked in for ${n} ${unit}, since ${names[0]}, so call ${who}.`;
@@ -300,13 +307,13 @@ export const mayBeNudged = (d: TheirDay) => d.dueToday && !d.answeredToday && (d
  * ON THEIR OWN PAGE (their own report): "You checked in on time today, 5 days running." For the person whose report it is, read by
  * nobody else (the route serves a session's report to its owner alone). Null with nothing to credit, or with the direct morning off.
  */
-export async function onTimeForThemselves(prisma: any, groundId: string | null | undefined, participantId: string, now: Date = new Date()): Promise<string | null> {
+export async function onTimeForThemselves(prisma: any, groundId: string | null | undefined, participantId: string, now: Date = theQuietHoursNow()): Promise<string | null> {
   try {
     if (!groundId) return null;
     const g = await prisma?.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true, cadence: true, cadenceDays: true, workingDays: true } });
     const zone = (g?.organizationId ? await theOrganisationsZone(prisma, g.organizationId).catch(() => null) : null) ?? THE_PRODUCTS_OWN_ZONE;
     const sessions: ASessionOnRecord[] = (await prisma?.checkIn?.findMany?.({
-      where: { groundId, participantId },
+      where: { groundId, participantId, ...A_SESSION_OF_THEIRS },
       select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } },
     })) ?? [];
     /* Whether it opens each working day, read the same way as the lead's morning (the-direct-morning.ts). */

@@ -1,3 +1,4 @@
+import { theCheckInsSaid, theCheckInsDone } from './a-day-they-checked-in';
 import type { ThePersonsRecord, ACoaching, AClaim, APromise } from './the-persons-record';
 
 /**
@@ -182,10 +183,9 @@ export function theRecordInWords(r: ThePersonsRecord, coaching: readonly ACoachi
 
   /* Check-ins. */
   if (s.checkInsDue) {
-    const timing = s.checkInsOnTime === s.checkInsDone ? 'all on time' : `${inWords(s.checkInsOnTime)} of them on time`;
     parts.push({
       heading: `${Your(w)} check-ins`,
-      says: `${You(w)} did ${inWords(s.checkInsDone)} of ${plural(s.checkInsDue, 'check-in')}${s.checkInsDone ? `, ${timing}` : ''}. ${cap(inWords(s.checkInsSpecific))} of them named the item, what changed and the day.`,
+      says: theCheckInsSaid(You(w), { done: s.checkInsDone, due: s.checkInsDue, onTime: s.checkInsOnTime, specific: s.checkInsSpecific }, { say: inWords }),
       toChange: s.checkInsDue >= 3 && (s.checkInsDone / s.checkInsDue < 0.8 || s.checkInsOnTime / s.checkInsDue < 0.7 || (s.checkInsDone ? s.checkInsSpecific / s.checkInsDone : 0) < 0.7)
         ? 'Naming the item, what changed and the day, every time, would change this.' : null,
       evidence: r.checkIns.filter((c) => !c.done || !c.onTime || !c.specific).map((c) => `${c.on ? `On ${c.on}` : `In session ${c.sessionNumber}`}, ${!c.done ? 'the check-in was not done' : !c.onTime ? 'the check-in was done after the day it opened' : 'the check-in did not name the item, what changed and the day'}.`),
@@ -237,7 +237,7 @@ export function acrossTheirCheckIns(others: readonly { label: string; record: Th
     const bits = [
       due ? `you kept ${inWords(kept)} of ${plural(due, 'promise')} that came due` : '',
       s.claims ? `${inWords(s.proven)} of the ${plural(s.claims, 'thing')} you said ${s.claims === 1 ? 'was' : 'were'} sold, paid or signed ${s.proven === 1 ? 'has' : 'have'} proof on file` : '',
-      s.checkInsDue ? `you did ${inWords(s.checkInsDone)} of ${plural(s.checkInsDue, 'check-in')}` : '',
+      s.checkInsDue ? theCheckInsDone('you', { done: s.checkInsDone, due: s.checkInsDue }, inWords) : '',
     ].filter(Boolean);
     if (!bits.length) return `In ${label}, nothing has come in yet.`;
     const last = bits.pop()!;

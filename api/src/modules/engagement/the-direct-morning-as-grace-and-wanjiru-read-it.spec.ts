@@ -180,7 +180,7 @@ describe('Wanjiru’s direct morning, Muchemi & Co (test): fee notes and the lit
        * said Friday was not done though he answered that Friday, and never counted Tuesday.
        */
       { heading: 'Your team today, in Litigation team daily', lines: [
-        'David did 4 of 6 check-ins, 1 of them on time, and 2 named the item, what changed and the day. Groundwork has coached David on it since Wednesday 14 October, and it has got worse, so call David.',
+        'David did 4 of 6 check-ins, 1 of them on time. 2 of them named the item, what changed and the day. Groundwork has coached David on it since Wednesday 14 October, and it has got worse, so call David.',
       ] },
     ]);
     expect(theSubject('Wanjiru', [fees!, lit!])).toBe('Wanjiru: KES 850,000 owed, and Nyota Logistics disputes FN-008');

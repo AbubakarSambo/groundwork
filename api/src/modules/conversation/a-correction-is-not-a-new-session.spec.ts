@@ -30,7 +30,7 @@ const service = fs
 
 describe('a self-correction session', () => {
   it('does not also get the returning-session opener', () => {
-    expect(service).toContain('if (checkIn.sessionNumber >= 2 && !checkIn.isSelfCorrection) {\n      returningUserContext =');
+    expect(service).toContain('if (theirOwn >= 2 && !checkIn.isSelfCorrection) {\n      returningUserContext =');
   });
 
   it('and still gets its own', () => {
@@ -55,7 +55,7 @@ describe('a self-correction session', () => {
     /* Each is built only under its own guard. Matched on the guard, not on the line after it,
        which drifted the first time the body below it was edited. */
     const selfBuilt = service.indexOf('if (checkIn.isSelfCorrection && checkIn.selfCorrectionTargetSession != null) {');
-    const returningBuilt = service.indexOf('if (checkIn.sessionNumber >= 2 && !checkIn.isSelfCorrection) {');
+    const returningBuilt = service.indexOf('if (theirOwn >= 2 && !checkIn.isSelfCorrection) {');
     expect(selfBuilt).toBeGreaterThan(-1);
     expect(returningBuilt).toBeGreaterThan(-1);
   });

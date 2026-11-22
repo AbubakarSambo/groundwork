@@ -1,3 +1,4 @@
+import { theSessionANewcomerStartsIn } from '../grounds/the-session-a-person-is-on';
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { whenItAsks } from '../participants/when-it-asks';
 import { CheckInStatus, PartyType } from '@prisma/client';
@@ -101,7 +102,7 @@ export class TheOpenLinkService {
       select: { id: true },
     });
     const checkIn = await this.prisma.checkIn.create({
-      data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+      data: { groundId: ground.id, participantId: participant.id, sessionNumber: await theSessionANewcomerStartsIn(this.prisma, ground.id), status: CheckInStatus.NOT_STARTED },
       select: { id: true },
     });
     /*

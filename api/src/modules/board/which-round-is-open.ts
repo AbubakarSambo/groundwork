@@ -22,44 +22,57 @@ export interface Round {
   status: string;
 }
 
+type ARow = Round & { participantId?: string | null; isSetup?: boolean | null; availableFrom?: Date | string | null; createdAt?: Date | string | null };
+const when = (d: Date | string | null | undefined): number | null => (d ? new Date(d).getTime() : null);
+
 /**
- * A ROUND THAT SOMEBODY HAS STARTED AND NOT EVERYBODY HAS FINISHED IS THE OPEN ONE.
+ * EVERY ROW IN THE TEAM'S NUMBERING (release test, 21 November 2026). A person's sessions are numbered from their own first one, so
+ * somebody added in week 3 does their session 1 while the team does session 3. Every count read the raw numbers, so Olu's first session
+ * held session 1 open again: Today, the check-ins list and Ask said "6 of 7 have checked in" about session 1, which the team had finished
+ * weeks before, while three people had not checked in for this week's; the participant's board said "None of the 12 check-ins is done
+ * yet", and the lead's board read "Juma has checked in" from his session 1.
  *
- * There were two answers to this in the same file. This one took the newest round anybody had
- * touched; the board's own copy took the lowest round anybody had not finished, which is next
- * week's untouched row the moment this week closes. Read live on a forty-person convening where all
- * forty had answered: thirty-six blockers on the record and the board saying "Blockers: None".
- *
- * Both halves were right about something and neither was right on its own. A round only counts once
- * somebody has opened it, which is this function's rule. And when a person is added mid-run their
- * session one is genuinely open again while others are on session two, which is the board's. So:
- * the lowest STARTED round somebody has still not finished, and where every started round is done,
- * the newest one.
+ * The check-in runs on its own rhythm, the same for the whole team (decision 135), so a session is the team's session it opened in. A
+ * person whose first row was written while the team was already on session k has their rows moved on by k - 1: Olu's session 1 counts
+ * as session 3, his session 2 as session 4. Everybody who was there from the start keeps their numbers. The rows a person sees and
+ * answers keep their own numbers (their first session is still their first); only counting reads this. Running it twice changes nothing.
  */
-export function whichRoundIsOpen(rows: Round[]): number {
-  if (!rows.length) return 0;
-  const started = rows.filter((r) => r.status !== 'NOT_STARTED');
-  /* Nothing started anywhere: the run has not begun, and the first round is the one about to open. */
-  if (!started.length) return Math.min(...rows.map((r) => r.sessionNumber));
-  const numbers = [...new Set(started.map((r) => r.sessionNumber))];
-  /* A round where somebody is still in progress or has not been asked yet. COMPLETED and DECLINED
-     are both somebody having met the round; NOT_STARTED inside a started round is a person still
-     to answer, which is what keeps that round open. */
-  const stillGoing = numbers.filter((n) => rows.some((r) => r.sessionNumber === n && r.status !== 'COMPLETED' && r.status !== 'DECLINED'));
-  return stillGoing.length ? Math.min(...stillGoing) : Math.max(...numbers);
+export function inTheTeamsNumbering<T extends ARow>(rows: T[]): T[] {
+  const sessions = (rows ?? []).filter((r) => !r.isSetup && r.participantId);
+  const firstOf = new Map<string, T>();
+  for (const r of sessions) {
+    const f = firstOf.get(r.participantId!);
+    if (!f || r.sessionNumber < f.sessionNumber) firstOf.set(r.participantId!, r);
+  }
+  const shift = new Map<string, number>();
+  for (const [who, first] of firstOf) {
+    const written = when(first.createdAt);
+    if (written == null) continue;
+    /* The team's session when their first row was written: the newest session anybody else had open by then. */
+    const opened = sessions.filter((r) => r.participantId !== who && (when(r.availableFrom) ?? when(r.createdAt) ?? Infinity) <= written).map((r) => r.sessionNumber);
+    const theTeams = opened.length ? Math.max(...opened) : first.sessionNumber;
+    if (theTeams > first.sessionNumber) shift.set(who, theTeams - first.sessionNumber);
+  }
+  if (!shift.size) return rows ?? [];
+  return (rows ?? []).map((r) => (!r.isSetup && r.participantId && shift.has(r.participantId) ? { ...r, sessionNumber: r.sessionNumber + shift.get(r.participantId)! } : r));
 }
 
 /**
- * THE ROUND A COUNT IN A MESSAGE IS ABOUT. The board's open round, so a message agrees with Today and the
- * board (B-019: one check-in was counted four ways in one morning). Where that round is finished and a newer
- * one has been written ahead and is already available, it is the newer one, because there is something
- * to ask people about and nothing left to count in the finished one.
+ * THE TEAM'S SESSION IS THE LATEST ONE THAT HAS BEGUN (Hafsah, 22 November 2026: "Should a session count as over once the next one has
+ * started, even if some people missed it?" "Yes, move it on").
+ *
+ * This held the team at the lowest round somebody had not finished, so two people who never answered session 2 kept the board on
+ * "Check-in 2 of 12" after three check-ins, Today counted session 2 while the board's own lines counted session 4, and the weekly letter
+ * disagreed with both. A session has begun once somebody has started it or its day to open has come (`now`); a row written ahead for next
+ * week has not. The latest begun is the team's session, and every earlier one is over: whoever did not answer it missed it
+ * (missed-check-ins.ts reads every session before this one as closed). Before anything has begun, the first is the one about to open.
+ * Read in the team's numbering, so somebody added late never pulls it back.
  */
-export function theRoundACountIsAbout(rows: Round[]): number {
-  const open = whichRoundIsOpen(rows);
-  const finished = rows.filter((r) => r.sessionNumber === open).every((r) => r.status === 'COMPLETED' || r.status === 'DECLINED');
-  const newest = rows.length ? Math.max(...rows.map((r) => r.sessionNumber)) : 0;
-  return finished && newest > open ? newest : open;
+export function whichRoundIsOpen(given: (Round & { availableFrom?: Date | string | null })[], now?: Date): number {
+  if (!given.length) return 0;
+  const rows = inTheTeamsNumbering(given as ARow[]);
+  const begun = rows.filter((r) => r.status !== 'NOT_STARTED' || (!!now && when(r.availableFrom) != null && when(r.availableFrom)! <= now.getTime()));
+  return begun.length ? Math.max(...begun.map((r) => r.sessionNumber)) : Math.min(...rows.map((r) => r.sessionNumber));
 }
 
 /**
@@ -71,8 +84,9 @@ export function theRoundACountIsAbout(rows: Round[]): number {
 export function theTeamsOpenRound(
   rows: (Round & { participantId?: string | null })[],
   people: { id: string; partyType?: string | null; managingOnly?: boolean | null }[],
+  now?: Date,
 ): number {
   const choosesWhen = new Set((people ?? []).filter((p) => p.partyType === 'INITIATOR' || p.managingOnly === true).map((p) => p.id));
   const theTeams = (rows ?? []).filter((r) => !r.participantId || !choosesWhen.has(r.participantId));
-  return whichRoundIsOpen(theTeams.length ? theTeams : rows ?? []);
+  return whichRoundIsOpen(theTeams.length ? theTeams : rows ?? [], now);
 }

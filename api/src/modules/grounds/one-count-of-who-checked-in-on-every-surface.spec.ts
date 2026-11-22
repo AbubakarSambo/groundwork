@@ -1,0 +1,237 @@
+import { theSessionAndItsCount } from './this-sessions-count';
+import { howACheckInIsGoing } from './how-a-check-in-is-going';
+import { theSessionRowsOf, theRoundsDone } from './the-sessions-done';
+import { theCountAsServed, theClocksSessionIn } from './the-count-as-served';
+import { theirClosedSessions } from './missed-check-ins';
+import { theTeamsOpenRound, inTheTeamsNumbering } from '../board/which-round-is-open';
+import { theSessionClock } from '../board/one-count-for-the-sessions';
+import { theirDay, twoMissedDaysSaid } from '../engagement/who-answers-and-when';
+
+/**
+ * ONE COUNT OF WHO HAS CHECKED IN, ON EVERY SURFACE (release test, 21 November 2026).
+ *
+ * The world the release test ran: Wairimu leads "Sales team, Q4", weekly, twelve sessions. Amani, Chidi, Zawadi, Juma and Neema were
+ * there from the start and all checked in for session 1. In session 2, Amani and Chidi have checked in; Zawadi, Juma and Neema have not.
+ * Olu is added in week 2 and has started his first session, which is his session 1 and the team's session 2.
+ *
+ * What people read that night: Today and Ask said "6 of 7 have checked in; Olu has started and not finished yet." (session 1, counted
+ * again because Olu's first row held it open), the participant's board "None of the 12 check-ins is done yet", the lead's board "Juma
+ * has checked in", and the morning "Amani hasn't checked in for 2 days". Every one of those surfaces reads one of the functions below;
+ * this world checks they all say the same session, the same count and the same sessions done.
+ */
+const D = (s: string) => new Date(s);
+const NOW = D('2026-11-17T09:00:00Z'); // Tuesday of week 2: session 2 opened on Saturday 14 November
+const S1 = D('2026-11-07T07:00:00Z');
+const S2 = D('2026-11-14T07:00:00Z');
+const S3 = D('2026-11-21T07:00:00Z');
+
+const person = (id: string, first: string, extra: Record<string, unknown> = {}) => ({ id, userId: `u-${id}`, partyType: 'PARTICIPANT', joinedAt: S1, user: { firstName: first }, ...extra });
+const PEOPLE = [
+  person('wairimu', 'Wairimu', { partyType: 'INITIATOR' }),
+  person('amani', 'Amani'), person('chidi', 'Chidi'), person('zawadi', 'Zawadi'), person('juma', 'Juma'), person('neema', 'Neema'),
+  person('olu', 'Olu', { joinedAt: D('2026-11-16T10:00:00Z') }),
+];
+
+const said = (at: Date) => [{ id: `t-${at.getTime()}`, createdAt: at }];
+const row = (participantId: string, sessionNumber: number, status: string, availableFrom: Date, extra: Record<string, unknown> = {}) => ({
+  id: `${participantId}-${sessionNumber}`, participantId, sessionNumber, status, availableFrom, createdAt: S1, isSetup: false, closedReason: null, turns: [] as unknown[], completedAt: null as Date | null, ...extra,
+});
+const answered = (participantId: string, n: number, opened: Date, at: Date) => row(participantId, n, 'COMPLETED', opened, { completedAt: at, turns: said(at), createdAt: n === 1 ? S1 : opened });
+const open = (participantId: string, n: number, opened: Date) => row(participantId, n, 'NOT_STARTED', opened, { createdAt: opened });
+
+const ROWS = [
+  { ...row('wairimu', 0, 'COMPLETED', S1), isSetup: true },
+  answered('wairimu', 1, S1, D('2026-11-07T08:00:00Z')),
+  ...['amani', 'chidi', 'zawadi', 'juma', 'neema'].map((p) => answered(p, 1, S1, D('2026-11-07T10:00:00Z'))),
+  answered('amani', 2, S2, D('2026-11-14T09:00:00Z')), open('amani', 3, S3),
+  answered('chidi', 2, S2, D('2026-11-14T11:00:00Z')), open('chidi', 3, S3),
+  open('zawadi', 2, S2), open('juma', 2, S2), open('neema', 2, S2),
+  /* Olu's first session: written when he was added, in week 2, and started. */
+  row('olu', 1, 'IN_PROGRESS', D('2026-11-16T10:00:00Z'), { createdAt: D('2026-11-16T10:00:00Z'), turns: said(D('2026-11-16T10:05:00Z')) }),
+];
+
+const GROUND = { participants: PEOPLE, checkIns: ROWS, scenario: 'SALES', timelineDays: 84, cadence: 'WEEKLY', cadenceDays: null, runsUntilEnded: false };
+
+describe('one count of who has checked in, read the same on every surface', () => {
+  const { clock, count, bySession } = theSessionAndItsCount(GROUND as any, { now: NOW, names: { readerUserId: 'u-wairimu' } });
+
+  it('the clock is the team’s session 2, not Olu’s first session', () => {
+    expect(clock.currentSession).toBe(2);
+    /* The board's header and phase line ask whichRoundIsOpen through theTeamsOpenRound. */
+    expect(theTeamsOpenRound(ROWS as any, PEOPLE as any)).toBe(2);
+    expect(theSessionClock(ROWS.filter((r) => !r.isSetup) as any, new Set(PEOPLE.filter((p) => p.partyType !== 'INITIATOR').map((p) => p.id)), 12, NOW).currentSession).toBe(2);
+  });
+
+  it('Today, the check-ins list, the board and Ask read: two of six have checked in, and who has not, by name', () => {
+    expect(count.answered).toBe(2);
+    expect(count.ofPeople).toBe(6);
+    expect(count.says).toBe('2 of 6 have checked in; Olu has started and not finished yet, and Zawadi, Juma and Neema haven’t started yet.');
+    /* What the list and the board are served is the same count (theCountAsServed). */
+    const served = theCountAsServed({ session: clock.currentSession, said: count, planned: 12 }, bySession, { onlyThese: null });
+    expect(theClocksSessionIn(served)?.answered.length).toBe(2);
+    expect(theClocksSessionIn(served)?.onTheCheckIn.length).toBe(6);
+  });
+
+  it('the participant’s board and Ask’s "how is my team doing" read the same count, and one session done', () => {
+    const going = howACheckInIsGoing({ ...GROUND, dependencies: [], sharedPicture: null, round: clock.currentSession } as any, NOW);
+    expect(going.glance.progress.answeredThisRound).toBe(2);
+    expect(going.glance.progress.ofPeople).toBe(6);
+    expect(going.glance.progress.roundsDone).toBe(1);
+    /* With no round given (a reader the clock is not passed to), the same session. */
+    const alone = howACheckInIsGoing({ ...GROUND, dependencies: [], sharedPicture: null } as any, NOW);
+    expect(alone.glance.progress.answeredThisRound).toBe(2);
+    expect(alone.glance.progress.roundsDone).toBe(1);
+  });
+
+  it('People and setup counts the sessions done by the same clock', () => {
+    expect(theRoundsDone(theSessionRowsOf(ROWS as any, PEOPLE), undefined, NOW, clock.currentSession)).toBe(1);
+  });
+
+  it('a session the clock has moved past is done, whoever missed it', () => {
+    const later = D('2026-11-24T09:00:00Z');
+    /* As the sweep leaves it when session 3 opens: what nobody answered in session 2 closed by the clock, and a session 3 for each. */
+    const closed = { status: 'COMPLETED', closedReason: 'closed-by-the-clock', completedAt: S3 };
+    const week3 = [
+      ...ROWS.map((r) => (r.sessionNumber === 2 && r.status === 'NOT_STARTED' ? { ...r, ...closed } : r.participantId === 'olu' ? { ...r, ...closed } : r)),
+      ...['zawadi', 'juma', 'neema'].map((p) => open(p, 3, S3)), { ...open('olu', 2, S3), createdAt: S3 },
+    ];
+    const c = theSessionAndItsCount({ ...GROUND, checkIns: week3 } as any, { now: later });
+    expect(c.clock.currentSession).toBe(3);
+    expect(theRoundsDone(theSessionRowsOf(week3 as any, PEOPLE), undefined, later, c.clock.currentSession)).toBe(2);
+  });
+
+  it('Olu’s first session is the team’s session 2 in every count, and his own rows keep their numbers', () => {
+    const numbered = inTheTeamsNumbering(ROWS as any[]);
+    expect(numbered.find((r) => r.participantId === 'olu')?.sessionNumber).toBe(2);
+    expect(ROWS.find((r) => r.participantId === 'olu')?.sessionNumber).toBe(1);
+    /* Everybody there from the start keeps their numbers, and numbering twice changes nothing. */
+    expect(numbered.filter((r) => r.participantId !== 'olu').map((r) => r.sessionNumber)).toEqual(ROWS.filter((r) => r.participantId !== 'olu').map((r) => r.sessionNumber));
+    expect(inTheTeamsNumbering(numbered).map((r) => r.sessionNumber)).toEqual(numbered.map((r) => r.sessionNumber));
+  });
+
+  it('the lead’s morning tells nobody to call anybody about one session of a weekly check-in, and Amani, who answered, missed nothing', () => {
+    expect(theirDay('amani', ROWS as any, NOW, 'Africa/Nairobi').missedDays).toEqual([]);
+    for (const who of ['amani', 'zawadi', 'olu']) expect(twoMissedDaysSaid(who, theirDay(who, ROWS as any, NOW, 'Africa/Nairobi'), [1, 2, 3, 4, 5])).toBeNull();
+  });
+
+  it('the weekly letter, against the check-in’s clock, has nobody missing a session still open, and Zawadi missing none she answered', () => {
+    for (const who of ['amani', 'chidi', 'zawadi', 'olu']) {
+      const theirs = inTheTeamsNumbering(ROWS as any[]).filter((r) => r.participantId === who);
+      expect(theirClosedSessions(theirs as any, [], NOW, { theClocksSession: clock.currentSession }).filter((c) => c.missed)).toEqual([]);
+    }
+  });
+});
+
+/**
+ * THE WORLD AS THE 22 NOVEMBER RERUN LEFT IT. Juma and Neema never answered session 2. Hafsah decided that day that a session is over
+ * once the next one has begun ("Yes, move it on"), so the team is on session 3 after three check-ins, and Juma and Neema missed session
+ * 2. Olu was added during session 3 and finished his own first session, which is the team's session 3. Every surface counts session 3,
+ * Olu is not counted in a session that ran before he joined, and his first session never closes the team's session 1.
+ */
+describe('the 22 November world: two people who never answered session 2, and Olu, added in session 3, who has checked in', () => {
+  const W1 = D('2026-11-08T04:35:00Z');
+  const W2 = D('2026-11-15T04:35:00Z');
+  const W3 = D('2026-11-22T04:35:00Z');
+  const OLU_ADDED = D('2026-11-22T05:23:00Z');
+  const LATER = D('2026-11-22T06:00:00Z');
+  const done = (p: string, n: number, opened: Date, at: Date) => row(p, n, 'COMPLETED', opened, { completedAt: at, turns: said(at), createdAt: opened });
+  const rows = [
+    ...['wairimu', 'amani', 'chidi', 'zawadi', 'juma', 'neema'].map((p) => done(p, 1, W1, D('2026-11-08T05:40:00Z'))),
+    ...['wairimu', 'amani', 'chidi', 'zawadi'].map((p) => done(p, 2, W2, D('2026-11-15T05:40:00Z'))),
+    open('juma', 2, W2), open('neema', 2, W2),
+    ...['wairimu', 'amani', 'chidi'].map((p) => done(p, 3, W3, D('2026-11-22T05:05:00Z'))),
+    open('zawadi', 3, W3),
+    { ...done('olu', 1, OLU_ADDED, D('2026-11-22T05:26:00Z')), availableFrom: null, createdAt: OLU_ADDED },
+    { ...open('olu', 2, D('2026-11-23T05:00:00Z')), createdAt: D('2026-11-22T05:26:00Z') },
+  ];
+  const people = PEOPLE.map((p) => (p.id === 'olu' ? { ...p, joinedAt: OLU_ADDED } : { ...p, joinedAt: D('2026-11-01T04:35:00Z') }));
+  const world = { ...GROUND, participants: people, checkIns: rows };
+  const { clock, count } = theSessionAndItsCount(world as any, { now: LATER, names: { readerUserId: 'u-wairimu' } });
+
+  it('every surface reads session 3, the latest begun, with Olu in it, and session 2 is over', () => {
+    expect(clock.currentSession).toBe(3);
+    expect(clock.says).toBe('Check-in 3 of 12.');
+    expect(count.says).toBe('4 of 7 have checked in; Zawadi, Juma and Neema haven’t started yet.');
+    const going = howACheckInIsGoing({ ...world, dependencies: [], sharedPicture: null, round: clock.currentSession } as any, LATER);
+    expect([going.glance.progress.answeredThisRound, going.glance.progress.ofPeople]).toEqual([count.answered, count.ofPeople]);
+    expect(going.glance.progress.roundsDone).toBe(2);
+    expect(theRoundsDone(theSessionRowsOf(rows as any, people), undefined, LATER, clock.currentSession)).toBe(2);
+  });
+
+  it('Juma and Neema missed session 2: the weekly letter and the lead read it as a miss, never as still waiting', () => {
+    for (const who of ['juma', 'neema']) {
+      const theirs = inTheTeamsNumbering(rows as any[]).filter((r) => r.participantId === who);
+      expect(theirClosedSessions(theirs as any, [], LATER, { theClocksSession: clock.currentSession }).filter((c) => c.missed).map((c) => c.sessionNumber)).toEqual([2]);
+    }
+  });
+
+  it('Olu’s first check-in counts in the team’s session 3, where he has checked in', () => {
+    const { bySession } = theSessionAndItsCount(world as any, { now: LATER });
+    expect(bySession[3].answered).toContain('olu');
+    expect(bySession[1].onTheCheckIn).not.toContain('olu');
+  });
+
+  it('his finishing his own session 1 does not close the team’s session 1, nor any session nobody else has finished', async () => {
+    const emitted: unknown[] = [];
+    const prisma: any = {
+      checkIn: { findMany: async () => rows, count: async () => { throw new Error('the team’s numbering is read from the rows'); } },
+      groundParticipant: { findMany: async () => people.map((p) => ({ id: p.id, userId: p.userId })) },
+      roundCompletion: { create: async () => ({}) },
+      groundObjective: { findMany: async () => [] },
+    };
+    const { recordRoundCompletion } = await import('./round-completion');
+    expect(await recordRoundCompletion(prisma, { emit: (...a: unknown[]) => emitted.push(a) } as any, 'g1', 1, 'olu')).toBe(false);
+    expect(emitted).toEqual([]);
+  });
+});
+
+/**
+ * SOMEBODY ADDED LATE IS WRITTEN IN THE TEAM'S SESSION, AND STILL HAS A FIRST CONVERSATION (Hafsah, 22 November 2026: "fix if you see
+ * something"). Olu, added while the team is on session 3, gets his first row written as session 3, so the board, the mails and that
+ * session's report read it there from the record itself; and his first conversation is still his first (theirOwnSessionNumber), so it
+ * introduces Groundwork and asks his role.
+ */
+describe('a late joiner’s first row is the team’s session, and their first conversation is still their first', () => {
+  const W1 = D('2026-11-08T04:35:00Z');
+  const W2 = D('2026-11-15T04:35:00Z');
+  const W3 = D('2026-11-22T04:35:00Z');
+  const NOW3 = D('2026-11-22T05:23:00Z');
+  const done = (p: string, n: number, opened: Date) => row(p, n, 'COMPLETED', opened, { completedAt: opened, turns: said(opened), createdAt: opened });
+  const teamRows = [
+    ...['amani', 'chidi', 'zawadi', 'juma', 'neema'].map((p) => done(p, 1, W1)),
+    ...['amani', 'chidi', 'zawadi'].map((p) => done(p, 2, W2)), open('juma', 2, W2), open('neema', 2, W2),
+    ...['amani', 'chidi'].map((p) => done(p, 3, W3)), open('zawadi', 3, W3),
+  ];
+  const db = (rows: any[], earlier: any[] = []) => ({
+    ground: { findUnique: async () => ({ timelineDays: 84, cadence: 'WEEKLY', cadenceDays: null, runsUntilEnded: false, participants: PEOPLE.filter((p) => p.id !== 'olu'), checkIns: rows }) },
+    checkIn: { findMany: async () => earlier },
+  });
+
+  it('is written as session 3 when the team is on session 3, and as session 1 before anything has begun', async () => {
+    const { theSessionANewcomerStartsIn } = await import('./the-session-a-person-is-on');
+    expect(await theSessionANewcomerStartsIn(db(teamRows), 'g1', NOW3)).toBe(3);
+    expect(await theSessionANewcomerStartsIn(db([]), 'g1', NOW3)).toBe(1);
+    expect(await theSessionANewcomerStartsIn(db(teamRows.filter((r) => r.sessionNumber === 1).map((r) => ({ ...r, status: 'NOT_STARTED', availableFrom: D('2026-12-01T05:00:00Z') }))), 'g1', NOW3)).toBe(1);
+  });
+
+  it('his session 3 is his own first conversation, and his next is his second', async () => {
+    const { theirOwnSessionNumber, theirOwnSessionNumberIn } = await import('./the-session-a-person-is-on');
+    expect(await theirOwnSessionNumber(db(teamRows, []), { participantId: 'olu', sessionNumber: 3 })).toBe(1);
+    expect(await theirOwnSessionNumber(db(teamRows, [{ participantId: 'olu', sessionNumber: 3 }]), { participantId: 'olu', sessionNumber: 4 })).toBe(2);
+    /* Somebody numbered from 1, the lead's optional and set-up rows included, reads exactly their session number. */
+    expect(await theirOwnSessionNumber(db(teamRows, [{ participantId: 'amani', sessionNumber: 1 }, { participantId: 'amani', sessionNumber: 2 }]), { participantId: 'amani', sessionNumber: 3 })).toBe(3);
+    const his = [{ participantId: 'olu', sessionNumber: 3 }, { participantId: 'olu', sessionNumber: 4 }];
+    expect(theirOwnSessionNumberIn(his, his[0])).toBe(1);
+    expect(theirOwnSessionNumberIn(his, his[1])).toBe(2);
+  });
+
+  it('written that way, every count reads him in session 3 with no renumbering at all', () => {
+    const olu = [{ ...done('olu', 3, NOW3), createdAt: NOW3, availableFrom: null }, { ...open('olu', 4, D('2026-11-29T04:35:00Z')), createdAt: NOW3 }];
+    const all = [...teamRows, ...olu];
+    expect(inTheTeamsNumbering(all as any[])).toEqual(all);
+    const { bySession, clock } = theSessionAndItsCount({ ...GROUND, checkIns: all } as any, { now: D('2026-11-22T06:00:00Z') });
+    expect(clock.currentSession).toBe(3);
+    expect(bySession[3].answered).toContain('olu');
+    expect(bySession[1].onTheCheckIn).not.toContain('olu');
+  });
+});

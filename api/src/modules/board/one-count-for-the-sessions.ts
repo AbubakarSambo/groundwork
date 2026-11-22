@@ -1,4 +1,4 @@
-import { whichRoundIsOpen } from './which-round-is-open';
+import { whichRoundIsOpen, inTheTeamsNumbering } from './which-round-is-open';
 import { theDayZone } from '../../common/the-organisations-own-day';
 /**
  * ONE COUNT FOR THE SESSIONS, FROM THE BOARD'S OWN CLOCK (request 107 e, with request 97 a).
@@ -47,33 +47,28 @@ export function theHeaderSays(openRound: number, planned: number | null, allFini
   return planned && planned >= openRound ? `Check-in ${openRound} of ${planned}.` : `Check-in ${openRound}.`;
 }
 
-/** `handOn`: Release 1's reading (a finished round hands the count on); false reads as the board did before it (release-one-sales-board). */
-export function whatEachSessionSays(n: number, rows: ASessionRow[], openRound: number, now = new Date(), handOn = true): { says: string; openedOn: Date | null } {
+/**
+ * EACH SESSION'S LINE, AGAINST THE TEAM'S SESSION (`openRound`, the latest begun: which-round-is-open.ts). Every earlier session is over:
+ * finished on the day its last answer came, or, where somebody did not answer it, ended when the next one began, with how many missed
+ * it (Hafsah, 22 November 2026: a session nobody finished is said as missed, never as still waiting). Later ones open on their day.
+ */
+export function whatEachSessionSays(n: number, rows: ASessionRow[], openRound: number, now = new Date()): { says: string; openedOn: Date | null } {
   const forSession = rows.filter((r) => r.sessionNumber === n);
-  const allDone = forSession.length > 0 && forSession.every((r) => r.status === 'COMPLETED' || r.status === 'DECLINED');
+  const answered = (r: ASessionRow) => r.status === 'COMPLETED' || r.status === 'DECLINED';
+  const allDone = forSession.length > 0 && forSession.every(answered);
   const came = forSession.map((r) => asDate(r.availableFrom)).filter((d): d is Date => !!d && d.getTime() <= now.getTime()).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
   const firstStart = forSession.map((r) => asDate(r.startedAt)).filter((d): d is Date => !!d).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
   const opensLater = forSession.map((r) => asDate(r.availableFrom)).filter((d): d is Date => !!d && d.getTime() > now.getTime()).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
-  const started = forSession.some((r) => r.status !== 'NOT_STARTED');
   const openedOn = came ?? firstStart;
   if (n < openRound || allDone) {
     const lastDone = forSession.map((r) => asDate(r.completedAt)).filter((d): d is Date => !!d).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+    const missed = forSession.filter((r) => !answered(r)).length;
+    if (missed) return { says: `Check-in ${n} is over, and ${missed === 1 ? 'one person' : `${missed} people`} missed it.`, openedOn };
     return { says: lastDone ? `Check-in ${n} finished on ${aDayPeopleRead(lastDone, now)}.` : `Check-in ${n} is finished.`, openedOn };
   }
   if (n === openRound) {
     return { says: openedOn ? `Check-in ${n} opened on ${aDayPeopleRead(openedOn, now)}, and it is still open.` : `Check-in ${n} is open now.`, openedOn };
   }
-  /*
-   * A SESSION THESE ROWS SAY IS FINISHED IS NEVER "STILL OPEN" (Drop Access short run, item 14). Mercy's board read "Session 3
-   * finished on 14 October." and, the next line, "Session 4 opened on 15 October, while session 3 is still open.": the open
-   * round was counted across the check-in, and these rows had session 3 done. Where they do, a later session that has come is
-   * said as open, on its own.
-   */
-  const openOne = rows.filter((r) => r.sessionNumber === openRound);
-  const theOpenOneIsDone = openOne.length > 0 && openOne.every((r) => r.status === 'COMPLETED' || r.status === 'DECLINED');
-  if (handOn && theOpenOneIsDone && (came || started)) return { says: openedOn ? `Check-in ${n} opened on ${aDayPeopleRead(openedOn, now)}, and it is still open.` : `Check-in ${n} is open now.`, openedOn };
-  if (started) return { says: `Check-in ${n} has started for some people, while check-in ${openRound} is still open.`, openedOn };
-  if (came) return { says: `Check-in ${n} opened on ${aDayPeopleRead(came, now)}, while check-in ${openRound} is still open.`, openedOn };
   if (opensLater) return { says: `Check-in ${n} opens on ${aDayPeopleRead(opensLater, now)}.`, openedOn: null };
   return { says: `Check-in ${n} has not opened yet.`, openedOn: null };
 }
@@ -85,43 +80,19 @@ export function whatEachSessionSays(n: number, rows: ASessionRow[], openRound: n
  * the screen worked the header out on its own. The check-in read now serves the board's own clock, from the
  * same rule (the open round among the people who check in, capped at the last planned session):
  *   `says`: "Session 1 of 12." (the prototype's words, theHeaderSays)
- *   `whileOpen`: "Session 2 has started for some people, while session 1 is still open." where a later
- *     session has started, and null otherwise. It names nobody and counts nobody.
  */
 export interface TheSessionClock {
   currentSession: number;
   plannedSessions: number | null;
   says: string;
-  whileOpen: string | null;
 }
 
 /*
- * THE OPEN ROUND, CAPPED AT THE LAST PLANNED SESSION, UNLESS PEOPLE HAVE ALREADY CHECKED IN PAST IT (item 21,
- * the founder's board). Six sessions ran on a check-in planned for three, and the board read "Session 3"
- * beside six finished sessions, and "This is session 3 of 3" to the founder. A session somebody has
+ * THE TEAM'S SESSION, CAPPED AT THE LAST PLANNED ONE, UNLESS PEOPLE HAVE ALREADY CHECKED IN PAST IT (item 21, the founder's board). Six
+ * sessions ran on a check-in planned for three, and the board read "Session 3" beside six finished sessions. A session somebody has
  * started is a session, so the count never says fewer than have run.
  */
-/*
- * A FINISHED ROUND HANDS THE COUNT TO THE NEXT ONE THAT HAS COME (Drop Access short run, 18 October). Mercy's board header read
- * "Daily on weekdays, from 8am. Session 3 of 15." while the line under it read "Session 4 opened on 15 October, and it is still
- * open.": everybody had finished session 3, and session 4 had been made available on 15 October with nobody in it yet. The open
- * round stayed 3, because nobody had started 4. Where every row of the open round is finished, the round is the next one that has
- * come (its day to be available has passed) or that somebody has started, so the header and every session's line read one count.
- */
-export function theRoundThatHasCome(open: number, rows: ASessionRow[], now = new Date()): number {
-  const done = (r: ASessionRow) => r.status === 'COMPLETED' || r.status === 'DECLINED';
-  const theOpenOne = rows.filter((r) => r.sessionNumber === open);
-  if (!theOpenOne.length || !theOpenOne.every(done)) return open;
-  const hasCome = (r: ASessionRow) => {
-    const from = asDate(r.availableFrom);
-    return r.status !== 'NOT_STARTED' || (!!from && from.getTime() <= now.getTime());
-  };
-  const later = rows.filter((r) => r.sessionNumber > open && hasCome(r)).map((r) => r.sessionNumber);
-  return later.length ? Math.min(...later) : open;
-}
-
-export function theRoundCappedAtThePlan(open: number, planned: number | null, rows: ASessionRow[], now = new Date(), handOn = true): number {
-  if (handOn) open = theRoundThatHasCome(open, rows, now);
+export function theRoundCappedAtThePlan(open: number, planned: number | null, rows: ASessionRow[]): number {
   const ranPastThePlan = !!planned && planned > 0 && rows.some((r) => r.sessionNumber > planned && r.status !== 'NOT_STARTED');
   return planned && planned > 0 && !ranPastThePlan ? Math.min(Math.max(open, 1), planned) : Math.max(open, 1);
 }
@@ -143,20 +114,13 @@ export function theSessionClock(
   whoChecksIn: ReadonlySet<string>,
   planned: number | null,
   now = new Date(),
-  /* Release 1's reading, where its switch is on for the organisation; false reads as before it (theRoundThatHasCome). */
-  handOn = true,
 ): TheSessionClock {
-  const theirs = rows.filter((r) => whoChecksIn.has(r.participantId));
+  const theirs = inTheTeamsNumbering(rows.filter((r) => whoChecksIn.has(r.participantId)));
   const highest = rows.reduce((m, r) => Math.max(m, r.sessionNumber ?? 1), 1);
-  const open = theirs.length ? whichRoundIsOpen(theirs as any) : highest;
-  const current = theRoundCappedAtThePlan(open, planned, theirs, now, handOn);
-  const done = (r: ASessionRow) => r.status === 'COMPLETED' || r.status === 'DECLINED';
-  const allFinished = !!planned && theirs.length > 0 && theirs.every(done) && theirs.some((r) => r.sessionNumber >= planned);
-  const ahead = [...new Set(theirs.filter((r) => r.sessionNumber > current && r.status !== 'NOT_STARTED').map((r) => r.sessionNumber))].sort((a, b) => a - b)[0];
-  return {
-    currentSession: current,
-    plannedSessions: planned,
-    says: theHeaderSays(current, planned, allFinished),
-    whileOpen: ahead ? whatEachSessionSays(ahead, theirs, current, now, handOn).says : null,
-  };
+  const open = theirs.length ? whichRoundIsOpen(theirs as any, now) : highest;
+  const current = theRoundCappedAtThePlan(open, planned, theirs);
+  /* Finished once the last planned session has begun and everybody in it has answered; earlier sessions are over whoever missed them. */
+  const theLast = theirs.filter((r) => !!planned && r.sessionNumber === planned);
+  const allFinished = !!planned && current >= planned && theLast.length > 0 && theLast.every((r) => r.status === 'COMPLETED' || r.status === 'DECLINED');
+  return { currentSession: current, plannedSessions: planned, says: theHeaderSays(current, planned, allFinished) };
 }

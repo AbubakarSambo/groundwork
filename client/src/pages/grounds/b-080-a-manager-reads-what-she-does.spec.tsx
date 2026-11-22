@@ -60,7 +60,7 @@ describe('a lead who only manages', () => {
     ;(groundsApi.get as any).mockResolvedValue(groundWithAManagingLead)
     renderPage()
     expect(await screen.findByText('You check in when you choose. Use Check in yourself any time.')).toBeTruthy()
-    expect(screen.queryByText(/check-ins are done/)).toBeNull()
+    expect(screen.queryByText(/^You have (not )?checked in for (it|.* sessions)/)).toBeNull()
   })
 
   it('a lead who does check in still reads her own count', async () => {
@@ -70,7 +70,7 @@ describe('a lead who only manages', () => {
       participants: [{ ...groundWithAManagingLead.participants[0], managingOnly: false }, groundWithAManagingLead.participants[1]],
     })
     renderPage()
-    expect(await screen.findByText(/check-ins are done/)).toBeTruthy()
+    expect(await screen.findByText(/^You have (not )?checked in for (it|.* sessions)/)).toBeTruthy()
     expect(screen.queryByText('You check in when you choose. Use Check in yourself any time.')).toBeNull()
   })
 })

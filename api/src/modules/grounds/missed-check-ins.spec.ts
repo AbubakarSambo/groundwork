@@ -34,8 +34,10 @@ describe('missed check-ins (decision 136)', () => {
   it('a session still open is not missed, and one the clock has moved past is', () => {
     const open = { id: 'c3', sessionNumber: 3, status: 'NOT_STARTED', availableFrom: day(3) };
     expect(stand([answered(1), missed(2), open]).stage).toBe(0);
+    /* Session 4 written ahead for a day still to come has not begun, so session 3 is still the open one. Changed 22 November 2026
+       (Hafsah, "Yes, move it on"): a session whose day has come has begun, so this row now opens after the reading. */
     const stillInProgress = { id: 'c3', sessionNumber: 3, status: 'IN_PROGRESS', availableFrom: day(3) };
-    const next = { id: 'c4', sessionNumber: 4, status: 'NOT_STARTED', availableFrom: day(4) };
+    const next = { id: 'c4', sessionNumber: 4, status: 'NOT_STARTED', availableFrom: new Date(NOW.getTime() + 7 * 86_400_000) };
     expect(stand([answered(1), missed(2), stillInProgress, next]).stage).toBe(0);
     const leftWaiting = { id: 'c3', sessionNumber: 3, status: 'NOT_STARTED', availableFrom: day(3) };
     const nextStarted = { id: 'c4', sessionNumber: 4, status: 'IN_PROGRESS', availableFrom: day(4) };

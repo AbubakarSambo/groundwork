@@ -23,8 +23,8 @@ describe('request 115 (g): a session somebody has checked in to is not upcoming'
   ])('%s is sent session 2 as open and session 3 as upcoming', async (_who, reader) => {
     const board = await boardAs(setup as any, ...(reader as readonly [string, string]));
     const state = Object.fromEntries(board.phaseSpine.sessions.map((s: any) => [s.n, s.state]));
-    expect(state).toEqual({ 1: 'current', 2: 'current', 3: 'upcoming' });
-    /* The header still counts the round still open. */
-    expect(board.phaseSpine.currentSession).toBe(1);
+    /* Changed 22 November 2026 (Hafsah, "Yes, move it on"): session 2 has begun, so session 1 is over and session 2 is the team's. */
+    expect(state).toEqual({ 1: 'done', 2: 'current', 3: 'upcoming' });
+    expect(board.phaseSpine.currentSession).toBe(2);
   });
 });

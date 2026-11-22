@@ -5,8 +5,10 @@ import { theirClosedSessions } from './missed-check-ins';
 /* Run 6, 20 November. Msingi's rounds of 3, 10 and 17 November opened before anybody had said anything in the check-in; Amani then answered every week,
    and his lead still read "so call Amani". A round inside a pause was counted as missed by the weekly letter and by Today. */
 const D = (s: string) => new Date(`${s}T08:00:00Z`);
-const quiet = (n: number, day: string, who = 'amani') => ({ participantId: who, sessionNumber: n, status: 'COMPLETED', availableFrom: D(day), createdAt: D(day), completedAt: D(day), closedReason: null, turns: [] as any[] });
-const said = (n: number, day: string, answeredOn: string, who = 'amani') => ({ ...quiet(n, day, who), completedAt: D(answeredOn), turns: [{ createdAt: D(answeredOn) }] });
+/* A round nobody answered is closed by the clock, as the product closes it (closeAsMissed writes CLOSED_BY_THE_CLOCK). It read as a finished
+   round with no reason before 22 November 2026, which the board counts as answered; the morning and the board read one rule now. */
+const quiet = (n: number, day: string, who = 'amani') => ({ participantId: who, sessionNumber: n, status: 'COMPLETED', availableFrom: D(day), createdAt: D(day), completedAt: D(day), closedReason: 'auto_closed' as string | null, turns: [] as any[] });
+const said = (n: number, day: string, answeredOn: string, who = 'amani') => ({ ...quiet(n, day, who), closedReason: null, completedAt: D(answeredOn), turns: [{ createdAt: D(answeredOn) }] });
 
 describe('a round that could have been answered', () => {
   it('is not one that opened before anybody had said anything, before the person joined, or in a pause', () => {

@@ -40,6 +40,8 @@ export interface RailGround {
   participants?: { id: string; userId?: string | null; partyType?: string | null; managingOnly?: boolean | null; notLetInYet?: boolean | null }[]
   /** `isSetup`: the lead's set-up conversation, kept as a check-in row; it is not a session and nobody answered it. */
   checkIns?: { participantId: string; sessionNumber: number; status: string; availableFrom?: string | null; isSetup?: boolean | null }[]
+  /** The reader's own check-in waiting for them here, as the server serves it on the list's row (yourTurnIn). */
+  yourTurn?: { checkInId: string; sessionNumber: number; openedAt: string | null } | null
   closedAt?: string | null
   resolvedAt?: string | null
   scenario?: string | null
@@ -50,7 +52,7 @@ export interface RailGround {
 /** How long after a check-in opens before it counts as late. */
 export const OVERDUE_AFTER_DAYS = 7
 
-export function railAttention(g: RailGround, myUserId: string | null | undefined, now: Date = new Date()): RailAttention {
+export function railAttention(g: RailGround, _reader?: string | null, now: Date = new Date()): RailAttention {
   /*
    * A CHECK-IN THAT REFUSES EVERY ANSWER IS NOT SOMEBODY'S TURN.
    *
@@ -68,26 +70,22 @@ export function railAttention(g: RailGround, myUserId: string | null | undefined
    */
   if (isShut(g.status) || g.closedAt || g.resolvedAt) return { kind: 'none' }
 
-  const me = (g.participants ?? []).find((p) => p.userId && p.userId === myUserId)
   /* The set-up conversation is not a session (screens item c), so it is never "done" for anybody here (release check, 9 October:
      an anchor lead read "Two of the three have not answered yet." while nobody had checked in). */
   const checkIns = (g.checkIns ?? []).filter((c) => !c.isSetup)
 
-  if (me) {
-    const mine = checkIns.filter((c) => c.participantId === me.id && c.status !== 'COMPLETED')
-    // The earliest open one: being two rounds behind should read as one thing to do,
-    // not two, or the rail nags twice for the same person.
-    const next = mine.sort((a, b) => a.sessionNumber - b.sessionNumber)[0]
-    if (next) {
-      const from = next.availableFrom ? new Date(next.availableFrom) : null
-      // Not yet open is not "your turn": a session scheduled for next fortnight is
-      // not something anybody is late for.
-      if (from && from.getTime() > now.getTime()) return { kind: 'none' }
-      const daysLate = from ? Math.floor((now.getTime() - from.getTime()) / 86_400_000) : 0
-      return daysLate > OVERDUE_AFTER_DAYS
-        ? { kind: 'overdue', sessionNumber: next.sessionNumber, daysLate }
-        : { kind: 'yours', sessionNumber: next.sessionNumber }
-    }
+  /*
+   * YOUR TURN IS THE SERVER'S (release test, 21 November 2026). This guessed it from the rows in the browser, and Olu's list said
+   * "Your turn" while his Today said "Nothing needs you right now": Today asked the server's rule, which knows whether an admin has let
+   * him in and whether Groundwork is paused. The list now serves that rule's answer on each row (`yourTurn`, yourTurnIn in
+   * what-needs-you.ts), and this reads it.
+   */
+  if (g.yourTurn) {
+    const from = g.yourTurn.openedAt ? new Date(g.yourTurn.openedAt) : null
+    const daysLate = from ? Math.floor((now.getTime() - from.getTime()) / 86_400_000) : 0
+    return daysLate > OVERDUE_AFTER_DAYS
+      ? { kind: 'overdue', sessionNumber: g.yourTurn.sessionNumber, daysLate }
+      : { kind: 'yours', sessionNumber: g.yourTurn.sessionNumber }
   }
 
   // Nothing of yours outstanding. Say who else is still out, which is what an admin
@@ -101,7 +99,8 @@ export function railAttention(g: RailGround, myUserId: string | null | undefined
    */
   const choosesWhen = new Set((g.participants ?? []).filter((p) => p.partyType === 'INITIATOR' || !!p.managingOnly).map((p) => p.id))
   const theTeams = checkIns.filter((c) => !choosesWhen.has(c.participantId))
-  const round = openRound(theTeams.length ? theTeams : checkIns, now)
+  /* The team's session as the server's one clock names it; only a row served without a count works it out from the rows. */
+  const round = (g as { theCount?: { session?: number } | null }).theCount?.session ?? openRound(theTeams.length ? theTeams : checkIns, now)
   /*
    * B-078: A LEAD WHO ONLY MANAGES IS NOT COUNTED PAST HER OWN SET-UP ROUND. Grace runs "Shops
    * reorder in two days" (HELP_TEAM_UNDERSTAND) and never checks in; the server's one count leaves

@@ -3707,7 +3707,10 @@ export interface PromptContext {
    * do not know it keep the existing behaviour.
    */
   moment?: GroundMoment | null;
+  /** The team's session: where the run stands. */
   sessionNumber: number;
+  /** Which of this person's own conversations it is (theirOwnSessionNumber): 1 for somebody added in session 3. The team's session when not given. */
+  theirOwnSession?: number;
   totalSessions?: number;
   roleAsDescribed?: string | null;
   otherPartyCheckedIn: boolean;
@@ -3989,7 +3992,9 @@ function selectPathwayNumber(
 }
 
 function buildActivePathway(ctx: PromptContext): string {
-  const { scenario, partyType, sessionNumber, lowSpecificityMultiDim } = ctx;
+  const { scenario, partyType, lowSpecificityMultiDim } = ctx;
+  /* How this person's conversation opens is about their own conversations; the stage of the run is the team's. */
+  const sessionNumber = ctx.theirOwnSession ?? ctx.sessionNumber;
   const relHistory = resolveRelationshipHistory(scenario, ctx.relationshipHistory);
 
   /*
@@ -4009,7 +4014,7 @@ function buildActivePathway(ctx: PromptContext): string {
    * nothing here replaces it - and the pack follows underneath as what the conversation is about.
    */
   const pack = ctx.scenarioPackOverride
-    ?? buildScenarioPackForParty(scenario, partyType, ctx.moment, whichStage(sessionNumber, ctx.totalSessions));
+    ?? buildScenarioPackForParty(scenario, partyType, ctx.moment, whichStage(ctx.sessionNumber, ctx.totalSessions));
 
   /* The continuity block leads, because it sets the opening. The pack says what to talk about. */
   const withTheScenarioUnderneath = (continuity: string): string =>

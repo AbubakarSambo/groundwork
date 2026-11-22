@@ -1,3 +1,4 @@
+import { theSessionANewcomerStartsIn } from '../grounds/the-session-a-person-is-on';
 import { REFERENCES_AND_RESOURCES, PEOPLE_AND_SETUP } from '../../common/the-tab-names';
 import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
 import { notTheLeadHerself, herSetupWordsAsATurn, howSheDescribesHerself, aLineThatDescribesNothing } from './the-lead-is-you-in-her-report';
@@ -2710,7 +2711,7 @@ from finishing at all.`;
      * still records, because with zero contributors the count is the same either way. The only
      * change is that the question is asked once the party is known.
      */
-    await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber);
+    await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber, checkIn.participantId);
 
     // Zero contributors = a deliberate solo/broadcast start: the initiator
     // completing session 1 is the whole party, so the ground goes ACTIVE.
@@ -3146,7 +3147,7 @@ from finishing at all.`;
       });
       if (!checkIn) {
         checkIn = await tx.checkIn.create({
-          data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+          data: { groundId: ground.id, participantId: participant.id, sessionNumber: await theSessionANewcomerStartsIn(tx, ground.id), status: CheckInStatus.NOT_STARTED },
         });
       }
       return { user, checkIn };

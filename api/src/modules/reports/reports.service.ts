@@ -5,7 +5,6 @@ import { notABlockerTheyRaised } from '../board/not-a-blocker-they-raised';
 import { thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { theFactsOnRecord, type AFact } from '../conversation/the-facts-on-record';
 import { withTheDirectMorning, whichDirectBlockRan, THE_DIRECT_TEAM_REPORT, THE_DIRECT_JUDGEMENT, THE_DIRECT_OWN_REPORT } from './the-direct-morning-is-written-straight';
-import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { whatTheSwitchboardServes, type TheSwitchboardServed } from '../board/the-switchboard';
 import { theCorrectionsOnTheCheckIn, withWhatACorrectionSettled, whoIsBehindALabel } from './a-correction-is-their-latest-word';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
@@ -6610,13 +6609,11 @@ happened, and what is in the way.`;
       where: { groundId },
       select: { participantId: true, sessionNumber: true, status: true, isSetup: true, availableFrom: true, startedAt: true, completedAt: true },
     }) ?? Promise.resolve([] as any[]))?.catch?.(() => [] as any[])) ?? []) as any[];
-    /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
-    const handOn = await theReleaseOneSalesBoardIsOn(this.prisma, ground?.organizationId ?? null).catch(() => false);
     const { clock } = theSessionAndItsCount({
       participants: (ground?.participants ?? []) as any[], checkIns: rows, scenario: ground?.scenario ?? null,
       timelineDays: ground?.runsUntilEnded ? null : ground?.timelineDays ?? null, cadence: ground?.cadence ?? null, cadenceDays: ground?.cadenceDays ?? null,
       runsUntilEnded: !!ground?.runsUntilEnded,
-    }, { now: new Date(), handOn });
+    }, { now: new Date() });
     return { current: clock.currentSession, planned: clock.plannedSessions };
   }
 

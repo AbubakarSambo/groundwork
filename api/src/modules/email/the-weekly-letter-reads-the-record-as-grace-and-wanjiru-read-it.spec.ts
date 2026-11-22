@@ -71,7 +71,7 @@ describe('Wanjiru’s letters, Muchemi & Co (test)', () => {
   it('on the litigation team, David: his check-ins got worse in the two check-ins since his coaching, so Wanjiru is told, with the days', async () => {
     const { lines } = await theLetterOf('lit', { directMorning: true });
     const said = lines.join(' ');
-    expect(said).toMatch(/Here is who needs you\. David did 4 of 6 check-ins, 1 of them on time, and 2 named the item, what changed and the day\. Groundwork has coached David on it since Wednesday 14 October, and it has got worse, so call David\./);
+    expect(said).toMatch(/Here is who needs you\. David did 4 of 6 check-ins, 1 of them on time\. 2 of them named the item, what changed and the day\. Groundwork has coached David on it since Wednesday 14 October, and it has got worse, so call David\./);
     expect(said).toMatch(/On Tuesday 13 October, the check-in was not done\. On Wednesday 14 October, the check-in was done after the day it opened\./);
     expect(said).not.toMatch(/more than a day after it opened/);
   });

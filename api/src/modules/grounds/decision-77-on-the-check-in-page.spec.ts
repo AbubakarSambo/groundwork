@@ -56,14 +56,14 @@ describe('decision 77 on the check-in page: the header is not held back by someb
     async (_who, viewer, role) => {
       const res = await pageFor(viewer, { role });
       expect(res.sessionClock.says).toBe('Check-in 2 of 12.');
-      expect(res.sessionClock.whileOpen).toBeNull();
     },
   );
 
-  it('once he is let in, session 1 is open again until he answers', async () => {
+  /* Changed 22 November 2026 (Hafsah, "Yes, move it on"): session 2 has begun, so once he is let in the team is still on session 2 and
+     his session 1 is one he missed. Before, it read "Check-in 1 of 12." with session 2 "started for some people". */
+  it('once he is let in, the team is still on session 2', async () => {
     const res = await pageFor('userRukia', { held: false });
-    expect(res.sessionClock.says).toBe('Check-in 1 of 12.');
-    expect(res.sessionClock.whileOpen).toBe('Check-in 2 has started for some people, while check-in 1 is still open.');
+    expect(res.sessionClock.says).toBe('Check-in 2 of 12.');
     expect(res.waitingToBeLetIn).toBeNull();
   });
 });

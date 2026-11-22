@@ -1,3 +1,4 @@
+import { theirOwnSessionNumber } from '../grounds/the-session-a-person-is-on';
 import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { Injectable, Logger, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -343,8 +344,11 @@ export class EmbedService {
         }) ?? Promise.resolve([])).catch(() => [] as { id: string; sessionNumber: number; participantId: string }[])
       : [];
     const leftOpen = new Map<string, string[]>();
+    /* Which of their own sessions each is (theirOwnSessionNumber): somebody added in session 3 is told "your first check-in". */
+    const theirOwn = new Map<string, number>();
     for (const r of rows) {
-      if (r.sessionNumber <= 1) continue;
+      theirOwn.set(r.id, await theirOwnSessionNumber(this.prisma, r));
+      if (theirOwn.get(r.id)! <= 1) continue;
       const entries = await (this.prisma.recordEntry?.findMany({
         where: {
           participantId: r.participantId,
@@ -366,6 +370,7 @@ export class EmbedService {
     return whatIsDueFor({
       sessions,
       sessionNumbers: new Map(rows.map((r) => [r.id, r.sessionNumber])),
+      theirFirst: new Set(rows.filter((r) => theirOwn.get(r.id) === 1).map((r) => r.id)),
       leftOpen,
       slippedCommitments: commitments.filter((c: any) => hasSlipped(c, now)).length,
     });

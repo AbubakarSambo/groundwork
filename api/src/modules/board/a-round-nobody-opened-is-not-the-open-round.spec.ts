@@ -32,14 +32,20 @@ describe('the open round is one somebody has touched', () => {
     expect(whichRoundIsOpen([row(1, 'COMPLETED'), row(1, 'NOT_STARTED'), row(2, 'NOT_STARTED')])).toBe(1);
   });
 
-  it('goes back for a person added mid-run, whose first round is genuinely open again', () => {
-    /* Two people are on session two; a third joins and has a session one nobody has answered for
-       them. The round is the clock everywhere, so it is session one until they answer it. */
+  /* Changed 22 November 2026 (Hafsah: "Yes, move it on"): a session is over once the next has begun, so somebody still in session 1
+     no longer holds the team there. Before, this test read "goes back ... until they answer it". */
+  it('is the latest round somebody has begun, even while somebody has not finished an earlier one', () => {
     const rows = [
       row(1, 'COMPLETED'), row(1, 'COMPLETED'), row(1, 'IN_PROGRESS'),
       row(2, 'IN_PROGRESS'), row(2, 'IN_PROGRESS'),
     ];
-    expect(whichRoundIsOpen(rows)).toBe(1);
+    expect(whichRoundIsOpen(rows)).toBe(2);
+  });
+
+  it('and a round whose day to open has come has begun, though nobody has touched it yet', () => {
+    const now = new Date('2026-11-22T09:00:00Z');
+    const rows = [{ ...row(1, 'COMPLETED') }, { ...row(2, 'NOT_STARTED'), availableFrom: new Date('2026-11-22T08:00:00Z') }, { ...row(3, 'NOT_STARTED'), availableFrom: new Date('2026-11-29T08:00:00Z') }];
+    expect(whichRoundIsOpen(rows, now)).toBe(2);
   });
 
   it('moves on once every started round is met', () => {
