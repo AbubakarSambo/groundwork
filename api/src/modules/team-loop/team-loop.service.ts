@@ -188,6 +188,21 @@ export class TeamLoopService {
     return null;
   }
 
+  /**
+   * What a forward from her or her assistant leaves outstanding, in its own words, for her own list (Hafsah, 22 November 2026). Each text is read on its
+   * own, as data; nothing is sent or done from it, and an instruction inside it is only told back to her.
+   */
+  async whatIsOutstandingIn(texts: string[]): Promise<{ items: { what: string; due: string | null }[]; instructions: string[] }> {
+    const items: { what: string; due: string | null }[] = [];
+    const instructions: string[] = [];
+    for (const text of texts) {
+      const read = await this.mind.readWhatIsOutstanding?.({ text }).catch(() => null);
+      for (const i of read?.items ?? []) if (!items.some((x) => x.what.toLowerCase() === i.what.toLowerCase())) items.push(i);
+      for (const x of read?.instructions ?? []) if (!instructions.includes(x)) instructions.push(x);
+    }
+    return { items, instructions };
+  }
+
   /** The model that reads what people mean, for the places that need it (her yes, the people she names): the one seam, so a test or a version stored in the database changes it everywhere. */
   get theMind(): TheTeamMind { return this.mind; }
 

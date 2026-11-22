@@ -108,6 +108,40 @@ export interface TheAcknowledgementPorts {
    * Not sure who is doing what" was filed with no question). The forwarded words are only read to decide what ONE question to ask the sender; nothing is made from them.
    */
   anUnclearMatter?: (texts: string[]) => Promise<{ matter: string | null; missing: ('owner' | 'date')[] } | null>;
+  /**
+   * What a forward from her or her assistant leaves outstanding, in its own words, and any instruction inside it to Groundwork (Hafsah, 22 November 2026:
+   * "great do you recommendation"). The items go on her own list only; an instruction is told back to her, never done.
+   */
+  whatIsOutstanding?: (texts: string[]) => Promise<{ items: { what: string; due: string | null }[]; instructions: string[] }>;
+}
+
+/**
+ * THE FORWARD'S OUTSTANDING ITEMS GO ON HER OWN LIST (Hafsah, 22 November 2026). Written as her own to-dos, marked as from a forward, so the register,
+ * the first picture and Ask read them from the one list, and only she and the assistant who acts for her see them (the-outstanding-register.ts).
+ * An item already open on her list is not added again.
+ */
+export const FROM_A_FORWARD = 'forward';
+async function putTheForwardOnHerList(prisma: any, ports: TheAcknowledgementPorts, a: { organizationId: string; principalUserId: string; batchId: string }): Promise<ThePicture['fromTheForward']> {
+  if (!ports.whatIsOutstanding) return undefined;
+  const texts = ((await prisma.principalMaterial.findMany({ where: { principalUserId: a.principalUserId, batchId: a.batchId } })) ?? [])
+    .filter((r: any) => r.state === 'kept' && typeof r.text === 'string' && r.text.trim()).map((r: any) => String(r.text));
+  if (!texts.length) return undefined;
+  const read = await ports.whatIsOutstanding(texts).catch(() => null);
+  if (!read || (!read.items.length && !read.instructions.length)) return undefined;
+  const her: any = await prisma.person.findFirst({ where: { organizationId: a.organizationId, linkedUserId: a.principalUserId }, select: { externalId: true } }).catch(() => null);
+  const added: { what: string; due: string | null }[] = [];
+  if (her?.externalId) {
+    const open: any[] = (await prisma.todo.findMany({ where: { organizationId: a.organizationId, personExternalId: her.externalId, state: 'OPEN' }, select: { text: true } }).catch(() => [])) ?? [];
+    const onIt = new Set(open.map((t) => String(t.text).trim().toLowerCase()));
+    for (const i of read.items) {
+      if (onIt.has(i.what.toLowerCase())) continue;
+      const made = await prisma.todo.create({ data: { organizationId: a.organizationId, personExternalId: her.externalId, text: i.what, dueSaid: i.due, state: 'OPEN', source: FROM_A_FORWARD } }).catch(() => null);
+      if (!made) continue;
+      onIt.add(i.what.toLowerCase());
+      added.push(i);
+    }
+  }
+  return { added, instructions: read.instructions };
 }
 
 /**
@@ -146,7 +180,10 @@ export async function answerTheQuietBatches(prisma: any, ports: TheAcknowledgeme
       } else {
         const sender: any = await prisma.user.findUnique({ where: { id: b.fromUserId }, select: { firstName: true } });
         const byAnother = b.fromUserId !== b.principalUserId;
+        /* Put on her list first, so the picture's count and the register it reads include what was just read. */
+        const fromTheForward = await putTheForwardOnHerList(prisma, ports, { organizationId: b.organizationId, principalUserId: b.principalUserId, batchId: b.id });
         const picture = await buildThePicture(prisma, { organizationId: b.organizationId, principalUserId: b.principalUserId, batchId: b.id, forName: byAnother ? principal?.firstName ?? null : null, first: sender?.firstName ?? 'there', now, forADelegate: byAnother });
+        if (fromTheForward) picture.fromTheForward = fromTheForward;
         /* Something handed over with no owner or no day, by somebody who forwards for her, is asked about once, in one question, and that question is the batch's only one. */
         if (byAnother && ports.anUnclearMatter) {
           const texts = ((await prisma.principalMaterial.findMany({ where: { principalUserId: b.principalUserId, batchId: b.id } })) ?? []).filter((r: any) => r.kind === 'message' && r.state === 'kept' && r.text).map((r: any) => String(r.text));
