@@ -17,9 +17,11 @@ describe('the kind of work is read from the purpose, not the job titles', () => 
     expect(words).not.toMatch(/job title/i);
   });
 
-  it('the model is told that a new hire, a plan or a new project is not a kind of work, and never to decide from people\'s jobs', () => {
+  it('the model is told that a new hire, a plan or a new project is not a kind of work, and never to decide from the people\'s job titles', () => {
     expect(THE_KIND_OF_WORK_PROMPT).toContain('a new hire\'s first weeks, one person\'s plan, or getting a new project off to a good start');
-    expect(THE_KIND_OF_WORK_PROMPT).toContain('Never decide from what the people\'s jobs are');
+    /* The people's job titles, never the lead's own words about herself: "founder here" is how a founder's own check-in is told (release test, 21 November, bug 110). */
+    expect(THE_KIND_OF_WORK_PROMPT).toContain('Never decide from the job titles of the people in it');
+    expect(THE_KIND_OF_WORK_PROMPT).toContain('what the lead says about themselves, such as "founder here", is the lead\'s own words and counts');
     expect(THE_KIND_OF_WORK_PROMPT).not.toContain('job titles, where they are given, help');
     /* Distribution operations is the day-to-day running of sites, and a project that changes how they work is not it. */
     expect(THE_KIND_OF_WORK_PROMPT).toContain('A project that changes how the sites work, such as moving them onto a new system, is not distribution operations');

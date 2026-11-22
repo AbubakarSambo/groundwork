@@ -64,7 +64,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { aKindMayBeGiven, theBoardKindsOffered, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
 import { askNameOf } from '../assistant/ask-name';
-import { THE_SCENARIO_TABLE } from '../conversation/the-scenario-table';
+import { THE_SCENARIOS_IN_WORDS } from '../entry/which-situation-this-is';
 import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, isASalesKind, theSetupWords } from '../board/the-kind-of-work';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf, theDaysItRunsOn } from './which-days-this-team-works';
@@ -5730,7 +5730,8 @@ export class GroundsService {
       if (!g || theReadingMustLeaveIt(g.kindOfWorkSetBy)) return;
       /* A check-in that already has a kind keeps it, offered or not (docs/deploy.md, "Hidden at release"). */
       const hasOne = oneOfTheKinds(g.kindOfWork);
-      const words = theSetupWords(g, THE_SCENARIO_TABLE[(g as any).scenario as keyof typeof THE_SCENARIO_TABLE]?.name ?? null);
+      /* The situation in the words the door read it in (which-situation-this-is.ts), so the kind is read against the same understanding. */
+      const words = theSetupWords(g, THE_SCENARIOS_IN_WORDS[(g as any).scenario as keyof typeof THE_SCENARIOS_IN_WORDS] ?? null);
       if (!words.trim()) return;
       const answer = await this.anthropic.extract<{ kind?: string }>(
         THE_KIND_OF_WORK_PROMPT,

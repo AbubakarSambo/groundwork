@@ -44,7 +44,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService, RECOMMENDED_MOMENT, DEFAULT_TIMELINE_DAYS } from '../grounds/grounds.service';
 import { EmailService } from '../email/email.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
-import { THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, theSetupWords } from '../board/the-kind-of-work';
 import { theScenarioAKindImplies } from '../board/the-switchboard';
 import { ConversationService } from '../conversation/conversation.service';
 import { GroundworkEvents, CheckInCompletedEvent, SetupReadEvent } from '../../common';
@@ -676,16 +675,6 @@ export class EntryService {
     return theSituationSheChose(picked);
   }
 
-  /** The kind of work the model reads from these words, or none. The same read setup keeps on the check-in (grounds.service readTheKindOfWork). */
-  private async kindFromTheWords(words: string): Promise<string | null> {
-    try {
-      const answer = await this.anthropic.extract<{ kind?: string }>(THE_KIND_OF_WORK_PROMPT, [{ role: 'user', content: theSetupWords({ brief: words }) }], THE_KIND_OF_WORK_SCHEMA);
-      return oneOfTheKinds(answer?.kind);
-    } catch {
-      return null;
-    }
-  }
-
   /**
    * Which situation this is. The prompt, its precedence rule and the reading of the answer live in
    * which-situation-this-is.ts; below the confidence bar the scenario is null and the flow keeps the
@@ -712,18 +701,17 @@ export class EntryService {
        * A name survives stripping and reads at the call site, so whoever adds the next direct call
        * still has to say in the open which kind theirs is.
        */
-      const kindInFlight = this.kindFromTheWords(description);
       const notAReplyToAnybody = await this.anthropic.respond(prompt, [{ role: 'user', content: 'Classify.' }]);
-      const kind = await kindInFlight;
       const read = readTheClassification(notAReplyToAnybody);
       /*
        * A KIND OF WORK THE MODEL NAMES OVERRIDES THE SITUATION IT READ (Hafsah, 15 November 2026). The kind's switchboard row says which
        * situation the check-in and its report run as, so the conversation, the board and the report agree: a support desk is never
        * "discovery" and a sales organisation never a "cohort check", sure read or unsure. A situation the person picked never gets here.
+       * The kind comes from the same reading as the situation (which-situation-this-is.ts), never from a second call of its own.
        */
-      const kindImplies = theScenarioAKindImplies(kind);
+      const kindImplies = theScenarioAKindImplies(read?.kind);
       if (kindImplies) return { scenario: kindImplies, confidence: 'high' };
-      if (read) return read;
+      if (read) return { scenario: read.scenario, confidence: read.confidence };
     } catch { /* fall through */ }
     /* No answer at all: the broad category the person picked, said with the confidence it deserves. */
     return { scenario: resolveScenario(mode), confidence: 'low' };
