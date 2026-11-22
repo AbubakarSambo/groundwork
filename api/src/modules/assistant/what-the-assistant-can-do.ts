@@ -690,6 +690,8 @@ export const THE_GUIDE: Guide[] = [
   { key: 'think_it_through', section: 2, who: ['member'], notOffered: true, does: 'think a decision through, with two to four options', example: 'help me think thru the Q4 target' },
   { key: 'set_an_objective', doneByTellingMe: true, section: 2, who: ['lead', 'admin'], notOffered: true, does: 'draft an objective, with what it measures and the number', example: 'set a goal for onboarding' },
   { key: 'what_am_i_on', section: 2, who: ['member'], notOffered: true, does: 'ask which objectives you own or share', example: 'what am i on' },
+  /* The team's goal as it stands now, from the goal rows, the same for the lead and for everybody in the team (release test, 22 November evening, N2). */
+  { key: 'the_team_goal', section: 2, who: ['member'], notOffered: true, does: 'ask what a team you are in is aiming for now, and when and why its goal changed', example: 'whats the team goal now?' },
   { key: 'what_did_i_say', section: 2, who: ['member'], notOffered: true, does: 'ask what you said before, in your own words', example: 'what did i say about pricing' },
   { key: 'how_am_i_doing', section: 2, who: ['member'], notOffered: true, does: 'ask how you are doing, and read the coaching step waiting for you', example: 'how am i doing' },
   { key: 'where_am_i_up_to', section: 2, who: ['member'], whoSaid: 'New starter', notOffered: true, does: 'ask where you are up to in your first weeks', example: 'am I set up' },

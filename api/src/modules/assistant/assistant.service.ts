@@ -53,6 +53,8 @@ import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-the
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { whatThisReaderCallsEachLabel, noStandInLabelAnywhereIn } from '../reports/a-stand-in-label-never-reaches-a-reader';
 import { howManyAnsweredInWords } from '../reports/the-picture-in-plain-sentences';
+import { aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
+import { howManyAreDone } from '../grounds/which-check-in-it-is';
 import { WHAT_THEY_SAID_OPENS_WHEN_SHARED } from '../reports/the-session-report';
 import { theirNewestWaitingRequest } from '../suites/the-spend-requests-read-elsewhere';
 import { whatSomeoneSaid, checkInsTheyMayRead, latestRounds, I_CANNOT_SHOW_YOU_THAT } from './what-they-said-that-you-may-read';
@@ -1558,7 +1560,23 @@ export class AssistantService {
       const progress = going.glance?.progress;
       const lines: string[] = [];
       if (typeof going.latestSummary === 'string' && going.latestSummary.trim()) lines.push(going.latestSummary.trim());
-      if (progress && progress.ofPeople > 0) lines.push(howManyAnsweredInWords(progress.answeredThisRound ?? 0, progress.ofPeople));
+      /*
+       * THE WHOLE RECORD, NOT ONLY THIS ROUND (release test, 22 November evening, N5). Wairimu asked "How is my sales team doing?" the
+       * day session 3 opened and read "Nobody has answered yet.", over five people who had answered sessions 1 and 2. This round is said
+       * as this round, with where the check-in is and how many check-ins are done, and the team's targets are said as the board counts
+       * them, from the deals and every session, so a new round never hides what is already on record.
+       */
+      if (progress && progress.ofPeople > 0) {
+        const answered = progress.answeredThisRound ?? 0;
+        const earlier = (progress.roundsDone ?? 0) > 0 || (progress.openRound ?? 1) > 1;
+        lines.push(answered === 0 && earlier
+          ? ['Nobody has answered this round yet.', progress.howManyAreDone ?? howManyAreDone(progress.roundsDone ?? 0, progress.roundsPlanned ?? null)].filter(Boolean).join(' ')
+          : howManyAnsweredInWords(answered, progress.ofPeople));
+      }
+      for (const o of ((board.objectives ?? []) as any[]).filter((x) => !x.ownerParticipantId && typeof x.target === 'number' && String(x.name ?? '').trim())) {
+        /* The board serves each aim as a sentence about who holds it ("The team is aiming for 40 credit sales..."), so it is said as served. */
+        lines.push(`${String(o.name).trim().replace(/[.!?\s]+$/, '')}. So far it is at ${aNumberPeopleCanRead(Number(o.count ?? 0))} of ${aNumberPeopleCanRead(o.target)}.`);
+      }
       const way = going.glance?.inTheWay;
       if (way?.count > 0) {
         const oldest = typeof way.oldest === 'string' ? way.oldest.trim().replace(/[.!?]+$/, '') : '';
@@ -5320,6 +5338,8 @@ export class AssistantService {
       case 'next_check_in': return rules('when_is_my_next_check_in', text(await whenIsMyNextCheckIn(this.prisma, organizationId, userId)));
       case 'my_check_in_for': return rules('what_my_check_in_is_for', text(await whatMyCheckInIsFor(this.prisma, organizationId, userId)));
       case 'company_priorities': return rules('company_priorities', text(await theCompanysPriorities(this.prisma, this.grounds, await this.readerOfTheCompany(organizationId, userId))));
+      /* The team's goal, from the record every reader's question is answered from: the goal rows, as this reader may read them (theGoalsOnRecord). */
+      case 'the_team_goal': return userId ? this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, null, message) : null;
       case 'a_document_for_everyone': return rules('add_a_document', text(askedOnWhatsApp() ? A_DOCUMENT_FOR_EVERYONE_ON_WHATSAPP : A_DOCUMENT_FOR_EVERYONE_ON_THE_WEB));
       case 'quarterly_report': return this.aPeriodReport(organizationId, userId, message || 'this quarter');
       /* The Suites' own guide, the role map first (a-suite-set-up-by-talking.ts), built and owned there. */
