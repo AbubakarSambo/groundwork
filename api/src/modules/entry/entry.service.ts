@@ -86,7 +86,7 @@ import { THE_EXTRACTION_SYSTEM, THE_EXTRACTION_TOOL, THE_CLOSING_REMINDER, allSe
 import { theLeadsReveal } from './the-anchor-reveal';
 import type { TheLeadsReveal, ThePeopleStepRules } from './the-anchor-served-shapes';
 import { draftFromASetUp, type ASetUpToStartFrom } from './a-set-up-can-start-from-a-recommendation';
-import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
+import { theClassifierPrompt, readTheClassification, THE_CLASSIFICATION_SCHEMA } from './which-situation-this-is';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
 import { thisAlreadyHappened, LOOK_BACK_INSTEAD } from './this-already-happened';
@@ -701,7 +701,7 @@ export class EntryService {
        * A name survives stripping and reads at the call site, so whoever adds the next direct call
        * still has to say in the open which kind theirs is.
        */
-      const notAReplyToAnybody = await this.anthropic.respond(prompt, [{ role: 'user', content: 'Classify.' }]);
+      const notAReplyToAnybody = await this.anthropic.extract(prompt, [{ role: 'user', content: 'Classify.' }], THE_CLASSIFICATION_SCHEMA, { fast: true });
       const read = readTheClassification(notAReplyToAnybody);
       /*
        * A KIND OF WORK THE MODEL NAMES OVERRIDES THE SITUATION IT READ (Hafsah, 15 November 2026). The kind's switchboard row says which
@@ -1130,11 +1130,16 @@ Rules:
      * to set the plan. It runs first now, on the first turn only, and costs one call on the turn
      * where getting it right matters most. A low-confidence answer returns nothing and the honest
      * open question stands, exactly as it did.
+     *
+     * AND ON EVERY TURN AFTER IT UNTIL THE SITUATION IS KNOWN (typed situations, 22 November 2026). It ran on the first turn only, so an
+     * unsure first read was never read again: the open question was asked, the person answered it, and nothing read the answer. "We
+     * have to pick a new supplier by end of month" was read as unsure once, and was saved as a new project, the default of the broad
+     * category, instead of the decision it is. Each turn without a situation reads everything the person has said so far; once one is
+     * read, the screen sends it back as the situation and this is not called again.
      */
-    const firstTurn = (messages as { role: string }[]).filter((m) => m.role === 'user').length <= 1;
     const scenarioForTheQuestion = scenarioInput
       ? scenarioInput
-      : firstTurn && theirWords.trim().length > 12
+      : theirWords.trim().length > 12
         ? (await this.classifyIntent(theirWords).catch(() => null))?.scenario ?? undefined
         : undefined;
     if (!scenarioInput && scenarioForTheQuestion) {

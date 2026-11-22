@@ -1,6 +1,6 @@
 import { GroundScenario } from '@prisma/client';
 import { THE_SCENARIO_TABLE } from '../conversation/the-scenario-table';
-import { THE_KINDS_IN_WORDS, HOW_A_KIND_IS_CHOSEN, oneOfTheKinds, type KindOfWork } from '../board/the-kind-of-work';
+import { THE_KINDS_IN_WORDS, HOW_A_KIND_IS_CHOSEN, KINDS_OF_WORK, oneOfTheKinds, type KindOfWork } from '../board/the-kind-of-work';
 
 /**
  * WHICH SITUATION THIS IS, WITH A RULE FOR THE OVERLAP AND A WAY TO SAY "NOT SURE".
@@ -21,7 +21,7 @@ import { THE_KINDS_IN_WORDS, HOW_A_KIND_IS_CHOSEN, oneOfTheKinds, type KindOfWor
  */
 
 export const PRECEDENCE_RULE =
-  'RULE, not a hint: a situation that names a new hire, a joiner, onboarding, a first ninety days or a probation is NEW_HIRE, even when it also describes a performance concern. PIP is for somebody established in the role.';
+  'RULE, not a hint: a situation that names a new hire, a joiner, onboarding, a first ninety days or a probation is NEW_HIRE, even when it also describes a performance concern. PIP is for somebody established in the role. A new hire\'s check-in is about that person, so it has no kind of work, whatever work they will do and wherever they will do it.';
 
 /**
  * EVERY SCENARIO THE PRODUCT HAS, BY ITS OWN KEY, IN THE WORDS ITS CARD SAYS (release test, 21 November 2026, bug 3). This list had its
@@ -60,19 +60,38 @@ ${modeHint}
 
 Description: "${description.slice(0, 400)}"
 
-Confidence is "high" only when one situation clearly fits and the others clearly do not. Say "low" when two or more fit about equally, when the description is too thin to tell (a feeling, a worry, or a team problem with no sign of what the person wants to do about it), or when what the person describes is not any of these. A wrong answer given as "high" is worse than "low", because with "low" the conversation asks the person instead of guessing.
-
-Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>", "confidence": "high" | "low", "kind": "<the kind's name exactly as written above, or none>"}`;
+Confidence is "high" only when one situation clearly fits and the others clearly do not. Say "low" when two or more fit about equally, when the description is too thin to tell (a feeling, a worry, or a team problem with no sign of what the person wants to do about it), or when what the person describes is not any of these. A wrong answer given as "high" is worse than "low", because with "low" the conversation asks the person instead of guessing.`;
 }
+
+/**
+ * THE ANSWER'S SHAPE IS THE PRODUCT'S OWN LISTS (typed situations, 22 November 2026). The answer was free text read by a pattern, and
+ * the model wrote situations the product does not have ("FOUNDER_OWN_CHECKIN", "A_GOVERNMENT_PROGRAMME", "CLIENT_DELIVERY"); an answer
+ * that was not a situation was no answer, so the kind it named went with it and the check-in became a new project. The model now answers
+ * by filling these fields, and each one can only be one of the product's own: a situation by its key, and a kind by its name or none.
+ */
+export const THE_CLASSIFICATION_SCHEMA = {
+  name: 'emit_situation_and_kind',
+  description: 'Emit which situation this is, how sure you are, and what kind of work it is about.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      scenario: { type: 'string', enum: Object.values(GroundScenario), description: 'The situation, by its key.' },
+      confidence: { type: 'string', enum: ['high', 'low'] },
+      kind: { type: 'string', enum: [...KINDS_OF_WORK, 'none'], description: 'The kind of work, by its name exactly, or "none".' },
+    },
+    required: ['scenario', 'confidence', 'kind'],
+  },
+};
 
 /** The kind is there only when the reading named one of the fifteen. */
 export type Classification = { scenario: GroundScenario | null; confidence: 'high' | 'low'; kind?: KindOfWork };
 
-/** Reads the model's answer. A key that is not a scenario is no answer; low confidence is no scenario. */
-export function readTheClassification(raw: string): Classification | null {
-  const key = raw.match(/"scenario"\s*:\s*"([A-Z_]+)"/)?.[1];
-  if (!key || !Object.values(GroundScenario).includes(key as GroundScenario)) return null;
-  const confidence: 'high' | 'low' = /"confidence"\s*:\s*"low"/.test(raw) ? 'low' : 'high';
-  const kind = oneOfTheKinds(raw.match(/"kind"\s*:\s*"([^"]*)"/)?.[1]);
-  return { scenario: confidence === 'high' ? (key as GroundScenario) : null, confidence, ...(kind ? { kind } : {}) };
+/** Reads the model's answer. A situation that is not one of ours is no situation; low confidence is no situation. The kind stands on its own. */
+export function readTheClassification(answer: { scenario?: string; confidence?: string; kind?: string } | null | undefined): Classification | null {
+  if (!answer) return null;
+  const key = Object.values(GroundScenario).includes(answer.scenario as GroundScenario) ? (answer.scenario as GroundScenario) : null;
+  const confidence: 'high' | 'low' = answer.confidence === 'low' || !key ? 'low' : 'high';
+  const kind = oneOfTheKinds(answer.kind);
+  if (!key && !kind) return null;
+  return { scenario: confidence === 'high' ? key : null, confidence, ...(kind ? { kind } : {}) };
 }
