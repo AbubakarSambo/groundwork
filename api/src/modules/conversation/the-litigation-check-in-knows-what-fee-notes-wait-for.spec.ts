@@ -97,19 +97,26 @@ function aService() {
 }
 const turnPrompts = (a: any) => (a.respond as jest.Mock).mock.calls.map((c) => JSON.stringify(c));
 
-describe('with Release 2 off, the litigation check-in asks exactly as today', () => {
+/*
+ * Changed on 22 November 2026, because the rule it pinned was since decided otherwise. Hafsah, 15 November 2026: "everything has a board",
+ * so the switchboard no longer reads the organisation's Release 2 switch (board/the-switchboard.ts, theSwitchesOf), and the matter check-in
+ * is a matter check-in whatever that switch says. This test used to expect the switch, when off, to leave the events out of the prompt.
+ * What still holds: with no fee note on record, nothing is added, and with them the block never carries money (the tests below).
+ */
+describe('the organisation\'s Release 2 switch no longer decides it (Hafsah, 15 November 2026)', () => {
   afterEach(() => { RELEASE_2 = true; FEE_NOTES_ON_RECORD = true; });
 
-  it('every prompt David’s turn hands the model is the same as with no fee note on record at all', async () => {
+  it('with the switch off, David’s turn still knows the events, and with no fee note on record nothing is added', async () => {
     RELEASE_2 = false;
     const withThem = aService();
     await withThem.service.sendMessage('ci-david', 'u-david', 'The hearing date is set in the Kasarani matter.');
+    expect(turnPrompts(withThem.anthropic).join('\n')).toContain(FEE_NOTES_WAIT_HEADING);
     FEE_NOTES_ON_RECORD = false;
     const without = aService();
     await without.service.sendMessage('ci-david', 'u-david', 'The hearing date is set in the Kasarani matter.');
-    expect(turnPrompts(withThem.anthropic).length).toBeGreaterThan(0);
-    expect(turnPrompts(withThem.anthropic)).toEqual(turnPrompts(without.anthropic));
-    expect(withThem.handed.join('\n')).not.toContain(FEE_NOTES_WAIT_HEADING);
+    expect(turnPrompts(without.anthropic).length).toBeGreaterThan(0);
+    expect(turnPrompts(without.anthropic).join('\n')).not.toContain(FEE_NOTES_WAIT_HEADING);
+    expect(without.handed.join('\n')).not.toContain(FEE_NOTES_WAIT_HEADING);
   });
 });
 
