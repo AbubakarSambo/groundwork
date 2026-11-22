@@ -1,5 +1,6 @@
 import { safeToUse, roleNameIn } from './the-model-words-it-and-nothing-more';
 import { AssistantService } from './assistant.service';
+import { aDaySaidInFull } from '../board/a-day-said-in-full';
 
 /**
  * AN OUTAGE MUST NOT COST SOMEBODY THEIR ANSWER.
@@ -58,7 +59,8 @@ describe('composition never costs the answer', () => {
      * The fixture now derives the date the same way the draft does. A test about whether the model
      * invented a date must not be able to fail because it disagreed with the draft about spelling.
      */
-    const today = new Date().toDateString();
+    /* Since 22 November 2026 the draft writes the day as people read it ("Sunday 22 November"), never "Sun Nov 22 2026" (release test, Ask #7). */
+    const today = aDaySaidInFull(new Date());
     const reply = `From their-tool: 1 objective and 2 people, last updated ${today}.`;
     const { service } = svc(async () => reply);
     const r = await ask(service);

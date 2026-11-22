@@ -17,8 +17,7 @@ const NOTHING_NEEDS_CHANGING = 'Good. Then nothing needs changing.';
 const NO_CHECK_IN_OPEN_SO_NOT_ADDED = 'You have no check-in open right now, so that was not added to one. I will message you here when the next one opens.';
 /** What is approved, paid or sent to a colleague on a yes keeps the plain words for its yes or no, so it is predictable (rule 4); everything else is read for what the person means. */
 const STAYS_WITH_THE_PLAIN_WORDS = new Set<string>(['leave_request', 'hours_entry', 'spend_request', 'request_decision', 'request_question', 'question_for_person']);
-const AN_UPDATE_SAID_ON_WHATSAPP = 'Thank you. What you say to me here stays between you and Groundwork, so it is not on your record yet. To put it there, say it in your next check-in.';
-const AN_UPDATE_SAID_IN_ASK = 'Thank you. What you say here in Ask stays between you and Groundwork, so it is not on your record yet. To put it there, say it in your next check-in, or press Add something on your check-in.';
+const AN_UPDATE_SAID_IN_ASK = 'Thank you. That is not on your record yet. To put it there, say it in your next check-in, or press Add something on your check-in.';
 import { clearTheWaitsTheRecordEnds } from '../conversation/a-wait-is-over-from-what-it-means';
 import { theFactsOnRecord } from '../conversation/the-facts-on-record';
 import { keepTheCorrectionOnItsItem } from '../conversation/a-correction-is-kept-on-its-item';
@@ -42,7 +41,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { howManyQuestionsOwnerAsked, ownAskTurns, searchOwnQuestions } from './a-persons-own-ask-turns';
 import { contextIsInAskGroundwork } from '../admin/what-is-hidden-at-release';
 import { DependencyStatus } from '@prisma/client';
-import { aQuestionAskedAboutARequest, aQuestionSaidBack, aQuestionSent, aQuestionNotSent, WHICH_REQUEST_TO_ASK_ABOUT, NOTHING_TO_ASK_ABOUT, HOURS_TAKE_NO_QUESTION } from '../suites/an-approver-asks-by-saying-so';
+import { aQuestionAskedAboutARequest, aQuestionSaidBack, aQuestionSent, aQuestionNotSent, WHICH_REQUEST_TO_ASK_ABOUT, NOTHING_TO_ASK_ABOUT, HOURS_TAKE_NO_QUESTION, WHAT_IS_YOUR_QUESTION } from '../suites/an-approver-asks-by-saying-so';
 import { HOW_DO_I_CAN_BE_ASKED, whatYouCanAskSaid } from './what-you-can-ask-here';
 import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
 import { aPromiseAsASentence } from './a-promise-as-a-sentence';
@@ -63,7 +62,6 @@ import {
 import { buildTheRegister } from '../outstanding/the-outstanding-register';
 import { whatIsOutstandingSaid, whatIsOutstandingTold, whatNeedsTheDecisionSaid, whatTheTeamCanCloseSaid } from '../outstanding/the-register-in-plain-words';
 import { GeminiTeamMind } from '../team-loop/the-team-mind';
-import { ensureThePrincipalsJobs } from '../outstanding/the-persistent-jobs';
 import { YearEndService } from '../year-end/year-end.service';
 import { theYearEndWorkTheyRead } from '../year-end/her-year-end-record';
 import { ExecutiveOnboardingService } from '../executive-onboarding/executive-onboarding.service';
@@ -120,7 +118,6 @@ import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
 import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { theOpenSession as theOpenSessionOfACheckIn, whereOneStands } from '../engagement/heres-what-is-new';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
-import { theRecordForPromises, thePromisesSaidDone } from '../conversation/a-promise-said-done-is-kept';
 import { onWhatsApp, askedOnWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 /** The parked kinds that belong to the app's setup conversation (Add context), never to a message on WhatsApp. */
 const THE_APPS_OWN_SETUP_KINDS = new Set(['context', 'context_turn', 'context_line', 'lead_note', 'which_context_check_in']);
@@ -182,6 +179,7 @@ import {
   whyThisCannotBeSent,
   askBeforeSending,
   theMail,
+  whatBecameOfIt,
 } from './anything-it-can-say-it-can-send';
 import { whatTheyWantToCallIt } from './what-they-want-to-call-it';
 import { CHECK_IN_SETUP_KIND, SETUP_READING_PROMPT, SETUP_READING_SCHEMA, SETUP_STOPPED, oneAnswerLaidOver, theNameFor, theNextStep, theSituationFor, whatTheModelHeard, type TheSetupSoFar, type WhatTheModelHeard } from './a-check-in-set-up-by-talking';
@@ -222,7 +220,7 @@ import { quotedThenEnding } from './a-quote-takes-no-second-mark';
 import { readTheRequest, type TheDraft } from './a-request-read-by-the-model';
 import { aKindSaid, readLeaveRules } from '../suites/the-leave-rules';
 import { draftThePublicHolidays, policyFromStored, theYearToDraft, type LeavePolicyPlan } from './a-leave-policy-set-up-by-talking';
-import { whoTheMessageIsFor, type ItIsFor } from './who-a-message-is-for';
+import { whatTheyDoWithTheStep, whoTheMessageIsFor, type ItIsFor } from './who-a-message-is-for';
 import { readIntoTheSetUp, whatWasHeard, thePolicyOnTheDesk, SEND_ME_THE_POLICY, READ_FROM_THE_DESK } from './a-policy-read-into-the-set-up';
 import { readTheDesk, readOneDocument } from '../knowledge/the-desk';
 import { WhatNeedsYouService } from '../grounds/what-needs-you.service';
@@ -293,7 +291,8 @@ function aSourceInPlainWords(sys: string, _stale: boolean): string {
   return aSourceIsGroundworks(sys) ? 'What you have told Groundwork' : sys;
 }
 
-import { isAQuestion, answerFromTheDocuments, askCouldNotFindIt, NO_DOCUMENTS_TO_READ } from './a-question-is-answered-from-the-documents';
+import { isAQuestion, answerFromTheDocuments, NO_DOCUMENTS_TO_READ } from './a-question-is-answered-from-the-documents';
+import { theDirectReportsOf } from '../suites/who-may-decide';
 import { openTheLeadsCheckIn } from '../grounds/check-in-yourself';
 /** "I want to do my own check-in", "check in myself", "my check-in now". */
 const A_WISH_TO_CHECK_IN_MYSELF = /\b(?:(?:do|start|begin|answer)\s+my\s+(?:own\s+)?check[\s-]?in|check[\s-]?in\s+(?:myself|for\s+myself)|my\s+own\s+check[\s-]?in)\b/i;
@@ -304,6 +303,30 @@ const WHICH_DECISION_KIND = 'which_decision';
 /* "Add our staff handbook for everyone." is done, not pointed at a page: what to do with the file, where they are (Batch S round 2, T3). */
 const A_DOCUMENT_FOR_EVERYONE_ON_THE_WEB = 'Press the + beside the message box and choose the file. I will read it and tell you what it holds, and it goes on the Desk for everyone only when you say yes.';
 const A_DOCUMENT_FOR_EVERYONE_ON_WHATSAPP = 'Send me the file here, with a line saying it is for everyone. I will read it and tell you what it holds, and it goes on the Desk for everyone only when you say yes.';
+
+const NOTHING_IS_STUCK = 'Nothing is recorded as waiting on you, and you have not named anything you are waiting on.';
+
+/** One thing Today holds for somebody, as a sentence: its title, then what it says. */
+function aNeedSaid(n: { title: string; detail: string | null }): string {
+  return `${n.title.trim().replace(/[.\s]+$/, '')}.${n.detail ? ` ${n.detail.trim()}` : ''}`;
+}
+
+/** Everything Today holds for somebody, said as a short list. */
+function whatIsWaitingSaid(needs: { title: string; detail: string | null }[]): string {
+  return [`${needs.length === 1 ? 'One thing is waiting' : `${needs.length} things are waiting`} for you.`, ...needs.map((n) => `- ${aNeedSaid(n)}`)].join('\n');
+}
+
+/**
+ * WHEN THE MODEL READS A MESSAGE BEFORE IT IS ANSWERED. The one test, for a first message and for one answered again after a waiting step let it
+ * go (release test of 21 November 2026: "How do I add someone to Groundwork?", after the leave set-up stepped aside, was answered from the
+ * organisation's own rules, because only the first reading asked the model). Where the rules place nothing; a question long enough to ask two
+ * things (staging check S12); "How do I ...", which is either how the product does something or how the organisation does (Batch S, S5); a
+ * quarter or a year, which may be a report to draft (round 2, T8); and anything that reads as a correction.
+ */
+function theModelReads(placedAt: string, message: string): boolean {
+  if (placedAt === 'unplaced' || placedAt === 'how_we_work' || placedAt === 'period_report') return true;
+  return (isAQuestion(message) && message.trim().split(/\s+/).length >= 10) || isACorrection(message);
+}
 
 @Injectable()
 export class AssistantService {
@@ -415,6 +438,25 @@ export class AssistantService {
     }
   }
 
+  /** The check-in open to them now, if one is: the latest session of a check-in still running that they have not finished. */
+  private async theirOpenCheckIn(organizationId: string, userId: string | null): Promise<{ ground?: { label?: string | null } | null } | null> {
+    if (!userId) return null;
+    return Promise.resolve((this.prisma as any).checkIn?.findFirst?.({
+      where: { participant: { userId, ground: { organizationId, status: { notIn: ['RESOLVED', 'CLOSED', 'STALLED', 'PAUSED'] } } }, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] }, isSetup: false, OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }] },
+      select: { ground: { select: { label: true } } }, orderBy: { createdAt: 'desc' },
+    })).catch(() => null);
+  }
+
+  /**
+   * WHERE AN UPDATE TOLD TO ASK BELONGS (release test of 21 November 2026, Ask #27). "sold 12 today" was answered "Nothing is sold on record
+   * yet": an update read as a question about the record. It is told where it goes: the check-in open to them now, by name, or the next one.
+   */
+  private async whereAnUpdateGoes(organizationId: string, userId: string | null): Promise<string> {
+    const open = await this.theirOpenCheckIn(organizationId, userId);
+    if (open) return `Thank you. Your check-in for “${open.ground?.label ?? 'your team'}” is open now, so say it there and it goes on your record.`;
+    return askedOnWhatsApp() ? NO_CHECK_IN_OPEN_SO_NOT_ADDED : AN_UPDATE_SAID_IN_ASK;
+  }
+
   /** Whether a message answers the question Ask is waiting on, read by the model beside that question (who-a-message-is-for.ts). With no model, it does. */
   private async itAnswersTheQuestion(message: string, question: string | null): Promise<boolean> {
     return (await whoTheMessageIsFor(this.engine as any, this.prompts as any, { message, askIsWaiting: false, theCheckInAsked: question }).catch(() => 'the_check_in')) === 'the_check_in';
@@ -476,10 +518,7 @@ export class AssistantService {
      */
     const endWithNothingOpen = async () => {
       /* Only where nothing is open: "There is no check-in open here" went to people whose check-in was open (two-week check). */
-      const stillOpen = userId ? await Promise.resolve((this.prisma as any).checkIn?.findFirst?.({
-        where: { participant: { userId, ground: { organizationId, status: { notIn: ['RESOLVED', 'CLOSED', 'STALLED', 'PAUSED'] } } }, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] }, isSetup: false, OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }] },
-        select: { ground: { select: { label: true } } }, orderBy: { createdAt: 'desc' },
-      })).catch(() => null) : null;
+      const stillOpen = await this.theirOpenCheckIn(organizationId, userId ?? null);
       if (stillOpen) return rules('a_check_in_still_open', text(`Your check-in for “${stillOpen.ground?.label ?? 'your team'}” is still open, so nothing was ended. Go back into it to finish it, or carry on answering there.`));
       const next = await this.answer(organizationId, personId, who, 'When is my next check-in?', false, groundId, userId, openedFromSetup);
       const first = (next as any)?.blocks?.[0];
@@ -497,17 +536,7 @@ export class AssistantService {
       const said = await this.executive.hearHer({ organizationId, userId, message }).catch(() => null);
       if (said) return rules('her_setup', text(said));
     }
-    const placedAt = (await this.placed(organizationId, message)).lane;
-    const placedByRules = placedAt !== 'unplaced';
-    /* A question long enough to ask two things is read by the model even where the rules place it, because a lane answers one thing
-       only (staging check S12: "What did I say I would do tomorrow, and who still owes us money?" was answered half). */
-    const mayAskTwoThings = placedByRules && isAQuestion(message) && message.trim().split(/\s+/).length >= 10;
-    /* "How do I ..." is the broadest shape the rules have, and it holds two different questions: how the product does something, and how
-       the organisation does it. Which one is read by meaning, never by a word list (Batch S, S5). */
-    const howSomethingIsDone = placedAt === 'how_we_work';
-    /* A quarter or a year asked for is read by the model too, so a report they want drafted, outlined and changed reaches its own steps; a plain summary keeps the period lane (Batch S round 2, T8). */
-    const aPeriodAskedFor = placedAt === 'period_report';
-    const understood = userId && (!placedByRules || mayAskTwoThings || howSomethingIsDone || aPeriodAskedFor || isACorrection(message))
+    const understood = userId && theModelReads((await this.placed(organizationId, message)).lane, message)
       ? await understandTheMessage(this.engine as any, this.prompts as any, message, null,
         /* The reader is read only where there is a model to read the message with it. */
         typeof (this.engine as any)?.extract === 'function' ? theDescriptionFor(await this.theReader(organizationId, personId, userId)) : undefined).catch(() => null)
@@ -521,16 +550,6 @@ export class AssistantService {
     }
     /* "That's right, finish." with nothing open is a finish like "finish": the model reads it, and it is answered the same plain way (run 10: six "I cannot answer that one yet"). */
     if (userId && understood?.kind === 'finished') return endWithNothingOpen();
-    /* A report asked for by meaning is guided step by step (reports-on-request, S8), the quarter and year wording included when the model reads it as a report to draft (T8). */
-    if (userId && understood?.kind === 'report' && this.reportsOnRequest) {
-      /* A report already open hears it: "show me the outline and add a section" carries that report on, never a second one (retest, 20 November 2026). */
-      const channel = askedOnWhatsApp() ? 'whatsapp' : 'chat';
-      const open = await this.reportsOnRequest.openRequestOf(organizationId, userId).catch(() => null);
-      const heard = open ? await this.reportsOnRequest.hear({ organizationId, userId, message, channel }).catch(() => null) : null;
-      if (heard) { const r = aReportStep(heard); if (who) await this.remember(organizationId, who, message, r).catch(() => undefined); return r; }
-      const started = await this.reportsOnRequest.start({ organizationId, userId, message, channel, about: understood.about }).catch(() => null);
-      if (started) { const r = aReportStep(started); if (who) await this.remember(organizationId, who, message, r).catch(() => undefined); return r; }
-    }
     /* A question that asks more than one thing is answered whole, from the record and the documents, never by one lane (S12). */
     if (userId && understood?.kind === 'question' && understood.parts > 1) return this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, groundId ?? null, message);
     /* A correction, in any words, is checked like a claim against their own record (a-correction-is-checked-like-a-claim.ts). */
@@ -560,7 +579,6 @@ export class AssistantService {
     const shrugged = (reply as any)?.blocks?.[0]?.type === 'text' && /^I cannot answer that one yet\./.test((reply as any).blocks[0].body ?? '');
     /* A yes or "nothing is wrong" with nothing waiting for it is agreement, not words to file (round 2, C19, C27): it is met as a colleague would meet it. */
     if (shrugged && understood?.kind === 'agreement') reply = rules('an_agreement', text(NOTHING_NEEDS_CHANGING));
-    else if (shrugged && askedOnWhatsApp() && understood?.kind === 'update') reply = rules('an_update', text(NO_CHECK_IN_OPEN_SO_NOT_ADDED));
     const waitingNamed = shrugged && userId ? aWaitingRequestNamed(message, await this.waitingForYouToDecide(organizationId, userId).catch(() => [])) : null;
     if (waitingNamed) reply = rules('decide_a_request', text(stillWaitingSaid(waitingNamed)));
     else if (shrugged && userId && understood?.kind !== 'agreement' && aChangeOfTheirs(message) && !(askedOnWhatsApp() && understood?.kind === 'update')) {
@@ -571,9 +589,9 @@ export class AssistantService {
        */
       const found = whatTheyMean(message, await theirTurns(), 2);
       if (found) reply = rules('a_correction', text(theChangePutOnRecord(found, message, askedOnWhatsApp())));
-      /* An update with nothing of theirs to set it beside is still not shrugged at: where it goes is said (two-week check, Kevin). */
-      else if (understood?.kind === 'update') reply = rules('an_update', text(askedOnWhatsApp() ? AN_UPDATE_SAID_ON_WHATSAPP : AN_UPDATE_SAID_IN_ASK));
     }
+    /* An update with nothing of theirs to set it beside is still not shrugged at: where it goes is said, on every channel (two-week check, Kevin; release test, Ask #27). */
+    if (shrugged && understood?.kind === 'update' && reply.lane === 'unplaced') reply = rules('an_update', text(await this.whereAnUpdateGoes(organizationId, userId)));
 
     /*
      * NOTHING FROM THE CONTEXT LANE IS REMEMBERED HERE. The setup conversation has never kept its
@@ -659,6 +677,15 @@ export class AssistantService {
       }
       if (parked) return this.resolveParked(organizationId, personId, who, parked, message, { groundId, userId, forceAddContext });
     }
+    /*
+     * AN OPEN DRAFT IS A WAITING STEP TOO, ASKED BEFORE ANY LANE (release test of 22 November 2026, #20). It was asked only of a message no lane
+     * claimed, so Wairimu's "cancel" during her goal draft went to the model's pick, stopping somebody acting for her, and she read "Nobody acts for
+     * you at the moment". The model says whether the message answers the draft, stops it, or is something else; something else goes on as before.
+     */
+    if (who) {
+      const continued = await this.continueTheDraft(organizationId, who, message, async () => (await this.placed(organizationId, message)).lane !== 'unplaced');
+      if (continued) return continued;
+    }
 
     /*
      * WHAT CAN YOU HELP ME WITH, AND HOW DO I, IN ANY WORDS (Batch S, S5). The model has read the message (respondInner); these two only
@@ -680,12 +707,22 @@ export class AssistantService {
      * answered again here, without the reading respondInner made, so it fell to the word lists: "i want to apply for leaqve", after the
      * leave set-up stepped aside, was answered "I cannot answer that one yet". Where the rules place nothing, the model reads it here too.
      */
-    if (afterDrop && !understood && userId && who && (await this.placed(organizationId, message)).lane === 'unplaced') {
+    if (afterDrop && !understood && userId && who && theModelReads((await this.placed(organizationId, message)).lane, message)) {
       understood = await understandTheMessage(this.engine as any, this.prompts as any, message, null,
         typeof (this.engine as any)?.extract === 'function' ? theDescriptionFor(await this.theReader(organizationId, personId, userId)) : undefined).catch(() => null);
     }
     if (understood?.kind === 'help') return this.whatYouCanAsk(organizationId, personId, userId ?? null);
     if (understood?.kind === 'how_to' && understood.guide) return this.howToDoIt(organizationId, personId, who, userId ?? null, understood.guide, message);
+    /* A report asked for by meaning is guided step by step (reports-on-request, S8), the quarter and year wording included when the model reads it as a report to draft (T8). */
+    if (userId && understood?.kind === 'report' && this.reportsOnRequest) {
+      /* A report already open hears it: "show me the outline and add a section" carries that report on, never a second one (retest, 20 November 2026). */
+      const channel = askedOnWhatsApp() ? 'whatsapp' : 'chat';
+      const open = await this.reportsOnRequest.openRequestOf(organizationId, userId).catch(() => null);
+      const heard = open ? await this.reportsOnRequest.hear({ organizationId, userId, message, channel }).catch(() => null) : null;
+      if (heard) return aReportStep(heard);
+      const started = await this.reportsOnRequest.start({ organizationId, userId, message, channel, about: understood.about }).catch(() => null);
+      if (started) return aReportStep(started);
+    }
 
 
     /* Asking one person something is not an answer to the question the setup conversation has open,
@@ -776,11 +813,12 @@ export class AssistantService {
     /*
      * WHERE YOUR HOURS STAND (decision 85, build step 11): "how many hours have I logged this week?"
      * answered from the person's own hours against the time sheet rules, for them only. With no rules
-     * set, or rules that do not ask this person, it falls through to what answered it before.
+     * set, or rules that do not ask this person, the hours they gave this week are still said.
      */
     if (who && userId && asksWhereMyHoursStand(message) && this.timeSheets) {
       const standing = await Promise.resolve(this.timeSheets.standing?.({ userId, organizationId })).catch(() => null);
-      if (standing?.said) return rules('log_hours', text(`${standing.said} ${HOURS_CAN_BE_TOLD_HERE}`));
+      const said = standing?.said ?? standing?.recorded;
+      if (said) return rules('log_hours', text(`${said} ${HOURS_CAN_BE_TOLD_HERE}`));
     }
 
 
@@ -794,7 +832,8 @@ export class AssistantService {
        reaches her record below (Batch F, F3). Skipping the model's choice for her sent "whos off next week" to the documents (release test 21 November, 69 and 104). */
     if (who && (understood?.kind === 'wants' || understood?.kind === 'question') && understood.guide) {
       const g = GUIDE_BY_KEY.get(understood.guide);
-      const done = g && mayUse(g, await this.theReader(organizationId, personId, userId ?? null)) ? await this.doItForYou(organizationId, personId, who, userId ?? null, g.key, message) : null;
+      /* A question only reads: something done by telling Ask is done only when they want it done. */
+      const done = g && (understood.kind === 'wants' || !g.doneByTellingMe) && mayUse(g, await this.theReader(organizationId, personId, userId ?? null)) ? await this.doItForYou(organizationId, personId, who, userId ?? null, g.key, message, understood.about) : null;
       if (done) return done;
       if (understood.kind === 'wants') return this.howToDoIt(organizationId, personId, who, userId ?? null, understood.guide, message);
     }
@@ -858,18 +897,49 @@ export class AssistantService {
       if (JUST_ADDED_A_DOCUMENT.test(message) && (await this.aFileJustAdded(organizationId, personId, groundId))) return rules('add_a_document', text(A_FILE_KEPT));
     }
 
+    /* Every lane answers from one place (answerInTheLane), whether the rules placed the message or the model read it from the guide. */
+    const inItsLane = await this.answerInTheLane(routed.lane, routed.subject, organizationId, personId, who, userId, groundId, message);
+    if (inItsLane) return inItsLane;
     /*
-     * AN OPEN DRAFT TAKES PLAIN ANSWERS.
+     * NOTHING TO ANSWER, BUT MAYBE SOMETHING TO NOTICE.
      *
-     * The objective lane asked "what is being measured?" and then nothing read the reply: a person
-     * who answered "revenue from the Lagos hub" was told what the assistant can do instead. A message
-     * no lane claims, from somebody with a draft that is still asking, is the answer to what it asked.
+     * A commitment said in passing lands here, because "I'll send it Wednesday" is not a
+     * question and no lane owns it. Offering to write it down is a better answer than a list of
+     * things it cannot do.
      */
-    if (who && routed.lane === 'unplaced') {
-      const continued = await this.continueTheDraft(organizationId, who, message);
-      if (continued) return continued;
+    /* A question nothing else answers is answered from the documents this person may open, privately (pilots, problem 1). */
+    /* And a statement the model read as a question or an update reaches the documents too, not only a sentence ending in "?" (fix plan, pattern 2). */
+    /* Somebody named as the one who acts for them, in words the rules did not place ("Zainab is my executive assistant, she can see what I see"): said back, and written only on their own yes (round 1, I-07). */
+    if (userId && understood?.kind === 'delegate') return this.setUpADelegate(organizationId, who, userId, message, understood.who);
+    /* Batch S: the model read it as the organisation's arrangement ("Amina reports to Joseph", "managers get 25 days, field agents 18"). The values are read exactly, said back with who each covers, and kept only on a yes. */
+    if (who && userId && understood?.kind === 'arrangement') {
+      const roleMap = await this.theRoleMapSaid(organizationId, who, userId, message);
+      if (roleMap) return roleMap;
     }
+    if (userId && (isAQuestion(message) || understood?.kind === 'question')) return this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, groundId ?? null, message);
+    if (who) {
+      const proposal = await this.maybePropose(organizationId, who, message);
+      if (proposal) return proposal;
+    }
+    /*
+     * NOT COMPOSED, DELIBERATELY. There is nothing here to say better: it is a fixed sentence
+     * and a list of buttons, and a model rewording it would only make the one reply a person
+     * sees most often vary for no reason.
+     */
+    const { line, options } = whatICanDoWith(message);
+    return rules('unplaced', text(line), picker(options));
+  }
 
+  /**
+   * EACH LANE'S OWN ANSWER, IN ONE PLACE (release test of 21 November 2026, Ask #17, #19, #37 and #39). The rules reach a lane from the
+   * words; the model reaches the same lane from the guide (doItForYou), so "my list", "help me think thru the Q4 target", "make the Q4
+   * one fortnightly" and "questions for Juma" are answered by the thing that does them, never with "Tell me in your own words". Every
+   * lane that writes still says it back and waits for a yes. Null for a lane that has no answer of its own here.
+   */
+  private async answerInTheLane(
+    lane: Lane, subject: string | undefined, organizationId: string, personId: string, who: string | null, userId: string | null | undefined, groundId: string | undefined, message: string,
+  ): Promise<Reply | null> {
+    const routed = { lane, subject };
     switch (routed.lane) {
       case 'add_a_to_do':
         return this.addAToDo(organizationId, who, routed.subject ?? '', message);
@@ -982,41 +1052,8 @@ export class AssistantService {
          * nobody's actual policy. What is written down goes out as written.
          */
         return this.howWeWork(organizationId, who, routed.subject ?? message);
-      default: {
-        /*
-         * NOTHING TO ANSWER, BUT MAYBE SOMETHING TO NOTICE.
-         *
-         * A commitment said in passing lands here, because "I'll send it Wednesday" is not a
-         * question and no lane owns it. Offering to write it down is a better answer than a list of
-         * things it cannot do.
-         */
-        /* A question nothing else answers is answered from the documents this person may open, privately (pilots, problem 1). */
-        /* And a statement the model read as a question or an update reaches the documents too, not only a sentence ending in "?" (fix plan, pattern 2). */
-        /* Somebody named as the one who acts for them, in words the rules did not place ("Zainab is my executive assistant, she can see what I see"): said back, and written only on their own yes (round 1, I-07). */
-        if (userId && understood?.kind === 'delegate') return this.setUpADelegate(organizationId, who, userId, message, understood.who);
-        /* Batch S: the model read it as the organisation's arrangement ("Amina reports to Joseph", "managers get 25 days, field agents 18"). The values are read exactly, said back with who each covers, and kept only on a yes. */
-        if (who && userId && understood?.kind === 'arrangement') {
-          const roleMap = await this.theRoleMapSaid(organizationId, who, userId, message);
-          if (roleMap) return roleMap;
-        }
-        if (userId && (isAQuestion(message) || understood?.kind === 'question')) return this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, groundId ?? null, message);
-        if (userId && understood?.kind === 'update') {
-          const fromTheDocuments = await this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, groundId ?? null, message).catch(() => null);
-          const said = (fromTheDocuments as any)?.blocks?.[0]?.body ?? '';
-          if (fromTheDocuments && said && !askCouldNotFindIt(said) && !/\bnothing\b.*\b(?:document|on file)\b/i.test(said)) return fromTheDocuments;
-        }
-        if (who) {
-          const proposal = await this.maybePropose(organizationId, who, message);
-          if (proposal) return proposal;
-        }
-        /*
-         * NOT COMPOSED, DELIBERATELY. There is nothing here to say better: it is a fixed sentence
-         * and a list of buttons, and a model rewording it would only make the one reply a person
-         * sees most often vary for no reason.
-         */
-        const { line, options } = whatICanDoWith(message);
-        return rules('unplaced', text(line), picker(options));
-      }
+      default:
+        return null;
     }
   }
 
@@ -1303,7 +1340,14 @@ export class AssistantService {
 
     const readerIsAdmin = !!userId && await this.isAnAdminHere(organizationId, userId);
     const week = await this.board.whoNeedsYouThisWeek(organizationId, key, { ...(await this.theBoardLeavesOut(organizationId)), readerIsAdmin });
-    if (!week.buckets.length) return rules('where_am_i_needed', text(NOTHING_FLAGGED));
+    /* What Today holds for them comes first, from the one source Today reads: "It is quiet" was said to Amani while her own check-in waited (release test of 21 November 2026, Ask #13). */
+    const today = await this.whatTodayHoldsForYou(organizationId, userId);
+    /* With nobody waiting on them this week, what they are waiting on themselves is said too (release test of 22 November 2026, #13). */
+    if (!week.buckets.length) {
+      const waits = await this.theWaitsSaid(organizationId, who, userId);
+      const parts = [...(today.length ? [whatIsWaitingSaid(today)] : []), ...(waits ? [waits] : [])];
+      return rules('where_am_i_needed', text(parts.length ? parts.join('\n\n') : NOTHING_FLAGGED));
+    }
 
     /*
      * EACH ONE A FULL SENTENCE, WITH THE PERSON'S NAME AND THE DAY IT BEGAN (3 October 2026). This read
@@ -1317,12 +1361,18 @@ export class AssistantService {
       ...(b.needs.length === 1 ? [aSentence(b.needs[0])] : b.needs.map((n) => `- ${aSentence(n)}`)),
     ].join('\n'));
 
+    if (today.length) parts.unshift(whatIsWaitingSaid(today));
     /* Never trimmed away when the list is long. A long list is when it matters most. */
     parts.push(week.whatThisIsNot.join(' '));
     return this.withItsSource(rules('where_am_i_needed', text(parts.join('\n\n'))), WHAT_NEEDS_YOU_SOURCE);
   }
 
-  private async whatIsStuck(organizationId: string, who: string | null, question = '', userId: string | null = null): Promise<Reply> {
+  /**
+   * WHO IS WAITING ON WHOM, FROM THE RECORD, AS SENTENCES. Null when nothing waits either way, so "what is stuck" and "where am I needed" can say
+   * it beside what Today holds rather than in place of it: Amani's "whats stuck" read only "Your own report for Sales team, Q4", and nothing about
+   * her wait on Baraka, once her own report was ready (release test of 22 November 2026, #44 and #13).
+   */
+  private async theWaitsSaid(organizationId: string, who: string | null, userId: string | null = null): Promise<string | null> {
     const readerIsAdmin = !!userId && await this.isAnAdminHere(organizationId, userId);
     const { waiting, waitedOn } = await this.board.waitingAcrossTheOrg(organizationId, undefined, await this.theBoardLeavesOut(organizationId));
 
@@ -1342,13 +1392,7 @@ export class AssistantService {
      * whoever runs that check-in, in "where am I needed" (whoNeedsYouThisWeek).
      */
 
-    if (!mine.length && !onMe.length) {
-      return rules('what_is_stuck', text(
-        key
-          ? 'Nothing is recorded as waiting on you, and you have not named anything you are waiting on.'
-          : 'I cannot match you to a check-in, so I cannot tell you what is waiting on you.',
-      ));
-    }
+    if (!mine.length && !onMe.length) return null;
 
     /*
      * The day it began is stated rather than turned into a word. "Long overdue" is a judgement the
@@ -1383,25 +1427,14 @@ export class AssistantService {
         ? `${who} says they cannot go on without ${w.what}, and has been waiting on you for it${since(w)}${inIt}.`
         : `${who} has been waiting on you for ${w.what}${since(w)}${inIt}.`;
     };
+    /* Whom they said they wait on, in their own words ("Baraka"): theirs to read, as they said it. */
+    const fromWhom = (w: (typeof waiting)[number]) => (String((w as any).onLabel ?? '').trim() ? ` from ${String((w as any).onLabel).trim()}` : '');
     const yours = (w: (typeof waiting)[number]) => (w.status === DependencyStatus.BLOCKING
-      ? `You said you cannot go on without ${w.what}, and you have been waiting for it${since(w)}${where(w)}.`
-      : `You have been waiting for ${w.what}${since(w)}${where(w)}.`);
+      ? `You said you cannot go on without ${w.what}${fromWhom(w)}, and you have been waiting for it${since(w)}${where(w)}.`
+      : `You have been waiting for ${w.what}${fromWhom(w)}${since(w)}${where(w)}.`);
     const aList = (lines: string[]) => (lines.length === 1 ? lines[0] : lines.map((l) => `- ${l}`).join('\n'));
 
-    /*
-     * ANSWER THE QUESTION THEY ASKED FIRST, EVEN WHEN THE ANSWER IS NOTHING.
-     *
-     * Driving this found it: asked "what am I waiting on", somebody with nothing of their own but
-     * one handoff sitting with them got back a list headed "Waiting on you". Both facts are true and
-     * the second is the more useful one, but leading with it silently answers a different question,
-     * and the reader has to work out that the swap happened. Saying so costs one line.
-     */
-    const askedAboutTheirOwn = /waiting on\b/i.test(question) && !/on me\b/i.test(question);
-
     const parts: string[] = [];
-    if (askedAboutTheirOwn && !mine.length && onMe.length) {
-      parts.push('You have not named anything you are waiting on. What I do have is the other direction.');
-    }
     if (onMe.length) {
       parts.push(
         `${onMe.length > 1 ? 'Other people have said they are waiting on you for these things.\n' : ''}${aList(onMe.map(onYou))}\n\n`
@@ -1411,7 +1444,7 @@ export class AssistantService {
     if (mine.length) {
       parts.push(`${mine.length > 1 ? 'You have said you are waiting for these things.\n' : ''}${aList(mine.map(yours))}`);
     }
-    return rules('what_is_stuck', text(parts.join('\n\n')));
+    return parts.join('\n\n');
   }
 
   /**
@@ -2556,12 +2589,15 @@ export class AssistantService {
      * said, and the question it answered — sending a summary would mean the mail and the
      * conversation disagree, and only one of them is in front of them.
      */
-    const recent = await ownAskTurns(this.prisma, organizationId, who, { take: 6, select: { role: true, content: true, lane: true } });
+    const recent = await ownAskTurns(this.prisma, organizationId, who, { take: 10, select: { role: true, content: true, lane: true, createdAt: true } });
     const lastReply = recent.find((t) => t.role === 'assistant' && t.lane !== 'send_me_that');
-    const theQuestion = recent.find((t) => t.role === 'person');
+    /* What they asked for it with: their own words at or before that reply, never a bare yes or no to something said back ("You asked: yes", release test of 21 November 2026, Ask #18). */
+    const theQuestion = lastReply
+      ? recent.find((t) => t.role === 'person' && new Date(t.createdAt as any) <= new Date(lastReply.createdAt as any) && resolveConfirmation(String(t.content ?? '')) === 'drop')
+      : null;
 
     const latest = lastReply
-      ? { body: lastReply.content, about: theQuestion?.content ?? 'your work', lane: lastReply.lane ?? 'unplaced' }
+      ? { body: lastReply.content, about: theQuestion?.content ?? null, lane: lastReply.lane ?? 'unplaced' }
       : null;
 
     const cannot = whyThisCannotBeSent(latest, me);
@@ -2609,16 +2645,9 @@ export class AssistantService {
         .map((x) => ({ label: x.label })),
     });
 
-    if (said.act) {
-      return rules(
-        'start_a_check_in',
-        text(said.line),
-        { type: 'next_step', label: said.act.label, href: '/grounds', kind: said.act.kind, id: said.act.id },
-      );
-    }
-
     /*
-     * NOTHING WAITING, SO OFFER TO OPEN ONE.
+     * NOTHING WAITING, OR A NEW ONE ASKED FOR, SO OFFER TO OPEN ONE. Asked first: "Get updates from my team on deals, payments
+     * and visits" from a lead whose own check-in was open was answered with that check-in (release test of 21 November 2026, Ask #30).
      *
      * The same lane rather than a second one, and the registry is why: "set up a check-in" belongs
      * to this capability, and a lane that also claimed it would be the fifth collision of the week.
@@ -2629,6 +2658,13 @@ export class AssistantService {
       return this.offerToOpenOne(organizationId, personId, truth.person.externalId, message);
     }
 
+    if (said.act) {
+      return rules(
+        'start_a_check_in',
+        text(said.line),
+        { type: 'next_step', label: said.act.label, href: '/grounds', kind: said.act.kind, id: said.act.id },
+      );
+    }
     return rules('start_a_check_in', text(said.line));
   }
 
@@ -2983,6 +3019,24 @@ export class AssistantService {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('set_up_a_suite', text(await this.whoSetsThisUp(organizationId, plan.suite)));
     }
+    /*
+     * ONLY AN ANSWER IS TAKEN AS THE ANSWER, HERE TOO (release test of 21 November 2026, Ask #58): in Ruth's leave set-up, "i want to generate
+     * performance evaluation for 2 people on my team" was read into the set-up. The model reads the message beside the question first. A
+     * reporting line said in passing ("Amina reports to Joseph") is said back on its own and the set-up waits; anything else lets it go.
+     */
+    const step = await whatTheyDoWithTheStep(this.engine as any, this.prompts as any, { message: typed, waiting: parked.summary ?? null });
+    if (step === 'stops') {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      return rules('set_up_a_suite', text(SET_UP_STOPPED(plan.suite)));
+    }
+    if (step === 'something_else') {
+      const understood = await understandTheMessage(this.engine as any, this.prompts as any, typed, parked.summary ?? null).catch(() => null);
+      const line = understood?.kind === 'arrangement' ? await this.theRoleMapSaid(organizationId, who, userId, typed, 'lines') : null;
+      if (line) return line;
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } }).catch(() => undefined);
+      const reply = await this.answer(organizationId, personId, who, message, true);
+      return { ...reply, blocks: [text(SET_UP_STOPPED(plan.suite)), ...reply.blocks] };
+    }
     const known = await this.whatIsKnownToSetUp({ userId, organizationId }, plan.suite);
     /* Numbers for some people: the model reads which job titles each group means (Batch S, round 2, T1). */
     if (plan.asking === 'forSome') known.titlesMeant = await this.theTitlesMeant(typed, known.here ?? []);
@@ -2994,19 +3048,7 @@ export class AssistantService {
       return this.askOrSayBack(organizationId, who, understood.plan, known, { parkedId: parked.id, lead: 'I have kept the rest of what you said, so I will not ask it again.\n\n' });
     }
     const read = takeAnswer(plan, plan.asking ?? '', typed, known);
-    if ('again' in read) {
-      /* Not an answer to the question: when the model reads it as a reporting line ("Amina reports to Joseph"), it is said back on its own, and the set-up waits for it. */
-      const understood = await understandTheMessage(this.engine as any, this.prompts as any, typed, parked.summary ?? null).catch(() => null);
-      const line = understood?.kind === 'arrangement' ? await this.theRoleMapSaid(organizationId, who, userId, typed, 'lines') : null;
-      if (line) return line;
-      /* Only now, when the set-up could not use it, is the model asked whether it is something else; then the set-up is left and the message answered. */
-      if (!(await this.itAnswersTheQuestion(typed, parked.summary ?? null))) {
-        await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } }).catch(() => undefined);
-        const reply = await this.answer(organizationId, personId, who, message, true);
-        return { ...reply, blocks: [text(SET_UP_STOPPED(plan.suite)), ...reply.blocks] };
-      }
-      return rules('set_up_a_suite', text(read.again));
-    }
+    if ('again' in read) return rules('set_up_a_suite', text(read.again));
     return this.askOrSayBack(organizationId, who, read.plan, known, { parkedId: parked.id });
   }
 
@@ -3364,7 +3406,7 @@ export class AssistantService {
      * (who-a-message-is-for.ts). Something else lets the waiting step go, and the message is answered as itself.
      */
     /* A Yes or No button is pressed on the thing it answers, so it is never read by the model (spec pass, 20 November). */
-    /* A set-up reads its own answers first and asks this only when it cannot use one (Grace, 20 November 2026: "no, weekends and public holidays dont count" and "yes a doctors note after 2 days" were read as something else here, and the set-up was lost). */
+    /* A set-up asks this in its own reading (resolveParkedSuiteSetUp), where a reporting line said in passing keeps it waiting. */
     if (!where?.pressed && parked.kind !== SUITE_SETUP_KIND && !(await this.itAnswersTheQuestion(message, parked.summary ?? null))) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } }).catch(() => undefined);
       const reply = await this.answer(organizationId, personId, who, message, true, where?.groundId, where?.userId, where?.forceAddContext);
@@ -3828,16 +3870,17 @@ export class AssistantService {
     const latest = parked.payload as { body: string; about: string; lane: string };
     const mail = theMail(latest, me);
 
+    let became: 'sent' | 'held' | 'suppressed';
     try {
-      await this.email.sendMeThat(me.email, mail.subject, mail.text);
+      became = (await this.email.sendMeThat(me.email, mail.subject, mail.text)) ?? 'sent';
     } catch (error) {
       /* Said plainly rather than swallowed. Somebody who asked for an email and got a cheerful
          "sent" that never arrived stops trusting everything else this says. */
       this.logger.warn(`Could not send to ${who}: ${(error as Error).message}`);
       return rules('send_me_that', text('I could not send it just now, so treat it as not sent. It is still here.'));
     }
-
-    return rules('send_me_that', text(`I have sent it to ${me.email}. Nobody else was copied.`));
+    /* What is said is what became of the mail, from the mail's own state: "I have sent it" was said of a mail held until seven (Ask #18). */
+    return rules('send_me_that', text(whatBecameOfIt(became, me.email)));
   }
 
   private async resolveParkedScenario(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
@@ -4059,11 +4102,11 @@ export class AssistantService {
   /**
    * THE DRAFT'S NEXT QUESTION IS ANSWERED HERE.
    *
-   * Only when a draft of theirs is still asking and no lane claimed the message. The draft's own
+   * Only when a draft of theirs is still asking, before any lane, and only what the model reads as its answer or a stop. The draft's own
    * refusal ("that is not a measure") is returned as the reply, so the screen and the chat say the
    * same thing about the same answer. When the last piece lands, the offer to set it follows.
    */
-  private async continueTheDraft(organizationId: string, who: string, message: string): Promise<Reply | null> {
+  private async continueTheDraft(organizationId: string, who: string, message: string, placedOnALane: () => Promise<boolean> = async () => false): Promise<Reply | null> {
     /* A draft that cannot be read is no draft: this must never be the reason a plain message gets no answer. */
     const open = await Promise.resolve(
       this.prisma.objectiveDraft?.findFirst({
@@ -4074,6 +4117,14 @@ export class AssistantService {
     if (!open) return null;
     const next = whatToAskForNext(open);
     if (!next) return null;
+    /* Only an answer is taken as the answer: anything else is answered as itself, and a person can always leave the draft. */
+    /* With no reading from the model, a message the rules place on a lane is that lane's, as it was before the draft was asked first. */
+    const step = await whatTheyDoWithTheStep(this.engine as any, this.prompts as any, { message, waiting: next.asks }, (await placedOnALane()) ? 'something_else' : 'answers');
+    if (step === 'something_else') return null;
+    if (step === 'stops') {
+      await Promise.resolve().then(() => this.prisma.objectiveDraft.update({ where: { id: open.id }, data: { state: 'ABANDONED' } })).catch(() => undefined);
+      return rules('set_an_objective', text(`I have stopped the draft of "${open.workingTitle}". Nothing was set.`));
+    }
     try {
       const r = await this.drafts.answer(organizationId, open.id, who, next.piece, message);
       if (r.askNext) return rules('set_an_objective', text(`I have noted that. ${r.askNext.asks}`));
@@ -5134,6 +5185,7 @@ export class AssistantService {
     return {
       isAGuest,
       mayAddPeople: theRolesTheyMayGive(role ?? null, howPeopleJoin).length > 0,
+      managesSomebody: !isAGuest && !!userId && (await read(() => theDirectReportsOf(this.prisma, { organizationId, userId }), { userIds: [] as string[], unsigned: [] as string[] })).userIds.length > 0,
       isAnAdmin: role === 'ADMIN',
       looksAfterHr: !isAGuest && !!userId && duties.hr === userId,
       isAPrincipal: yearEnd.own,
@@ -5160,15 +5212,16 @@ export class AssistantService {
     const lane = 'how_do_i';
     const g = GUIDE_BY_KEY.get(key);
     if (!g) return rules(lane, text(HOW_DO_I_CAN_BE_ASKED));
-    /* Something Ask does with no page of its own is done, never pointed at ("You do not need a page for it", round 2, T3); and leave, asked how, is started. */
-    if ((g.askingHowStartsIt || !g.onScreen) && who) {
-      const started = await this.doItForYou(organizationId, personId, who, userId, g.key, g.askingHowStartsIt ? message : '');
-      if (started) return started;
-    }
     const reader = await this.theReader(organizationId, personId, userId);
     if (!mayUse(g, reader)) {
       const by = whoDoesIt(g);
       return rules(lane, text(`Only ${by} can ${g.does} here, so ask ${by === 'an admin' ? 'one of your admins' : 'them'} to do it.`));
+    }
+    /* Something Ask does with no page of its own is done, never pointed at ("You do not need a page for it", round 2, T3); and leave, asked how, is started.
+       Something done by telling Ask, asked how, is answered with an example of what to tell it: "how do I tick something off" is not a to-do to tick off. */
+    if ((g.askingHowStartsIt || (!g.onScreen && !g.doneByTellingMe)) && who) {
+      const started = await this.doItForYou(organizationId, personId, who, userId, g.key, message);
+      if (started) return started;
     }
     if (!isSwitchedOn(g, reader)) return rules(lane, text(`You cannot ${g.does} here yet, because it is not switched on for your organisation. An admin can switch it on in Suites.`));
     /* WhatsApp is told the steps are in Groundwork on the web, never handed web buttons as if they were here (round 2, T11). */
@@ -5187,7 +5240,7 @@ export class AssistantService {
    * a sentence back through the router. Every one of them asks or says back before anything is written or sent, so the yes to "Shall I do
    * it for you?" only ever starts the conversation that does it.
    */
-  private async doItForYou(organizationId: string, personId: string, who: string, userId: string | null, key: string, message = ''): Promise<Reply | null> {
+  private async doItForYou(organizationId: string, personId: string, who: string, userId: string | null, key: string, message = '', about: string | null = null): Promise<Reply | null> {
     switch (key) {
       case 'set_up_a_check_in': return this.offerToOpenOne(organizationId, personId, who, message);
       /* The days, the amount and the purpose are read by the model into one draft (a-request-read-by-the-model.ts); the rules check it and say it back. */
@@ -5204,6 +5257,7 @@ export class AssistantService {
       case 'how_many_days_left': return this.yourDaysOfLeaveLeft(organizationId, userId, message);
       case 'your_requests': return this.aboutYourRequests(organizationId, userId, message);
       case 'who_is_away': return this.whoIsAway(organizationId, userId, message);
+      case 'a_question_about_a_request': return userId ? this.aQuestionAboutARequestWanted(organizationId, who, userId, message) : null;
       /* "end Chidi's right" in words the rules do not place: the same say-back as "Chidi no longer acts for me", which ends nothing without a yes (release test 21 November, 80). */
       case 'stop_a_delegate': return this.stopADelegate(organizationId, who, userId, message);
       case 'what_is_due': return this.whatIsDue(organizationId, who, userId);
@@ -5222,7 +5276,10 @@ export class AssistantService {
       case 'set_up_a_suite': return this.setUpASuite(organizationId, who, userId, 'leave', '');
       case 'connect_a_platform': return this.connectingAPlatform(organizationId, userId, message);
       case 'role_map': return this.theRoleMapAsked(organizationId, userId, message);
-      default: return null;
+      /* An update told to Ask ("sold 12 today") is told where it belongs, never answered as a question about the record (release test, Ask #27). */
+      case 'an_update': return rules('an_update', text(await this.whereAnUpdateGoes(organizationId, userId)));
+      /* Everything else in the guide is done by its own lane, the one the rules reach too (answerInTheLane). */
+      default: return this.answerInTheLane((GUIDE_BY_KEY.get(key)?.lane ?? key) as Lane, route(message).subject ?? about ?? undefined, organizationId, personId, who, userId, undefined, message);
     }
   }
   /** The model's draft of a request, read against today and what waits for this reader (a-request-read-by-the-model.ts). Empty without a model. */
@@ -5275,17 +5332,26 @@ export class AssistantService {
    */
   private async whatNeedsYouNow(organizationId: string, who: string | null, userId: string | null, asked: 'next' | 'stuck'): Promise<Reply> {
     const lane = asked === 'next' ? 'what_next' : 'what_is_stuck';
-    const me = userId ? await Promise.resolve().then(() => this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } })).catch(() => null) : null;
-    const role = userId ? (await Promise.resolve().then(() => this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } })).catch(() => null))?.role : null;
-    const today = userId && this.whatNeedsYou ? await this.whatNeedsYou.forReader(userId, me?.email ?? '', organizationId, role ?? 'MEMBER').catch(() => null) : null;
-    const needs = (today?.needs ?? []).filter((n) => n.organizationId === organizationId || !n.organizationId);
-    if (!needs.length) return asked === 'next' ? this.whatNext(organizationId, who, userId) : this.compose(await this.whatIsStuck(organizationId, who, '', userId));
-    const said = (n: { title: string; detail: string | null }) => `${n.title.trim().replace(/[.\s]+$/, '')}.${n.detail ? ` ${n.detail.trim()}` : ''}`;
+    const needs = await this.whatTodayHoldsForYou(organizationId, userId);
     if (asked === 'next') {
+      if (!needs.length) return this.whatNext(organizationId, who, userId);
       const [first, ...rest] = needs;
-      return rules(lane, text([`Do this first. ${said(first)}`, ...(rest.length ? [`After that, ${rest.length === 1 ? 'one more thing waits' : `${rest.length} more things wait`} for you on your Today page.`] : [])].join('\n\n')));
+      return rules(lane, text([`Do this first. ${aNeedSaid(first)}`, ...(rest.length ? [`After that, ${rest.length === 1 ? 'one more thing waits' : `${rest.length} more things wait`} for you on your Today page.`] : [])].join('\n\n')));
     }
-    return rules(lane, text([`${needs.length === 1 ? 'One thing is waiting' : `${needs.length} things are waiting`} for you.`, ...needs.map((n) => `- ${said(n)}`)].join('\n')));
+    /* What Today holds and who waits on whom, both: one never stands in for the other. */
+    const waits = await this.theWaitsSaid(organizationId, who, userId);
+    const parts = [...(needs.length ? [whatIsWaitingSaid(needs)] : []), ...(waits ? [waits] : [])];
+    if (!parts.length) return rules(lane, text(who ? NOTHING_IS_STUCK : 'I cannot match you to a check-in, so I cannot tell you what is waiting on you.'));
+    return rules(lane, text(parts.join('\n\n')));
+  }
+
+  /** What Today shows this reader as needing them: open check-ins, approvals waiting, reports to read. The one source Today reads. */
+  private async whatTodayHoldsForYou(organizationId: string, userId: string | null): Promise<{ title: string; detail: string | null }[]> {
+    if (!userId || !this.whatNeedsYou) return [];
+    const me = await Promise.resolve().then(() => this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } })).catch(() => null);
+    const role = (await Promise.resolve().then(() => this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } })).catch(() => null))?.role;
+    const today = await this.whatNeedsYou.forReader(userId, me?.email ?? '', organizationId, role ?? 'MEMBER').catch(() => null);
+    return (today?.needs ?? []).filter((n) => n.organizationId === organizationId || !n.organizationId);
   }
 
 
@@ -5421,8 +5487,9 @@ export class AssistantService {
     if (decision === 'decline') return rules(lane, text(granting ? aDelegateLeftAlone() : aRevokeLeftAlone(p.delegateName)));
     if (granting) {
       if (!(await hasAStandingOfTheirOwn(this.prisma, organizationId, p.principalUserId))) return rules(lane, text(NOT_YOURS_TO_GIVE));
+      /* Letting somebody act for you is that and nothing more: it never makes you a senior person with a year-end report. Only an admin adding
+         a senior person does (executive-onboarding/onboard-an-executive.ts), so both read that one record (release test of 21 November 2026, Ask #71). */
       await grantADelegate(this.prisma, { organizationId, principalUserId: p.principalUserId, delegateEmail: p.delegateEmail, delegateName: p.delegateName, delegateUserId: p.delegateUserId ?? null, via: 'chat' });
-      await ensureThePrincipalsJobs(this.prisma, { organizationId, principalUserId: p.principalUserId, now: new Date() });
       return rules(lane, text(aDelegateGranted(p.delegateName)));
     }
     await revokeADelegate(this.prisma, { organizationId, principalUserId: p.principalUserId, delegateEmail: p.delegateEmail, via: 'chat' });
@@ -5450,7 +5517,6 @@ export class AssistantService {
         : `You act for ${reader.names.join(' and ')}. Tell me which one, for example "what is outstanding for ${reader.names[0]}".`));
     }
     const now = new Date();
-    await ensureThePrincipalsJobs(this.prisma, { organizationId, principalUserId: reader.principalUserId, now });
     const waiting = await this.waitingForYouToDecide(organizationId, reader.principalUserId).catch(() => []);
     const register = await buildTheRegister(this.prisma, {
       organizationId, principalUserId: reader.principalUserId, now, forADelegate: reader.kind === 'delegate',
@@ -5471,12 +5537,16 @@ export class AssistantService {
       const me: any = await Promise.resolve((this.prisma as any).user?.findUnique?.({ where: { id: userId }, select: { awaitingOrgApproval: true } })).catch(() => ({ awaitingOrgApproval: true }));
       if (me?.awaitingOrgApproval === true) return rules(lane, text(WAITING_TO_BE_LET_IN));
     }
-    const [commitments, toDos, waiting] = await Promise.all([
-      this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN', ...notFromAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId), 'sourceGroundId') }, orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }] }).then((rows) => withoutCommitmentsFromGoalsNotToldYet(this.prisma, rows)),
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
+    const [commitments, toDos, waiting, inCheckIns] = await Promise.all([
+      this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN', ...notFromAKeptCheckIn(kept, 'sourceGroundId') }, orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }] }).then((rows) => withoutCommitmentsFromGoalsNotToldYet(this.prisma, rows)),
       this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),
       userId ? this.waitingForYouToDecide(organizationId, userId).catch(() => []) : Promise.resolve([]),
+      /* What they said in their check-ins, as My work lists it (release test of 22 November 2026, #10: "Nothing is due" beside "Send the update on Friday"). */
+      this.theOpenPromisesInTheirCheckIns(organizationId, userId, kept),
     ]);
-    return rules(lane, text(whatIsDueSaid({ commitments: commitments as any, toDos: toDos as any, waitingToDecide: waiting.length, now: new Date() })));
+    const saidInCheckIns = inCheckIns.map((c) => ({ text: c.text, whenSaid: c.whenSaid, checkIn: c.ground?.label ?? null }));
+    return rules(lane, text(whatIsDueSaid({ commitments: commitments as any, toDos: toDos as any, saidInCheckIns, waitingToDecide: waiting.length, now: new Date() })));
   }
 
   /**
@@ -5582,12 +5652,16 @@ export class AssistantService {
     const named = subject.trim();
     const self = THE_ASKER.test(named);
     const kept = await keptInTheApp(this.prisma as any, organizationId);
+    /* Somebody else's history only for the people the asker is responsible for (decision O-15, Hafsah, 21 November 2026): anybody in a check-in they run,
+       and the people who report to them on the role map, in whatever check-in those people take part. Grace, Wairimu's manager, read "I cannot find
+       Wairimu in any of them" (release test of 22 November 2026, 33). */
+    const theirs = self ? [] : (await theDirectReportsOf(this.prisma, { organizationId, userId }).catch(() => ({ userIds: [] as string[] }))).userIds;
     const grounds = ((await this.prisma.ground.findMany({
       where: self
         ? { organizationId, status: { notIn: [...A_GROUND_NO_MESSAGE_IS_ABOUT] }, participants: { some: { userId } } }
-        : { organizationId, initiatorId: userId, status: { notIn: [...A_GROUND_NO_MESSAGE_IS_ABOUT] } },
+        : { organizationId, status: { notIn: [...A_GROUND_NO_MESSAGE_IS_ABOUT] }, OR: [{ initiatorId: userId }, ...(theirs.length ? [{ participants: { some: { userId: { in: theirs } } } }] : [])] },
       select: {
-        id: true, label: true,
+        id: true, label: true, initiatorId: true,
         participants: { select: { id: true, userId: true, email: true, nameGiven: true, managingOnly: true, user: { select: { firstName: true, lastName: true } } } },
       },
       orderBy: { createdAt: 'desc' },
@@ -5595,12 +5669,15 @@ export class AssistantService {
     })) as any[]).filter((g) => mayBeRead(kept, g.id));
     const words = named.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
     const fullName = (p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || String(p.nameGiven ?? '').trim();
-    const found: { groundId: string; personId: string }[] = [];
+    const found: { groundId: string; personId: string; asTheirManager: boolean }[] = [];
     for (const g of grounds) {
+      const runsIt = g.initiatorId === userId;
       for (const p of (g.participants ?? []) as any[]) {
         if (p.managingOnly) continue;
+        /* In a check-in somebody else runs, only the people who report to the asker. */
+        if (!self && !runsIt && !theirs.includes(p.userId)) continue;
         const hit = self ? p.userId === userId : (() => { const have = fullName(p).toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean); return words.length > 0 && words.every((w) => have.includes(w)); })();
-        if (hit) found.push({ groundId: g.id, personId: p.id });
+        if (hit) found.push({ groundId: g.id, personId: p.id, asTheirManager: !self && !runsIt });
       }
     }
     if (!found.length) {
@@ -5609,7 +5686,7 @@ export class AssistantService {
     const parts: string[] = [];
     for (const f of found.slice(0, 3)) {
       let page: any;
-      try { page = await readMyWork(this.prisma as any, this.board as any, { groundId: f.groundId, userId, personId: f.personId }); } catch { continue; }
+      try { page = await readMyWork(this.prisma as any, this.board as any, { groundId: f.groundId, userId, personId: f.personId, asTheirManager: f.asTheirManager }); } catch { continue; }
       if (!page || page.on !== true || !page.person?.participantId) continue;
       const history: AHistoryPage = {
         checkInName: page.checkInName, personName: page.person.name, firstName: page.person.firstName || page.person.name,
@@ -5619,6 +5696,7 @@ export class AssistantService {
         behaviours: page.performing?.behaviours ?? [],
         coaching: page.coaching?.better ?? [],
         judgementsOff: page.judgements === false,
+        asTheirManager: f.asTheirManager,
       };
       parts.push(aHistorySaid(history));
     }
@@ -5881,6 +5959,29 @@ export class AssistantService {
       select: { id: true },
     });
     return { lane, composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
+  }
+
+  /**
+   * "I HAVE A QUESTION FOR AMANI ABOUT HER LEAVE REQUEST" (release test of 22 November 2026, #56). Wairimu read "there is no information about a
+   * leave request for Amani Wekesa on record" while that request waited for her. A question already written is said back as before; with none
+   * yet, the request is named, from what waits for this reader, and the question is asked for. Nothing is sent without her yes.
+   */
+  private async aQuestionAboutARequestWanted(organizationId: string, who: string, userId: string, message: string): Promise<Reply> {
+    const asked = aQuestionAskedAboutARequest(message);
+    const said = asked ? await this.proposeAQuestionAboutARequest(organizationId, who, userId, asked) : null;
+    if (said) return said;
+    const lane = 'decide_a_request';
+    const all: AWaitingRequest[] = await this.waitingForYouToDecide(organizationId, userId).catch(() => []);
+    if (!all.length) return rules(lane, text(NOTHING_TO_ASK_ABOUT));
+    /* Whose request, by the first names of the people whose requests wait for this reader, and which kind, where the message says. */
+    const words = new Set(message.toLowerCase().split(/[^\p{L}'’-]+/u));
+    const byName = all.filter((r) => r.firstName && words.has(r.firstName.toLowerCase()));
+    const suite = whichSuite(message);
+    const kind = suite === 'time' ? 'hours' : suite;
+    const byKind = kind ? (byName.length ? byName : all).filter((r) => r.kind === kind) : [];
+    const left = byKind.length ? byKind : byName.length ? byName : all;
+    if (left.length > 1) return rules(lane, text(WHICH_REQUEST_TO_ASK_ABOUT(left)));
+    return rules(lane, text(left[0].kind === 'hours' ? HOURS_TAKE_NO_QUESTION(left[0].firstName) : WHAT_IS_YOUR_QUESTION(left[0])));
   }
 
   /** The yes: the question goes through the boards' own `askAQuestion`, which checks again that this reader decides it, and tells the person. */
@@ -6254,17 +6355,21 @@ export class AssistantService {
     organizationId: string,
     who: string,
     groundId: string,
-    parsed: { kind: string; text: string },
+    parsed: { kind: string; text: string; label?: string },
     /** The set-up conversation this line interrupted: asked again after the yes or the no, so the question that was open is not lost. */
     carried?: { history: { role: 'user' | 'assistant'; content: string }[]; openQuestion: string | null },
   ): Promise<Reply> {
+    /* The check-in is named, so the lead knows which one it goes on (release test of 21 November 2026, Ask #36). */
+    const named = (await Promise.resolve().then(() => this.prisma.ground.findFirst({ where: { id: groundId }, select: { label: true } })).catch(() => null))?.label;
+    const label = named ? `“${named}”` : 'this check-in';
+    const as = parsed.label ?? labelForContextKind(parsed.kind);
     const proposal = await this.prisma.assistantProposal.create({
       data: {
         organizationId,
         personExternalId: who,
         kind: 'context_line',
-        summary: `Shall I add "${parsed.text}" to this check-in's context as ${labelForContextKind(parsed.kind)}? Everybody in this check-in will read it.`,
-        payload: { groundId, kind: parsed.kind, text: parsed.text, ...(carried ? { carried } : {}) } as never,
+        summary: `Shall I add "${parsed.text}" to ${label} as ${as}? Everybody in that check-in will read it.`,
+        payload: { groundId, kind: parsed.kind, text: parsed.text, label, as, ...(carried ? { carried } : {}) } as never,
       },
     });
     return {
@@ -6313,7 +6418,7 @@ export class AssistantService {
       const was = parked.payload as { groundId: string; carried?: any };
       return this.carryOn(organizationId, who, was.groundId, 'I have not added the line. Nothing was changed.', was.carried);
     }
-    const payload = parked.payload as { groundId: string; kind: string; text: string; carried?: any };
+    const payload = parked.payload as { groundId: string; kind: string; text: string; label?: string; as?: string; carried?: any };
     const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
     if (!person?.linkedUserId) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
@@ -6322,7 +6427,7 @@ export class AssistantService {
     try {
       await this.grounds.addContextLine(payload.groundId, person.linkedUserId, { kind: payload.kind, text: payload.text });
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
-      return this.carryOn(organizationId, who, payload.groundId, 'I have added the line to this check-in. Everybody in it can read it now.', payload.carried);
+      return this.carryOn(organizationId, who, payload.groundId, `I have added "${payload.text}" to ${payload.label ?? 'this check-in'} as ${payload.as ?? labelForContextKind(payload.kind)}. Everybody in it can read it now.`, payload.carried);
     } catch (err: any) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('add_context', text(err?.message ?? 'That could not be added.'));
@@ -6905,31 +7010,25 @@ export class AssistantService {
   }
 
   /**
-   * THE PROMISES STILL OPEN IN THEIR OWN CHECK-INS, ONE READING FOR EVERY LANE (polish round 15, U5). Kevin asked "What did I promise this
-   * week?" and read "You said you would do 2 things that are still waiting", then "What should I do next about Upper Hill Offices?" and
-   * read "You have no open commitments or to-dos": one lane read his check-ins' promises and the other did not. Both read this. A promise
-   * the record shows was done (thePromisesSaidDone, the lead's morning summary's own reading) is not open. Only the asker's own place in
-   * each check-in is read, never through a name.
+   * THE PROMISES STILL OPEN IN THEIR OWN CHECK-INS, READ WHERE MY WORK READS THEM (polish round 15, U5; release test of 22 November 2026, #9 and #10).
+   * Kevin asked "What did I promise this week?" and then "What should I do next?", and one lane read his check-ins' promises and the other did not.
+   * Then Amani's My work listed "Send the update on Friday" while Ask told her she had said she would do nothing and that nothing was due: Ask read
+   * the stored promises its own way, and My work read them through thePromisesOf. Every lane now reads thePromisesOf, the one reader of a person's
+   * promises (a promise said done is done, a promise and the to-do written for it are one), for the asker's own places only, never through a name.
    */
   private async theOpenPromisesInTheirCheckIns(organizationId: string, linkedUserId: string | null | undefined, kept: any): Promise<{ id: string; text: string; whenSaid: string | null; createdAt: Date; ground: { label: string } | null }[]> {
     if (!linkedUserId) return [];
-    const rows: any[] = await (this.prisma as any).groundCommitment?.findMany?.({
-      where: {
-        status: 'UNKNOWN',
-        /* Held for a seat keeps their own promises (decision 110, B3): only the seat limit stops, and only new participation. */
-        participant: { userId: linkedUserId },
-        ground: { organizationId, ...notAKeptCheckIn(kept) },
-      },
-      select: { id: true, text: true, whenSaid: true, createdAt: true, participantId: true, groundId: true, ground: { select: { label: true } } },
-      orderBy: { createdAt: 'asc' },
+    /* Held for a seat keeps their own promises (decision 110, B3): only the seat limit stops, and only new participation. */
+    const places: any[] = await (this.prisma as any).groundParticipant?.findMany?.({
+      where: { userId: linkedUserId, ground: { organizationId, ...notAKeptCheckIn(kept) } },
+      select: { id: true, groundId: true, ground: { select: { label: true } } },
     })?.catch?.(() => []) ?? [];
-    if (!rows.length) return [];
-    const forPromises = await theRecordForPromises(this.prisma as any, [...new Set(rows.map((r) => String(r.groundId)).filter(Boolean))]).catch(() => ({ lines: [], waits: [], people: [], answers: [] } as any));
-    const done = new Set(thePromisesSaidDone(
-      rows.map((c) => ({ id: c.id, participantId: c.participantId, text: c.text, createdAt: c.createdAt })),
-      forPromises.lines, forPromises.waits, (id: string) => forPromises.people.find((p: any) => p.id === id)?.names ?? [], forPromises.people.map((p: any) => p.id), forPromises.answers,
-    ).map((x) => x.id));
-    return rows.filter((r) => !done.has(r.id)).map((r) => ({ id: r.id, text: String(r.text ?? ''), whenSaid: r.whenSaid ?? null, createdAt: new Date(r.createdAt), ground: r.ground ?? null }));
+    if (!places.length) return [];
+    const label = new Map<string, string>(places.map((p) => [String(p.groundId), String(p.ground?.label ?? 'your check-in')]));
+    const promises = await thePromisesOf(this.prisma as any, places.map((p) => p.id), (g) => label.get(g) ?? 'your check-in').catch(() => [] as any[]);
+    return promises.filter((p: any) => p.open).map((p: any) => ({
+      id: p.id, text: String(p.raw ?? ''), whenSaid: p.whenSaid ?? null, createdAt: new Date(p.createdAt ?? Date.now()), ground: { label: label.get(String(p.groundId)) ?? 'your check-in' },
+    }));
   }
 
   /**
@@ -6952,33 +7051,13 @@ export class AssistantService {
     }));
     const inCheckIns: any[] = await this.theOpenPromisesInTheirCheckIns(organizationId, me.linkedUserId, kept);
 
-    /*
-     * WHAT THEY SAID THEY WOULD DO, WRITTEN DOWN WHILE SETTING A CHECK-IN UP OR ANSWERING, AS THE YOU PAGE READS IT (user journeys, F-5).
-     * The You page lists the person's own to-dos and commitments from their goals ("person_objectives", said by themselves, still open), and
-     * Ask read neither, so a lead whose You page held "Settle the 21 day credit rule with finance by the end of October." was told she had
-     * said she would do nothing. The same rows, the same rule, and only the asker's own place in each check-in.
-     */
-    const myPlaces: any[] = me.linkedUserId
+    /* Their places, for saying plainly where they have no seat yet. Their own to-dos and goals' commitments are already among the promises read above (F-5). */
+    const noSeat: any[] = (me.linkedUserId
       ? await (this.prisma as any).groundParticipant?.findMany?.({
         where: { userId: me.linkedUserId, ground: { organizationId, ...notAKeptCheckIn(kept) } },
-        select: { id: true, awaitingSeat: true, ground: { select: { label: true } } },
+        select: { awaitingSeat: true, ground: { select: { label: true } } },
       })?.catch?.(() => []) ?? []
-      : [];
-    const ownToDos: any[] = myPlaces.length
-      ? await (this.prisma as any).personObjective?.findMany?.({
-        where: { participantId: { in: myPlaces.map((x) => x.id) }, kind: { in: ['COMMITMENT', 'TODO'] }, authoredBy: 'self', status: 'OPEN' },
-        select: { text: true, dueSaid: true, participantId: true },
-        orderBy: { createdAt: 'asc' },
-      })?.catch?.(() => []) ?? []
-      : [];
-    const sameWords = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-    const alreadyListed = new Set(inCheckIns.map((c) => sameWords(String(c.text))));
-    for (const o of ownToDos) {
-      const text = String(o.text ?? '').trim();
-      if (!text || alreadyListed.has(sameWords(text))) continue;
-      alreadyListed.add(sameWords(text));
-      inCheckIns.push({ text, whenSaid: o.dueSaid ?? null, ground: myPlaces.find((x) => x.id === o.participantId)?.ground ?? null });
-    }
+      : []).filter((x: any) => x.awaitingSeat);
 
     const now = new Date();
     const lines: string[] = [];
@@ -6996,7 +7075,6 @@ export class AssistantService {
       if (!lines.includes(line)) lines.push(line);
     }
     /* In a check-in with no seat for them yet, said plainly, so a person is not left to wonder why nothing new is asked of them. */
-    const noSeat = myPlaces.filter((x) => x.awaitingSeat);
     if (!lines.length) {
       return rules('what_did_i_commit_to', text(`You have not said you will do anything that is still waiting. When you say you will do something in a check-in, it shows up here.${noSeat.length ? `\n\n${noSeat.map((x) => noSeatYetSays(String(x.ground?.label ?? 'your check-in'))).join('\n')}` : ''}`));
     }
@@ -7041,8 +7119,8 @@ export class AssistantService {
       ...[...bySystem.entries()].map(([sys, v]) =>
         /* Staleness is said out loud rather than left for somebody to infer from a date. */
         v.stale
-          ? `${aSourceInPlainWords(sys, true)} last ${aSourceIsGroundworks(sys) ? 'added to' : 'sent anything'} on ${v.syncedAt.toDateString()}, which is old enough that I would check it before relying on it.`
-          : `${aSourceInPlainWords(sys, false)}, last updated ${v.syncedAt.toDateString()}.`,
+          ? `${aSourceInPlainWords(sys, true)} last ${aSourceIsGroundworks(sys) ? 'added to' : 'sent anything'} on ${aDaySaidInFull(v.syncedAt)}, which is old enough that I would check it before relying on it.`
+          : `${aSourceInPlainWords(sys, false)}, last updated ${aDaySaidInFull(v.syncedAt)}.`,
       ),
     ];
 
@@ -7050,7 +7128,7 @@ export class AssistantService {
       await this.prisma.detectionQuietPeriod.findMany({ where: { organizationId }, select: { endsAt: true } }),
       now,
     );
-    if (quiet) lines.push(`I am not raising anything until ${quiet.toDateString()}, because your systems were only just connected.`);
+    if (quiet) lines.push(`I am not raising anything until ${aDaySaidInFull(quiet)}, because your systems were only just connected.`);
 
     /* What they can do with it is the one guide's answer to "What can you help me with?", fitted to them, not a second list here (Batch S, S5). */
     lines.push('', 'To hear what you can do here, ask me "What can you help me with?".');

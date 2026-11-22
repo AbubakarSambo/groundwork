@@ -169,7 +169,8 @@ describe('T3. a question Ask answers is answered by its own answer', () => {
 
   it('"end Chidi\'s right", in words the rules do not place, is said back by ending a right, never answered from the documents', async () => {
     const said = "end Chidi's right";
-    const a = aSeniorPerson({ [said]: { kind: 'question', guide: 'stop_a_delegate' } });
+    /* An instruction, so the model reads it as wanted: a question only reads, and ends nobody's right (release test 21 November, Ask fixes). */
+    const a = aSeniorPerson({ [said]: { kind: 'wants', guide: 'stop_a_delegate' } });
     const documents = jest.spyOn(a.s, 'aQuestionAnsweredFromTheDocuments');
     a.prisma.delegate = { findMany: jest.fn(async () => [{ id: 'd1', organizationId: 'org-a', principalUserId: 'u-1', delegateEmail: 'chidi@msingi.test', delegateName: 'Chidi Okeke', delegateUserId: 'u-chidi', revokedAt: null }]) };
     const t = await a.say(said);

@@ -28,13 +28,14 @@ describe('each principal has two standing jobs, made once', () => {
     expect(o.tables.persistentJob.rows).toHaveLength(2);
   });
 
-  it('is created on the first ask, with no form', async () => {
+  /* Changed 22 November 2026 (release test of 21 November, Ask #71): asking Ask, or letting somebody act for you, never makes the two standing jobs. Only an admin adding a senior person does (executive-onboarding/onboard-an-executive.ts), so a lead who names an assistant is never sent a year-end report. */
+  it('is never created by asking', async () => {
     const o = anOrganisationForAnExecutive(NOW);
     expect(o.tables.persistentJob.rows).toHaveLength(0);
     jest.useFakeTimers({ now: NOW, doNotFake: ['nextTick', 'setImmediate', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'queueMicrotask'] });
     await o.says('u-fatima', 'What needs my decision?');
     jest.useRealTimers();
-    expect(o.tables.persistentJob.rows).toHaveLength(2);
+    expect(o.tables.persistentJob.rows).toHaveLength(0);
   });
 });
 

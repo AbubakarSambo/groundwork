@@ -59,7 +59,8 @@ describe('B-083: a fact typed while a set-up question is open', () => {
     const { service, proposals, contextChat } = svc(fact);
     const r: any = await service.respond('org-a', 'p1', FACT, 'g1', true);
     expect(contextChat).not.toHaveBeenCalled();
-    expect(said(r)).toBe(`Shall I add "${FACT}" to this check-in's context as a note? Everybody in this check-in will read it.`);
+    /* Changed 22 November 2026 (release test of 21 November, Ask #36): the say-back names the check-in and what the line is, so the lead knows where it goes. */
+    expect(said(r)).toMatch(new RegExp(`^Shall I add "${FACT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" to (?:“[^”]+”|this check-in) as a note\\? Everybody in that check-in will read it\\.$`));
     expect(r.blocks.some((b: any) => b.type === 'proposal')).toBe(true);
     expect(said(r)).not.toMatch(/what doing well looks like/i);
     expect(proposals[0].payload).toMatchObject({ groundId: 'g1', kind: 'NOTE', text: FACT });
@@ -70,7 +71,7 @@ describe('B-083: a fact typed while a set-up question is open', () => {
     const { service, proposals, contextChat } = svc(fact, { parked: parkedTurn });
     const r: any = await service.respond('org-a', 'p1', 'I do not want to answer that now. I want to add a fact to this check-in. The Westlands depot is closed from 20 to 27 October.', 'g1', true);
     expect(contextChat).not.toHaveBeenCalled();
-    expect(said(r)).toMatch(/^Shall I add ".*Westlands.*" to this check-in's context as a note\? Everybody in this check-in will read it\.$/);
+    expect(said(r)).toMatch(/^Shall I add ".*Westlands.*" to (?:“[^”]+”|this check-in) as a note\? Everybody in that check-in will read it\.$/);
     expect(proposals[0].payload.carried.openQuestion).toBe('How long should this run?');
   });
 
@@ -80,7 +81,7 @@ describe('B-083: a fact typed while a set-up question is open', () => {
     const { service, addContextLine, proposals } = svc(() => ({ kind: 'answer' }), { parked });
     const r: any = await service.respond('org-a', 'p1', 'yes', 'g1', true);
     expect(addContextLine).toHaveBeenCalledWith('g1', 'lead-1', { kind: 'NOTE', text: FACT });
-    expect(said(r)).toBe('I have added the line to this check-in. Everybody in it can read it now.');
+    expect(said(r)).toMatch(/^I have added ".*Westlands.*" to (?:“[^”]+”|this check-in) as a note\. Everybody in it can read it now\.$/);
     const waiting = proposals.find((p) => p.kind === 'context_turn');
     expect(waiting.payload.history[waiting.payload.history.length - 1]).toEqual({ role: 'assistant', content: 'How long should this run?' });
   });

@@ -285,10 +285,14 @@ function thisMonthsCutOff(rules: TimeRules, now: Date): { day: string; at: Date;
  * anything of them. It says the hours they gave and what is still asked, never how much they work.
  *   "You have recorded 31 hours this week. You still need 9 hours by Friday at 17:00."
  */
+/** The hours they gave this week, said to them: true whatever the rules ask. */
+export const theHoursRecordedSaid = (minutesThisWeek: number): string =>
+  (minutesThisWeek > 0 ? `You have recorded ${hoursAsRead(minutesThisWeek / 60)} this week.` : 'You have not recorded any hours this week.');
+
 export function whereYouStand(rules: TimeRules, minutesThisWeek: number, now: Date): string | null {
   if (!rules.hoursAWeek && !rules.cutOff) return null;
   const out: string[] = [];
-  out.push(minutesThisWeek > 0 ? `You have recorded ${hoursAsRead(minutesThisWeek / 60)} this week.` : 'You have not recorded any hours this week.');
+  out.push(theHoursRecordedSaid(minutesThisWeek));
   const week = thisWeeksCutOff(rules, now);
   const passed = !!week && now.getTime() > week.at.getTime();
   const by = week ? `${weekdayOf(week.day)} at ${rules.cutOff!.time}` : null;

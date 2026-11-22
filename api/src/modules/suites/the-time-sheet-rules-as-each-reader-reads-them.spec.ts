@@ -47,11 +47,14 @@ describe('with no time sheet rules set, every reader reads exactly what they rea
       expect(kept).toEqual([{ organizationId: ORG, userId: 'u-aisha', client: 'Internal', onDay: new Date('2026-10-07T00:00:00.000Z'), minutes: 180 }]);
     });
 
-    it(`${label}: Ask Groundwork does not answer "how many hours" from the time sheet`, async () => {
+    /* Changed 22 November 2026 (release test, #51): with no rule, "how many hours" fell through to the files ("the files do not contain any information
+       about hours"). It is answered with the hours she gave this week, and nothing about what the rules ask, because none are set. */
+    it(`${label}: Ask Groundwork answers "how many hours" with the hours she gave, and no rule`, async () => {
       const o = aTimeSheetsOrganisation({ rules });
       const r: any = await o.assistant.respond(ORG, 'pid-aisha', 'How many hours have I logged this week?').catch(() => null);
-      expect(r?.lane).not.toBe('log_hours');
-      expect(JSON.stringify(r ?? {})).not.toMatch(/You have recorded/);
+      expect(r?.lane).toBe('log_hours');
+      expect(r.blocks[0].body).toMatch(/^You have (?:not recorded any hours|recorded [^.]+) this week\. You can tell me your hours here at any time/);
+      expect(r.blocks[0].body).not.toMatch(/still need|cut-off/);
     });
 
     it(`${label}: Aisha's Today has no line about her hours`, async () => {

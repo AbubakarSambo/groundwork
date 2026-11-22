@@ -2,9 +2,10 @@
  * A PERSON'S HISTORY, ASKED FOR BY NAME (chat is king, section 8).
  *
  * "How has Joseph been performing?" is answered from the page the screen already serves: that person's My work in each check-in the
- * asker runs (board/my-work.ts). That reader decides who may be read: the person's own page for themselves, and the lead of the check-in
- * for anybody who takes part in it. Nobody else is served, so this lane adds no permission of its own and cannot be talked into reading
- * more than the page shows. A name that is not in a check-in the asker runs gets one answer whether the person exists or not.
+ * asker runs (board/my-work.ts). That reader decides who may be read: the person's own page for themselves, the lead of the check-in
+ * for anybody who takes part in it, and, asked by Ask alone, the manager the role map names for the person (decision O-15, Hafsah, 21 November
+ * 2026), checked there against the role map. Nobody else is served, and it cannot be talked into reading more than the page shows. A name that
+ * is not among them gets one answer whether the person exists or not.
  *
  * It says what happened and what would change it. It never ranks a person against another, and it never puts a label on anybody.
  */
@@ -34,7 +35,7 @@ export const THE_ASKER = /^(?:me|my|myself|i)$/i;
 export const NO_SIGN_IN_FOR_A_HISTORY = 'I cannot look that up without knowing who you are.';
 
 export const NOT_A_PERSON_YOU_LEAD = (name: string) =>
-  `I can give the history of people in the check-ins you run, and I cannot find ${name} in any of them. If you lead ${name}, ask me about a name as it is on your check-in.`;
+  `I can give the history of people in the check-ins you run and of the people who report to you, and I cannot find ${name} among them. If you lead ${name}, ask me about a name as it is on your check-in.`;
 
 export const JUDGEMENTS_ARE_OFF = 'Your organisation does not show judgements about people here, so I am giving you the counts only.';
 
@@ -50,6 +51,8 @@ export interface AHistoryPage {
   behaviours: AHistoryBehaviour[];
   coaching: { text: string; from: string }[];
   judgementsOff: boolean;
+  /** Read by the person's manager on the role map, who does not run this check-in: nothing they told me is in it. */
+  asTheirManager?: boolean;
 }
 
 const full = (s: string) => { const t = String(s ?? '').trim(); return /[.!?]["”']?$/.test(t) ? t : `${t}.`; };
@@ -58,7 +61,7 @@ const full = (s: string) => { const t = String(s ?? '').trim(); return /[.!?]["�
 export function aHistorySaid(p: AHistoryPage): string {
   const who = p.self ? 'You' : p.firstName;
   const has = p.self ? 'have' : 'has';
-  const out: string[] = [`This is ${p.self ? 'your' : `${p.firstName}’s`} history in "${p.checkInName}", read from ${p.self ? 'your' : 'their'} check-ins${p.self || p.judgementsOff ? '' : ' and from what you have told me about them'}.`];
+  const out: string[] = [`This is ${p.self ? 'your' : `${p.firstName}’s`} history in "${p.checkInName}", read from ${p.self ? 'your' : 'their'} check-ins${p.self || p.judgementsOff || p.asTheirManager ? '' : ' and from what you have told me about them'}.`];
   if (p.checkIns.due > 0) {
     out.push(`${who} ${has} done ${p.checkIns.done} of ${p.checkIns.due} check-ins, ${p.checkIns.onTime} on time and ${p.checkIns.specific} with specific answers.`);
   } else {

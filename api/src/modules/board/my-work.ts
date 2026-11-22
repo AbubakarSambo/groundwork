@@ -22,6 +22,7 @@ import { theRecordInWords, acrossTheirCheckIns, type TheRecordInWords } from './
 import { thePraiseFromYourLead } from './the-praise-from-your-lead';
 import { withTheirCountNow } from './an-aim-is-counted-now';
 import { thePromisesOf, thePromisesCounted } from '../grounds/the-promises-counted-once';
+import { theDirectReportsOf } from '../suites/who-may-decide';
 import { theCheckInsCounted } from './a-day-they-checked-in';
 import { aRoundIsCounted, whenACheckInBegan } from '../grounds/a-round-that-could-be-answered';
 import { whenTheseOrganisationsPaused } from '../billing/the-trial-grace';
@@ -697,22 +698,33 @@ const fullName = (p: any) => [p?.user?.firstName, p?.user?.lastName].filter(Bool
 export async function readMyWork(
   prisma: any,
   board: ABoardReader | null,
-  input: { groundId: string; userId: string; personId?: string | null },
+  /**
+   * `asTheirManager`: read by Ask, for somebody who reports to the reader on the role map (decision O-15, Hafsah, 21 November 2026). Checked here
+   * against the role map, never taken on trust; the My work screen never asks it, so the screen is read as before.
+   */
+  input: { groundId: string; userId: string; personId?: string | null; asTheirManager?: boolean },
   now: Date = new Date(),
 ): Promise<MyWork> {
   const ground = await prisma.ground.findFirst({ where: { id: input.groundId }, select: GROUND_SELECT });
   if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
-  const isLead = ground.initiatorId === input.userId;
   const participants: any[] = ground.participants ?? [];
   const mine = participants.find((p) => p.userId === input.userId) ?? null;
-  if (!isLead && !mine) throw new ForbiddenException('My work is for each person in this check-in and the person who runs it.');
+  /* Their manager reads the one person who reports to them as the lead reads them, without the lead's own note (below). */
+  const managed = input.asTheirManager && input.personId && ground.initiatorId !== input.userId
+    ? participants.find((p) => p.id === input.personId && p.userId && p.id !== mine?.id) ?? null
+    : null;
+  const asTheirManager = !!managed && (await theDirectReportsOf(prisma, { organizationId: ground.organizationId, userId: input.userId }).catch(() => ({ userIds: [] as string[] }))).userIds.includes(managed.userId);
+  const isLead = ground.initiatorId === input.userId;
+  if (!isLead && !mine && !asTheirManager) throw new ForbiddenException('My work is for each person in this check-in and the person who runs it.');
 
   /* Whose page: a person only ever their own; the lead anybody's who takes part. Refused before anything about them is read. */
   const checksIn = (p: any) => !p.managingOnly;
   const people = participants.filter((p) => checksIn(p) && (p.userId !== ground.initiatorId || p.id === mine?.id));
   let person: any;
-  if (!isLead) {
+  if (asTheirManager) {
+    person = managed;
+  } else if (!isLead) {
     if (input.personId && input.personId !== mine.id) throw new ForbiddenException('You can open your own My work, and nobody else’s.');
     person = mine;
   } else {
@@ -811,7 +823,7 @@ export async function readMyWork(
       }, []))
     : [];
 
-  const helpWith = (reader === 'lead' || THE_LEADS_NOTE_SHOWS_ON_THEIR_OWN_MY_WORK)
+  const helpWith = !asTheirManager && (reader === 'lead' || THE_LEADS_NOTE_SHOWS_ON_THEIR_OWN_MY_WORK)
     ? [...(lines as any[])].reverse().find((l) => l.kind === 'HELP_WITH' && l.aboutParticipantId === pid && String(l.text ?? '').trim())?.text ?? null
     : null;
   /* The person's own target, through the one rule for whose number is whose: the lead reads every one, a person their own. */

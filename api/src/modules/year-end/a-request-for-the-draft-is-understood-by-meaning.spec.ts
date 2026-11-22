@@ -102,6 +102,14 @@ describe('asking for a draft that does not exist yet (Fatima round 3)', () => {
     expect(said).not.toMatch(/what I said about/);
     expect(await handleTheDraftWords(w.prisma, w.ports, { organizationId: w.ORG, userId: 'u-fatima', message: 'What is the weather like', channel: 'whatsapp', now: NOW })).toBeNull();
   });
+
+  it('asked to change it, she is told there is nothing to change yet, never offered a follow-up with her team (release test of 22 November 2026, #74)', async () => {
+    const w = aYearEndWorld(NOW);
+    (w.prisma as any).persistentJob = { findFirst: async ({ where }: any) => (where.principalUserId === 'u-fatima' && where.kind === 'annual_report' ? { id: 'job-1' } : null) };
+    const said = await handleTheDraftWords(w.prisma, w.ports, { organizationId: w.ORG, userId: 'u-fatima', message: 'add March to the report', channel: 'whatsapp', now: NOW });
+    console.log(`SHE SAYS "add March to the report" AND READS\n${said}`);
+    expect(said).toBe('There is no draft yet, so there is nothing to change. I make the first one when there is something on the record to put in it, and I will email it as soon as it is ready. Tell me then what to change.');
+  });
 });
 
 describe('somebody with no year-end job (Batch S round 2, T8)', () => {
