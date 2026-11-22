@@ -208,7 +208,7 @@ export interface TheRecordForOnePerson {
   /** The lead's "help them with" line for this person: only where this reader may read it. */
   helpWith: string | null;
   /** With the deals' own count where the deals count it (an-aim-is-counted-now.ts): what the sold tile says too. */
-  target: { count: number; target: number; fromTheDeals?: { count: number; proven: number; deposit: number; thing: string } } | null;
+  target: { count: number; target: number; fromTheDeals?: { count: number; proven: number; shown: number; deposit: number; thing: string } } | null;
   now: Date;
   timeZone: string;
   /** The check-in opens a session each working day, on these days (cadence DAILY). */
@@ -453,9 +453,17 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const paidInFull = proven.filter((i) => !onADeposit.includes(i));
   const fromTheDeals = r.target?.fromTheDeals ?? null;
   if (fromTheDeals && words.keepsItems) {
-    /* The sold tile and the target say one count: the deals', under the lead's rule for proof (an-aim-is-counted-now.ts). */
+    /*
+     * The sold tile and the target say one count: the deals', under the lead's rule for proof (an-aim-is-counted-now.ts). Proof is the
+     * board's: a payment or a signed order (Hafsah, 22 November 2026: "1 sold, 0 with proof" was read where the board counted the signed
+     * order as proof). A signed order not yet paid is said apart, as a deposit is.
+     */
     const paidN = fromTheDeals.proven;
-    numbers.push({ value: String(fromTheDeals.count), label: fromTheDeals.deposit ? `${words.doneWord}, ${paidN} paid with proof, ${fromTheDeals.deposit} on a deposit` : `${words.doneWord}, ${paidN} with proof` });
+    const onAnOrder = Math.max(0, fromTheDeals.shown - fromTheDeals.deposit);
+    const signedApart = onAnOrder ? `${onAnOrder} on a signed order and not yet paid` : '';
+    numbers.push({ value: String(fromTheDeals.count), label: fromTheDeals.deposit
+      ? [`${words.doneWord}`, `${paidN} paid with proof`, `${fromTheDeals.deposit} on a deposit`, signedApart].filter(Boolean).join(', ')
+      : onAnOrder ? `${words.doneWord}, ${paidN + onAnOrder} with proof, ${onAnOrder} not yet paid` : `${words.doneWord}, ${paidN} with proof` });
   } else if (words.keepsItems && items.length) {
     numbers.push(inUnits
       ? { value: String(soldUnits), label: onADeposit.length ? `${words.doneWord}, ${unitsIn(paidInFull) ?? 0} paid with proof, ${unitsIn(onADeposit) ?? 0} on a deposit` : `${words.doneWord}, ${unitsIn(proven) ?? 0} with proof` }
@@ -857,7 +865,7 @@ export async function readMyWork(
     patterns: judgements ? patterns.map((p: any) => ({ heading: String(p.heading ?? ''), kind: String(p.kind ?? ''), oneStep: p.oneStep ?? null, yours: p.yours })) : [],
     teamCoaching: (lines as any[]).filter((l) => l.kind === 'COACHING').map((l) => String(l.text ?? '').trim()).filter(Boolean),
     helpWith: judgements ? helpWith : null,
-    target: target ? { count: target.count ?? 0, target: target.target, ...(target.fromTheDeals ? { fromTheDeals: { count: target.fromTheDeals.count, proven: target.fromTheDeals.proven ?? 0, deposit: target.fromTheDeals.deposit ?? 0, thing: target.fromTheDeals.thing } } : {}) } : null,
+    target: target ? { count: target.count ?? 0, target: target.target, ...(target.fromTheDeals ? { fromTheDeals: { count: target.fromTheDeals.count, proven: target.fromTheDeals.proven ?? 0, shown: target.fromTheDeals.shown ?? 0, deposit: target.fromTheDeals.deposit ?? 0, thing: target.fromTheDeals.thing } } : {}) } : null,
     now,
     timeZone,
     daily: String((ground as any).cadence ?? '').toUpperCase() === 'DAILY' ? { workingDays: (ground as any).workingDays ?? null } : null,
