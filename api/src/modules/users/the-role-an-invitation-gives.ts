@@ -6,12 +6,12 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
  * "Admin", "Can open check-ins", "Takes part", and "Guest" while the organisation lets guests join. Anything else is refused
  * rather than read as a member, so a typo never quietly invites someone as the wrong thing.
  *
- * Two settings under "Who can join" on People decide it, both on the organisation row and both off by default, so an
- * organisation already here reads exactly as before:
+ * Two settings under "Who can join" on People decide it, both on the organisation row and both ON by default (Hafsah,
+ * 22 November 2026: "nothing switch off from now on"). An admin can still choose otherwise on People:
  *
  *   guestsMayJoin     a guest is the existing GUEST role, the one a lead's guest on one check-in holds: they see only the
  *                     check-ins they are added to. Off, nobody is invited into the organisation as a guest.
- *   whoMayAddPeople   "ADMINS" (the default) or "ANYONE". With "ANYONE", anybody here who is not a guest may invite people as
+ *   whoMayAddPeople   "ANYONE" (the default) or "ADMINS". With "ANYONE", anybody here who is not a guest may invite people as
  *                     "Takes part", and only that. An admin, a lead's power or an owner is never given by a member.
  *
  * The plan's seats are a separate question, asked where a person is actually added (`BillingService.canInviteMember`).
@@ -27,17 +27,17 @@ export interface HowPeopleJoinHere {
 }
 
 /** What an organisation reads before an admin has changed either setting, and what a missing row reads as. */
-export const HOW_A_NEW_ORG_ADDS_PEOPLE: HowPeopleJoinHere = { guestsMayJoin: false, whoMayAddPeople: 'ADMINS' };
+export const HOW_A_NEW_ORG_ADDS_PEOPLE: HowPeopleJoinHere = { guestsMayJoin: true, whoMayAddPeople: 'ANYONE' };
 
 export const ONLY_ADMINS_ADD_PEOPLE = 'Only an admin can add people here. Ask an admin to invite them.';
 export const ONLY_AS_TAKES_PART = 'You can invite people as “Takes part”. Only an admin can give someone another role.';
 export const GUESTS_CANNOT_JOIN = 'Guests cannot join this organisation. An admin can turn this on under Who can join on People.';
 
-/** Reads the two columns as the rule's shape. A value the rule does not know is read as the stricter setting. */
+/** Reads the two columns as the rule's shape. On unless the row says off: only an explicit choice of an admin narrows it. */
 export function howPeopleJoinHere(org: { guestsMayJoin?: boolean | null; whoMayAddPeople?: string | null } | null | undefined): HowPeopleJoinHere {
   return {
-    guestsMayJoin: org?.guestsMayJoin === true,
-    whoMayAddPeople: org?.whoMayAddPeople === 'ANYONE' ? 'ANYONE' : 'ADMINS',
+    guestsMayJoin: org?.guestsMayJoin !== false,
+    whoMayAddPeople: org?.whoMayAddPeople === 'ADMINS' ? 'ADMINS' : 'ANYONE',
   };
 }
 
@@ -63,7 +63,7 @@ export function aRoleToInviteAs(role: string | undefined | null, inviterRole: st
 
 /** The role joining through the invite link gives: "Guest" only while the admin chose it and guests may join. */
 export function theRoleTheLinkGives(org: { guestsMayJoin?: boolean | null; inviteLinkRole?: string | null } | null | undefined): 'MEMBER' | 'GUEST' {
-  return org?.guestsMayJoin === true && org?.inviteLinkRole === 'GUEST' ? 'GUEST' : 'MEMBER';
+  return org?.guestsMayJoin !== false && org?.inviteLinkRole === 'GUEST' ? 'GUEST' : 'MEMBER';
 }
 
 /** Somebody's role here, read from their membership, and nobody's while they still wait to be let in. */

@@ -313,9 +313,8 @@ export class WhatsAppService implements OnModuleInit {
    * Two independent gates, both must pass:
    * (1) credentials configured (WHATSAPP_ACCESS_TOKEN/PHONE_NUMBER_ID) - this
    *     is the "is it technically available" check.
-   * (2) the GW admin toggle - "should we actually use it right now."
-   * Credentials being set does not turn WhatsApp on by itself; an admin must
-   * flip the toggle once they've verified the integration.
+   * (2) the GW admin toggle - on unless the row says off (Hafsah, 22 November 2026: nothing is switched off).
+   * Credentials being set is what makes it live.
    */
 
   /**
@@ -357,14 +356,14 @@ export class WhatsAppService implements OnModuleInit {
   async isEnabled(): Promise<boolean> {
     if (!(await this.ours()).enabled) return false;
     const setting = await this.prisma.platformSetting.findUnique({ where: { key: WhatsAppService.TOGGLE_KEY } });
-    return setting?.value === true;
+    return setting?.value !== false;
   }
 
   async getToggleState(): Promise<{ credentialsConfigured: boolean; adminEnabled: boolean; live: boolean; displayNumber?: string | null }> {
     const ours = await this.ours();
     const credentialsConfigured = ours.enabled;
     const setting = await this.prisma.platformSetting.findUnique({ where: { key: WhatsAppService.TOGGLE_KEY } });
-    const adminEnabled = setting?.value === true;
+    const adminEnabled = setting?.value !== false;
     /* The number people read is not a secret; it rides with the switch so every reader of the switch has it. */
     return { credentialsConfigured, adminEnabled, live: credentialsConfigured && adminEnabled, displayNumber: ours.displayNumber ?? null };
   }

@@ -117,7 +117,8 @@ describe('what a member of staff reads on the page', () => {
     expect(page.secrets.accessToken).toEqual({ state: 'set', from: 'server', saying: "The access token is set in the server's settings. Anything you save here replaces it." });
     expect(page.webhook.saying).toBe('The webhook address to give Meta is https://api.groundwork.test/api/v1/webhooks/whatsapp.');
     expect(page.canSaveSecretsSaying).toBe('Secrets you type here are kept encrypted. Once saved, they are never shown again.');
-    expect(page.switch.saying).toBe('WhatsApp is switched off. Nothing goes from this number until you switch it on in the System tab.');
+    /* Updated 23 November 2026: the WhatsApp switch is on unless its row says off (Hafsah, 22 November), so with the server's keys set it is live. */
+    expect(page.switch.saying).toBe('WhatsApp is on for everyone. Messages go from this number.');
     for (const s of ALL_SECRETS) expect(JSON.stringify(page)).not.toContain(s);
   });
 

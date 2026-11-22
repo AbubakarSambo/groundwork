@@ -11,7 +11,8 @@ import { PROPOSED_RECOGNISE_SETTING, RECOGNISE_SETTING_KEY, readRecogniseSetting
  * after the review started, and is not counted either, so the review reads the same whenever it is opened.
  * Grace is an admin.
  *
- * The setting is off unless it is stored as on, and while it is off nobody reads anything of it.
+ * The setting is on unless it is stored as off (updated 23 November 2026: Hafsah, 22 November, "nothing switch off from now
+ * on"), and while it is off nobody reads anything of it.
  */
 
 const ORG = 'org-baridi';
@@ -69,15 +70,15 @@ function setup(opts: { setting?: unknown; theirView?: string | null; startedDays
 const ON = { on: true, keptAtLeast: 0.9, atLeastSettled: 8 };
 
 describe('the setting', () => {
-  it('is off unless stored as on, and the proposal is nine in ten kept, with at least eight settled', () => {
-    expect(PROPOSED_RECOGNISE_SETTING).toEqual({ on: false, keptAtLeast: 0.9, atLeastSettled: 8 });
-    expect(readRecogniseSetting(undefined).on).toBe(false);
-    expect(readRecogniseSetting({ on: 'yes' }).on).toBe(false);
+  it('is on unless stored as off, and the proposal is nine in ten kept, with at least eight settled', () => {
+    expect(PROPOSED_RECOGNISE_SETTING).toEqual({ on: true, keptAtLeast: 0.9, atLeastSettled: 8 });
+    expect(readRecogniseSetting(undefined).on).toBe(true);
+    expect(readRecogniseSetting({ on: false }).on).toBe(false);
     expect(readRecogniseSetting({ on: true })).toEqual({ on: true, keptAtLeast: 0.9, atLeastSettled: 8 });
   });
 
-  it('while it is off, nobody reads anything of it, however well the record reads', async () => {
-    const { svc, as } = setup({ theirView: 'I want to lead the supermarket accounts.' });
+  it('while it is switched off, nobody reads anything of it, however well the record reads', async () => {
+    const { svc, as } = setup({ setting: { on: false }, theirView: 'I want to lead the supermarket accounts.' });
     expect((await svc.one(as('u-wairimu'), 'r-aisha') as any).recognise).toBeNull();
     expect(await svc.one(as('u-aisha'), 'r-aisha')).not.toHaveProperty('recognise');
   });
@@ -141,7 +142,7 @@ describe('with the setting on', () => {
     const early = setup({ setting: ON });
     expect((await early.svc.one(early.as('u-grace'), 'r-aisha') as any).recognise).toBeNull();
     expect((await early.svc.one(early.as('u-leila'), 'r-aisha') as any).recognise).toBeNull();
-    const off = setup({ theirView: 'I want to lead the supermarket accounts.' });
+    const off = setup({ setting: { on: false }, theirView: 'I want to lead the supermarket accounts.' });
     expect((await off.svc.one(off.as('u-grace'), 'r-aisha') as any).recognise).toBeNull();
     expect((await off.svc.one(off.as('u-leila'), 'r-aisha') as any).recognise).toBeNull();
   });

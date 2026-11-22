@@ -35,28 +35,20 @@ const withEnv = (value: string | undefined) => {
   }
 };
 
+/*
+ * UPDATED 23 November 2026 (Hafsah, 22 November: "turn the switch on, nothing switch off from now on"): the confidence read is
+ * ON unless the environment says exactly "false". `.env.example` already carried it on.
+ */
 describe('the confidence flag', () => {
-  it('is off when nothing is set', () => {
-    /**
-     * It is set now - `.env.example` carries CONFIDENCE_ENABLED=true as of wave 14, after the
-     * arithmetic was checked against a real closed twelve-session ground rather than a fixture.
-     * What this asserts is the PARSE default, which stays off: an environment that forgets the
-     * variable gets the product as it was, not a half-configured version of the new thing.
-     */
-    expect(withEnv(undefined)).toBe(false);
+  it('is on when nothing is set', () => {
+    expect(withEnv(undefined)).toBe(true);
   });
 
-  it('is on only for the exact string "true"', () => {
-    expect(withEnv('true')).toBe(true);
+  it.each(['true', 'TRUE', '1', '', 'yes'])('is on for %p', (value) => {
+    expect(withEnv(value)).toBe(true);
   });
 
-  it.each(['false', 'False', '0', '', 'ture', 'yes', 'TRUE', ' true'])(
-    'stays off for %p',
-    (value) => {
-      // Every one of these is a real thing somebody has typed into a deploy
-      // config, and "TRUE" and " true" are the two that look correct in a
-      // dashboard.
-      expect(withEnv(value)).toBe(false);
-    },
-  );
+  it('is off only for the exact string "false"', () => {
+    expect(withEnv('false')).toBe(false);
+  });
 });

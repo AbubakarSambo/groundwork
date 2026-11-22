@@ -31,9 +31,12 @@ describe('the role an invitation gives', () => {
     expect(anAdmin('LEAD')).toBe('LEAD');
     expect(anAdmin(undefined)).toBe('MEMBER');
   });
+  /* Updated 23 November 2026: guests may join by default now (Hafsah, 22 November), so the sentence names Guest too, and a
+     guest is refused only where an admin switched guests off. */
   it('anything else is refused in a sentence, never read as a member', () => {
-    expect(() => anAdmin('OWNER')).toThrow(new BadRequestException('Choose Admin, Can open check-ins, or Takes part.'));
-    expect(() => anAdmin('GUEST')).toThrow(BadRequestException);
+    expect(() => anAdmin('OWNER')).toThrow(new BadRequestException('Choose Admin, Can open check-ins, Takes part, or Guest.'));
+    expect(anAdmin('GUEST')).toBe('GUEST');
+    expect(() => aRoleToInviteAs('GUEST', 'ADMIN', { guestsMayJoin: false, whoMayAddPeople: 'ADMINS' })).toThrow(BadRequestException);
   });
   const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   it('reaches the account an invitation makes, and the membership of somebody who has one elsewhere', () => {

@@ -1,5 +1,3 @@
-import { theRelease4TeamsIsOn } from '../board/release-4-teams';
-import { theRelease5ProjectsIsOn } from '../board/release-5-projects';
 /**
  * WHAT THE RELEASE HIDES, AND THE THREE SETTINGS THAT HIDE IT (decisions 78, 88 and 90).
  *
@@ -8,20 +6,16 @@ import { theRelease5ProjectsIsOn } from '../board/release-5-projects';
  * release"). Nothing here hides something an existing client uses today: it only decides what is
  * OFFERED to something new.
  *
- *  - `release.boardKindsOffered`        { "kinds": [ ... ] }  the kinds of work a NEW check-in may be given
  *  - `release.contextInAskGroundwork`   { "on": false }       the setup and context lanes in Ask Groundwork (ON when the row is missing, from the pull request that moved Context into Ask)
- *  - `release.oldContextChat`           { "on": true }        the old context chat on the check-in page (OFF when the row is missing; off sends people to Ask)
- *  - `release.planAndBillingNewParts`   { "on": false }       the WhatsApp add-on's price, use and limit
+ *  - `release.oldContextChat`           { "on": false }       the old context chat on the check-in page (ON when the row is missing, 22 November 2026)
  *  - `release.anchorScenario`           { "on": true }        whether a new anchor check-in can be started (on when the row is missing)
  *
- * A bad or unreadable row reads as the default, never as "everything on".
+ * Every one is ON when its row is missing (Hafsah, 22 November 2026: "turn the switch on, nothing switch off from now on").
  */
 import { KINDS_OF_WORK, type KindOfWork } from '../board/the-kind-of-work';
 
-export const BOARD_KINDS_OFFERED_KEY = 'release.boardKindsOffered';
 export const CONTEXT_IN_ASK_GROUNDWORK_KEY = 'release.contextInAskGroundwork';
 export const OLD_CONTEXT_CHAT_KEY = 'release.oldContextChat';
-export const PLAN_AND_BILLING_NEW_PARTS_KEY = 'release.planAndBillingNewParts';
 export const ANCHOR_SCENARIO_KEY = 'release.anchorScenario';
 export const REQUEST_OFFER_IN_THE_CHECK_IN_KEY = 'release.requestOfferInTheCheckIn';
 /**
@@ -64,26 +58,12 @@ async function theRowOrAFault(prisma: Reader, key: string): Promise<{ fault: boo
   }
 }
 
-/** The names a NEW check-in may be given. Only names among the eleven matter to the board. */
-export async function theKindsOfWorkOffered(prisma: Reader): Promise<string[]> {
-  const v = (await theRow(prisma, BOARD_KINDS_OFFERED_KEY)) as { kinds?: unknown } | null;
-  const kinds = Array.isArray(v?.kinds) ? (v!.kinds as unknown[]).filter((k): k is string => typeof k === 'string') : null;
-  return kinds ? kinds : [...KINDS_OFFERED_AT_RELEASE];
-}
-
 /**
- * Of the twelve, those a new check-in may be given. A sales team is served the same sales board as a sales organisation
- * (THE_SALES_KINDS), so wherever "sales org" is offered, "sales team" is offered too: a stored row written before "sales
- * team" existed (`{ "kinds": ["sales org", ...] }`) keeps meaning "sales is offered", and no row has to be rewritten.
+ * Every kind of work is offered to a new check-in, in every organisation (Hafsah, 15 November 2026: everything has a board;
+ * 22 November 2026: nothing is switched off). The `release.boardKindsOffered` row that could narrow it is no longer read.
  */
-export async function theBoardKindsOffered(prisma: Reader, organizationId?: string | null): Promise<KindOfWork[]> {
-  const offered = (await theKindsOfWorkOffered(prisma)).map((k) => k.trim().toLowerCase());
-  if (offered.includes('sales org') && !offered.includes('sales team')) offered.push('sales team');
-  /* Release 4: leadership is offered only to an organisation with Release 4 on. */
-  if (organizationId && !offered.includes('leadership') && (await theRelease4TeamsIsOn(prisma, organizationId))) offered.push('leadership');
-  /* Release 5: a funded project is offered only to an organisation with Release 5 on. */
-  if (organizationId && !offered.includes('a funded project') && (await theRelease5ProjectsIsOn(prisma, organizationId))) offered.push('a funded project', 'client delivery');
-  return KINDS_OF_WORK.filter((k) => offered.includes(k.toLowerCase()));
+export async function theBoardKindsOffered(_prisma?: Reader, _organizationId?: string | null): Promise<KindOfWork[]> {
+  return [...KINDS_OF_WORK];
 }
 
 /**
@@ -95,10 +75,11 @@ export async function aKindMayBeGiven(prisma: Reader, kind: string, whatItHoldsN
   return (await theBoardKindsOffered(prisma, organizationId)).some((k) => k.toLowerCase() === kind.toLowerCase());
 }
 
+/** On unless the row says off. */
 async function aSwitch(prisma: Reader, key: string): Promise<boolean> {
   const v = (await theRow(prisma, key)) as { on?: unknown } | boolean | null;
   if (typeof v === 'boolean') return v;
-  return v?.on === true;
+  return v?.on !== false;
 }
 
 /**
@@ -118,22 +99,11 @@ export const contextIsInAskGroundwork = async (prisma: Reader): Promise<boolean>
 };
 
 /**
- * THE OLD CONTEXT CHAT ON THE CHECK-IN PAGE (`POST /grounds/:id/context-chat` and its confirm and decline).
- * OFF by default (decision 50, finished on `wip/next`): Ask Groundwork now adds a document, files a typed fact and reads what a check-in already has
- * (screens bugs B-083 to B-085), proved live with the real model beside the old chat (docs/run-log.md). A missing row reads OFF, and so does a row that
- * cannot be read or holds anything other than an explicit on. `{ "on": true }` (or `true`) keeps the chat for a deployment that wants it: the three
- * routes then answer as before. Off, they answer with one sentence that sends the person to Ask, and the screens stop drawing the chat when `GET /ask`
- * serves `oldContextChatIsOpen: false`. Ask's own setup lane calls the same two methods in the engine and is not touched by this switch.
- * (It was ON unless the row said off until this change; decision 124 had kept it on for the round before.)
+ * THE OLD CONTEXT CHAT ON THE CHECK-IN PAGE (`POST /grounds/:id/context-chat` and its confirm and decline). ON unless the row
+ * says `{ "on": false }` (Hafsah, 22 November 2026: nothing is switched off). Ask Groundwork does the same work through the same
+ * two methods in the engine, so both ways in stay open. It was off by default from decision 50 until this change.
  */
-export const theOldContextChatIsOpen = async (prisma: Reader): Promise<boolean> => {
-  const read = await theRowOrAFault(prisma, OLD_CONTEXT_CHAT_KEY);
-  if (read.fault || read.row == null) return false;
-  const v = read.row.value as { on?: unknown } | boolean | null | undefined;
-  if (typeof v === 'boolean') return v;
-  return !!(v && typeof v === 'object' && (v as { on?: unknown }).on === true);
-};
-export const theNewBillingPartsAreShown = (prisma: Reader) => aSwitch(prisma, PLAN_AND_BILLING_NEW_PARTS_KEY);
+export const theOldContextChatIsOpen = (prisma: Reader) => aSwitch(prisma, OLD_CONTEXT_CHAT_KEY);
 
 /**
  * THE OFFER TO ASK FOR LEAVE OR SPENDING FROM INSIDE A CHECK-IN (anchor pieces 26 and 27). It was hidden at release because its yes opens the

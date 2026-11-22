@@ -17,16 +17,19 @@ import { groundsAViewerMayList, whatTheyMayRead } from '../grounds/who-may-read-
  * not a guest may invite people as "Takes part" and nothing else, within the plan's seats. A guest is the GUEST role a lead's
  * guest on one check-in already holds: they read only the check-ins they are added to.
  */
-const OFF = HOW_A_NEW_ORG_ADDS_PEOPLE;
+/* Both settings chosen off by an admin. Updated 23 November 2026: they are ON by default (Hafsah, 22 November: "nothing switch
+   off from now on"), so "off" here is an admin's own choice, not what a new organisation reads. */
+const OFF = { guestsMayJoin: false, whoMayAddPeople: 'ADMINS' as const };
 const GUESTS_ON = { ...OFF, guestsMayJoin: true };
 const ANYONE = { ...OFF, whoMayAddPeople: 'ANYONE' as const };
 
-describe('off by default, for every organisation already here and every new one', () => {
-  it('a row with nothing set, or no row, reads as guests off and only admins', () => {
-    expect(howPeopleJoinHere(null)).toEqual({ guestsMayJoin: false, whoMayAddPeople: 'ADMINS' });
-    expect(howPeopleJoinHere({})).toEqual({ guestsMayJoin: false, whoMayAddPeople: 'ADMINS' });
-    /* A value the rule does not know is the stricter setting, never the open one. */
-    expect(howPeopleJoinHere({ whoMayAddPeople: 'EVERYONE' })).toEqual({ guestsMayJoin: false, whoMayAddPeople: 'ADMINS' });
+describe('on by default, for every organisation already here and every new one (22 November 2026)', () => {
+  it('a row with nothing set, or no row, reads as guests on and anyone may add people', () => {
+    expect(HOW_A_NEW_ORG_ADDS_PEOPLE).toEqual({ guestsMayJoin: true, whoMayAddPeople: 'ANYONE' });
+    expect(howPeopleJoinHere(null)).toEqual({ guestsMayJoin: true, whoMayAddPeople: 'ANYONE' });
+    expect(howPeopleJoinHere({})).toEqual({ guestsMayJoin: true, whoMayAddPeople: 'ANYONE' });
+    /* Only an admin's explicit choice narrows it. */
+    expect(howPeopleJoinHere({ guestsMayJoin: false, whoMayAddPeople: 'ADMINS' })).toEqual(OFF);
   });
 
   it('the migration adds the columns with those defaults, and drops or changes nothing', () => {
@@ -37,7 +40,7 @@ describe('off by default, for every organisation already here and every new one'
     expect(sql).not.toMatch(/DROP|ALTER COLUMN|UPDATE /);
   });
 
-  it('an admin offers the three roles, never a guest, and the link gives "Takes part"', () => {
+  it('with guests switched off, an admin offers the three roles, never a guest, and the link gives "Takes part"', () => {
     expect(theRolesTheyMayGive('ADMIN', OFF)).toEqual(['MEMBER', 'LEAD', 'ADMIN']);
     expect(theRoleTheLinkGives({ guestsMayJoin: false, inviteLinkRole: 'MEMBER' })).toBe('MEMBER');
   });
@@ -200,7 +203,9 @@ describe('the signed-in person carries whether they may add people, from the sam
 
   it('an admin always; a member only where anyone may add people; a guest never', () => {
     expect(shape('ADMIN', {}).mayAddPeople).toBe(true);
-    expect(shape('MEMBER', {}).mayAddPeople).toBe(false);
+    expect(shape('MEMBER', { whoMayAddPeople: 'ADMINS' }).mayAddPeople).toBe(false);
+    /* On by default (22 November 2026): a member may add people unless an admin chose "Only admins". */
+    expect(shape('MEMBER', {}).mayAddPeople).toBe(true);
     expect(shape('MEMBER', { whoMayAddPeople: 'ANYONE' }).mayAddPeople).toBe(true);
     expect(shape('GUEST', { whoMayAddPeople: 'ANYONE' }).mayAddPeople).toBe(false);
     expect(shape('MEMBER', { whoMayAddPeople: 'ANYONE' }, true).mayAddPeople).toBe(false);

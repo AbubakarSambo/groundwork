@@ -477,9 +477,8 @@ model WorkspaceNotifier {
   /// Said by the person who set it up, so a channel can be recognised later without opening Slack.
   channelSaid String? @map("channel_said")
 
-  /// Off until somebody turns it on. A notifier that starts posting the moment a URL is pasted
-  /// posts into a channel nobody has told yet.
-  enabled Boolean @default(false)
+  /// On by default (Hafsah, 22 November 2026: nothing is switched off). It posts once a URL is pasted.
+  enabled Boolean @default(true)
 
   lastPostedAt DateTime? @map("last_posted_at")
   /// Why the last post failed, or null. Kept so a dead channel is visible without reading logs.
@@ -553,7 +552,7 @@ model Organization {
   freeSessionsUsed       Int           @default(0) @map("free_sessions_used")
   firstGroundUsed        Boolean       @default(false) @map("first_ground_used")
   freeExtensionUsed      Boolean       @default(false) @map("free_extension_used")
-  allowCodeCreation      Boolean       @default(false) @map("allow_code_creation")
+  allowCodeCreation      Boolean       @default(true) @map("allow_code_creation")
 
   // Org subscription
   subscriptionPlan      SubscriptionPlan? @map("subscription_plan")
@@ -677,13 +676,13 @@ model Organization {
   /// (users/who-may-add-people.ts, theRoleTheLinkGives).
   inviteLinkRole     String  @default("MEMBER") @map("invite_link_role")
 
-  /// GUESTS CAN JOIN THE ORGANISATION (Hafsah, 21 November 2026). Off by default. On: an admin can invite somebody
+  /// GUESTS CAN JOIN THE ORGANISATION (Hafsah, 21 November 2026). On by default (22 November 2026). On: an admin can invite somebody
   /// as a guest, and the invite link can give "Guest". A guest sees only the check-ins they are added to, the same
   /// GUEST role a lead's guest on one check-in holds.
-  guestsMayJoin      Boolean @default(false) @map("guests_may_join")
-  /// WHO CAN ADD PEOPLE (Hafsah, 21 November 2026): "ADMINS" (the default) or "ANYONE". With "ANYONE", anybody here
+  guestsMayJoin      Boolean @default(true) @map("guests_may_join")
+  /// WHO CAN ADD PEOPLE (Hafsah, 21 November 2026): "ANYONE" (the default from 22 November 2026) or "ADMINS". With "ANYONE", anybody here
   /// who is not a guest may invite people as "Takes part", within the plan's seats. Read by users/who-may-add-people.ts.
-  whoMayAddPeople    String  @default("ADMINS") @map("who_may_add_people")
+  whoMayAddPeople    String  @default("ANYONE") @map("who_may_add_people")
 
   /// WHAT THE PERSON WHO CREATED IT SAID ABOUT ITS SIZE, on "Create an organisation" (U.3): "fewer"
   /// or "more" than `teamSizeLine` people, the free trial's team size they were shown. Only asked
@@ -5073,7 +5072,7 @@ model ContributorCode {
   sessionsUsed      Int      @default(0) @map("sessions_used")
   createdByUserId   String   @map("created_by_user_id")
   note              String? // optional label for the admin (e.g. "for the marketing team")
-  allowCodeCreation Boolean  @default(false) @map("allow_code_creation")
+  allowCodeCreation Boolean  @default(true) @map("allow_code_creation")
   isActive          Boolean  @default(true) @map("is_active")
   parentCodeId      String?  @map("parent_code_id")
   redeemedByUserId  String?  @map("redeemed_by_user_id")
@@ -8135,9 +8134,9 @@ model OpsEarningsEntry {
 model OpsIntegration {
   id String @id @default("the-one-row")
 
-  /// Off by default, and turning it off must change nothing on any ops board.
-  /// That is the test of whether these are two systems or one.
-  enabled Boolean @default(false)
+  /// On by default (22 November 2026). It does nothing until its address and keys are set, and turning
+  /// it off must change nothing on any ops board.
+  enabled Boolean @default(true)
 
   baseUrl      String? @map("base_url")
   clientId     String? @map("client_id")
