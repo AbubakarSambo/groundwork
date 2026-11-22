@@ -27,6 +27,9 @@ export function theWeekOfTheMonth(startedOn: Date | null, clock: Date | null): 1
   return Math.min(4, Math.max(1, weeks)) as 1 | 2 | 3 | 4;
 }
 
+/** "Somebody is still waiting on one thing." / "People are still waiting on two things." */
+const stillWaiting = (n: number): string => (n === 1 ? 'Somebody is still waiting on one thing.' : `People are still waiting on ${aNumber(n)} things.`);
+
 /** One handoff, said as a sentence: who is waiting, on whom, and for what. */
 export function aWaitInAWords(w: { from: string; on: string | null; what: string | null }): string {
   const what = (w.what ?? '').trim().replace(/[.\s]+$/, '');
@@ -80,9 +83,10 @@ export function theMovement(r: Pick<TheMonthRecord, 'commitmentsDone' | 'commitm
     else if (r.commitmentsOpen === 0) parts.push(r.commitmentsDone === 1 ? 'The one thing people said they would do is done.' : `All ${aNumber(r.commitmentsDone)} of the things people said they would do are done.`);
     else parts.push(`${capital(aNumber(r.commitmentsDone))} of the things people said they would do ${plural(r.commitmentsDone, 'is', 'are')} done and ${aNumber(r.commitmentsOpen)} ${plural(r.commitmentsOpen, 'is', 'are')} still open.`);
   }
-  if (r.waiting.length > 0) parts.push(`${capital(aNumber(r.waiting.length))} ${plural(r.waiting.length, 'handoff is', 'handoffs are')} still waiting on someone.`);
-  else if (said > 0) parts.push('No handoff is waiting on anyone.');
-  return parts.join(' ') || 'Nothing people said they would do is open, and no handoff is waiting on anyone.';
+  /* In plain words, never "handoffs" (release test, 22 November 2026). */
+  if (r.waiting.length > 0) parts.push(stillWaiting(r.waiting.length));
+  else if (said > 0) parts.push('Nobody is waiting on anything.');
+  return parts.join(' ') || 'Nothing people said they would do is open, and nobody is waiting on anything.';
 }
 
 /** "all four people", "both people", "the one person", or "three of five people": never "four of four people" or "all two people". */
@@ -115,7 +119,7 @@ export function theLenses(r: TheMonthRecord, differences: string[]): TheLens[] {
 export function whatIsMoving(r: TheMonthRecord): string[] {
   const out: string[] = [];
   if (r.commitmentsDone > 0) out.push(`${capital(aNumber(r.commitmentsDone))} of the things people said they would do ${plural(r.commitmentsDone, 'is', 'are')} done.`);
-  if (r.handoffsCleared > 0) out.push(`${capital(aNumber(r.handoffsCleared))} ${plural(r.handoffsCleared, 'handoff that was', 'handoffs that were')} waiting on someone ${plural(r.handoffsCleared, 'has', 'have')} been cleared.`);
+  if (r.handoffsCleared > 0) out.push(r.handoffsCleared === 1 ? 'Somebody has stopped waiting on one thing.' : `People have stopped waiting on ${aNumber(r.handoffsCleared)} things.`);
   if (r.saidWhatTheyWillDo > 0) out.push(`${capital(aNumber(r.saidWhatTheyWillDo))} ${plural(r.saidWhatTheyWillDo, 'person has', 'people have')} said what they will do themselves.`);
   return out.length ? out : ['Nothing has moved yet that the record can show.'];
 }
@@ -124,7 +128,7 @@ export function whatGroundworkIsWorkingOn(r: TheMonthRecord): string[] {
   const out: string[] = [];
   if (r.notYetThisRound > 0) out.push(`${capital(aNumber(r.notYetThisRound))} ${plural(r.notYetThisRound, 'person has', 'people have')} not answered this round yet. They’re being asked.`);
   if (r.commitmentsOpen > 0) out.push(`${capital(aNumber(r.commitmentsOpen))} ${plural(r.commitmentsOpen, 'thing', 'things')} people said they’d do ${plural(r.commitmentsOpen, 'is', 'are')} still open.`);
-  if (r.waiting.length > 0) out.push(`${capital(aNumber(r.waiting.length))} ${plural(r.waiting.length, 'handoff', 'handoffs')} ${plural(r.waiting.length, 'is', 'are')} still waiting on someone.`);
+  if (r.waiting.length > 0) out.push(stillWaiting(r.waiting.length));
   return out.length ? out : ['No check-ins yet.'];
 }
 
