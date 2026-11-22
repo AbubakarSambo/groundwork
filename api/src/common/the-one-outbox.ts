@@ -20,8 +20,13 @@ const DAY = 86_400_000;
 const hash = (t: string) => createHash('sha1').update(String(t ?? '')).digest('hex').slice(0, 16);
 const bucket = (at: Date, ms: number) => Math.floor(at.getTime() / ms);
 
-/** Kinds that are an invitation, sent once a day to a person, whatever check-in it is for. */
-const AN_INVITATION = /invite|invitation|your-view-matters|would-like-your-take/i;
+/**
+ * Kinds that are an invitation to a check-in, sent once a day to a person, whatever check-in it is for. Only those: the mail that adds
+ * somebody to the organisation (sendUserInvite) and the notices to a lead about an invitation (bounced, lapsed, about to lapse) are not an
+ * invitation to a check-in, and used to be folded into one. Olu was added to Msingi as a guest at 20:03 and to "Sales team, Q4" at 20:05;
+ * the second mail met the first one's key and never went, while his row said he was invited by email (release test, 21 November 2026, bug 17).
+ */
+const AN_INVITATION = /^(?:sendParticipantInvite|sendLeadInvite|PARTICIPANT_INVITE|LEAD_INVITE)$|your-view-matters|would-like-your-take/i;
 /** Words of an apology that something on our side failed. */
 const AN_APOLOGY = /could not be reached|cannot continue this minute|a problem on my side/i;
 
