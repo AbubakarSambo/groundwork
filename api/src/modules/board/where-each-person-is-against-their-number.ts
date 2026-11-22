@@ -200,6 +200,25 @@ export function subjectFor(row: Pick<PersonRow, 'who' | 'nameIsTheirRole'>, atTh
   return who;
 }
 
+/**
+ * ONE OPEN WAIT, SAID ONCE, IN THE SAME WORDS ON EVERY ROW: "has been waiting on you for the discount since 27 September". With the day it
+ * began, so the row's ask need not say the wait again (request 117, parts 7 and 9). An open wait is open whatever session it is, so a row
+ * says it whether or not the person has answered this session (22 November 2026: Rukia's board read only "Baraka Mwangi has not checked in
+ * yet." once the session moved on, while Baraka had been waiting on her for the discount since 27 September).
+ */
+function aWaitInWords(w: PersonRow['inTheWay'][number]): string {
+  const what = w.what.trim().replace(/[.!?]+$/, '').replace(/^(The|A|An|Whether|What|How|Which|Who|When|If)\b/, (x) => x.toLowerCase());
+  const forWhat = /^(whether|what|how|which|who|when|if)\b/.test(what) ? `a decision on ${what}` : what;
+  const on = w.onTheReader ? 'you' : (w.owner ?? '').trim();
+  if (w.since) return on ? `has been waiting on ${on} for ${forWhat} since ${w.since}` : `has been waiting for ${forWhat} since ${w.since}`;
+  return on ? `is waiting on ${on} for ${forWhat}` : `is waiting for ${forWhat}`;
+}
+
+/** The wait a row says: the one on the reader, who can act on it, or else the oldest. */
+function theWaitToSay(row: PersonRow): PersonRow['inTheWay'][number] | undefined {
+  return row.inTheWay.find((b) => b.onTheReader) ?? [...row.inTheWay].sort((a, b) => b.days - a.days)[0];
+}
+
 const ORDINAL: Record<number, string> = { 2: 'second', 3: 'third', 4: 'fourth', 5: 'fifth', 6: 'sixth' };
 
 export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: number | null): string {
@@ -211,8 +230,10 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
       return row.notLetIn?.by
         ? `${start} was not let in by ${row.notLetIn.by}, so there is nobody to ask.`
         : `${start} was not let in, so there is nobody to ask.`;
-    case 'has not answered':
-      return `${start} has not checked in yet.`;
+    case 'has not answered': {
+      const w = theWaitToSay(row);
+      return w ? `${start} has not checked in yet, and ${aWaitInWords(w)}.` : `${start} has not checked in yet.`;
+    }
     case 'not joined':
       return `${start} was invited and has not joined yet.`;
     case 'something in the way two weeks': {
@@ -236,32 +257,13 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
       const again = n >= 2 ? ` This is the ${ORDINAL[n] ?? `${n}th`} ${row.roundIsA ?? 'check-in'} in a row.` : '';
       return `Nothing ${mid} said this round can be checked yet.${again} A number, a date or a document for what moved would change that.`;
     }
-    case 'waiting on someone': {
-      const w = [...row.inTheWay].sort((a, b) => b.days - a.days)[0];
-      const what = w.what.trim().replace(/[.!?]+$/, '').replace(/^(The|A|An|Whether|What|How|Which|Who|When|If)\b/, (x) => x.toLowerCase());
-      const forWhat = /^(whether|what|how|which|who|when|if)\b/.test(what) ? `a decision on ${what}` : what;
-      const owner = (w.owner ?? '').trim();
-      /* With the day it began, so the row's ask need not say the wait again (request 117, parts 7 and 9). */
-      if (w.since) {
-        return owner
-          ? `${start} has checked in, and has been waiting on ${owner} for ${forWhat} since ${w.since}.`
-          : `${start} has checked in, and has been waiting for ${forWhat} since ${w.since}.`;
-      }
-      return owner
-        ? `${start} has checked in, and is waiting on ${owner} for ${forWhat}.`
-        : `${start} has checked in, and is waiting for ${forWhat}.`;
-    }
+    case 'waiting on someone':
+      return `${start} has checked in, and ${aWaitInWords(theWaitToSay(row)!)}.`;
     case 'nothing to do':
     default: {
       /* Never "nothing here needs you" while they are waiting on you (week 16): Today lists it too. */
       const onYou = row.inTheWay.find((b) => b.onTheReader);
-      if (onYou) {
-        const what = onYou.what.trim().replace(/[.!?]+$/, '').replace(/^(The|A|An|Whether|What|How|Which|Who|When|If)\b/, (w) => w.toLowerCase());
-        const forWhat = /^(whether|what|how|which|who|when|if)\b/.test(what) ? `a decision on ${what}` : what;
-        return onYou.since
-          ? `${start} has checked in, and has been waiting on you for ${forWhat} since ${onYou.since}.`
-          : `${start} has checked in, and is waiting on you for ${forWhat}.`;
-      }
+      if (onYou) return `${start} has checked in, and ${aWaitInWords(onYou)}.`;
       /* Decision 53, item 11: never told "nothing here needs you" when this reader cannot see
          whether that is true. */
       if (row.targetHiddenFromReader) return `${start} has checked in.`;

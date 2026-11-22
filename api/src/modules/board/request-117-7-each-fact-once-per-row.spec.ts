@@ -48,6 +48,15 @@ describe('request 117 (7): each fact once per row', () => {
     expect(baraka).not.toHaveProperty('finding');
   });
 
+  /* With the review's own rows, unchanged: on 2 October the team is on session 2, which Baraka has not answered. His wait on Rukia is still open,
+     so his row still says it, once, beside "has not checked in yet" (22 November 2026). */
+  it('Rukia reads that Baraka has not checked in yet, and still reads his wait on her, once', async () => {
+    const baraka = rowOf(await boardAs(review5({ report: REPORT }), ...RUKIA_RUNS_IT), 'p-baraka');
+    expect(baraka.says).toBe('Baraka Mwangi has not checked in yet, and has been waiting on you for the discount since 27 September.');
+    expect(baraka.ask).toBe('Ask Baraka Mwangi to check in.');
+    expect(theWaitIn(baraka.says, 'discount') + theWaitIn(baraka.ask, 'discount') + theWaitIn(baraka.finding, 'discount')).toBe(1);
+  });
+
   it.each([['Grace, the admin who set it up', GRACE_SET_IT_UP], ['Juma, an admin who only reads', JUMA_READS]])('%s reads each wait once on each row', async (_who, reader) => {
     const b = await boardAs(review5({ report: REPORT, checkIns: BOTH_ANSWERED_SESSION_2 }), reader[0], reader[1]);
     for (const [id, what] of [['p-amani', 'price list'], ['p-baraka', 'discount'], ['p-neema', 'Naivas Karen']] as const) {
