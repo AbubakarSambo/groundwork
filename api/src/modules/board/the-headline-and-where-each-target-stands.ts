@@ -67,6 +67,8 @@ export interface ATargetToStand {
   /** For a date to meet: the day it is due, in words, and whether it has passed. */
   dueDay?: string | null;
   isPast?: boolean;
+  /** Its count is read from a record now (the deals, the bills), so a 0 is a count and not the absence of one. */
+  countedFromARecord?: boolean;
 }
 
 const read = aNumberPeopleCanRead;
@@ -100,6 +102,14 @@ export function whereThisTargetStands(
   }
   if (typeof t.target !== 'number' && t.direction !== 'ZERO') return null;
   if (t.notSettled) return { word: 'Not settled', says: 'What this number counts is not settled yet, so how it stands cannot be said.' };
+  /*
+   * NOTHING COUNTED IS NOT "WITHIN" (re-test, 22 November evening, R-12). A new distribution board read "0 of ≤ 2. Within" and "0 of ≤ 850.
+   * Within": nothing had been measured, and the stored 0 was read as a count that keeps both limits. With no count kept at any check-in,
+   * none read from a record, and the stored number still 0, nothing has been counted, and the board says that rather than a word.
+   */
+  if (!t.countedFromARecord && t.count === 0 && counts.length === 0) {
+    return { word: null, says: 'Nothing has been counted against this yet, so how it stands cannot be said.' };
+  }
   if (t.direction === 'ZERO') {
     /* A count to keep at zero: none is met, any at all is a breach. */
     return t.count === 0

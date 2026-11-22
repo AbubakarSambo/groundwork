@@ -3639,7 +3639,7 @@ export class BoardService {
           const stands = weekly
             ? whereAWeeklyCountStands(o.count, o.target)
             : whereThisTargetStands(
-              { id: o.id, target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, notSettled: o.notSettled ?? null, dueDay, isPast: aDeadlineHasPassed(row.dueOn, now) },
+              { id: o.id, target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, notSettled: o.notSettled ?? null, dueDay, isPast: aDeadlineHasPassed(row.dueOn, now), countedFromARecord: countedFromTheDeals.has(o.id) },
               countsOf(o.id), totalSessions,
             );
           const fromTheDeals = countedFromTheDeals.get(o.id) ?? null;
@@ -3885,13 +3885,22 @@ export class BoardService {
            reviewed on an evaluation check-in is never told how many others answered or are waiting (decision 17). */
         if (kind && readerRunsIt) {
           const answeredBy = new Set((checkIns as any[]).filter((c) => String(c.status).toUpperCase() === 'COMPLETED' && !wasAQuietClose(c)).map((c) => c.participantId));
+          /*
+           * WHO IS COUNTED IS THE ONE COUNT'S (re-test, 22 November evening, R-12). This board counted people its own way, leaving out the lead
+           * who checked in and anybody invited who has not joined, so one board read "1 of 3 answered" (the one count) above "1 of 1 person has
+           * answered", and "People have checked in" above "Nobody has checked in yet". Somebody is counted where the session's one count counts
+           * them (theSessionAndItsCount: everybody on the check-in, a lead only where they answered), or where they have answered before.
+           */
+          const theCount = theOneCount.bySession[theOneCount.clock.currentSession];
+          const countedNow = new Set<string>([...(theCount?.onTheCheckIn ?? []), ...(theCount?.answered ?? [])]);
           /* Somebody an admin has not let in yet is not one of the cohort's count (decision 77). */
-          const people = (ground.participants as any[]).filter((p) => !isNotLetInYet(p) || answeredBy.has(p.id)).map((p) => ({
+          const people = (ground.participants as any[]).filter((p) => !isNotLetInYet(p) || answeredBy.has(p.id) || countedNow.has(p.id)).map((p) => ({
             id: p.id,
             name: p.id === me?.id ? 'You' : (nameOf(p.id) ?? aColleague(p.id)),
             managingOnly: !!p.managingOnly,
             isLead: p.id === theLeadsRow,
             answered: answeredBy.has(p.id),
+            counted: countedNow.has(p.id) || answeredBy.has(p.id),
             /* The lead's own words about who each person is, as this reader is already served them on the board's own
                participants (the lead alone; theLeadsWordsAbout, applied once there). */
             describedAs: ((walled as any).participants ?? []).find((x: any) => x.id === p.id)?.role ?? null,

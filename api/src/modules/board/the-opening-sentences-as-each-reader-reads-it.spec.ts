@@ -5,9 +5,11 @@ import { theBoardForThisKind } from './each-kind-gets-its-own-board';
  * board holds: counts of what is on record, figures a system sent, and what people said. Nothing is invented, and where the record is
  * blank the sentence says so. They use no names, so the lead, a person in the check-in and a read-only admin are served the same words.
  */
-const people = (answeredN: number, asked: number) => [
-  { id: 'lead', name: 'Hafsah', managingOnly: false, isLead: true, answered: true },
-  ...Array.from({ length: asked }, (_, i) => ({ id: `p${i}`, name: i < answeredN ? `Name${i}` : 'A colleague', managingOnly: false, isLead: false, answered: i < answeredN })),
+/* Changed 22 November evening (R-12): each person now carries `counted`, the one count's. The lead here only runs the check-in (she was
+   marked answered before, and left out of every count by being the lead; the one count leaves her out because she has not answered). */
+const people = (answeredN: number, asked: number, leadAnswered = false) => [
+  { id: 'lead', name: 'Hafsah', managingOnly: false, isLead: true, answered: leadAnswered, counted: leadAnswered },
+  ...Array.from({ length: asked }, (_, i) => ({ id: `p${i}`, name: i < answeredN ? `Name${i}` : 'A colleague', managingOnly: false, isLead: false, answered: i < answeredN, counted: true })),
 ];
 const build = (kind: any, over: Record<string, any>, readerRunsIt: boolean, p = people(2, 4)) =>
   theBoardForThisKind({ kind, board: { workRecords: [], objectives: [], blockers: [], ...over }, people: p, readerRunsIt, readerIsTheLead: readerRunsIt, metrics: [], documentSaysOf: new Map(), now: new Date('2026-11-15T10:00:00Z') });
@@ -53,5 +55,21 @@ describe('a law firm matter keeps its own "where the matter stands" and says how
   it('ends the section with where the lines come from', () => {
     const says = build('a law firm matter', {}, true).whereTheMatterStands.says;
     expect(says[says.length - 1]).toBe('This is from the matter’s record and from what 2 people said in their check-ins. A document counts only where it is attached to the matter.');
+  });
+});
+
+/* RE-TEST, 22 NOVEMBER 2026 EVENING (R-12): only the lead had checked in on a new government programme with two people invited. The board read
+   "People have checked in, but nobody has said yet what the aim means ..." (the one count) and lower down "Nobody has checked in yet, so none
+   of this is said by anybody" (a count of its own that left the lead out). The where-to-focus board read "1 of 3 answered" and "1 of 1
+   person has answered.". Every count on these boards is now the one count's. */
+describe('the board counts who has checked in the way the rest of the board does', () => {
+  it('says the lead who checked in has said it, never "nobody has checked in"', () => {
+    const o = build('a government programme', {}, true, people(0, 2, true)).theOpening;
+    expect(o.howKnown).toBe('1 person said this in their check-ins, and no figure comes from another system.');
+    expect(o.howKnown).not.toMatch(/Nobody has checked in/);
+  });
+  it('counts the people invited who have not joined, as "1 of 3" does', () => {
+    const b = build('MarketView where next', {}, true, people(0, 2, true));
+    expect(b.byWhoTheyAre.says).toBe('1 of 3 people has answered.');
   });
 });

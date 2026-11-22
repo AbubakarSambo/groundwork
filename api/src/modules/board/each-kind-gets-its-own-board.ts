@@ -40,6 +40,11 @@ export interface APerson {
   isLead: boolean;
   /** Whether they have finished at least one check-in. */
   answered: boolean;
+  /**
+   * Whether the check-in counts them, by the one count (theSessionAndItsCount): everybody on it, somebody invited who has not joined
+   * included, and a lead only where they answered. Every "N of M" and "nobody has checked in" on these boards reads this.
+   */
+  counted: boolean;
   /** Who they are, in the lead's own words (roleAsDescribed), served to the lead alone; null for anybody else. */
   describedAs?: string | null;
 }
@@ -253,7 +258,7 @@ function whereTheMatterStands(i: WhatTheKindsBoardIsBuiltFrom, now: Date) {
   if (toDecide) says.push(`${plural(toDecide, 'thing is', 'things are')} waiting for a decision.`);
   if (!deadlines.length) says.unshift('No deadline is on record yet.');
   /* How each line above is known (fix 3): from what is on record for the matter, and what people said is said, not proven. */
-  const answeredHere = i.people.filter((p) => !p.managingOnly && !p.isLead && p.answered).length;
+  const answeredHere = i.people.filter((p) => p.counted && p.answered).length;
   says.push(answeredHere ? `This is from the matter’s record and from what ${plural(answeredHere, 'person', 'people')} said in their check-ins. A document counts only where it is attached to the matter.` : 'Nobody has answered yet, so this is only what is on the matter’s record.');
   /* `state`, like every other section of this board (request 134 item 7): filled once a deadline, a wait or a decision is on record. */
   return { heading, state: (deadlines.length || open || toDecide ? 'filled' : 'none-yet') as 'filled' | 'none-yet', says };
@@ -300,7 +305,7 @@ export const NO_GROUP_ON_RECORD =
 function byWhoTheyAre(i: WhatTheKindsBoardIsBuiltFrom) {
   /* A lead who checks in too is one of the people asked (item 21, the where-next board): Omar read "3 of 3 people have
      answered." under a summary saying all four had. A lead who only runs it is not counted. */
-  const asked = i.people.filter((p) => !p.managingOnly && (!p.isLead || p.answered));
+  const asked = i.people.filter((p) => p.counted);
   const answered = asked.filter((p) => p.answered).length;
   /*
    * BY WHO THEY ARE, IN THE LEAD'S OWN WORDS (mvnext-board.jpg, screen match 16 October). Where the lead has said who
@@ -374,7 +379,8 @@ function whereWhatWasSaidAndADocumentDiffer(i: WhatTheKindsBoardIsBuiltFrom) {
  */
 function theOpeningSentences(i: WhatTheKindsBoardIsBuiltFrom, now: Date) {
   const asked = i.people.filter((p) => !p.managingOnly && !p.isLead);
-  const answered = asked.filter((p) => p.answered).length;
+  /* Who said it is the one count's (APerson.counted), the count the rest of the board reads: a lead who checked in has said it too. */
+  const answered = i.people.filter((p) => p.counted && p.answered).length;
   const inTheWay = ((i.board.blockers ?? []) as any[]).filter((b) => b.state === 'blocking').length;
   const aims = ((i.board.objectives ?? []) as any[]).filter((o) => !o.ownerParticipantId && typeof o.name === 'string' && o.name.trim()).map((o) => String(o.name).trim().replace(/[.\s]+$/, ''));
   const risk = (n: number, what: string) => (n ? `${plural(n, `thing is ${what}`, `things are ${what}`)} and not cleared yet.` : null);
@@ -400,7 +406,8 @@ function theOpeningSentences(i: WhatTheKindsBoardIsBuiltFrom, now: Date) {
       const repaying = loans.filter((l) => ['repaying', 'repaid'].includes(String(l.stage ?? '').toLowerCase())).length;
       const behind = loans.filter((l) => String(l.stage ?? '').toLowerCase() === 'late').length;
       answer = loans.length ? `${plural(repaying, 'loan is', 'loans are')} being repaid and ${plural(behind, 'is', 'are')} behind, out of ${loans.length} on record.` : 'No loan is on record yet, so nobody can say who is repaying.';
-      standsAt = asked.length ? `${plural(asked.length, 'person is', 'people are')} in this cohort and ${answered} of them ${answered === 1 ? 'has' : 'have'} checked in.` : 'Nobody is in this cohort yet.';
+      const ofTheCohort = asked.filter((p) => p.answered).length;
+      standsAt = asked.length ? `${plural(asked.length, 'person is', 'people are')} in this cohort and ${ofTheCohort} of them ${ofTheCohort === 1 ? 'has' : 'have'} checked in.` : 'Nobody is in this cohort yet.';
       atRisk = risk(inTheWay, 'stopping somebody');
       known = loans.length ? `The loan counts come from the loan records, and what stops people is what they said.` : 'Nothing here is from a loan record yet.';
       break;
