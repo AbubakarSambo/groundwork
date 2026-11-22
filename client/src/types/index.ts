@@ -21,6 +21,8 @@ export interface User {
   role: 'ADMIN' | 'LEAD' | 'MEMBER' | 'GUEST'
   organizationId: string
   organizationName?: string
+  /** The organisation's design setting, served with the session: whether its people read the new designs. */
+  designPassOn?: boolean
   /** Server-decided: does this person still have to set their organisation up. See App.tsx. */
   mustSetUpOrganisation?: boolean
   organization?: UserOrganization

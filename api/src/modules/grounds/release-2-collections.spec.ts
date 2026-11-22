@@ -29,7 +29,8 @@ describe('the switch is off for every organisation until it is switched on', () 
     /* Nothing that changes, renames, removes or fills a row. */
     expect(sql).not.toMatch(/\b(UPDATE|DELETE|DROP|RENAME|TRUNCATE)\b/i);
     const schema = readFileSync(join(API, 'prisma/schema.prisma'), 'utf8');
-    expect(schema).toContain('release2CollectionsOn  Boolean   @default(false) @map("release_2_collections_on")');
+    /* Changed 22 November 2026: everything built is switched on (Hafsah); the column's default is now true, and the later migration sets it on for every organisation. */
+    expect(schema).toContain('release2CollectionsOn  Boolean   @default(true) @map("release_2_collections_on")');
   });
 
   /* 15 November 2026 (Hafsah: everything has a board): the reader is always on. The column is no longer read, so a stored false, a missing row or a failed read no longer hides the collections board. */

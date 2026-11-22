@@ -612,7 +612,7 @@ model Organization {
   /// request 5) a rep's check-in gathers what the board needs (the stored prompt kind_of_work.sales_org), a promise said done
   /// is kept, and the lead's morning summary and the weekly letter read from the deals. The writers (deal rows, each stage
   /// kept with its day, the week's deals kept on the weekly row) run either way, so switching it off loses nothing.
-  release1SalesBoardOn   Boolean   @default(false) @map("release_1_sales_board_on")
+  release1SalesBoardOn   Boolean   @default(true) @map("release_1_sales_board_on")
   /// NO LONGER READ (release batch 1, Hafsah, 4 November 2026): the new check-in tabs are what everybody has. The column is left
   /// in place, unused, so no migration drops it.
   release1bTabsOn        Boolean   @default(false) @map("release_1b_tabs_on")
@@ -620,7 +620,7 @@ model Organization {
   /// Groundwork staff switch it on in Admin, Orgs, or a script does for a "(test)" organisation. On: the scenario picker
   /// offers "Collect what's owed" for a new check-in, the switchboard (board/the-switchboard.ts) reads Release 2's rows, and
   /// "What it is" on People and setup asks the lead to confirm the type. Off: everything reads and behaves as before.
-  release2CollectionsOn  Boolean   @default(false) @map("release_2_collections_on")
+  release2CollectionsOn  Boolean   @default(true) @map("release_2_collections_on")
   /// THE ORGANISATION'S OWN WORD FOR A BILL (release plan, Release 2): "fee note" for a law firm, for example. Null reads
   /// as "invoice". Written only by an admin of the organisation (PATCH /users/organization/word-for-the-bill).
   billWord               String?   @map("bill_word")
@@ -633,21 +633,25 @@ model Organization {
   /// place, unused, so no migration drops it.
   directMorningOn        Boolean   @default(false) @map("direct_morning_on")
   /// Release 3, raising invoices on time (24 October 2026). Off for every organisation until switched on.
-  release3InvoicesOn     Boolean   @default(false) @map("release_3_invoices_on")
+  release3InvoicesOn     Boolean   @default(true) @map("release_3_invoices_on")
   /// With Release 3 on: a sale won makes an invoice to raise in the organisation's "Collect what's owed" check-in. Off by default.
-  invoicesAfterASaleOn   Boolean   @default(false) @map("invoices_after_a_sale_on")
+  invoicesAfterASaleOn   Boolean   @default(true) @map("invoices_after_a_sale_on")
   /// Release 4, goals and targets for every kind of team (24 October 2026): each team type's board as its kit picture. Off for every organisation until switched on.
-  release4TeamsOn        Boolean   @default(false) @map("release_4_teams_on")
+  release4TeamsOn        Boolean   @default(true) @map("release_4_teams_on")
   /// Release 5: projects (the project board, milestones leading to invoices, the funder brief). Off for every organisation.
-  release5ProjectsOn     Boolean   @default(false) @map("release_5_projects_on")
+  release5ProjectsOn     Boolean   @default(true) @map("release_5_projects_on")
   /// Release 6: direction (the company's direction, each team's brief, each person's recommitment). Off for every organisation.
-  release6DirectionOn    Boolean   @default(false) @map("release_6_direction_on")
+  release6DirectionOn    Boolean   @default(true) @map("release_6_direction_on")
   /// Release 7: the people scenarios and a review built from check-ins. Off for every organisation.
-  release7PeopleOn       Boolean   @default(false) @map("release_7_people_on")
+  release7PeopleOn       Boolean   @default(true) @map("release_7_people_on")
   /// Release 8: the remaining situations, each with the board its situation switches on. Off for every organisation.
-  release8SituationsOn   Boolean   @default(false) @map("release_8_situations_on")
+  release8SituationsOn   Boolean   @default(true) @map("release_8_situations_on")
   /// Release 9: policy and setting up from documents. Off for every organisation.
-  release9PolicyOn       Boolean   @default(false) @map("release_9_policy_on")
+  release9PolicyOn       Boolean   @default(true) @map("release_9_policy_on")
+  /// THE NEW DESIGNS, A SETTING PER ORGANISATION (Hafsah, 22 November 2026: "everything build should be switched on"). On: everybody
+  /// in the organisation reads the design pass and the boards ported from the prototype, with no ?design=on. A browser can still
+  /// turn it off for itself with ?design=off, for testing. Staff change it in Admin, Orgs, switches.
+  designPassOn           Boolean   @default(true) @map("design_pass_on")
   whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")

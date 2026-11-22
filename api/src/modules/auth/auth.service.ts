@@ -1528,6 +1528,8 @@ export class AuthService {
         role: user.role,
         organizationId: user.organizationId,
         organizationName: user.organization.name,
+        /* The organisation's design setting, the one owner of whether its people read the new designs (the-design-pass.ts reads it). */
+        designPassOn: (user.organization as { designPassOn?: boolean }).designPassOn !== false,
         isPlatformAdmin: user.isPlatformAdmin,
         /**
          * WHETHER THIS PERSON MAY OPEN A CHECK-IN, DECIDED BY THE ONE RULE THAT DECIDES IT.
