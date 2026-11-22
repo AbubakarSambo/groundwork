@@ -214,6 +214,8 @@ describe('a sentence that says its own number is kept, whatever its verb', () =>
     expect(said('Spending on field visits.', 180_000)).toBe('The team is aiming for 180,000 spending on field visits.');
     expect(said('10,000 units', 10_000)).toBe('The team is aiming for 10,000 units.');
     expect(said('Activate 4 points a week', 4, 'Brian Otieno')).toBe('Brian Otieno is aiming for 4 points a week.');
+    expect(aThingToDoIsWhatItCounts('Open 10 new leads weekly')).toBe('10 new leads weekly');
+    expect(aThingToDoIsWhatItCounts('Sell 8 freezers per week.')).toBe('8 freezers per week.');
   });
 });
 
@@ -242,5 +244,7 @@ describe('an aim already written as a sentence reads as itself', () => {
     expect(aThingToDoIsWhatItCounts('Sell 8 freezers per week')).toBe('8 freezers per week');
     expect(aThingToDoIsWhatItCounts('Activate 4 Drop Access points per week')).toBe('4 Drop Access points per week');
     expect(said('Activate 4 points a week', 4, 'Brian Otieno')).toBe('Brian Otieno is aiming for 4 points a week.');
+    expect(aThingToDoIsWhatItCounts('Open 10 new leads weekly')).toBe('10 new leads weekly');
+    expect(aThingToDoIsWhatItCounts('Sell 8 freezers per week.')).toBe('8 freezers per week.');
   });
 });
