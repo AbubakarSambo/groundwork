@@ -243,7 +243,12 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
 /* The two doors. Each reads the one field that decides it, and nothing else. */
 function MayOpenCheckIns({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore()
-  return <ADoorYouCannotOpen may={user?.mayOpenCheckIns !== false} what="open a check-in">{children}</ADoorYouCannotOpen>
+  return <ADoorYouCannotOpen may={user?.mayOpenCheckIns !== false} what="open a check-in" because={user?.whyYouCannotOpenCheckIns}>{children}</ADoorYouCannotOpen>
+}
+
+function WhoMayAddPeople({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthStore()
+  return <ADoorYouCannotOpen may={user?.role === 'ADMIN' || user?.mayAddPeople === true} what="open People">{children}</ADoorYouCannotOpen>
 }
 
 function AdminsOnly({ children, what = 'add people to your organisation' }: { children: React.ReactNode; what?: 'add people to your organisation' | 'connect your systems' | 'connect your organisation’s WhatsApp number' | 'open People' }) {
@@ -790,7 +795,8 @@ export default function App() {
             <Route path="/settings" element={<RequireOrgSetup><SettingsPage /></RequireOrgSetup>} />
             {/* "More", the phone's menu for everything the bottom bar has no room for (A1). */}
             <Route path="/more" element={<RequireOrgSetup><MorePage /></RequireOrgSetup>} />
-            <Route path="/org/members" element={<RequireOrgSetup><AdminsOnly what="open People"><OrgMembersPage /></AdminsOnly></RequireOrgSetup>} />
+            {/* People opens for an admin, and for anybody the organisation lets add people (Hafsah, 21 November 2026), who reads only "Invite a colleague" there. */}
+            <Route path="/org/members" element={<RequireOrgSetup><WhoMayAddPeople><OrgMembersPage /></WhoMayAddPeople></RequireOrgSetup>} />
             <Route path="/org/members/:id" element={<RequireOrgSetup><AdminsOnly what="open People"><OnePersonPage /></AdminsOnly></RequireOrgSetup>} />
             {/*
               * THE PAGE AN ADMIN SENDS THEIR LEADS. Signed in, like the rest of /org, because

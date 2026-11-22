@@ -7,6 +7,7 @@
  */
 import { asEvidence, recently, remember, theLastHelpWasAsking } from './the-conversation-so-far';
 import { CONTACT_PREFIX } from '../executive-onboarding/a-team-members-reply';
+import { theWordsInDoubt } from '../voice/the-transcriber';
 import { theThingOf } from '../outstanding/a-promise-as-a-task';
 import { isATable } from './a-table-is-not-a-claim';
 import { theQuietHoursNow } from '../../common/the-clock';
@@ -87,10 +88,14 @@ export class TeamLoopService {
     const files = everything.filter((r: any) => (r.kind === 'file' || r.kind === 'archive') && !r.insideArchive).map((r: any) => ({ name: String(r.fileName), how: r.state === 'duplicate' ? 'already held' : r.state === 'kept' && r.text ? 'read' : r.state === 'kept' ? 'kept, but it has no words to read' : 'could not be read' }));
     const rows: any[] = everything.filter((r: any) => r.state === 'kept' && !!r.text && !isATable(r));
     if (!rows.length) return null;
-    const items = rows.map((r) => ({ materialId: r.id as string, text: String(r.text), isDocument: r.kind === 'file' || r.kind === 'archive', at: r.receivedAt ? new Date(r.receivedAt) : undefined }));
+    /* Words a voice note's transcriber was not sure of are read as heard, never as fact, and the one question back is whether they were heard right (Dangote rerun, N4: "Oked Events" for Orchid). */
+    const inDoubt: string[] = [...new Set<string>(rows.filter((r) => r.kind === 'voice' && Array.isArray(r.unsure)).flatMap((r) => r.unsure.map(String)))];
+    const asHeard = (r: any) => (r.kind === 'voice' && Array.isArray(r.unsure) ? r.unsure.reduce((t: string, w: any) => t.split(String(w)).join(`${w} (as I heard it, not sure)`), String(r.text)) : String(r.text));
+    const items = rows.map((r) => ({ materialId: r.id as string, text: asHeard(r), isDocument: r.kind === 'file' || r.kind === 'archive', at: r.receivedAt ? new Date(r.receivedAt) : undefined }));
     const contactId = String(a.contact?.id ?? '');
     const recent = asEvidence(contactId);
-    const done = await turnTheirReplyIntoTheirCheckIn(this.db, this.mind, { contact: a.contact, items, now: a.now, since: batch?.openedAt ? new Date(batch.openedAt) : null, recent });
+    const done0 = await turnTheirReplyIntoTheirCheckIn(this.db, this.mind, { contact: a.contact, items, now: a.now, since: batch?.openedAt ? new Date(batch.openedAt) : null, recent });
+    const done = inDoubt.length ? { ...done0, asked: theWordsInDoubt(inDoubt), reply: theWordsInDoubt(inDoubt) } : done0;
     const said = (await this.aSpecificReply({ batchId: a.batchId, contact: a.contact, items, done, now: a.now, duplicates, duplicatesOfTheirOwn, recent, files })) ?? done.reply;
     for (const i of items) if (!i.isDocument) remember(contactId, { by: 'they', text: i.text });
     if (said) remember(contactId, { by: 'groundwork', text: said });
@@ -122,7 +127,9 @@ export class TeamLoopService {
     if (readings.some((r) => (r.disputed?.length ?? 0) > 0 || r.disputesWhatWasForwarded)) mustSay.push('They say a figure or a claim is not backed up. Say plainly that you have put that flag on the record and that it is not counted as done or as true until something shows it. Ask only for the one figure or document that would settle it. Never ask them for their findings, and never repeat their own sentence back to them as a question.');
     if (a.items.some((i) => i.isDocument)) mustSay.push('Order the reply this way: first what you recorded or did with what they sent, then in plain words what the document shows, and last the one thing still missing, if there is one. Say only what a document itself states: its payee, reference, amount, date. If you cannot tell from it whether something was paid in full, paid at all, or approved, say "I cannot tell from this whether ..." and do not guess.');
     const hasDocuments = a.items.some((i) => i.isDocument);
-    if (!hasDocuments && readings.some((r) => r.outcomes.length)) mustSay.push('They say something is done. Nothing shows it yet, so it is only their word. Say that kindly, without doubting them, and say what would show it, such as the message or the document.');
+    /* Only a claim the record does not already count is said to be only their word, with what would show it (Dangote rerun, D13: people were asked for what was on record). */
+    const counted = new Set((work.settled ?? []).filter((x) => x.proven).map((x) => x.id));
+    if (!hasDocuments && readings.some((r) => r.outcomes.some((o) => !o.commitmentId || !counted.has(o.commitmentId)))) mustSay.push('They say something is done. Nothing shows it yet, so it is only their word. Say that kindly, without doubting them, and say what would show it, such as the message or the document.');
     if (readings.some((r) => r.blockers.length)) {
       /* Whoever owns something that waits on an approval is never asked to chase the approver: Groundwork asks the approver (a-nudge-that-helps.ts), and the owner is told so. */
       const waitingOn = readings.flatMap((r) => r.blockers.map((b) => b.waitingOn).filter((x): x is string => !!x));
@@ -191,7 +198,8 @@ export class TeamLoopService {
   }
 
   /** Her words that are a standing instruction, her yes to one, or a correction of what her team told Groundwork. Null when they are none of those. */
-  async hearHer(a: { organizationId: string; userId: string | null; message: string }): Promise<string | null> {
+  /* `now` is the clock the caller reads (a test's own day); left out, the API's clock. */
+  async hearHer(a: { organizationId: string; userId: string | null; message: string; now?: Date }): Promise<string | null> {
     const instruction = await this.hearAnInstruction(a);
     if (instruction) return instruction;
     return this.hearACorrection(a);

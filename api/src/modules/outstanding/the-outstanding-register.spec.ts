@@ -60,12 +60,13 @@ describe('the same commitment in an email forward, a spreadsheet row and a Whats
     expect(toAsk).toEqual([]);
   });
 
-  it('does not merge two people’s version of the same task on wording alone, and asks', () => {
+  /* Changed 21 November 2026 (Batch E, N6): two people's lines were asked about as one on shared words, which made 1,705 questions to Maryam in the Dangote rerun. The same task can be two people's, so it is neither merged nor asked about. */
+  it('does not merge two people’s version of the same task on wording alone, and does not ask', () => {
     const other = raw({ sourceId: 'other', text: 'Send the ministry the revised brief', owner: 'Ibrahim Sule' });
     const { rows, toAsk } = assemble([email, other], new Map(), { now: NOW });
     expect(rows).toHaveLength(2);
-    expect(toAsk).toHaveLength(1);
-    expect(howAlike({ text: email.text, owner: 'a' }, { text: other.text, owner: 'b' })).toBe('maybe');
+    expect(toAsk).toHaveLength(0);
+    expect(howAlike({ text: email.text, owner: 'a' }, { text: other.text, owner: 'b' })).toBe('different');
     expect(howAlike({ text: email.text, owner: 'a' }, { text: other.text, owner: 'a' })).toBe('same');
   });
 
@@ -170,5 +171,20 @@ describe('the register read from the record, and the three questions it answers'
     expect(brief.status).toBe('completed');
     expect(brief.sources.map((s) => s.id).sort()).toEqual(['c-brief-1', 'c-brief-2']);
     expect(whatIsOutstandingSaid(reg, view)).not.toContain('revised brief');
+  });
+});
+
+/* DANGOTE RERUN, N12. Ibese was settled on 11 September; Folasade's "I sent the signed copy on 11 September", written on 20 November, joined the row and moved the date to 20 November. */
+describe('a finished item keeps the day it was first proven', () => {
+  it('a later mention of the same thing does not move the day it was settled', () => {
+    const sept = new Date('2026-09-11T12:00:00Z');
+    const nov = new Date('2026-11-20T14:01:00Z');
+    const { rows } = assemble([
+      raw({ sourceId: 'proof', text: 'Sign the Ibese community development agreement', state: 'DONE', settledBy: 'PROVEN', settledAt: sept, at: new Date('2026-08-01'), updatedAt: sept }),
+      raw({ sourceId: 'later', text: 'Sign the Ibese community development agreement', state: 'DONE', settledBy: 'PROVEN', settledAt: nov, at: nov, updatedAt: nov }),
+    ], new Map(), { now: new Date('2026-11-21T09:00:00Z') });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe('completed');
+    expect(rows[0].lastVerifiedAt.toISOString()).toBe(sept.toISOString());
   });
 });

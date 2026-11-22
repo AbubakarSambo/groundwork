@@ -665,6 +665,8 @@ export class EmailService implements OnModuleInit {
     const key = this.theMailsKey(options, context, sender);
     if (!(await mayItGo(this.prisma, key))) {
       this.logger.log(`Not sending "${options.subject}": the same mail already went today.`);
+      /* Written down like every other mail that did not go, so the ledger says why (release test, 21 November 2026, bug 17: no row said it). */
+      this.writeItDown(options, sender, 'suppressed', 'the same mail already went today');
       if (context) context.outcome = 'suppressed';
       await giveTheAskBack(this.prisma, context?.sendKey);
       return undefined;

@@ -1,8 +1,9 @@
-import { Body, Controller, ForbiddenException, Get, HttpCode, Param, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, HttpCode, Optional, Param, Post, Put, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrentUser, CurrentUserData } from '../../common';
 import { CompanyService } from './company.service';
+import { TheGoalsOnTheDeskService, type AGoalAsGiven } from './the-goals-on-the-desk.service';
 
 /**
  * THE DESK (S7, the company page renamed, D2, U.15): the organisation's documents with their kept
@@ -14,7 +15,11 @@ import { CompanyService } from './company.service';
 @ApiBearerAuth()
 @Controller('company')
 export class CompanyController {
-  constructor(private readonly company: CompanyService) {}
+  constructor(private readonly company: CompanyService, @Optional() private readonly goals?: TheGoalsOnTheDeskService) {}
+
+  private reader(user: CurrentUserData) {
+    return { userId: user.id, email: user.email, organizationId: user.organizationId, role: user.role };
+  }
 
   @Get()
   @ApiOperation({ summary: 'The company page: priorities and what feeds them, as you may read them.' })
@@ -40,5 +45,24 @@ export class CompanyController {
   @ApiOperation({ summary: 'An admin or a lead adds a document to the Desk, as a file or pasted text. It is read and summarised, and kept.' })
   async addADocument(@CurrentUser() user: CurrentUserData, @UploadedFile() file: Express.Multer.File, @Body() body: { title?: string; text?: string }) {
     return this.company.addADocument({ userId: user.id, organizationId: user.organizationId, role: user.role }, { file, title: body?.title, text: body?.text });
+  }
+
+  @Get('goals')
+  @ApiOperation({ summary: 'The goals on the Desk this reader may change, and the check-ins they may tie to one. Somebody who may change none is told so, and nothing else.' })
+  async theGoalsYouMayChange(@CurrentUser() user: CurrentUserData) {
+    return this.goals!.read(this.reader(user));
+  }
+
+  @Post('goals')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'An admin, or a lead, adds a goal to the Desk and ties the check-ins they may tie to it.' })
+  async addAGoal(@CurrentUser() user: CurrentUserData, @Body() body: AGoalAsGiven) {
+    return this.goals!.add(this.reader(user), body ?? {});
+  }
+
+  @Put('goals/:id')
+  @ApiOperation({ summary: 'An admin, or the lead who owns it, changes a goal on the Desk, and which of their check-ins feed it.' })
+  async changeAGoal(@CurrentUser() user: CurrentUserData, @Param('id') id: string, @Body() body: AGoalAsGiven) {
+    return this.goals!.change(this.reader(user), id, body ?? {});
   }
 }

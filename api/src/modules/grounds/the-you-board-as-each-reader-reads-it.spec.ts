@@ -61,6 +61,16 @@ const rows = {
     { id: 'k-b1', groundId: 'g-sales', participantId: 'p-brian', text: 'BRIAN-SAID: Hand over the records', whenSaid: null, status: 'UNKNOWN', createdAt: ago(3) },
     { id: 'k-none', groundId: 'g-sales', participantId: null, text: 'NOBODY-OWNS-THIS', whenSaid: null, status: 'UNKNOWN', createdAt: ago(3) },
   ],
+  /*
+   * The record's own commitment lines, which the board shows under each name in "Who owns what" (bug 50, release test of 21 November).
+   * Wairimu's promise is kept only here; Miriam's is the same as a stored promise; one of Wairimu's she disputed.
+   */
+  recordEntry: [
+    { id: 'r-w1', participantId: 'p-wairimu', type: 'COMMITMENT', text: 'I will call the Naivas buyer about the Westlands listing.', disputedAt: null, createdAt: ago(8), participant: { groundId: 'g-sales' } },
+    { id: 'r-w2', participantId: 'p-wairimu', type: 'COMMITMENT', text: 'WAIRIMU-DISPUTED: a line she said was not hers.', disputedAt: ago(1), createdAt: ago(8), participant: { groundId: 'g-sales' } },
+    { id: 'r-m1', participantId: 'p-miriam', type: 'COMMITMENT', text: 'Visit Westgate Deli', disputedAt: null, createdAt: ago(0), participant: { groundId: 'g-sales' } },
+    { id: 'r-b1', participantId: 'p-brian', type: 'COMMITMENT', text: 'BRIAN-LINE: Hand over the records', disputedAt: null, createdAt: ago(3), participant: { groundId: 'g-sales' } },
+  ],
   coachingState: [
     { participantId: 'p-miriam', currentStep: 'Ask Westgate what would get the deposit paid this week.', updatedAt: ago(1) },
     { participantId: 'p-brian', currentStep: 'BRIAN-STEP: Call the five old customers.', updatedAt: ago(1) },
@@ -100,6 +110,7 @@ function setup(patternRows: any[] = []) {
     personObjective: table('personObjective'),
     groundObjective: table('groundObjective'),
     groundCommitment: table('groundCommitment'),
+    recordEntry: table('recordEntry'),
     coachingState: table('coachingState'),
     person: table('person'),
     todo: table('todo'),
@@ -188,6 +199,15 @@ describe('nobody else may read Miriam’s You board', () => {
     expect(b.coaching).toBeNull();
   });
 
+  it('Wairimu reads the commitment her board shows under her name, and not the line she disputed (bug 50)', async () => {
+    const { read } = setup();
+    const b = await read('wairimu');
+    expect(b.saidYoudDo.map((s) => [s.text, s.checkIn, s.stateSays])).toEqual([
+      ['Call the Naivas buyer about the Westlands listing.', 'Sales team, Q3', 'Open'],
+    ]);
+    expect(JSON.stringify(b)).not.toContain('WAIRIMU-DISPUTED');
+  });
+
   it('Grace’s own board is empty, though an admin’s list carries every check-in', async () => {
     const { read } = setup();
     const b = await read('grace');
@@ -233,6 +253,18 @@ describe('something that keeps coming up, on the You board', () => {
     expect(p.checkIn).toBe('Sales team, Q3');
     expect(p.heading).toBeTruthy();
     expect(p.theirWords).toBeNull();
+  });
+
+  /* 21 November 2026: the You page now draws this in "Your coaching, and what keeps coming up". What Wairimu made of it is hers, never Miriam's. */
+  it('never carries the lead’s own judgement of it, her mark, or the question she is to put to Miriam', async () => {
+    const { read } = setup([{ ...miriamsPattern, leadMark: 'WRONG', talkedAboutAt: ago(1), talkedAboutAtPeriod: 3 }]);
+    const b = await read('miriam');
+    const p = b.patterns![0] as any;
+    expect(p.leadMark ?? null).toBeNull();
+    expect(p.askThem).toBeNull();
+    expect(p).not.toHaveProperty('coachTowards');
+    expect(p).not.toHaveProperty('oneStep');
+    expect(JSON.stringify(b)).not.toMatch(/WRONG/);
   });
 
   /* 2 November 2026 (F2): nobody but Miriam reads it, so the "shown to the person" clock that let the lead read it later is not kept. */

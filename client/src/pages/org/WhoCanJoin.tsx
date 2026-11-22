@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { apiClient } from '@/api/client'
 import { Section, Panel, Stack, SwitchRow, Note, Button, Modal } from '@/components/gw/ui'
 import { TheInviteLink } from './TheInviteLink'
+import { AChoiceOfTwo } from './a-choice-of-two'
 import { useAuthStore } from '@/stores/auth'
 
 /** The domain of an email address, or null for one with no "@" (never expected, but typed). */
@@ -47,6 +48,23 @@ function domainOfAddress(email: string | undefined | null): string | null {
  */
 interface Joining { on: boolean; domain: string | null; whyNot: string | null }
 
+/**
+ * GUESTS, AND WHO CAN ADD PEOPLE (Hafsah, 21 November 2026). Two settings an admin changes here, both off by default so an
+ * organisation already here reads as before, written through GET and PATCH /users/organization/adding-people. The server
+ * decides with them on every invitation (api/src/modules/users/the-role-an-invitation-gives.ts); this only says them.
+ */
+export interface HowPeopleAreAdded { guestsMayJoin: boolean; whoMayAddPeople: 'ADMINS' | 'ANYONE'; rolesYouMayGive: string[] }
+const THE_STRICTER: HowPeopleAreAdded = { guestsMayJoin: false, whoMayAddPeople: 'ADMINS', rolesYouMayGive: ['MEMBER'] }
+
+export function guestsLine(on: boolean): string {
+  return on ? 'Guests can join. They only see the check-ins they are added to.' : 'Guests cannot join. A lead can still add a guest to one check-in.'
+}
+export function whoCanAddLine(who: 'ADMINS' | 'ANYONE', orgName: string): string {
+  return who === 'ANYONE'
+    ? `Anyone at ${orgName} can invite people, as “Takes part”. Only an admin can give someone another role.`
+    : `Only admins can invite people to ${orgName}.`
+}
+
 export function WhoCanJoin({ orgName }: { orgName: string }) {
   const qc = useQueryClient()
   const { user } = useAuthStore()
@@ -68,6 +86,28 @@ export function WhoCanJoin({ orgName }: { orgName: string }) {
     onSuccess: (next) => { setProblem(''); setConfirming(false); qc.setQueryData(['org-joining'], next) },
     onError: (e: any) => { setProblem(e?.response?.data?.message ?? 'That did not change. Try again.'); setConfirming(false) },
   })
+  const adding = useQuery({
+    queryKey: ['org-adding-people'],
+    queryFn: () => apiClient.get('/users/organization/adding-people').then(r => (r.data.data ?? r.data) as HowPeopleAreAdded),
+    retry: false,
+  })
+  const how = adding.data ?? THE_STRICTER
+  const [changingWho, setChangingWho] = useState(false)
+  const [howProblem, setHowProblem] = useState('')
+  const setHow = useMutation({
+    mutationFn: (change: Partial<Pick<HowPeopleAreAdded, 'guestsMayJoin' | 'whoMayAddPeople'>>) => apiClient.patch('/users/organization/adding-people', change).then(r => (r.data.data ?? r.data) as HowPeopleAreAdded),
+    onSuccess: (next) => {
+      setHowProblem('')
+      qc.setQueryData(['org-adding-people'], next)
+      /* Turning guests off sets the invite link back to "Takes part" on the server, so the link reads again. */
+      qc.invalidateQueries({ queryKey: ['org-invite-link'] })
+    },
+    onError: (e: any) => setHowProblem(e?.response?.data?.message ?? 'That did not change. Try again.'),
+  })
+  const WHO_OPTIONS: [string, string, string][] = [
+    ['ADMINS', 'Only admins', `Only admins can invite people to ${orgName}.`],
+    ['ANYONE', 'Anyone here', `Anyone at ${orgName} can invite people, as “Takes part”.`],
+  ]
   if (!data) return null
 
   /* Naming a domain where there is none yet always switches joining on, too (the same server
@@ -105,6 +145,24 @@ export function WhoCanJoin({ orgName }: { orgName: string }) {
         </div>
         <div className="gwui-panel-row">
           <TheInviteLink orgName={orgName} />
+        </div>
+        <div className="gwui-panel-row">
+          <SwitchRow
+            title="Guests can join"
+            detail={guestsLine(how.guestsMayJoin)}
+            on={how.guestsMayJoin}
+            onChange={() => setHow.mutate({ guestsMayJoin: !how.guestsMayJoin })}
+            disabled={setHow.isPending || !adding.data}
+          />
+        </div>
+        <div className="gwui-panel-row">
+          <Stack gap={10}>
+            <p className="gwui-panel-text"><b>Who can add people</b></p>
+            <p className="gwui-panel-text-muted">{whoCanAddLine(how.whoMayAddPeople, orgName)}</p>
+            <Button kind="quiet" size="small" onClick={() => setChangingWho((c) => !c)} disabled={!adding.data}>{changingWho ? 'Done' : 'Change'}</Button>
+            {changingWho && <AChoiceOfTwo label="Who can add people" name="who-may-add-people" value={how.whoMayAddPeople} options={WHO_OPTIONS} onChange={(k) => setHow.mutate({ whoMayAddPeople: k as HowPeopleAreAdded['whoMayAddPeople'] })} disabled={setHow.isPending} />}
+            {howProblem && <Note tone="error">{howProblem}</Note>}
+          </Stack>
         </div>
       </Panel>
       {confirming && (

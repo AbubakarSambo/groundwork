@@ -113,6 +113,41 @@ export const companyApi = {
     if (input.file) form.append('file', input.file)
     if (input.title?.trim()) form.append('title', input.title.trim())
     if (input.text?.trim()) form.append('text', input.text)
-    return (await apiClient.post('/company/documents', form, { headers: { 'Content-Type': 'multipart/form-data' } })).data
+    return (await apiClient.post('/company/documents', form)).data
   },
+  /** The goals this reader may change, and the check-ins they may tie to one (GET /company/goals). The server decides who may. */
+  goals: async (): Promise<TheGoalsYouMayChange> => (await apiClient.get('/company/goals', { skipForbiddenToast: true } as any)).data,
+  /** An admin or a lead adds a goal, tied to the check-ins chosen. */
+  addGoal: async (goal: AGoalAsGiven): Promise<TheGoalsYouMayChange> => (await apiClient.post('/company/goals', goal)).data,
+  /** An admin, or the lead who owns it, changes a goal and which check-ins feed it. */
+  changeGoal: async (id: string, goal: AGoalAsGiven): Promise<TheGoalsYouMayChange> => (await apiClient.put(`/company/goals/${encodeURIComponent(id)}`, goal)).data,
+}
+
+/** One goal on the Desk this reader may change (api/src/modules/grounds/the-goals-on-the-desk.service.ts). */
+export interface AGoalYouMayChange {
+  id: string
+  title: string
+  owner: string | null
+  ownerId: string | null
+  /** Admins only. */
+  measure?: string | null
+  target?: string | null
+  /** False for a goal from the organisation's own system: its words are changed there. */
+  wordsChangedHere: boolean
+  checkIns: { id: string; label: string }[]
+  fedBy: string
+}
+export interface TheGoalsYouMayChange {
+  mayChange: boolean
+  mayChooseOwner?: boolean
+  goals?: AGoalYouMayChange[]
+  checkIns?: { id: string; label: string; feeds: string | null }[]
+  people?: { id: string; name: string }[]
+}
+export interface AGoalAsGiven {
+  title?: string
+  measure?: string | null
+  target?: string | null
+  ownerId?: string | null
+  checkInIds?: string[]
 }

@@ -105,3 +105,18 @@ describe('payments with no proof are one matter, and never a decision for her', 
     }
   });
 });
+
+/* DANGOTE RERUN, N11. Her material was read again for every payment (165 payments, 10,415 rows each time), so Today took 40 to 90 seconds. It is read once. */
+describe('the picture of her payments', () => {
+  it('reads her material once, however many payments there are, and says the same', async () => {
+    const w = await aTrackerForwarded();
+    const before = thePaymentCounts(await thePaymentsNow(w.prisma, { organizationId: w.ORG, principalUserId: 'u-fatima' }));
+    const findMany = w.prisma.principalMaterial.findMany;
+    let reads = 0;
+    w.prisma.principalMaterial.findMany = (...args: any[]) => { reads += 1; return findMany.apply(w.prisma.principalMaterial, args); };
+    const counts = thePaymentCounts(await thePaymentsNow(w.prisma, { organizationId: w.ORG, principalUserId: 'u-fatima' }));
+    expect(reads).toBe(1);
+    expect(counts).toEqual(before);
+    expect(counts.paidWithProof).toBe(2);
+  });
+});

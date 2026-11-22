@@ -22,7 +22,8 @@ const ONE = readFileSync(join(__dirname, 'OnePersonPage.tsx'), 'utf8')
 
 describe('pasting a company in', () => {
   it('checks the list before anything is sent, and offers the rest only while it is still a check', () => {
-    expect(INVITE).toContain('mutationFn: () => pasteMany(pasted, true, role)')
+    /* The team picked for the list goes with it (Hafsah, 21 November 2026). */
+    expect(INVITE).toContain('mutationFn: () => pasteMany(pasted, true, role, team)')
     expect(INVITE).toContain("a.rows.every((r) => r.result === 'invited')")
     expect(INVITE).toContain('answer.preview && canGo > 0')
   })
@@ -36,8 +37,8 @@ describe('pasting a company in', () => {
   it('previews and sends through one call, one flag apart', () => {
     const calls = INVITE.match(/apiClient\.post\('\/users\/invitations'/g) ?? []
     expect(calls).toHaveLength(1)
-    expect(INVITE).toContain('pasteMany(pasted, true, role)')
-    expect(INVITE).toContain('pasteMany(pasted, false, role)')
+    expect(INVITE).toContain('pasteMany(pasted, true, role, team)')
+    expect(INVITE).toContain('pasteMany(pasted, false, role, team)')
   })
 
   it('says how many seats are left before the send, not during it', () => {

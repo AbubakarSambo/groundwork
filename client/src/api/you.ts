@@ -17,6 +17,10 @@ export interface SomethingYouSaid {
   checkIn: string
   state: 'open' | 'kept' | 'not_done'
   stateSays: string
+  /** When you said it, as a moment. The screen says the day. */
+  saidAt?: string | null
+  /** When it was kept or not done, as a moment. Absent while it is open. */
+  settledOn?: string
 }
 export interface YourReport { checkIn: string; at: string | null; to: string }
 /** One open request on you, from a check-in you are in. `who` is null where the check-in does not let you see who. */
@@ -75,6 +79,9 @@ export interface YourBoard {
    * 2 check-ins." Nobody else is ever served it; there is no sharing yet.
    */
   askedOfYou?: { items: SomethingAskedOfYou[]; says: string }
+
+  /** How many of the things you said you would do you kept, in the last four weeks. Null when nothing of yours was settled in them. Yours alone. */
+  keptLately?: { kept: number; of: number; says: string } | null
 }
 
 export const youApi = {

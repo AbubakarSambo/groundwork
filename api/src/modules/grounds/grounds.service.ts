@@ -6549,14 +6549,21 @@ export class GroundsService {
        so the same way: `invitedAt` stays null, so nothing believes they have been written to. */
     if (!theMailWaits && !heldForApproval && waitingForASeat.room) {
     try {
+      /* The mail door writes what became of the mail on the context it is given (sent, held or suppressed). */
+      const delivery: any = { kind: 'PARTICIPANT_INVITE', participantId: participant.id, groundId: ground.id };
       emailResult = await this.email.sendTheInviteThisGroundSends(
         ground,
         dto.email.toLowerCase(),
         `${initiator?.firstName ?? 'A founder'}`,
         token,
         dto.note,
-        { kind: 'PARTICIPANT_INVITE', participantId: participant.id, groundId: ground.id },
+        delivery,
       );
+      /*
+       * WHAT THE ROW SAYS IS WHAT BECAME OF THE MAIL (release test, 21 November 2026, bug 17). A mail the door did not send is a mail
+       * that did not go, the same as one that threw: Olu's row said "invited by email" for an invitation the outbox had held back.
+       */
+      if (delivery.outcome === 'suppressed' || delivery.outcome === 'held') throw new Error(delivery.outcome === 'held' ? 'The invitation is waiting to be sent.' : 'The invitation was not sent, because the same invitation already went to them today.');
     } catch (err: any) {
       /*
        * THE PERSON STAYS ON THE CHECK-IN. THE ROW USED TO BE DELETED, AND THAT MADE IT WORSE.
@@ -6600,7 +6607,7 @@ export class GroundsService {
        * been added - Rule 3, nobody added silently - so stamping it for a deferred invite would claim
        * something that has not happened, and the cron would have nothing to look for.
        */
-      data: { notifiedAt: theMailWaits || heldForApproval || !waitingForASeat.room ? null : new Date() },
+      data: { notifiedAt: theMailWaits || heldForApproval || !waitingForASeat.room || emailFailed ? null : new Date() },
     });
 
     this.usage.emit(UsageEventType.PARTICIPANT_INVITED, { organizationId, groundId, participantId: participant.id }).catch(() => undefined);

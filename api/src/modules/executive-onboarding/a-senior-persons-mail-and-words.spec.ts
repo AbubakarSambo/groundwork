@@ -7,6 +7,7 @@ import { advanceThePersistentJobs } from '../outstanding/the-persistent-jobs';
 import { actOnTheJobs } from '../year-end/the-year-end-owner';
 import { aWorldForOnboarding, addFatima, ORG } from './a-world-for-onboarding';
 import { QUIET_FOR_MS } from './the-intake';
+import { theAskWent } from './information-gaps';
 
 /**
  * THE REAL SERVICE, OVER THE LOCAL FAKES (plan acceptance tests 4, 5, 7, 8, 17 and 21): a forward with no instruction, her words above a forward,
@@ -137,7 +138,9 @@ describe('a team member takes part by replying', () => {
     const asks: { to: string; text: string }[] = [];
     const ownerPorts: any = {
       email: { sendTheYearEndFiles: async () => 'sent' }, whatsapp: { send: async () => ({ sent: true }) },
-      progressEmail: async () => 'sent', askByEmail: async (a: any) => { asks.push({ to: a.to, text: a.text }); return 'sent'; },
+      progressEmail: async () => 'sent',
+      /* As the one mail door does: the questions a mail carries are asked when it goes (R3). */
+      askByEmail: async (a: any) => { asks.push({ to: a.to, text: a.text }); await theAskWent(w.prisma, a.askKey, w.now); return 'sent'; },
     };
     await actOnTheJobs(w.prisma, ownerPorts, w.now);
     await actOnTheJobs(w.prisma, ownerPorts, new Date(w.now.getTime() + 86_400_000));

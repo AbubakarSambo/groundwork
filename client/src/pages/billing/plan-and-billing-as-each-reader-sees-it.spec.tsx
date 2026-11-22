@@ -153,6 +153,7 @@ describe('Grace, an admin, on Growth', () => {
     it('with one check-in: "Your check-in has unlimited sessions and reports on this plan."', async () => {
       const { groundsApi } = await import('@/api/grounds')
       ;(groundsApi.list as any).mockResolvedValueOnce([{ id: 'g1', label: 'Faith, first 90 days' }])
+      m.status = { ...m.status, usage: { ...m.status.usage, checkIns: 1 } }
       renderIt()
       await waitFor(() => expect(screen.getByText('Your check-ins')).toBeTruthy())
       expect(await screen.findByText('Your check-in has unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.')).toBeTruthy()
@@ -165,6 +166,7 @@ describe('Grace, an admin, on Growth', () => {
         { id: 'g1', label: 'Faith, first 90 days' },
         { id: 'g2', label: 'Leadership, Q3' },
       ])
+      m.status = { ...m.status, usage: { ...m.status.usage, checkIns: 2 } }
       renderIt()
       await waitFor(() => expect(screen.getByText('Your check-ins')).toBeTruthy())
       expect(await screen.findByText('Both of your check-ins have unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.')).toBeTruthy()
@@ -178,9 +180,25 @@ describe('Grace, an admin, on Growth', () => {
         { id: 'g2', label: 'Leadership, Q3' },
         { id: 'g3', label: 'Onboarding, Sam' },
       ])
+      m.status = { ...m.status, usage: { ...m.status.usage, checkIns: 3 } }
       renderIt()
       await waitFor(() => expect(screen.getByText('Your check-ins')).toBeTruthy())
       expect(await screen.findByText('All 3 of your check-ins have unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.')).toBeTruthy()
+    })
+
+    /* Bug 101 (release test, 21 November 2026): Msingi has three check-ins, and Grace may open two of them, not Imani's first ninety
+       days. The line counts the organisation's check-ins, the same count as "So far there have been 3 check-ins". */
+    it('Msingi: three check-ins, two of them hers to open, reads "All 3", never "Both"', async () => {
+      const { groundsApi } = await import('@/api/grounds')
+      ;(groundsApi.list as any).mockResolvedValueOnce([
+        { id: 'g-stock', label: 'The new stock system, four depots' },
+        { id: 'g-sales', label: 'Sales team, Q4' },
+      ])
+      m.status = { ...m.status, usage: { checkIns: 3, reportsReleased: 0, peopleTakingPart: 11 } }
+      renderIt()
+      expect(await screen.findByText('All 3 of your check-ins have unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.')).toBeTruthy()
+      expect(text()).toContain('So far there have been 3 check-ins and 0 shared reports, with 11 people taking part.')
+      expect(text()).not.toMatch(/Both of your check-ins/)
     })
   })
 })

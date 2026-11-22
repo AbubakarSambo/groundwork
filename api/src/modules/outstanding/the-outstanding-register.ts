@@ -193,7 +193,8 @@ export function howAlike(a: { text: string; owner: string }, b: { text: string; 
   const score = shared / Math.min(wa.size, wb.size);
   const sameOwner = a.owner === b.owner || a.owner === 'unconfirmed' || b.owner === 'unconfirmed';
   if (score >= 0.75 && shared >= 2 && sameOwner) return 'same';
-  if (score >= 0.5 && shared >= 2) return 'maybe';
+  /* Two people's lines are never asked about as one on shared words (Dangote rerun, N6: 1,705 questions to Maryam, most of them two people's generated lines). */
+  if (score >= 0.5 && shared >= 2 && sameOwner) return 'maybe';
   return 'different';
 }
 
@@ -439,7 +440,9 @@ export function assemble(raws: Raw[], noteOf: Map<string, any>, a: Pick<BuildArg
     const decisionNote = noted.find((n) => n.decisionQuestion);
     const fromRequest = ordered.find((r) => r.decision)?.decision ?? null;
     const decision = status === 'awaiting decision' ? (decisionNote ? { question: decisionNote.decisionQuestion, options: decisionNote.decisionOptions ?? [] } : fromRequest) : null;
-    const verifiedAt = new Date(Math.max(...ordered.map((r) => (r.settledAt ?? r.updatedAt).getTime()), ...noted.map((n) => (n.lastVerifiedAt ? new Date(n.lastVerifiedAt).getTime() : 0))));
+    /* A finished item was settled when its first proof came, not when somebody last mentioned it (Dangote rerun, N12: "I sent it on 11 September", said on 20 November, moved Ibese to 20 November). */
+    const proofs = parts.filter((p) => p.status === 'completed').map((p) => (p.settledAt ?? p.at).getTime());
+    const verifiedAt = status === 'completed' && proofs.length ? new Date(Math.min(...proofs)) : new Date(Math.max(...ordered.map((r) => (r.settledAt ?? r.updatedAt).getTime()), ...noted.map((n) => (n.lastVerifiedAt ? new Date(n.lastVerifiedAt).getTime() : 0))));
     const flagged = noted.find((n) => n.carryForward !== null && n.carryForward !== undefined)?.carryForward;
     const open = status !== 'completed' && status !== 'cancelled';
     const beyondTheYear = !!dueOn && dueOn.getUTCFullYear() > a.now.getUTCFullYear();

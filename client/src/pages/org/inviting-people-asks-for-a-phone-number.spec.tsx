@@ -12,7 +12,8 @@ import { MemoryRouter } from 'react-router-dom'
  */
 let whatsappOn = false
 vi.mock('@/lib/whatsapp-is-on', () => ({ useWhatsAppIsOn: () => whatsappOn }))
-vi.mock('@/components/gw/this-adds-a-seat', () => ({ ThisAddsASeat: () => null }))
+/* The form also reads whether a new seat needs a yes first (Hafsah, 21 November 2026); none here. */
+vi.mock('@/components/gw/this-adds-a-seat', () => ({ ThisAddsASeat: () => null, useTheNextSeat: () => ({ data: undefined }) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
 vi.mock('@/api/client', () => ({ apiClient: { post: vi.fn(), get: vi.fn(), patch: vi.fn() } }))
 

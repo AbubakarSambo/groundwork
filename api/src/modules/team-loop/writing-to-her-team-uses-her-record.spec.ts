@@ -19,13 +19,14 @@ describe('"Write to my team now ..." uses the people on her record', () => {
     const x = await aTeamLoopWorld({ mind: aScriptedMind({ instruction: { kind: 'handle_with_team', matter: MATTER, today: true } }), now: at(20, '10:20') });
     const ibrahim = x.person('ibrahim@example.com');
     await x.t.commitment.create({ data: { organizationId: 'org-1', personExternalId: ibrahim.externalId, source: 'team_reply', text: 'Send the Ministry of Industry approval letter', dueSaid: 'tomorrow', state: 'OPEN' } });
-    const back = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: WRITE_TO_MY_TEAM });
+    const back = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: WRITE_TO_MY_TEAM, now: x.now });
     console.log(`WHAT FATIMA READS\n${back}`);
-    expect(back).toBe(`Fatima, I will write to 2 people on your record today, and ask each of them about ${MATTER}. I will write to Ibrahim Sule on WhatsApp and ask about “Send the Ministry of Industry approval letter”, which is still open. I will write to Amina Yusuf by email, and ask what they have done and what is still open. Nobody is asked for a document I already have. I will tell you as soon as they have answered, and this evening with whatever I have and who has not answered. Shall I go ahead?`);
+    /* Changed 21 November 2026 (Batch E, N1 and N2): the people are named by how they will really be reached (Ibrahim has not written on WhatsApp in the last 24 hours, so he is written to by email), not one sentence each. For 64 people that sentence each was 9,024 characters, and a phone cut it off. What is open with each person is in their own ask, below. */
+    expect(back).toBe(`Fatima, I will write to 2 people on your record today, and ask each of them about ${MATTER}. I will write to Amina Yusuf and Ibrahim Sule by email. I will also ask each of them about anything still open with them. Nobody is asked for a document I already have. I will tell you as soon as they have answered, and this evening with whatever I have and who has not answered. Shall I go ahead?`);
     expect(back).not.toMatch(/Who should be in it|how do I reach/);
     expect(x.w.sent).toHaveLength(0);
 
-    expect(await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'Yes.' })).toBe('Done. I will do it as I said, and I will tell you if anything stops me.');
+    expect(await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'Yes.', now: x.now })).toBe('Done. I will do it as I said, and I will tell you if anything stops me.');
     const sweep = (when: Date) => runTheStandingInstructions(x.prisma, (x.service as any).ports(), when);
     expect((await sweep(at(20, '10:21'))).join()).toMatch(/asked 2/);
     const toIbrahim = x.w.sent.find((m) => m.to === '+2348035550101' || /Ibrahim/.test(m.text))!;
@@ -38,11 +39,11 @@ describe('"Write to my team now ..." uses the people on her record', () => {
 
   it('"No, not Thursday. I need it today." changes the instruction waiting, and is said back again for today (D18)', async () => {
     const x = await aTeamLoopWorld({ mind: aScriptedMind({ instruction: { kind: 'collect_and_report', reportWeekday: 5, matter: 'what we actually achieved, not just meetings' } }), now: at(20, '07:50') });
-    const first = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'Please don\'t make me chase everyone. And check the payments. I need to know what we actually achieved, not just meetings. Email me Friday.' });
+    const first = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'Please don\'t make me chase everyone. And check the payments. I need to know what we actually achieved, not just meetings. Email me Friday.', now: x.now });
     console.log(`WHAT FATIMA READS\n${first}`);
     expect(first).toMatch(/on Thursday morning, and email you what they send on Friday morning\. Shall I go ahead\?$/);
     (x.service as any).mind = aScriptedMind({ instruction: { kind: 'handle_with_team', matter: 'what we actually achieved, not just meetings', today: true } });
-    const again = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'No, not Thursday. I need it today.' });
+    const again = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'No, not Thursday. I need it today.', now: x.now });
     console.log(`WHAT FATIMA READS\n${again}`);
     expect(again).toMatch(/^Fatima, I will write to 2 people on your record today, and ask each of them about what we actually achieved, not just meetings\./);
     const jobs = x.t.persistentJob.rows.filter((j: any) => j.kind.startsWith('standing:'));
@@ -52,7 +53,7 @@ describe('"Write to my team now ..." uses the people on her record', () => {
 
   it('with no day said, it is asked now, never put off to a Friday she did not name (D18)', async () => {
     const x = await aTeamLoopWorld({ mind: aScriptedMind({ instruction: { kind: 'collect_and_report', reportWeekday: null } }), now: at(20, '07:50') });
-    const back = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: "Please don't make me chase everyone. Get the team's updates." });
+    const back = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: "Please don't make me chase everyone. Get the team's updates.", now: x.now });
     console.log(`WHAT FATIMA READS\n${back}`);
     expect(back).not.toMatch(/Thursday|Friday/);
     expect(back).toMatch(/I will write to 2 people on your record now/);
@@ -62,7 +63,39 @@ describe('"Write to my team now ..." uses the people on her record', () => {
     const x = await aTeamLoopWorld({ mind: aScriptedMind({ instruction: { kind: 'handle_with_team', matter: MATTER, today: true } }), now: at(20, '10:20') });
     const { grantADelegate } = await import('../outstanding/a-delegate-acts-for-a-principal');
     await grantADelegate(x.prisma, { organizationId: 'org-1', principalUserId: 'u-fatima', delegateEmail: 'amina@example.com', delegateName: 'Amina Yusuf', via: 'admin' });
-    expect(await x.service.hearHer({ organizationId: 'org-1', userId: 'u-amina', message: WRITE_TO_MY_TEAM })).toBe('Only Fatima can give me an instruction like that.');
+    expect(await x.service.hearHer({ organizationId: 'org-1', userId: 'u-amina', message: WRITE_TO_MY_TEAM, now: x.now })).toBe('Only Fatima can give me an instruction like that.');
+  });
+});
+
+/*
+ * DANGOTE RERUN, N1. Fatima read that 64 people would be written to, and said yes. Three of them had already had the day's one routine message, so WhatsApp
+ * could not take the ask and the email was held back, and the ask was dropped with nothing on the record to tell her. Now she is told before her yes who will be
+ * written to tomorrow, and why; the next day's run writes to them; and her update names anybody not written to yet.
+ */
+describe('what she is told about who will be written to is what happens', () => {
+  it('somebody who has had the day\'s message is named for tomorrow, is written to the next day, and is named in her update until then', async () => {
+    const x = await aTeamLoopWorld({ mind: aScriptedMind({ instruction: { kind: 'handle_with_team', matter: MATTER, today: true } }), now: at(20, '10:20') });
+    const { aTable } = await import('../outstanding/an-organisation-for-an-executive');
+    x.t.notification = aTable([{ channel: 'email', outcome: 'sent', toAddress: 'amina@example.com', sender: 'sendTheYearEndProgress', createdAt: at(20, '06:00') }]);
+    const back = await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: WRITE_TO_MY_TEAM, now: x.now });
+    console.log(`WHAT FATIMA READS\n${back}`);
+    expect(back).toBe(`Fatima, I will write to Ibrahim Sule by email today, and ask them about ${MATTER}. Amina Yusuf has already had a message from me today, so I will write to them tomorrow morning. Nobody is asked for a document I already have. I will tell you as soon as they have answered. Shall I go ahead?`);
+    await x.service.hearHer({ organizationId: 'org-1', userId: 'u-fatima', message: 'Yes.', now: x.now });
+    const sweep = (when: Date) => runTheStandingInstructions(x.prisma, (x.service as any).ports(), when);
+    expect((await sweep(at(20, '10:21'))).join()).toMatch(/asked 1/);
+    expect(x.w.sent.some((m) => m.to === 'amina@example.com')).toBe(false);
+    expect((await sweep(at(20, '16:30'))).join()).toMatch(/told her/);
+    const update = x.w.sent.find((m) => /^Where things stand/.test(String(m.subject ?? '')))!;
+    console.log(`WHAT FATIMA READS IN HER UPDATE\n${update.text}`);
+    expect(update.text).toContain('I have not been able to write to Amina yet, so I have not asked them yet. I will write to them tomorrow morning.');
+    /* The next day the count allows it: Amina is written to, and the work is done once everybody has been. */
+    x.t.notification = aTable([]);
+    expect((await sweep(at(21, '08:00'))).join()).toMatch(/asked 1/);
+    const toAmina = x.w.sent.find((m) => m.to === 'amina@example.com')!;
+    console.log(`WHAT AMINA READS\n${toAmina.text}`);
+    expect(toAmina.text).toMatch(/^Hello Amina, Fatima asked me to collect the team's updates/);
+    await sweep(at(21, '08:01'));
+    expect(x.t.persistentJob.rows.find((j: any) => j.kind.startsWith('standing:')).state).toBe('done');
   });
 });
 
@@ -74,9 +107,10 @@ describe('nobody is asked for a document the record already holds (D13)', () => 
     const person = x.person('amina@example.com');
     await x.t.commitment.create({ data: { organizationId: 'org-1', personExternalId: person.externalId, source: 'team_reply', text: 'Get the Kogi permit granted', state: 'KEPT', provenBy: 'material:pm-kogi', resolvedAt: new Date('2026-05-25T09:00:00Z') } });
     const { work } = await theirWorkNow(x.prisma, amina);
-    expect(work.alreadyHeld).toEqual(['the file “Kogi permit letter.pdf”, sent on 25 May', 'the proof that “Get the Kogi permit granted” is done, from 25 May']);
+    /* Changed 21 November 2026 (Batch E, N5): one namer for what is on record (a file with its name and day; a message as "your WhatsApp message of 19 November"). */
+    expect(work.alreadyHeld).toEqual(['the file “Kogi permit letter.pdf” from 25 May', 'the proof that “Get the Kogi permit granted” is done, from 25 May']);
     const ask = THE_ASK_FOR_AN_UPDATE('Amina', 'Fatima', null, { open: [], held: work.alreadyHeld!, today: true });
     console.log(`WHAT AMINA READS\n${ask}`);
-    expect(ask).toBe("Hello Amina, Fatima asked me to collect the team's updates today. Please send me where things stand on your work. I already have the file “Kogi permit letter.pdf”, sent on 25 May and the proof that “Get the Kogi permit granted” is done, from 25 May, so there is no need to send them again. Send a document only for something I do not have yet. You can write it here, forward it, or send a voice note.");
+    expect(ask).toBe("Hello Amina, Fatima asked me to collect the team's updates today. Please send me where things stand on your work. I already have the file “Kogi permit letter.pdf” from 25 May and the proof that “Get the Kogi permit granted” is done, from 25 May, so there is no need to send them again. Send a document only for something I do not have yet. You can write it here, forward it, or send a voice note.");
   });
 });

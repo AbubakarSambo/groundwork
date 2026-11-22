@@ -12,6 +12,7 @@ import { keepATeamMembersReply } from '../executive-onboarding/a-team-members-re
 import { answerTheQuietBatches } from '../executive-onboarding/the-first-picture';
 import { TeamLoopService } from './team-loop.service';
 import { theAskWent } from '../executive-onboarding/information-gaps';
+import { theQuietHoursNow } from '../../common/the-clock';
 import type { TheTeamMind, WhatTheySaid, TheInstruction } from './the-team-mind';
 
 export { ORG };
@@ -39,6 +40,11 @@ export function aScriptedMind(a: { readings?: [string, Partial<WhatTheySaid> | n
 
 export async function aTeamLoopWorld(over: { mind?: TheTeamMind | null; now?: Date; engine?: any } = {}) {
   const now = over.now ?? new Date('2026-11-11T10:00:00Z');
+  /* The product reads "now" from one clock (common/the-clock.ts), never from the test. This world's moment is that clock's moment, so the day she is told
+     and the day the sweeps act on are this world's day, not the day the test happens to be run. */
+  process.env.LOCAL_TEST_CLOCK_ALLOWED = 'true';
+  process.env.LOCAL_TEST_CLOCK = now.toISOString();
+  process.env.LOCAL_TEST_CLOCK = new Date(2 * now.getTime() - theQuietHoursNow().getTime()).toISOString();
   const w = aWorldForOnboarding(now);
   w.settings.whatsapp = 'accept';
   const t: any = w.t;

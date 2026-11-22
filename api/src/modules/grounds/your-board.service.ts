@@ -21,6 +21,7 @@ import { SuggestionsService } from '../suggestions/suggestions.service';
 import type { ForThePerson } from '../suggestions/a-suggestion-told-like-a-signal';
 import { askedOfYou, type AskedOfYou } from './asked-of-you';
 import { theDayIn } from './when-a-handoff-is-due';
+import { theCommitmentsTheBoardReads } from './the-commitments-the-board-reads';
 import { thePromisesAsTheRecordKeepsThem } from './a-promise-said-done-is-read-the-same-everywhere';
 import {
   PATTERN_ROW_SELECT, servedPatterns, whoIsWhoIn,
@@ -166,7 +167,9 @@ export class YourBoardService {
      * week on Thursday listed it under "Two things you said you would do are still open". The same reading the lead's summary uses
      * (a-promise-said-done-is-kept) is applied here, as served: nothing is written, and only her own promises are read.
      */
-    const { commitments: commitmentsRead, objectives: objectivesRead } = await thePromisesAsTheRecordKeepsThem(this.prisma as any, commitments as any[], objectives as any[]);
+    /* With the commitments kept only as record lines, which the board shows under the person's name (the-commitments-the-board-reads.ts). */
+    const everyCommitment = await theCommitmentsTheBoardReads(this.prisma, participantIds, commitments as any[]);
+    const { commitments: commitmentsRead, objectives: objectivesRead } = await thePromisesAsTheRecordKeepsThem(this.prisma as any, everyCommitment as any[], objectives as any[]);
 
     /* Groundwork's suggestions about you, in the shape the person it is about may read (facts and
        the decision with its reasons, never the verdict). Left off when there are none. */

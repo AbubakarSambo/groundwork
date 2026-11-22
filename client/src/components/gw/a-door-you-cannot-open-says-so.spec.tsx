@@ -26,8 +26,10 @@ describe('the People page, to somebody who is not an admin', () => {
  */
 describe('every refusal names the thing the person was actually trying to do', () => {
   it('open a check-in', () => {
-    render(<MemoryRouter><ADoorYouCannotOpen may={false} what="open a check-in"><p>hidden</p></ADoorYouCannotOpen></MemoryRouter>)
-    expect(screen.getByText(/Opening a check-in is limited to people your admin has named\./)).toBeTruthy()
+    /* The sentence is the server's (who-may-open-a-check-in.ts CANNOT_OPEN), carried with the session since bug 95. */
+    const CANNOT_OPEN = 'Opening a check-in here is limited to people your admin has named. You can still take part in any check-in somebody adds you to. Ask an admin if you should be able to open them.'
+    render(<MemoryRouter><ADoorYouCannotOpen may={false} what="open a check-in" because={CANNOT_OPEN}><p>hidden</p></ADoorYouCannotOpen></MemoryRouter>)
+    expect(screen.getByText(CANNOT_OPEN)).toBeTruthy()
   })
   it('add people to your organisation', () => {
     render(<MemoryRouter><ADoorYouCannotOpen may={false} what="add people to your organisation"><p>hidden</p></ADoorYouCannotOpen></MemoryRouter>)
@@ -62,5 +64,21 @@ describe('the WhatsApp page, to somebody who is not an admin', () => {
   it('an admin goes straight through', () => {
     render(<MemoryRouter><ADoorYouCannotOpen may what="connect your organisation’s WhatsApp number"><p>the real page</p></ADoorYouCannotOpen></MemoryRouter>)
     expect(screen.getByText('the real page')).toBeTruthy()
+  })
+})
+
+/**
+ * A GUEST ON /start (release test, 21 November 2026, bug 95). Olu read the named-leads sentence and "This is a setting, not anything
+ * about you", which is not why a guest cannot open one. He reads the server's guest sentence, and only that.
+ */
+describe('Olu, a guest, on /start', () => {
+  const GUESTS_DO_NOT_OPEN = 'You are taking part here as a guest. You can check in on anything you are added to. Opening a new check-in is done by somebody here who is not a guest.'
+  it('reads the guest sentence, and nothing about named leads or a setting', () => {
+    const { container } = render(<MemoryRouter><ADoorYouCannotOpen may={false} what="open a check-in" because={GUESTS_DO_NOT_OPEN}><p>hidden</p></ADoorYouCannotOpen></MemoryRouter>)
+    expect(screen.getByRole('heading', { name: 'You cannot open a check-in here' })).toBeTruthy()
+    expect(screen.getByText(GUESTS_DO_NOT_OPEN)).toBeTruthy()
+    expect(container.textContent).not.toMatch(/named|not anything about you/)
+    expect(screen.getByRole('button', { name: 'Back to your check-ins' })).toBeTruthy()
+    expect(screen.queryByText('hidden')).toBeNull()
   })
 })

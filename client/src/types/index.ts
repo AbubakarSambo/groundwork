@@ -31,6 +31,13 @@ export interface User {
    * it. A convenience for the screen, never a permission: the API asks again on every create.
    */
   mayOpenCheckIns?: boolean
+  /** When they may not, why, in the server's own sentence (who-may-open-a-check-in.ts). */
+  whyYouCannotOpenCheckIns?: string
+  /**
+   * Whether this person may add people here (Hafsah, 21 November 2026): an admin, or anybody who is not a guest where the
+   * organisation's "Who can add people" is "Anyone here". Decided server side; the API asks again on every invitation.
+   */
+  mayAddPeople?: boolean
   emailNotifications?: boolean
   /** True when they stopped these emails from the link in one of our mails. The switch turns it back on. */
   emailsStoppedFromAMail?: boolean

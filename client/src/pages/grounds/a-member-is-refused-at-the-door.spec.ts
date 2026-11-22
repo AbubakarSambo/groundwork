@@ -33,7 +33,10 @@ describe('a member is refused at the door, not on submit', () => {
 
   it('adding people is behind being an admin', () => {
     /* U.4 review: the People door says "Only an admin can open People.", so it names what it guards. */
-    expect(route('/org/members')).toContain('<AdminsOnly what="open People">');
+    /* Since 21 November 2026 People opens for an admin and for anybody the organisation lets add people (Hafsah), through the
+       door that reads the server's mayAddPeople; a person's own page stays an admin's. */
+    expect(route('/org/members')).toContain('<WhoMayAddPeople>');
+    expect(route('/org/members/:id')).toContain('<AdminsOnly what="open People">');
   });
 
   it('each door reads one field and nothing else', () => {

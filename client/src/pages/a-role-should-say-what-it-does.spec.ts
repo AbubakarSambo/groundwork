@@ -47,7 +47,7 @@ describe('a role should say what it does', () => {
   it('and says what everybody else and a guest can do, so the role is resolvable', () => {
     expect(PEOPLE).toContain('Answers the check-ins they’re invited to.')
     expect(PEOPLE).toContain('Can start check-ins and run them. Takes part in others.')
-    expect(PEOPLE).toContain('From another organisation. Sees only the check-ins they’re invited to.')
+    expect(PEOPLE).toContain('Sees only the check-ins they’re added to, and nothing else here.')
   })
 
   it('no role is offered as its own name alone', () => {

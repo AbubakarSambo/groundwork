@@ -11,6 +11,8 @@ import { AskFirst, RemoveFromTheOrganisation } from './ask-first-in-the-page'
 import { Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, ChoiceCards, Tag, Button, TextField, Select, Note, Skeleton } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-cannot-read-without-access'
+import { APersonsDetails } from './APersonsDetails'
+import { ATeamPicker } from './ATeamPicker'
 
 /**
  * ONE PERSON, AS AN ADMIN READS THEM (U.4, A4 one-person.txt, #/settings/people/miriam).
@@ -51,7 +53,8 @@ const ROLE_CHOICES: { value: RoleWrite; title: string; says: string }[] = [
   { value: 'ADMIN', title: 'Admin', says: 'Manages people and billing, and can read every check-in.' },
   { value: 'LEAD', title: 'Can open check-ins', says: 'Can start check-ins and run them. Takes part in others.' },
   { value: 'MEMBER', title: 'Takes part', says: 'Answers the check-ins they’re invited to.' },
-  { value: 'GUEST', title: 'Guest', says: 'From another organisation. Sees only the check-ins they’re invited to.' },
+  /* Not "from another organisation" any more: an admin can let somebody into this one as a guest (Hafsah, 21 November 2026). */
+  { value: 'GUEST', title: 'Guest', says: 'Sees only the check-ins they’re added to, and nothing else here.' },
 ]
 
 /** A label/value row that becomes a small form when "Change" is pressed (Level, Reports to, WhatsApp). */
@@ -115,7 +118,8 @@ export function OnePersonPage() {
   const ownerId: string | null = owner.data?.ownerUserId ?? null
   const [team, setTeam] = useState<string | null>(null)
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ['org-members'] })
+  /* A team saved may be a new one, so the Team picker's list is read again with the people. */
+  const refresh = () => { qc.invalidateQueries({ queryKey: ['org-members'] }); qc.invalidateQueries({ queryKey: ['org-teams'] }) }
   const sit = useMutation({
     mutationFn: (change: { level?: string; team?: string; reportsToUserId?: string }) => apiClient.patch(`/users/${id}/where-they-sit`, change),
     onSuccess: () => { refresh(); toast.success('Saved.') },
@@ -229,7 +233,7 @@ export function OnePersonPage() {
       <Section heading="Team" note="Used to add whole teams to a check-in">
         <Panel>
           <div className="gwui-invite-actions">
-            <TextField className="gwui-narrow-field" aria-label="Team" value={team ?? m.team ?? ''} onChange={(e) => setTeam(e.target.value)} maxLength={120} />
+            <ATeamPicker value={team ?? m.team ?? ''} onChange={setTeam} />
             <Button kind="secondary" disabled={team === null || sit.isPending} onClick={() => { sit.mutate({ team: team ?? '' }); setTeam(null) }}>Save</Button>
           </div>
         </Panel>
@@ -252,6 +256,7 @@ export function OnePersonPage() {
           />
           {/* Where they are on WhatsApp, from the record (pilots on WhatsApp, 14 October). Saving an empty number removes it. */}
           {whatsappOn && m.whatsappSays && <FieldRow label="On WhatsApp" value={m.whatsappSays} />}
+          {m.whatsappCheckInSays && <FieldRow label="Checking in on WhatsApp" value={m.whatsappCheckInSays} />}
         </FieldRows>
         {/* WHO DECIDED, AND WHEN (U.4 review, item 2). "Not let in" on its own says what happened but
             not why the reader cannot just let them in from here - this says who decided, and when. */}
@@ -282,6 +287,7 @@ export function OnePersonPage() {
         )}
       </Section>
 
+      {id && <APersonsDetails userId={id} own={isMe} />}
       <Section heading="What an admin can see">
         <Panel>
           {/*

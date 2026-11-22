@@ -13,7 +13,8 @@ import { WaitingToBeLetIn } from './WaitingToBeLetIn'
 import { EveryoneHere } from './EveryoneHere'
 import { InvitePeople } from './InvitePeople'
 import { WhoCanOpenACheckIn } from './WhoCanOpenACheckIn'
-import { Page, PageTitle, EdgeList, EdgeRow, Button, Section, Panel, Note, Stack, Folded } from '@/components/gw/ui'
+import { TheTeamsHere } from './ATeamPicker'
+import { Page, PageTitle, EdgeList, EdgeRow, Button, Section, Panel, Stack, Folded } from '@/components/gw/ui'
 
 /**
  * THE PEOPLE PAGE (U.4, A4 people.txt), as an admin reads it, in the prototype's order:
@@ -138,10 +139,22 @@ export function OrgMembersPage() {
     onError: () => toast.error('Those could not be sent just now. Nobody has been emailed and they are all still waiting.'),
   })
 
+  /*
+   * A MEMBER WHO MAY ADD PEOPLE (Hafsah, 21 November 2026): the route lets them in only when the organisation's "Who can add
+   * people" is "Anyone here" (`mayAddPeople`, from the server's one rule). They read "Invite a colleague" and the form, which
+   * offers only the role the server lets them give. Everything else on this page is an admin's, and stays so on the server.
+   *
+   * PRIMARY-BUTTONS-NEVER-TOGETHER: this member's "Invite a colleague" and the admin's own below are two returns of one page, so a
+   * reader only ever sees one of them.
+   */
   if (!isAdmin) {
     return (
       <Page>
-        <Note>You need admin access to manage team members.</Note>
+        <PageTitle eyebrow={orgName} title="People" />
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button kind="primary" onClick={() => setInviting(true)}>Invite a colleague</Button>
+        </div>
+        {inviting && <div id="invite-people"><InvitePeople /></div>}
       </Page>
     )
   }
@@ -223,6 +236,8 @@ export function OrgMembersPage() {
       <WaitingToBeLetIn orgName={orgName} />
 
       <EveryoneHere orgName={orgName} ownerId={ownerId} />
+
+      <TheTeamsHere />
 
       {/* ONE WAY TO INVITE (design playbook, rule 3): the button is the page's one main action, and it opens the form. The form used to sit
           open under the button as a second way in. It is still on the page for anyone who arrives at "#invite-list". */}

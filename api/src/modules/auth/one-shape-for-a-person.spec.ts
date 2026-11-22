@@ -29,7 +29,10 @@ describe('one shape for a person', () => {
     expect(SRC).toMatch(/private theUserShape\(/);
     const start = SRC.indexOf('private theUserShape(');
     const body = SRC.slice(start, start + 900);
-    expect(body).toContain('mayOpenCheckIns: mayOpen(');
+    /* The rule is asked once, and both the yes or no and its reason are read from that one answer. */
+    expect(body).toContain('const mayOpenACheckIn = mayOpen(');
+    expect(body).toContain('mayOpenCheckIns: mayOpenACheckIn.may');
+    expect(body).toContain('whyYouCannotOpenCheckIns: mayOpenACheckIn.because');
     /* Computed from the rule, so it cannot disagree with what the server enforces. */
     expect(body).not.toMatch(/mayOpenCheckIns:\s*(true|false|user\.)/);
   });

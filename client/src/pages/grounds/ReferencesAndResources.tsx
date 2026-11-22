@@ -1,4 +1,4 @@
-import { TheDirectMorning, useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
+import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -88,7 +88,7 @@ function ThePage({ groundId, served, ground, isTheLead }: { groundId: string; se
         </FlexRow>
         </div>
         {served.mayAdd && adding && (
-          <AddSomething groundId={groundId} kind={adding} onKind={setAdding} people={people} alsoSeenBy={served.peopleAlsoSeenBy} contextEnabled={ground?.contextEnabled === true}
+          <AddSomething groundId={groundId} kind={adding} onKind={setAdding} people={people} contextEnabled={ground?.contextEnabled === true}
             onDone={() => { setAdding(null); refresh() }} />
         )}
       </div>
@@ -99,7 +99,7 @@ function ThePage({ groundId, served, ground, isTheLead }: { groundId: string; se
       <Documents served={served} />
       <Evidence groundId={groundId} served={served} />
       <QuestionsAndAnswers served={served} />
-      {served.people && <People groundId={groundId} people={served.people} alsoSeenBy={served.peopleAlsoSeenBy} onDone={refresh} />}
+      {served.people && <People groundId={groundId} people={served.people} onDone={refresh} />}
     </Stack>
     </div>
   )
@@ -408,11 +408,7 @@ function QuestionsAndAnswers({ served }: { served: Served }) {
 
 /* ------------------------------------------------------------------------------------------------------- People */
 
-/** "Only you see this" where nobody else may read People, else "Only you see this, and Otieno, the admin who set up this check-in" (21 October). The server names who. */
-const onlyYouSeeThis = (alsoSeenBy?: string | null) => (alsoSeenBy?.trim() ? `Only you see this, and ${alsoSeenBy.trim()}.` : 'Only you see this.')
-
-function People({ groundId, people, alsoSeenBy, onDone }: { groundId: string; people: NonNullable<Served['people']>; alsoSeenBy?: string; onDone: () => void }) {
-  const direct = useTheDirectMorning()
+function People({ groundId, people, onDone }: { groundId: string; people: NonNullable<Served['people']>; onDone: () => void }) {
   const [q, setQ] = useState('')
   const [showAllPeople, setShowAllPeople] = useState(false)
   const [editing, setEditing] = useState<{ pid: string; kind: 'PERSON_NOTE' | 'HELP_WITH'; lineId: string | null; text: string } | null>(null)
@@ -441,7 +437,7 @@ function People({ groundId, people, alsoSeenBy, onDone }: { groundId: string; pe
     )
   )
   return (
-    <Section heading="People" note={direct ? 'Your notes on each person. Their check-ins do not use them yet.' : `${onlyYouSeeThis(alsoSeenBy)} Your notes on each person. They never see them. Their check-ins do not use them yet.`}>
+    <Section heading="People" note="Your notes on each person. Their check-ins do not use them yet.">
       <Stack gap={10}>
         {people.length > 5 && (
           <FlexRow gap={8} align="center" wrap>
@@ -477,8 +473,7 @@ function People({ groundId, people, alsoSeenBy, onDone }: { groundId: string; pe
 
 /* ---------------------------------------------------------------------------------------------- Add, the lead's */
 
-function AddSomething({ groundId, kind, onKind, people, alsoSeenBy, contextEnabled, onDone }: {
-  alsoSeenBy?: string
+function AddSomething({ groundId, kind, onKind, people, contextEnabled, onDone }: {
   groundId: string
   kind: AReferenceKind | 'DOCUMENT' | 'PLAN'
   onKind: (k: AReferenceKind | 'DOCUMENT' | 'PLAN') => void
@@ -486,7 +481,6 @@ function AddSomething({ groundId, kind, onKind, people, alsoSeenBy, contextEnabl
   contextEnabled: boolean
   onDone: () => void
 }) {
-  const direct = useTheDirectMorning()
   const [text, setText] = useState('')
   const [label, setLabel] = useState('')
   const [who, setWho] = useState('')
@@ -534,7 +528,7 @@ function AddSomething({ groundId, kind, onKind, people, alsoSeenBy, contextEnabl
                   <option value="">Choose a person</option>
                   {people.map((p) => <option key={p.participantId} value={p.participantId}>{p.name}</option>)}
                 </Select>
-                <Note tone="muted">{direct ? 'It shapes their check-ins.' : `${onlyYouSeeThis(alsoSeenBy)} It shapes their check-ins, and they never see it.`}</Note>
+                <Note tone="muted">It shapes their check-ins.</Note>
               </div>
             )}
             {kind === 'KEY_FACT' && (

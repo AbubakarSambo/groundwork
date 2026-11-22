@@ -24,12 +24,15 @@ import { Button } from './ui'
 export function ADoorYouCannotOpen({
   may,
   what,
+  because,
   children,
 }: {
   /** Whether this person may use what is behind the door. */
   may: boolean
   /** What they were trying to do, in their words rather than the route's. */
   what: 'open a check-in' | 'add people to your organisation' | 'connect your systems' | 'connect your organisation’s WhatsApp number' | 'open People' | 'open Plan and billing'
+  /** Why not, in the server's own sentence, where the server says it (opening a check-in: who-may-open-a-check-in.ts). */
+  because?: string
   children: ReactNode
 }) {
   const navigate = useNavigate()
@@ -114,15 +117,32 @@ export function ADoorYouCannotOpen({
     )
   }
 
+  /*
+   * OPENING A CHECK-IN SAYS WHAT THE SERVER'S RULE SAYS (release test, 21 November 2026, bug 95). This page kept its own copy of the
+   * named-leads sentence, so a guest read "limited to people your admin has named... a setting, not anything about you", which is
+   * not why a guest cannot. The rule's sentence comes with the session and says the reason and what they can still do.
+   */
+  if (what === 'open a check-in') {
+    return (
+      <div className="gw-bd" style={{ maxWidth: 540, margin: '0 auto', padding: '48px 20px' }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)', margin: '0 0 10px' }}>
+          You cannot open a check-in here
+        </h1>
+        {because && (
+          <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '23px', margin: '0 0 20px' }}>{because}</p>
+        )}
+        <Button onClick={() => navigate('/grounds')}>Back to your check-ins</Button>
+      </div>
+    )
+  }
+
   return (
     <div className="gw-bd" style={{ maxWidth: 540, margin: '0 auto', padding: '48px 20px' }}>
       <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)', margin: '0 0 10px' }}>
         You cannot {what} here
       </h1>
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '23px', margin: '0 0 8px' }}>
-        {what === 'open a check-in'
-          ? 'Opening a check-in is limited to people your admin has named. You can still take part in any check-in somebody adds you to.'
-          : what === 'connect your systems'
+        {what === 'connect your systems'
           ? 'Connecting your organisation’s systems is something its admins do.'
           : 'Adding people is something your organisation’s admins do.'}
       </p>

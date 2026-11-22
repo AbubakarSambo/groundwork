@@ -1,5 +1,6 @@
 import { thePromisesAsTheRecordKeepsThem } from './a-promise-said-done-is-read-the-same-everywhere';
 import { onePromiseOneState, type APromiseAndItsState } from './your-board';
+import { theCommitmentsTheBoardReads } from './the-commitments-the-board-reads';
 
 /**
  * A PERSON'S PROMISES, READ AND COUNTED ONCE, FOR EVERY PAGE (fix plan, pattern 1; quarter test, 28 October 2026).
@@ -28,7 +29,9 @@ export async function thePromisesOf(
       orderBy: { createdAt: 'asc' },
     })).catch(() => []),
   ]);
-  const asKept = await thePromisesAsTheRecordKeepsThem(prisma, ((commitments as any[]) ?? []), ((ownToDos as any[]) ?? []));
+  /* And the commitments kept only as record lines, which the board shows (the-commitments-the-board-reads.ts). */
+  const all = await theCommitmentsTheBoardReads(prisma, participantIds, ((commitments as any[]) ?? []), { groundId: opts.groundId });
+  const asKept = await thePromisesAsTheRecordKeepsThem(prisma, all as any[], ((ownToDos as any[]) ?? []));
   return onePromiseOneState(asKept.commitments as any, asKept.objectives as any, labelOf, opts.now ?? new Date()).sort((a, b) => a.t - b.t);
 }
 

@@ -159,7 +159,9 @@ export function whatANoteSays(text: string | null | undefined): { title: string 
   const first = lines[0] ?? '';
   const heading = lines.length > 1 && first.length <= 100 && !HEADER.test(first) && !/[.!?:]$/.test(first) && !/^[-_=]{3,}/.test(first) ? first : null;
   const title = heading ?? (email ? subject?.replace(/^(?:(?:re|fw|fwd)\s*:\s*)+/i, '') ?? null : null);
-  const body = lines.slice(heading ? 1 : 0).filter((l) => !HEADER.test(l) && !/^[-_=]{3,}.*$/.test(l) && !/^on .{5,80} wrote:$/i.test(l));
+  /* A row of a table (three or more cells split by commas, tabs or bars) is not a sentence: joined, a sheet's rows read as one long "sentence" in the report and the deck (Dangote rerun, N8: "The note for February says: Engagement,Committee,Planned,Held,Status,Notes ..."). */
+  const aRowOfCells = (l: string) => l.split(/\s*[,\t|]\s*/).length >= 4 && !/[.!?]\s/.test(l);
+  const body = lines.slice(heading ? 1 : 0).filter((l) => !HEADER.test(l) && !/^[-_=]{3,}.*$/.test(l) && !/^on .{5,80} wrote:$/i.test(l) && !aRowOfCells(l));
   const sentences = body.join(' ').split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter((x) => x.split(/\s+/).length >= 2);
   return { title, sentences: sentences.slice(0, 8), kind: email ? 'email' : 'note' };
 }
