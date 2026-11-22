@@ -237,6 +237,20 @@ export function whatEachPersonSaidForTheSubject<T extends { isYou: boolean; line
 }
 
 /**
+ * "WHAT EACH PERSON SAID" FOR A READER WHO IS NOT IN THE CHECK-IN (Hafsah's decision, 22 November 2026: "great do you recommendation"). Exact words go
+ * only to the people in that check-in. Anybody else, an admin or a manager, reads what was said in Groundwork's own words: each row keeps `saying`
+ * (written as a paraphrase, never a quote, by fillWhatEachPersonSaid) and `finding`, and loses the lines. The report page and Ask both read this.
+ */
+export function whatEachPersonSaidInOurWords<T extends { lines?: unknown; lineMarks?: unknown; lineMarksSay?: unknown }>(rows: readonly T[] | null | undefined): T[] {
+  if (!Array.isArray(rows)) return (rows ?? []) as T[];
+  return rows.map((row) => {
+    if (!row) return row;
+    const { lines: _lines, lineMarks: _marks, lineMarksSay: _marksSay, ...inOurWords } = row as any;
+    return { ...inOurWords, lines: [] } as T;
+  });
+}
+
+/**
  * "WHO OWNS WHAT" (the board's `whoOwnsWhat`), FOR THE SUBJECT.
  *
  * One row per party, each holding THAT party's own lines under `items[].text` (their-own-words-

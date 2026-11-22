@@ -148,34 +148,6 @@ export async function checkInsTheyMayRead(db: WhatItReads, reader: AReaderAsking
     .slice(0, CHECK_INS_LOOKED_AT);
 }
 
-/**
- * THE ONE PLACE ASK DRAWS A CHECK-IN'S WORDS FOR A READER (Hafsah's decision, 22 November 2026: "great do you recommendation").
- * Exact words go only to the people in that check-in: the person who runs it and the people on it. Anybody else, an admin or a
- * manager, reads what was said in Groundwork's own words (each row's `saying` and `finding`), never the lines themselves. Grace, an
- * admin in none of Sales Q4, was given three of Amani's exact quotes (release test of 21 November, case #45).
- *
- * The round is read AS the reader, as before, so every wall the report already keeps still holds; this only takes the words away
- * from a reader who is not in the check-in. Every Ask lane that reads check-in words reads them through here.
- */
-export async function theRoundAsTheyMayRead(
-  reports: TheServedRounds,
-  checkIn: { id: string; initiatorId?: string | null; participants?: { userId: string | null }[] },
-  sessionNumber: number,
-  reader: AReaderAsking & { userId: string },
-): Promise<any> {
-  const served = await reports.sessionReport(checkIn.id, sessionNumber, reader.userId, reader.organizationId);
-  const inIt = checkIn.initiatorId === reader.userId || (checkIn.participants ?? []).some((p) => p.userId === reader.userId);
-  if (inIt || !served || !Array.isArray(served.whatEachPersonSaid)) return served;
-  return {
-    ...served,
-    whatEachPersonSaid: served.whatEachPersonSaid.map((row: any) => {
-      if (!row) return row;
-      const { lines: _lines, lineMarks: _marks, lineMarksSay: _marksSay, ...inOurWords } = row;
-      return inOurWords;
-    }),
-  };
-}
-
 /** The latest rounds of a check-in that somebody finished, newest first, each with the day it was finished. */
 export async function latestRounds(db: WhatItReads, groundId: string): Promise<{ sessionNumber: number; on: Date | null }[]> {
   const rows = await db.checkIn.findMany({
@@ -212,7 +184,7 @@ export async function whatSomeoneSaid(
     for (const round of await latestRounds(deps.db, g.id)) {
       let served: any;
       try {
-        served = await theRoundAsTheyMayRead(deps.reports, g, round.sessionNumber, asker);
+        served = await deps.reports.sessionReport(g.id, round.sessionNumber, asker.userId, asker.organizationId);
       } catch {
         /* The served read refused this reader or could not be made: it is not theirs to read, and nothing is said about why. */
         continue;

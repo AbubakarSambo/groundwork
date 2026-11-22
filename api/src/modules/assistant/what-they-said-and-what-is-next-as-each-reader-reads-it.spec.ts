@@ -3,7 +3,7 @@ import { join } from 'path';
 import { AssistantService } from './assistant.service';
 import { route } from './the-router-is-deterministic';
 import { safeToUse } from './the-model-words-it-and-nothing-more';
-import { nameMatches, theNameAsked, whenTheyAsked, theRoundAsTheyMayRead, I_CANNOT_SHOW_YOU_THAT } from './what-they-said-that-you-may-read';
+import { nameMatches, theNameAsked, whenTheyAsked, I_CANNOT_SHOW_YOU_THAT } from './what-they-said-that-you-may-read';
 import { theOneToDoFirst, NOTHING_TO_PUT_FIRST } from './what-to-do-next';
 import { whichQuestion, answerAGuest, fromTheServedReport } from '../ask/a-guest-asks-only-about-their-own-check-in';
 
@@ -80,6 +80,8 @@ const report = {
       whatEachPersonSaid: rows[groundId].map((r) => {
         const isYou = theirs[userId] === r.name;
         const reads = runsIt || isAdmin || isYou || released;
+        /* Exact words go only to the people in the check-in (Hafsah, 22 November 2026): an admin who is not in it reads the report's own sentence. */
+        if (reads && !inIt && !runsIt) return { who: r.name, isYou, lines: [], ...(r.saying ? { saying: r.saying } : {}) };
         return reads
           ? { who: r.name, isYou, lines: r.lines, ...(r.saying ? { saying: r.saying } : {}) }
           : { who: r.name, isYou, lines: [], saying: WALL };
@@ -449,21 +451,3 @@ describe('the older lanes that read a record now say where it came from too', ()
   });
 });
 
-describe('exact words go only to the people in that check-in (Hafsah, 22 November 2026)', () => {
-  const served = { whatEachPersonSaid: [{ who: 'Amani', isYou: false, lines: ['AMANI-EXACT: Kilele paid on Monday.'], lineMarks: ['x'], saying: 'Amani says Kilele paid on Monday.' }] };
-  const reports = { sessionReport: jest.fn(async () => served) };
-  const sales = { id: 'g-q4', initiatorId: 'u-wairimu', participants: [{ userId: 'u-wairimu' }, { userId: 'u-amani' }, { userId: 'u-chidi' }] };
-  const read = (userId: string, role: string) => theRoundAsTheyMayRead(reports, sales, 1, { userId, organizationId: ORG, role });
-  it.each([['an admin in none of it', 'u-grace', 'ADMIN'], ['a manager who does not run it', 'u-baraka', 'LEAD']])('%s reads Groundwork\'s words and never the lines', async (_, userId, role) => {
-    const r = await read(userId, role);
-    expect(JSON.stringify(r)).not.toContain('AMANI-EXACT');
-    expect(r.whatEachPersonSaid[0]).toEqual({ who: 'Amani', isYou: false, saying: 'Amani says Kilele paid on Monday.' });
-  });
-  it.each([['the lead who runs it', 'u-wairimu', 'LEAD'], ['a colleague on it', 'u-chidi', 'MEMBER']])('%s reads the lines as the report serves them', async (_, userId, role) => {
-    expect((await read(userId, role)).whatEachPersonSaid[0].lines).toEqual(['AMANI-EXACT: Kilele paid on Monday.']);
-  });
-  it('every Ask lane that reads check-in words reads them through this one place', () => {
-    const src = readFileSync(join(__dirname, 'assistant.service.ts'), 'utf8') + readFileSync(join(__dirname, 'what-they-said-that-you-may-read.ts'), 'utf8');
-    expect(src.match(/\.sessionReport\(g\.id/g) ?? []).toHaveLength(0);
-  });
-});

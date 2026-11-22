@@ -54,7 +54,7 @@ import { peersAreNamedOn } from '../reports/peers-are-named';
 import { whatThisReaderCallsEachLabel, noStandInLabelAnywhereIn } from '../reports/a-stand-in-label-never-reaches-a-reader';
 import { howManyAnsweredInWords } from '../reports/the-picture-in-plain-sentences';
 import { WHAT_THEY_SAID_OPENS_WHEN_SHARED } from '../reports/the-session-report';
-import { whatSomeoneSaid, checkInsTheyMayRead, latestRounds, theRoundAsTheyMayRead, I_CANNOT_SHOW_YOU_THAT } from './what-they-said-that-you-may-read';
+import { whatSomeoneSaid, checkInsTheyMayRead, latestRounds, I_CANNOT_SHOW_YOU_THAT } from './what-they-said-that-you-may-read';
 import {
   aDelegateGranted, aDelegateLeftAlone, aDelegateRevoked, aDelegateSaidBack, aRevokeLeftAlone, aRevokeSaidBack,
   grantADelegate, hasAStandingOfTheirOwn, myDelegates, noOneActsForYouCalled, noOneOnYourListIsCalled, NO_ONE_TO_ACT_IS_NAMED, NOT_YOURS_TO_GIVE,
@@ -1197,7 +1197,7 @@ export class AssistantService {
           const [round] = await latestRounds(this.prisma as any, g.id);
           if (!round) continue;
           let served: any;
-          try { served = await theRoundAsTheyMayRead(this.reports, g, round.sessionNumber, asker); } catch { continue; }
+          try { served = await this.reports.sessionReport(g.id, round.sessionNumber, userId, organizationId); } catch { continue; }
           for (const row of (Array.isArray(served?.whatEachPersonSaid) ? served.whatEachPersonSaid : []).slice(0, 6)) {
             const said = (Array.isArray(row?.lines) ? row.lines : []).filter((l: unknown) => typeof l === 'string' && l.trim()).slice(0, 3);
             if (typeof row?.who !== 'string') continue;
