@@ -142,43 +142,16 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     // No "Your share" box: this fixture sends no `yourShare` field, so nothing is drawn.
     expect(screen.queryByText(/Your share/)).toBeNull()
 
-    // Everything else this reader may read is still there, just folded under one name.
-    /* Open, with no fold and no heading to press (Hafsah, 13 November 2026): the rest sits in one plain block. */
-    expect(screen.queryByText('The whole check-in')).toBeNull()
-    expect(document.getElementById('the-whole-check-in')).toBeTruthy()
     /*
-     * SECOND BOARD REVIEW, WORDING: "Everything from this check-in, as before." did not say who it
-     * was from or for - it now names both ("Everything else from this check-in, for everyone in
-     * it."), since this fold holds everybody's work, not only what came before.
+     * Changed 24 November (page audit, row 1, approved by Hafsah): the rest of the board is the lead's. A person in a sales
+     * check-in reads the team picture, "Your deals", "Your share" and "Every check-in" (board-as-participant.txt), and nothing
+     * of the team's below it: not the team's deal grid, not the forecast, not anybody else's deal.
      */
-    /* Changed in batch 2, group 6: the fold's explainer note is gone (the sweep's list); the fold itself stays. */
-    expect(screen.queryByText('Everything else from this check-in, for everyone in it.')).toBeNull()
-    const whole = document.getElementById('the-whole-check-in') as HTMLElement
-    expect(whole).toBeTruthy()
-
-    /*
-     * BOARD REVIEW, SALES PIECE C, ITEM 4: NOT AISHA'S DEAL AGAIN, ANYWHERE ON THIS BOARD.
-     *
-     * This used to assert the opposite - that the whole deal grid, Aisha's row included, was still
-     * there inside the fold. It was wrong to assert, not just wrong to draw: the fold held the
-     * whole team's "Every deal, day by day" grid under its own heading, which for a sales ground
-     * reads "No deals have come up yet" when a reader's own section (just above) already showed
-     * deals - Miriam's own. `TheParticipantsOwnView`'s "Your deals, day by day" is her complete
-     * record of her own work; the team grid added nothing she may read that was not already there,
-     * and the sentence under it was untrue of her own work. A sales ground's participant now gets
-     * no second copy of `workRecords` at all, deal grid or forecast - this is the fix, not a
-     * regression, so the old assertion is replaced rather than kept.
-     */
-    expect(within(whole).queryByText('Greenhill Mart')).toBeNull()
-    expect(within(whole).queryByText('Westgate Deli')).toBeNull()
-    expect(within(whole).queryByText('Every deal, day by day')).toBeNull()
-
-    /*
-     * BOARD REVIEW, SALES PIECE D, ITEM 5: "FORECAST" IS ABOUT THE WHOLE TEAM, SO SHE READS IT
-     * TOO, INSIDE THE FOLD, BESIDE "BY AREA" - it used to be sent to her and drawn nowhere at all.
-     */
-    expect(within(whole).getByText('Where the sales numbers are likely to end up')).toBeTruthy()
-    expect(within(whole).getByText('This quarter')).toBeTruthy()
+    expect(document.getElementById('the-whole-check-in')).toBeNull()
+    expect(screen.queryByText('Greenhill Mart')).toBeNull()
+    expect(screen.queryByText('Every deal, day by day')).toBeNull()
+    expect(screen.queryByText('Where the sales numbers are likely to end up')).toBeNull()
+    expect(screen.getByRole('link', { name: 'Every check-in' })).toBeTruthy()
   })
 
   it('says the picture is shared once the server itself says `teamPicture.shared`, not from a round count, and links to it', async () => {
