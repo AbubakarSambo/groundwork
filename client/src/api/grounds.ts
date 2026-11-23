@@ -737,7 +737,8 @@ export type ReferencesAndResources =
 export type ThePersonsRecordServed = {
   heading: string
   note: string
-  parts: { heading: string; says: string; toChange: string | null; evidence: string[] }[]
+  /** `key` says which part it is (api board/the-persons-record-in-words.ts), so a page places it without reading its heading. */
+  parts: { key?: 'claims' | 'promises' | 'figures' | 'time' | 'blockers' | 'check-ins'; heading: string; says: string; toChange: string | null; evidence: string[] }[]
   coaching: { said: string; since: string }[]
   coachingEmpty: string | null
   /** The person's own page alone. */

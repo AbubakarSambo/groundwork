@@ -11,6 +11,8 @@ import type { ThePersonsRecord, ACoaching, AClaim, APromise } from './the-person
  */
 
 export interface APartOfTheRecord {
+  /** Which part it is, so a page can place it without reading its heading. */
+  key: 'claims' | 'promises' | 'figures' | 'time' | 'blockers' | 'check-ins';
   /** What the part is about, as a heading. */
   heading: string;
   /** What happened, in one or two full sentences. */
@@ -96,6 +98,7 @@ export function theRecordInWords(r: ThePersonsRecord, coaching: readonly ACoachi
       ? `${You(w)} said ${times} that something was sold, paid or signed, and ${s.claims === 1 ? 'it has' : s.claims === 2 ? 'both have' : 'every one has'} proof on file.`
       : `${You(w)} said ${times} that something was sold, paid or signed. ${proven ? `${cap(inWords(proven))} of them ${proven === 1 ? 'has' : 'have'}` : 'None of them has'} proof on file${s.takenBack ? `, and ${w.self ? 'you' : w.first} took ${s.takenBack === 1 ? 'one' : inWords(s.takenBack)} back later` : ''}.`;
     parts.push({
+      key: 'claims',
       heading: `What ${you(w)} said and what shows it`,
       says,
       toChange: (s.onlySaid + s.takenBack >= 2 && proven / s.claims < 0.75) || (s.onlySaid + s.takenBack >= 1 && proven / s.claims < 0.5) ? `Adding the photo, slip or link when ${you(w)} ${w.self ? 'say' : 'says'} something is done would change this.` : null,
@@ -118,6 +121,7 @@ export function theRecordInWords(r: ThePersonsRecord, coaching: readonly ACoachi
       due.length > 1 && s.late ? `${cap(inWords(s.late))} ${s.late === 1 ? 'is' : 'are'} past ${s.late === 1 ? 'its' : 'their'} day with nothing said about ${s.late === 1 ? 'it' : 'them'} yet.` : '',
     ].filter(Boolean);
     parts.push({
+      key: 'promises',
       heading: 'Promises',
       says: bits.join(' '),
       toChange: s.late + s.notDone > kept ? 'Promising less, and saying early when a date will move, would change this.' : s.late ? `Saying what happened to ${s.late === 1 ? 'it' : 'them'} in ${your(w)} next check-in would change this.` : null,
@@ -137,6 +141,7 @@ export function theRecordInWords(r: ThePersonsRecord, coaching: readonly ACoachi
         ? `${saidWhy.length === 1 ? 'One figure' : `${cap(inWords(saidWhy.length))} figures`} ${w.self ? 'you gave' : `${w.first} gave`} changed from one check-in to the next, and ${w.self ? 'you' : w.first} said why.`
         : `${You(w)} put ${putRight.length === 1 ? 'a figure' : 'figures'} right ${w.self ? 'yourself' : 'without being asked'}.`;
     parts.push({
+      key: 'figures',
       heading: 'Figures that changed',
       says,
       toChange: changed.length ? `Saying so ${w.self ? 'yourself' : 'at once'} when a figure changes, with what shows the new one, would change this.` : null,
@@ -153,6 +158,7 @@ export function theRecordInWords(r: ThePersonsRecord, coaching: readonly ACoachi
   if (notNow.length) {
     const talked = notNow.filter((f) => f.sessions.length);
     parts.push({
+      key: 'time',
       heading: `Where ${your(w)} time went`,
       says: talked.length
         ? `${cap(talked.map((f) => f.deal).join(' and '))} cannot buy now, and ${you(w)} talked about ${talked.length === 1 ? 'it' : 'them'} in ${plural(new Set(talked.flatMap((f) => f.sessions)).size, 'check-in')} after that was on record.`
@@ -166,6 +172,7 @@ export function theRecordInWords(r: ThePersonsRecord, coaching: readonly ACoachi
   if (r.blockers.length) {
     const tried = s.blockersTriedFirst;
     parts.push({
+      key: 'blockers',
       heading: 'Blockers',
       says: r.blockers.length === 1
         ? `${You(w)} raised one blocker, and ${tried ? 'said' : 'did not say'} what ${w.self ? 'you had' : 'had been'} tried first.`
@@ -184,6 +191,7 @@ export function theRecordInWords(r: ThePersonsRecord, coaching: readonly ACoachi
   /* Check-ins. */
   if (s.checkInsDue) {
     parts.push({
+      key: 'check-ins',
       heading: `${Your(w)} check-ins`,
       says: theCheckInsSaid(You(w), { done: s.checkInsDone, due: s.checkInsDue, onTime: s.checkInsOnTime, specific: s.checkInsSpecific }, { say: inWords }),
       toChange: s.checkInsDue >= 3 && (s.checkInsDone / s.checkInsDue < 0.8 || s.checkInsOnTime / s.checkInsDue < 0.7 || (s.checkInsDone ? s.checkInsSpecific / s.checkInsDone : 0) < 0.7)

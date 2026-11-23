@@ -1,6 +1,6 @@
 import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { ThatsNotRight } from '@/components/gw/ThatsNotRight'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
@@ -8,7 +8,6 @@ import { reportsApi } from '@/api/reports'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { useSearchParams } from 'react-router-dom'
 import { groundsApi, type MyWork, type ABehaviourRead } from '@/api/grounds'
-import { TheirRecord } from '@/components/gw/TheirRecord'
 import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFinished'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import {
@@ -27,10 +26,10 @@ import {
  * (GET /grounds/:id/my-work), which sends each reader only what they may read: a person is only ever sent their own page, and
  * the lead's view of a person carries no reports of theirs, so nothing here hides anything.
  *
- * NOTHING FROM TODAY'S PAGE IS LOST. What today's My work holds, and what References and resources no longer draws (the targets,
- * the plan as agreed, each person's card and what people are down as doing), is handed in by the calling page as `rest`, and each
- * part is drawn where it belongs on the B7 page (MyWorkPart), by the same code as before. It used to be poured out under the deals,
- * which made the page two and a half times the picture's length (page-look audit, 23 November 2026).
+ * NOTHING FROM TODAY'S PAGE IS LOST. What today's My work holds, and what References and resources no longer draws (the targets
+ * and the plan as agreed), is handed in by the calling page as `rest`, and each part is drawn where it belongs on the B7 page
+ * (MyWorkPart), by the same code as before. Each person's card and what people are down as doing are the lead's, on People and
+ * setup; a member's own page no longer repeats the whole team, which the board already shows (Hafsah, 24 November 2026).
  *
  * WHERE THE PICTURE AND THE PRODUCT DIFFER (listed for Hafsah in docs/pull-request.md): "To improve" and "Late" are said as
  * sentences rather than joined with a colon; the dot between the library footnote's two parts is a comma.
@@ -96,8 +95,14 @@ const VERDICT_DOT: Record<ABehaviourRead['verdict'], EdgeKind | undefined> = {
 
 /**
  * MY WORK, IN THE B7 ORDER, FROM THE BUILDING BLOCKS (the twelve layout rules). The person's name is the page's title, their numbers
- * under it, then the focus, To do, What you achieved, How you're performing, Coaching, their record, Your report, Your check-ins and
- * Your reports side by side, and the deals. What the B7 picture does not show but people use is drawn where it belongs (MyWorkPart).
+ * under it, then the focus, To do, What you achieved, How you're performing, Coaching, Your check-ins and Your reports side by side,
+ * and the deals. What the B7 picture does not show but people use is drawn where it belongs (MyWorkPart).
+ *
+ * THE SEVEN CUTS (Hafsah, 24 November 2026: the page was 8,035 pixels against the picture's 2,882). Their record is not a section of
+ * its own: what it holds about their work is a row each under What you achieved, and the coaching Groundwork gave them and what their
+ * lead praised are under Coaching; how their check-ins went is already in How you're performing and the Your check-ins card. Their
+ * own report is the Your reports card, as B7 draws it; the whole report opens on this page from its "Read", with its "Something here
+ * isn't right", "Download your record" and "Share with everyone".
  */
 function ThePage({ groundId, served, onPerson, rest, onAllYourReports, leadLinks }: {
   groundId: string; served: Served; onPerson: (id: string) => void; rest?: TheRestOfMyWork; onAllYourReports?: () => void; leadLinks: ReactNode
@@ -149,12 +154,12 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports, leadLinks
       {(judged || served.coaching.better.length > 0) && <PartBoundary><Coaching served={served} /></PartBoundary>}
       {part('coaching')}
 
-      {/* THEIR RECORD, AND THE COACHING GROUNDWORK GAVE THEM: only where the server sends it (the direct morning). */}
-      {served.record && <PartBoundary><TheirRecord record={served.record} /></PartBoundary>}
-
-      {/* THE PERSON'S OWN REPORT, HERE (batch 2, group 5): it used to be a page of its own, then a whole-report page. */}
-      {self && !served.reports.private && served.reports.items.length > 0 && <PartBoundary><YourReport groundId={groundId} items={served.reports.items} /></PartBoundary>}
-      {part('report')}
+      {/* THE PERSON'S OWN REPORT, OPENED FROM "READ" (or a link that names it): the whole of it, and what they carry forward. */}
+      {self && !served.reports.private && served.reports.items.length > 0 && (
+        <TheReportYouOpened items={served.reports.items}>
+          {(chosen) => <><PartBoundary><YourReport groundId={groundId} chosen={chosen} /></PartBoundary>{part('report')}</>}
+        </TheReportYouOpened>
+      )}
 
       {/* YOUR CHECK-INS AND YOUR REPORTS, side by side */}
       <Grid columns={2}>
@@ -200,7 +205,8 @@ function YourReportsPanel({ served, self, onAllYourReports }: { served: Served; 
       ) : (
         <>
           <EdgeList label={r.heading}>
-            {r.items.map((x) => (
+            {/* The latest, as B7 draws it; "All your reports" lists every one. */}
+            {r.items.slice(0, 1).map((x) => (
               <EdgeRow
                 key={x.checkInId}
                 reason={null}
@@ -257,15 +263,36 @@ function ToDo({ served, askedOf }: { served: Served; askedOf: string }) {
   )
 }
 
+/**
+ * WHAT THEY ACHIEVED, AND WHAT THEIR RECORD HOLDS ABOUT THEIR WORK. Each part of the record the server sends (what they said and
+ * what shows it, promises, figures that changed, where the time went, blockers, and their other check-ins) is a row here, with its
+ * evidence. How their check-ins went is not repeated: How you're performing and the Your check-ins card say it.
+ */
 function Achieved({ served, heading }: { served: Served; heading: string }) {
   const a = served.achieved
+  const parts = (served.record?.parts ?? []).filter((p) => p.key !== 'check-ins')
+  const across = served.record?.acrossYourCheckIns
+  const lines = (l: string[]) => l.map((x) => <Text key={x} size="secondary" as="p">{x}</Text>)
   return (
     <Section heading={heading} note={a.note || undefined}>
-      {a.items.length === 0 ? <Empty>{a.emptySays}</Empty> : (
+      {a.items.length + parts.length === 0 && !across?.lines.length ? <Empty>{a.emptySays}</Empty> : (
         <EdgeList label={heading}>
           {a.items.map((x, i) => (
             <EdgeRow key={i} kind="ready" reason={null} title={x.text} detail={x.proof} actions={<ThatsNotRight line={x.text} />} />
           ))}
+          {parts.map((p) => (
+            <EdgeRow
+              key={p.heading}
+              reason={null}
+              title={p.heading}
+              detail={<>
+                <Text size="body" as="p">{p.says}</Text>
+                {p.toChange && <Text size="body" as="p"><b>{p.toChange}</b></Text>}
+                {lines(p.evidence)}
+              </>}
+            />
+          ))}
+          {across && across.lines.length > 0 && <EdgeRow reason={null} title={across.heading} detail={lines(across.lines)} />}
         </EdgeList>
       )}
     </Section>
@@ -318,7 +345,12 @@ function Performing({ served, heading }: { served: Served; heading: string }) {
 }
 
 function Coaching({ served }: { served: Served }) {
-  const c = served.coaching
+  /* The coaching Groundwork gave them, and whether it worked, sits with the lead's; what their lead praised sits with Keep doing. */
+  const c = {
+    ...served.coaching,
+    better: [...served.coaching.better, ...(served.record?.coaching ?? []).map((g) => ({ text: g.said, from: g.since }))],
+    keep: [...served.coaching.keep, ...(served.record?.fromYourLead?.lines ?? [])],
+  }
   const judged = served.judgements !== false
   return (
     <Section heading="Coaching">
@@ -370,17 +402,39 @@ function Items({ groundId, served }: { groundId: string; served: Served }) {
   )
 }
 
+type AReportItem = { checkInId: string; when: string }
+
 /**
- * ONE OF YOUR OWN REPORTS, DRAWN ON MY WORK (Hafsah, 4 November, issue 55).
- *
- * The session named in the address (`report`, from a link or "Read" below), or else the latest.
- * The same report the old report page drew (TheCheckInYouJustFinished, as pictured), so nothing
- * in it is lost; only the page around it is gone.
+ * THE REPORT THE ADDRESS NAMES (`report`, from "Read" on the Your reports card or a link to it), drawn whole, with a way to close
+ * it. Nothing is drawn until one is opened: the card says the latest in a line (Hafsah, 24 November 2026). A link naming a report
+ * that is no longer on the card opens the latest.
  */
-function YourReport({ groundId, items }: { groundId: string; items: { checkInId: string; when: string }[] }) {
-  const [searchParams] = useSearchParams()
+function TheReportYouOpened({ items, children }: { items: AReportItem[]; children: (chosen: AReportItem) => ReactNode }) {
+  const [searchParams, setSearchParams] = useSearchParams()
   const asked = searchParams.get('report')
-  const chosen = items.find((r) => r.checkInId === asked) ?? items[0]
+  const chosen = asked ? items.find((r) => r.checkInId === asked) ?? items[0] : null
+  useEffect(() => {
+    if (chosen) document.getElementById('your-report')?.scrollIntoView?.({ block: 'start' })
+  }, [chosen?.checkInId])
+  if (!chosen) return null
+  const close = () => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('report')
+    setSearchParams(next, { replace: true })
+  }
+  return (
+    <div id="your-report">
+      {children(chosen)}
+      <div className="ds-row-actions"><Button kind="quiet" onClick={close}>Close the report</Button></div>
+    </div>
+  )
+}
+
+/**
+ * ONE OF YOUR OWN REPORTS, DRAWN ON MY WORK (Hafsah, 4 November, issue 55). The same report the old report page drew
+ * (TheCheckInYouJustFinished, as pictured), so nothing in it is lost; only the page around it is gone.
+ */
+function YourReport({ groundId, chosen }: { groundId: string; chosen: AReportItem }) {
   const { data: ground } = useQuery({ queryKey: ['ground', groundId], queryFn: () => groundsApi.get(groundId), enabled: !!groundId, retry: false })
   /* The on-time credit, served to the person whose report it is (api engagement/who-answers-and-when.ts). */
   const { data: session } = useQuery({ queryKey: ['session-report', chosen.checkInId], queryFn: () => conversationApi.sessionReport(chosen.checkInId), enabled: !!chosen.checkInId, retry: false })
@@ -395,7 +449,7 @@ function YourReport({ groundId, items }: { groundId: string; items: { checkInId:
   if (!row?.sessionNumber) return null
   const inferences = (groundReport as any)?.inferences
   return (
-    <Section id="your-report" heading="Your report" note={chosen.when}>
+    <Section heading="Your report" note={chosen.when}>
       {session?.onTime && <Text size="secondary" as="p">{session.onTime}</Text>}
       {/* Where the session's own report stands, in the server's sentence, when there is none to draw (where-a-sessions-report-stands.ts). */}
       {session && !session.report && session.state && session.state !== 'ready' && session.says && <p className="ds-text-secondary" role="status">{session.says}</p>}
@@ -413,7 +467,7 @@ function YourReport({ groundId, items }: { groundId: string; items: { checkInId:
   )
 }
 
-/** "Read" opens that session's report above, on this page, rather than on a page of its own. */
+/** "Read" opens that session's report on this page, rather than on a page of its own. */
 function ReadThisOne({ checkInId }: { checkInId: string }) {
   const [searchParams, setSearchParams] = useSearchParams()
   return (
@@ -423,7 +477,6 @@ function ReadThisOne({ checkInId }: { checkInId: string }) {
         const next = new URLSearchParams(searchParams)
         next.set('report', checkInId)
         setSearchParams(next, { replace: true })
-        document.getElementById('your-report')?.scrollIntoView?.({ block: 'start' })
       }}
     >
       Read
