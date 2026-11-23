@@ -1744,8 +1744,8 @@ export function GroundAdminPage() {
         keeps the 600px reading width, centred under the full-width header.
       */}
       <div
-        className={`gw-bd${tab === 'chat' ? ' gwui-ci-tab-body' : ''}`}
-        style={{ maxWidth: tab === 'chat' ? undefined : 1150, width: '100%' }}
+        /* Every tab but the conversation takes the page's one content width (--ds-content, 1150px). */
+        className={`gw-bd${tab === 'chat' ? ' gwui-ci-tab-body' : ' ds-page-in'}`}
       >
 
         {/* OVERVIEW */}
@@ -1941,9 +1941,13 @@ export function GroundAdminPage() {
           <MyWorkPage
             groundId={id!}
             onAllYourReports={() => goTab('report')}
-            rest={
+            onEveryCheckIn={isInitiator ? () => goTab('report') : undefined}
+            onWhoHasAnswered={isInitiator ? () => goTab('checkins') : undefined}
+            rest={(part, self) => (
               <>
-                {viewerIsAParty && (
+                {/* Every check-in and Who has answered are the lead's, drawn by MyWorkPage in the Your check-ins card. */}
+                {(part === 'expected' || part === 'all') && <ContextPage ground={ground} role={isInitiator ? 'lead' : canRunThisGround ? 'admin' : 'party'} viewerUserId={user?.id} only="what-moved-to-my-work" />}
+                {viewerIsAParty && self && (
           <YourWork
             groundId={id!}
             ground={ground}
@@ -1966,22 +1970,12 @@ export function GroundAdminPage() {
               .filter((p: any) => p.userId !== user?.id)
               .map((p: any) => ({ id: p.id, name: personLabel(p), email: p.email }))}
             aTeamReportComes={!!(ground as any)?.aTeamReportComes}
-            /* Both quiet links at the foot: this page's own "report" and "checkins" tabs, unchanged,
-               reached without a visible sub-tab. See the notes on these props in YourWork.tsx. */
-            onSeeEverySession={() => goTab('report')}
-            onSeeRoster={() => goTab('checkins')}
             asTheRestOfMyWork
+            part={part}
           />
                 )}
-                {isInitiator && !viewerIsAParty && (
-                  <div className="gwui-button-row">
-                    <button type="button" className="gwui-plain-link" onClick={() => goTab('report')}>Every check-in</button>
-                    <button type="button" className="gwui-plain-link" onClick={() => goTab('checkins')}>Who has answered</button>
-                  </div>
-                )}
-                <ContextPage ground={ground} role={isInitiator ? 'lead' : canRunThisGround ? 'admin' : 'party'} viewerUserId={user?.id} only="what-moved-to-my-work" />
               </>
-            }
+            )}
           />
         )}
 

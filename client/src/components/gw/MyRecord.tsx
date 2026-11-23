@@ -21,7 +21,6 @@ export interface MyRecordProps {
   /** The check-in, for the objective set for this reader and the parties on it. */
   ground: any
   /** This reader's record, from `/grounds/:id/my-record`. */
-  myRecord: any
   /** How many sessions this check-in plans, for the "near the end" rule. */
   totalSessions: number | null
   /** How many this reader has finished, for the same rule. */
@@ -43,12 +42,11 @@ export interface MyRecordProps {
 export function MyRecord({
   groundId,
   ground,
-  myRecord,
   totalSessions,
   completedCount,
 }: MyRecordProps) {
   return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <>
           {/*
             WHAT IS EXPECTED OF ME IS ON CONTEXT, IN PLAIN VIEW, WITH EVERYBODY ELSE'S.
             
@@ -101,30 +99,8 @@ export function MyRecord({
               ONE-OFF purchase call, so the label was wrong twice over.
               Participants are never charged. The state is real; the price
               was scaffolding. */}
-          {myRecord?.insightsLocked !== false && (
-            <div style={{ background: 'var(--gw-navy)', borderRadius: 10, padding: '18px 20px' }}>
-              {/*
-                THE SECOND TIME THE SAME EMPTY STATE WAS SAID.
-
-                Two inches above this, the private-report card already says "Your private report is
-                not ready yet - it generates once you complete your check-in." This box then said
-                "Complete your first check-in to start building your record", which is the same
-                sentence in a louder colour. The pattern she has named twice: the same absence
-                stated twice, close together.
-
-                What this box is actually for is the question a party cannot otherwise answer -
-                where does she see how specific she has been? She has no Sessions tab; the lead's
-                view of everyone's state is not hers. The answer is this tab, in two places, and now
-                it says so instead of restating the precondition.
-              */}
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>What this page will hold</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: '19px' }}>
-                A line per check-in, each with how specific it was, and a trend across all
-                of them once there is more than one. Both appear here - this is the page where you
-                see how you are being read.
-              </div>
-            </div>
-          )}
+          {/* "What this page will hold" went (journey 4, 23 November 2026): a box that explains the page is the page being wrong
+              (layout rule 6), and the sessions and their specificity it promised are drawn on My work itself. */}
 
             {/*
               WHAT IS EXPECTED OF YOU, AS A STATE, BESIDE YOUR OWN SESSIONS.
@@ -198,13 +174,7 @@ export function MyRecord({
             nowhere else to read them. See WhatYourRecordCanSupport, "Also noticed".
           */}
 
-          {myRecord && !myRecord.insightsLocked && (!myRecord.patterns || myRecord.patterns.length === 0) && (
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', padding: '0 2px' }}>
-              {/* REVIEW ROUND 3, ITEM 5: TWO SENTENCES, NOT A DASH-JOINED FRAGMENT. */}
-              No patterns have surfaced yet. They appear once the same thing has been seen across
-              several check-ins. That is deliberate. One check-in is not a pattern.
-            </div>
-          )}
-        </div>
+          {/* "No patterns have surfaced yet" went with it: an explainer of an empty part, said where nothing is drawn (rules 6 and 10). */}
+        </>
   )
 }

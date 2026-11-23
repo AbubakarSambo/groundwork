@@ -1472,13 +1472,14 @@ export function ContextPage({
   )
 
   if (only === 'what-moved-to-my-work') {
+    /* Each part is a section of My work's own page, so they sit in its column, 32px apart like every other section there. */
     return (
-      <div data-gw-moved-to-my-work>
+      <>
         {partD}
         {partPlan}
         {partF}
         {partH}
-      </div>
+      </>
     )
   }
 
