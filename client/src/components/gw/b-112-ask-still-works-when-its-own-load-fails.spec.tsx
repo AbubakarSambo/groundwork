@@ -74,22 +74,24 @@ describe.each([
     expect(await screen.findByText(/ask didn't load fully/i)).toBeInTheDocument()
     expect(screen.getByText(/nothing you have asked is lost\. It is usually the connection\./i)).toBeInTheDocument()
     const box = screen.getByRole('textbox', { name: /ask a question|ask about/i }) as HTMLTextAreaElement
-    expect(box).not.toBeDisabled()
+    /* UPDATED 23 November (journey 6): the hint no longer waits for the load, so this waits for the box to be ready. */
+    await waitFor(() => expect(box).not.toBeDisabled())
 
     const retry = screen.getByRole('button', { name: 'Try again' })
     fireEvent.click(retry)
     await waitFor(() => expect(askApi.mine).toHaveBeenCalledTimes(2))
     await waitFor(() => expect(screen.queryByText(/ask didn't load fully/i)).toBeNull())
-    expect(await screen.findByPlaceholderText(DATA.caption)).toBeInTheDocument()
+    expect(await screen.findByPlaceholderText(/^Ask (a question|about this check-in)$/)).toBeInTheDocument()
   })
 
   it('a normal load shows the ordinary, working box with no error on screen', async () => {
     vi.mocked(askApi.mine).mockResolvedValue(DATA)
     mount()
-    expect(await screen.findByPlaceholderText(DATA.caption)).toBeInTheDocument()
+    expect(await screen.findByPlaceholderText(/^Ask (a question|about this check-in)$/)).toBeInTheDocument()
     expect(screen.queryByText(/didn't load/i)).toBeNull()
-    const box = screen.getByPlaceholderText(DATA.caption) as HTMLTextAreaElement
-    expect(box).not.toBeDisabled()
+    const box = screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/) as HTMLTextAreaElement
+    /* UPDATED 23 November (journey 6): the hint no longer waits for the load, so this waits for the box to be ready. */
+    await waitFor(() => expect(box).not.toBeDisabled())
     fireEvent.change(box, { target: { value: 'What changed this week?' } })
     vi.mocked(askApi.ask).mockResolvedValue({ blocks: [{ type: 'text', body: 'Nothing new yet.' }] } as any)
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))

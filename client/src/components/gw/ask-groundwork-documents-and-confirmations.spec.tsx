@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { askIsReady } from '@/test/ask-is-ready'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -54,8 +55,8 @@ describe('a text block', () => {
       blocks: [{ type: 'text', body: 'Nothing is recorded as waiting on you.' }],
     })
     panel()
-    await screen.findByPlaceholderText(ABOUT.caption)
-    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'what is stuck' } })
+    await askIsReady()
+    fireEvent.change(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/), { target: { value: 'what is stuck' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText('Nothing is recorded as waiting on you.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull()
@@ -76,8 +77,8 @@ describe('a proposal', () => {
       blocks: [{ type: 'text', body: 'Added.' }],
     })
     panel()
-    await screen.findByPlaceholderText(ABOUT.caption)
-    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'decision: we will drop the pilot' } })
+    await askIsReady()
+    fireEvent.change(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/), { target: { value: 'decision: we will drop the pilot' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText(OFFER)).toBeInTheDocument()
 
@@ -99,8 +100,8 @@ describe('a proposal', () => {
         blocks: [{ type: 'proposal', proposalId: 'pr-new', summary: 'Shall I add the second line?' }],
       })
     panel()
-    await screen.findByPlaceholderText(ABOUT.caption)
-    const input = screen.getByPlaceholderText(ABOUT.caption)
+    await askIsReady()
+    const input = screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/)
 
     fireEvent.change(input, { target: { value: 'note about the first line' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
@@ -126,8 +127,8 @@ describe('a proposal', () => {
       response: { status: 409, data: { message: 'Something newer is waiting on you now, so this one is closed.' } },
     })
     panel()
-    await screen.findByPlaceholderText(ABOUT.caption)
-    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'add a line' } })
+    await askIsReady()
+    fireEvent.change(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/), { target: { value: 'add a line' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await screen.findByText('Shall I add this line?')
     fireEvent.click(screen.getByRole('button', { name: 'Yes' }))
@@ -142,8 +143,8 @@ describe('a refusal', () => {
       blocks: [{ type: 'text', body: 'Only the lead who runs this check-in can confirm a question for someone on it.' }],
     })
     panel()
-    await screen.findByPlaceholderText(ABOUT.caption)
-    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'confirm the question for Ben' } })
+    await askIsReady()
+    fireEvent.change(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/), { target: { value: 'confirm the question for Ben' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText('Only the lead who runs this check-in can confirm a question for someone on it.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull()
@@ -157,15 +158,15 @@ describe('a question that is not yes or no', () => {
       blocks: [{ type: 'text', body: 'How long should it run?' }],
     })
     panel()
-    await screen.findByPlaceholderText(ABOUT.caption)
-    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'setting up context for the sales check-in' } })
+    await askIsReady()
+    fireEvent.change(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/), { target: { value: 'setting up context for the sales check-in' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText('How long should it run?')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'No' })).toBeNull()
 
     // Answered by typing, in the same box - not a picker, not a proposal.
-    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: '12 weeks' } })
+    fireEvent.change(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/), { target: { value: '12 weeks' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(askApi.ask).toHaveBeenLastCalledWith('12 weeks', 'g-sales')
   })
@@ -200,8 +201,8 @@ describe('the upload next step', () => {
     ])
 
     const { container } = panel()
-    await screen.findByPlaceholderText(ABOUT.caption)
-    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'I want to add the Q4 targets sheet' } })
+    await askIsReady()
+    fireEvent.change(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/), { target: { value: 'I want to add the Q4 targets sheet' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 
     const button = await screen.findByRole('button', { name: 'Choose a file' })
@@ -229,8 +230,8 @@ describe('the upload next step', () => {
     ])
 
     const { container } = panel({ pollIntervalMs: 1, pollTimeoutMs: 5 })
-    await screen.findByPlaceholderText(ABOUT.caption)
-    fireEvent.change(screen.getByPlaceholderText(ABOUT.caption), { target: { value: 'add a document' } })
+    await askIsReady()
+    fireEvent.change(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/), { target: { value: 'add a document' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Choose a file' }))
     const file = new File(['x'], 'notes.pdf', { type: 'application/pdf' })

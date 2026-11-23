@@ -406,6 +406,10 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/notfound/NotFoundPage.tsx',
       'components/gw/PageCrash.tsx',
       'components/gw/GroundGone.tsx',
+      /* Journey 6, asking Groundwork a question (23 November 2026). */
+      'components/gw/AskGroundwork.tsx',
+      'components/gw/ui/ChatBar.tsx',
+      'pages/ask/AskPage.tsx',
     ])
   })
 
