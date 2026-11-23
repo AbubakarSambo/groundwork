@@ -76,16 +76,6 @@ export function GroundParticipantPage() {
    */
   const [searchParams, setSearchParams] = useSearchParams()
   const [tab, setTab] = useState<Tab>(() => FROM_TAB_KEY[searchParams.get('tab') ?? ''] ?? 'checkin')
-  /**
-   * B-203: "VIEW YOUR REPORT" IN THE REPORT EMAIL OPENS WITH THE REPORT SHOWING.
-   *
-   * `/grounds/:id/report` (the email link) redirects straight to `?tab=report` - the same address
-   * this tab already keeps in the URL when somebody switches to it from inside the page. Read once,
-   * at the address this page was actually opened at, so only a direct arrival on the report (the
-   * email link, or a bookmark to it) asks `SharedReportForAParty` to open the shared picture already
-   * unfolded and scrolled to - not an ordinary visit to "My work" that happens to switch here.
-   */
-  const [openedDirectlyOnReport] = useState(() => searchParams.get('tab') === 'report')
   const goTab = (t: Tab) => {
     setTab(t)
     const key = TO_TAB_KEY[t]
@@ -892,7 +882,6 @@ export function GroundParticipantPage() {
                   .map((c) => [c.sessionNumber, c.specificityLevel ?? null]),
               )}
               viewerUserId={user?.id}
-              openReportByDefault={openedDirectlyOnReport}
             />
           </Stack>
         )}

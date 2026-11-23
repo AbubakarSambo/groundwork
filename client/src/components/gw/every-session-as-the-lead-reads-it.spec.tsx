@@ -31,10 +31,11 @@ function renderIt(boardRenders = true, onOpenSession = vi.fn(), onOpenBoard = vi
 }
 
 describe('every session, as the lead reads it', () => {
-  it('opens with the prototype heading and the sentence under it', () => {
+  /* Changed 24 November (page audit, row 14, approved by Hafsah): the sentence explaining the list is gone; the heading stays. */
+  it('opens with the prototype heading and no sentence explaining the list', () => {
     renderIt()
     expect(screen.getByRole('heading', { name: 'Every check-in' })).toBeTruthy()
-    expect(document.body.textContent).toContain('Below is the board, then one line for each check-in, newest first. Open a check-in to see its report.')
+    expect(document.body.textContent).not.toContain('Below is the board')
   })
 
   it('puts the board first, as "The board" and "Everything so far"', () => {
