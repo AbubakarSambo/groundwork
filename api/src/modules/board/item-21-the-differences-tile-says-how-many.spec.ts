@@ -19,10 +19,11 @@ const tile = async (reader: readonly [string, string]) => ((await boardAs(setup 
 describe('the Differences tile, as each reader reads it', () => {
   it.each([['Amina, who runs it', AMINA], ['Rukia, who checks in, once it is shared', RUKIA], ['Juma, an admin', JUMA]])('%s reads how many', async (_w, reader) => {
     const t = await tile(reader as readonly [string, string]);
-    expect(t).toEqual(expect.objectContaining({ value: '2', sub: 'The written report reads 2 differences as still open.' }));
+    /* Changed 24 November (page audit): said plainly, without "the written report". */
+    expect(t).toEqual(expect.objectContaining({ value: '2', sub: 'None of them has been settled yet.' }));
   });
   it('one difference that cannot be named reads as before', () => {
     const t = atAGlanceTiles({ agreed: 0, stillOpen: 1, movedOnTargets: null, blocked: 0, waiting: 0, backedPct: null, numberWasSaid: false }).find((x) => x.label === 'Differences');
-    expect(t!.sub).toBe('The written report reads this as still open.');
+    expect(t!.sub).toBe('It has not been settled yet.');
   });
 });
