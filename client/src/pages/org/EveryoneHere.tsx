@@ -99,10 +99,12 @@ export function howManyHere(
    * too long to name individually; a mix of named and unnamed people is still a mix nobody can read
    * apart from the sentence alone, so the number is the only thing that stays true either way.
    */
-  const sentence = (names: string[], few: string, many: string): string | null => {
+  /* `few` is said after "is" or "are"; a pair [one, more] where the rest of the sentence changes with the count too. */
+  const sentence = (names: string[], few: string | [string, string], many: string): string | null => {
     if (names.length === 0) return null
-    if (names.some(isNamePlaceholder)) return `${peopleCount(names.length)} ${names.length === 1 ? 'is' : 'are'} ${few}.`
-    if (names.length <= 3) return `${namesAnd(names)} ${names.length === 1 ? 'is' : 'are'} ${few}.`
+    const said = typeof few === 'string' ? few : names.length === 1 ? few[0] : few[1]
+    if (names.some(isNamePlaceholder)) return `${peopleCount(names.length)} ${names.length === 1 ? 'is' : 'are'} ${said}.`
+    if (names.length <= 3) return `${namesAnd(names)} ${names.length === 1 ? 'is' : 'are'} ${said}.`
     return `${names.length} ${many}.`
   }
   /*
@@ -120,7 +122,8 @@ export function howManyHere(
   const extra = [
     sentence(waitingToBeLetIn, 'waiting to be let in', 'more are waiting to be let in'),
     wasNotSentence(notLetIn),
-    sentence(invitedWithNoAccount, 'invited, with no account yet', 'people are invited, with no account yet'),
+    /* Never "account" (page audit, 24 November 2026, row 15): said as whether they have joined. */
+    sentence(invitedWithNoAccount, ['invited and hasn’t joined yet', 'invited and haven’t joined yet'], 'people are invited and haven’t joined yet'),
     sentence(heldForASeat, 'on a check-in with no seat for them', 'people are on a check-in with no seat for them'),
     overThePlanSays?.trim() || sentence(waitingWithNoCheckIn, 'waiting for a seat on your plan', 'people are waiting for a seat on your plan'),
   ].filter((s): s is string => !!s)
