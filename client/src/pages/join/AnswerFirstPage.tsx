@@ -5,6 +5,11 @@ import { openLinkApi } from '@/api/entry'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 import { Mark } from '@/components/gw/ui'
+import { Button } from '@/components/gw/ui/Button'
+import { Bubble } from '@/components/gw/ui/Bubble'
+import { Composer } from '@/components/gw/ui/Composer'
+import { ConversationCard } from '@/components/gw/ui/ConversationCard'
+import { InTheDesignSystem } from '@/components/gw/ui/the-design-system'
 import { MARKETING_URL } from '@/lib/marketing'
 import { useAuthStore } from '@/stores/auth'
 import { keepTheNumberForWhenTheySignIn } from '@/lib/a-number-given-before-signing-in'
@@ -96,6 +101,7 @@ export function AnswerFirstPage() {
   const [whatYouGave, setWhatYouGave] = useState<WhatYouGave | null>(null)
   const [sentTo, setSentTo] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null)
   /* The last three questions are begun once, however many times the close arrives. */
   const askedRef = useRef(false)
 
@@ -218,15 +224,14 @@ export function AnswerFirstPage() {
     } finally { setBusy(false) }
   }
 
-  const card: React.CSSProperties = {
-    maxWidth: 560, margin: '0 auto', padding: '26px 20px 40px',
-    minHeight: '100dvh', display: 'flex', flexDirection: 'column',
-  }
-  const field: React.CSSProperties = {
-    /* The kit's field (app.css .input), as the check-in's own composer draws it. */
-    width: '100%', padding: '12px 16px', fontSize: 16, border: '1px solid var(--rule2-crisp)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)',
-    fontFamily: 'inherit', outline: 'none',
-  }
+  /* The four steps across the top (answer-without-account.jpg), the current one filled. */
+  const STEPS = ['1. What it’s about', '2. Answering', '3. Who you are', '4. Done']
+  const current = { reading: 0, talking: 1, address: 2, done: 3 }[phase]
+  const steps = (
+    <ol className="ds-steps" aria-label="Where you are">
+      {STEPS.map((label, i) => <li key={label} className={i === current ? 'ds-step ds-step-on' : 'ds-step'} aria-current={i === current ? 'step' : undefined}>{label}</li>)}
+    </ol>
+  )
 
   /*
    * WALKTHROUGH PASS 2, ITEM 4: A DEAD END WITH NO MARK AND NO WAY ON. A link that does not open
@@ -243,179 +248,128 @@ export function AnswerFirstPage() {
    * product they are already using.
    */
   if (problem && !what) return (
-    <div style={{ ...card, justifyContent: 'center', textAlign: 'center' }}>
-      <Mark />
-      {/* B-158: this state had no heading at all, one of five different readings the deep page
-          audit found for the same "a link does not work" state. "That link didn't work" is the
-          prototype's own heading for it (F4-small-states/badlink.txt), used wherever else a link
-          fails; `problem` is the detail sentence underneath it, as LinkProblem.tsx already does. */}
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)', marginTop: 18 }}>That link didn’t work</h1>
-      <p style={{ color: 'var(--gw-sub)', marginTop: 8, lineHeight: 1.5 }}>{problem}</p>
-      {signedIn ? (
-        <p style={{ marginTop: 18, fontSize: 14 }}>
-          <button
-            type="button"
-            onClick={() => navigate('/today')}
-            style={{ color: 'var(--gw-navy)', fontWeight: 700, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}
-          >
-            Go to Today
-          </button>
-        </p>
-      ) : (
-        <p style={{ marginTop: 18, fontSize: 14 }}>
-          <a href="/auth" style={{ color: 'var(--gw-navy)', fontWeight: 700 }}>Sign in</a>
-          {', or '}
-          <a href={MARKETING_URL} style={{ color: 'var(--gw-navy)', fontWeight: 700 }}>go to the Groundwork home page</a>.
-        </p>
-      )}
-    </div>
+    <InTheDesignSystem.Provider value={true}>
+      <div className="ds-alone">
+        <div className="ds-ci">
+          <Mark />
+          <div className="ds-pair">
+            {/* B-158: this state had no heading at all, one of five different readings the deep page
+                audit found for the same "a link does not work" state. "That link didn't work" is the
+                prototype's own heading for it (F4-small-states/badlink.txt), used wherever else a link
+                fails; `problem` is the detail sentence underneath it, as LinkProblem.tsx already does. */}
+            <h1 className="ds-text-title">That link didn’t work</h1>
+            <p className="ds-text-body">{problem}</p>
+          </div>
+          {signedIn ? (
+            <p className="ds-text-body">
+              <button type="button" onClick={() => navigate('/today')} className="ds-link">Go to Today</button>
+            </p>
+          ) : (
+            <p className="ds-text-body">
+              <a href="/auth" className="ds-link">Sign in</a>
+              {', or '}
+              <a href={MARKETING_URL} className="ds-link">go to the Groundwork home page</a>.
+            </p>
+          )}
+        </div>
+      </div>
+    </InTheDesignSystem.Provider>
   )
-  if (!what) return <div style={{ ...card, justifyContent: 'center', textAlign: 'center' }}><p style={{ color: 'var(--gw-muted)' }}>One moment.</p></div>
+  if (!what) return <InTheDesignSystem.Provider value={true}><div className="ds-alone"><p className="ds-empty">One moment.</p></div></InTheDesignSystem.Provider>
 
+  const box = (
+    <>
+      <Composer
+        inputRef={inputRef}
+        value={input}
+        onChange={setInput}
+        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void say() } }}
+        onSend={() => void say()}
+        disabled={busy}
+        sendDisabled={!input.trim()}
+        placeholder={phase === 'address' && step ? PLACEHOLDERS[step] : 'Type your answer'}
+        ariaLabel={phase === 'address' && step ? PLACEHOLDERS[step] : 'Your answer'}
+        sendLabel="Send"
+      />
+      {phase === 'address' && problem && <p role="alert" className="ds-text-secondary ds-ink-con">{problem}</p>}
+      {phase === 'address' && step === 'phone' && (
+        <div className="ds-actions">
+          <Button kind="secondary" disabled={busy} onClick={() => { setTurns(t => [...t, { who: 'them', text: 'Skip' }]); void finish('') }}>Skip</Button>
+        </div>
+      )}
+      {/* "I am done" beside what it does, never a small link under the box (Hafsah, 23 September: "make sure the people can see i'm done"). */}
+      {phase === 'talking' && (
+        <div className="ds-actions">
+          <Button kind="secondary" onClick={askWhoTheyAre}>I am done</Button>
+          {/* What pressing it does, so nobody presses it wondering whether it throws away the
+              answers they have just given. */}
+          <span className="ds-text-meta">Finish and say where to send the report</span>
+        </div>
+      )}
+    </>
+  )
+
+  /*
+   * ON THE DESIGN SYSTEM (journey 2, Hafsah, 23 November 2026), as answer-without-account.jpg lays it out: the four steps across
+   * the top, who asked, the question as the page's title, one line under it, then the conversation in the same card as the
+   * check-in's, with the box to type in pinned at the bottom of the card where a thumb is. Every value is a token.
+   */
   return (
-    <div style={{ background: 'var(--gw-page)', minHeight: '100dvh' }}>
-      <div style={card}>
-        {/*
-          THE BRIEF STOPS EATING A THIRD OF THE PHONE.
-          
-          Measured at 375x812: the heading is 240 of 812 pixels, and it was printed above the
-          conversation on every single turn - a paragraph somebody reads once, permanently occupying
-          thirty per cent of the screen, with the opener restating most of it directly underneath.
-          Hafsah, 23 September 2026: "that page does not seem mobile friedly."
-          
-          It stays whole while they are deciding whether to start, because that is the moment it is
-          for. Once they are answering it folds to one line they can open again.
-        */}
-        {/* The question is the heading, in every phase (Hafsah, 15 November 2026): no caption and no "tap to read it again", it is just there. */}
-          <div style={{ marginBottom: 18 }}>
+    <InTheDesignSystem.Provider value={true}>
+      <div className="ds-alone">
+        <div className="ds-ci">
+          {steps}
+          {/* The question is the heading, in every phase (Hafsah, 15 November 2026): no caption and no "tap to read it again", it is just there. */}
+          <header className="ds-pair">
             {/* U.6 review: the question only where the lead wrote it to be asked; otherwise the
                 check-in's name, as the invitation says it, and when it runs. Never her description. */}
             {what.theQuestion ? (
               <>
                 {/* A sentence, and their name as they gave it (U.6 review). It was a label in capitals,
                     "U6G ASKED", over the question. */}
-                <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: 0 }}>
-                  {what.askedBy ? `${what.askedBy} asked you this.` : 'You have been asked this.'}
-                </p>
-                <h1 style={{ fontSize: 20, margin: '6px 0 0', lineHeight: 1.3 }}>{what.theQuestion}</h1>
+                <p className="ds-text-secondary">{what.askedBy ? `${what.askedBy} asked you this.` : 'You have been asked this.'}</p>
+                <h1 className="ds-text-title">{what.theQuestion}</h1>
               </>
             ) : (
-              <h1 style={{ fontSize: 20, margin: 0, lineHeight: 1.3 }}>
+              <h1 className="ds-text-title">
                 {what.askedBy ? `${what.askedBy} invited you to “${what.groundLabel}”` : `You were invited to “${what.groundLabel}”`}
               </h1>
             )}
-            {phase === 'reading' && what.schedule && <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: '6px 0 0' }}>{what.schedule}</p>}
-          </div>
-
-        {phase === 'reading' && (
-          <div>
-            <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px' }}>
-              {takes ? `It takes ${inASentence(takes)}. ` : ''}You will get the report at the end.
-            </p>
+            {phase === 'reading' && what.schedule && <p className="ds-text-secondary">{what.schedule}</p>}
+            {phase === 'reading' && <p className="ds-text-body">{takes ? `It takes ${inASentence(takes)}. ` : ''}You will get the report at the end.</p>}
             {/* The reason, above the box, when the first answer did not start the conversation. */}
-            {problem && (
-              <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 14, marginTop: 12, lineHeight: 1.5 }}>{problem}</div>
-            )}
-          </div>
-        )}
+            {phase === 'reading' && problem && <p role="alert" className="ds-text-body ds-ink-con">{problem}</p>}
+          </header>
 
-        {(phase === 'talking' || phase === 'address') && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {turns.map((t, i) => (
-              <div key={i} style={{
-                alignSelf: t.who === 'them' ? 'flex-end' : 'flex-start',
-                maxWidth: '86%', padding: '10px 14px', borderRadius: 14, fontSize: 14, lineHeight: 1.5,
-                background: t.who === 'them' ? 'var(--gw-navy)' : 'white',
-                color: t.who === 'them' ? '#fff' : 'var(--gw-text)',
-                border: t.who === 'them' ? 'none' : '1px solid var(--gw-border)',
-              }}>{t.text}</div>
-            ))}
-            <div ref={endRef} />
-          </div>
-        )}
-
-        {/* Said only where the page opened straight into a conversation nobody can see the start of. */}
-        {phase === 'talking' && turns.length === 0 && (
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', marginBottom: 12 }}>
-            You had already started this. Everything you said is saved - carry on below, or press
-            &ldquo;I am done&rdquo; to finish.
-          </div>
-        )}
-
-        {(phase === 'reading' || phase === 'talking' || phase === 'address') && (
-          /*
-            PINNED TO THE BOTTOM, AND FINISHING IS NOT HIDDEN UNDER IT.
-            
-            Two faults on a phone. The composer scrolled away with the page, so after a few answers
-            the box you type in was below the fold and the transcript had to be scrolled past to
-            reach it. And "I am done" was a thirteen-pixel underlined link BENEATH the input - the
-            one place a phone keyboard covers - on the control Hafsah specifically asked to be
-            visible: "make sure the people can see i'm done".
-            
-            So the whole thing sticks to the bottom of the viewport, the transcript scrolls under
-            it, and the two actions sit on one row: finishing on the left where a thumb rests,
-            sending on the right. `env(safe-area-inset-bottom)` keeps it clear of the home bar.
-          */
-          <div style={{
-            position: 'sticky', bottom: 0, marginTop: 14,
-            paddingTop: 10, paddingBottom: `calc(10px + env(safe-area-inset-bottom, 0px))`,
-            background: 'var(--gw-page)', borderTop: '1px solid var(--gw-border)',
-          }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-              <textarea
-                id="open-answer" value={input} rows={1}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); say() } }}
-                placeholder={phase === 'address' && step ? PLACEHOLDERS[step] : 'Type your answer'} style={{ ...field, flex: 1, resize: 'none', minWidth: 0, maxHeight: 140 }}
-              />
-              <button onClick={say} disabled={busy || !input.trim()} aria-label="Send"
-                style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 18, cursor: 'pointer', flexShrink: 0, opacity: busy || !input.trim() ? .5 : 1 }}>
-                ↑
-              </button>
-            </div>
-            {phase === 'address' && problem && (
-              <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 13, marginTop: 8 }}>{problem}</div>
-            )}
-            {phase === 'address' && step === 'phone' && (
-              <div style={{ marginTop: 10 }}>
-                <button className="btn sec" disabled={busy} onClick={() => { setTurns(t => [...t, { who: 'them', text: 'Skip' }]); void finish('') }}>Skip</button>
-              </div>
-            )}
-            {phase === 'talking' && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, gap: 10 }}>
-              <button className="btn sec" onClick={askWhoTheyAre}
-                >
-                I am done
-              </button>
-              {/* What pressing it does, so nobody presses it wondering whether it throws away the
-                  answers they have just given. */}
-              <span style={{ fontSize: 12, color: 'var(--gw-muted)', textAlign: 'right', lineHeight: '17px' }}>
-                Finish and say where to send the report
-              </span>
-            </div>
-            )}
-          </div>
-        )}
-
-        {phase === 'done' && (
-          <div style={{ marginTop: 20 }}>
-            {/* "on the record" is our word for what the product does, and she read it five times
-                in one conversation. See words-we-do-not-use on the API. */}
-            <h2 style={{ fontSize: 18, margin: '0 0 8px' }}>That is everything. Thank you.</h2>
-            <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px', margin: 0 }}>
-              {sentTo
-                ? `The report goes to ${sentTo} at the end.`
-                : 'Your answers are saved.'}
-            </p>
-            {/*
-              AND WHAT THEY GAVE, WHICH IS THE ONLY THING THIS PRODUCT GIVES BACK BEFORE THE REPORT.
-              Somebody who followed a link once has no board, no next session and nothing else to
-              read; this is the whole of what they get for five minutes of their own work.
-            */}
-            <WhatYouGaveUs it={whatYouGave} />
-          </div>
-        )}
+          {phase === 'done' ? (
+            <section className="ds-pair">
+              {/* "on the record" is our word for what the product does, and she read it five times
+                  in one conversation. See words-we-do-not-use on the API. */}
+              <h2 className="ds-text-section">That is everything. Thank you.</h2>
+              <p className="ds-text-body">{sentTo ? `The report goes to ${sentTo} at the end.` : 'Your answers are saved.'}</p>
+              {/* AND WHAT THEY GAVE, WHICH IS THE ONLY THING THIS PRODUCT GIVES BACK BEFORE THE REPORT.
+                  Somebody who followed a link once has no board, no next session and nothing else to
+                  read; this is the whole of what they get for five minutes of their own work. */}
+              <WhatYouGaveUs it={whatYouGave} />
+            </section>
+          ) : (
+            /* Before the first answer the box sits under the question on its own (nothing to read yet, so no empty card); from
+               the first answer on, the conversation is the check-in's card with the box pinned at its foot. */
+            phase === 'reading' ? <div className="ds-ci-foot ds-ci-foot-alone">{box}</div> : (
+            <ConversationCard header={null} footer={box}>
+              {/* Said only where the page opened straight into a conversation nobody can see the start of. */}
+              {phase === 'talking' && turns.length === 0 && (
+                <p className="ds-text-secondary">
+                  You had already started this. Everything you said is saved. Carry on below, or press “I am done” to finish.
+                </p>
+              )}
+              {turns.map((t, i) => <Bubble key={i} mine={t.who === 'them'}>{t.text}</Bubble>)}
+              <div ref={endRef} />
+            </ConversationCard>
+            )
+          )}
+        </div>
       </div>
-    </div>
+    </InTheDesignSystem.Provider>
   )
 }
