@@ -137,13 +137,21 @@ const THE_FRAME_IS_NOT_READ = new Set(['participants', 'title', 'groundId', 'myP
 
 export function withoutOtherPeoplesDeals(board: Record<string, any>, me: string, othersDeals: readonly string[], namesIt: (text: string, deal: string) => boolean): Record<string, any> {
   if (!othersDeals.length) return board;
+  const isMine = (o: any) => !!o && typeof o === 'object' && !Array.isArray(o) && (o.fromParticipantId === me || o.onParticipantId === me || o.ownerParticipantId === me || o.participantId === me);
+  /*
+   * Whether something names another person's customer. The reader's own rows inside it are not read for this: they are walled
+   * field by field below. Amani's board lost its whole deal grid, her three deals with it, because her own "Mama Njeri Duka"
+   * says "Duka", which starts Sade's "Duka Bora", and the section holding her rows was dropped as if it were Sade's (page audit,
+   * 24 November, row 1). My work reads the same board, so it said "You have no deals on the board yet." too.
+   */
   const named = (v: unknown): boolean => {
     if (typeof v === 'string') return othersDeals.some((d) => namesIt(v, d));
     if (Array.isArray(v)) return v.some(named);
-    if (v && typeof v === 'object') return Object.values(v).some(named);
+    if (v && typeof v === 'object') return !isMine(v) && Object.values(v).some(named);
     return false;
   };
-  const isMine = (o: any) => !!o && typeof o === 'object' && !Array.isArray(o) && (o.fromParticipantId === me || o.onParticipantId === me || o.ownerParticipantId === me || o.participantId === me);
+  /* What the reader's own row is (a wait's thing, a deal's customer) stays: it is theirs, whatever another customer's name it shares a word with. */
+  const whatItIs = new Set(['what', 'id', 'name']);
   const walk = (v: any): any => {
     if (Array.isArray(v)) {
       return v.filter((x) => isMine(x) || !named(x)).map(walk);
@@ -154,7 +162,7 @@ export function withoutOtherPeoplesDeals(board: Record<string, any>, me: string,
       for (const [k, x] of Object.entries(v)) {
         if (typeof x === 'string') {
           /* In a wait the reader is in, what is waited for stays; another line naming somebody else's customer does not. */
-          if (named(x) && !(mine && (k === 'what' || k === 'id'))) { out[k] = null; continue; }
+          if (named(x) && !(mine && whatItIs.has(k))) { out[k] = null; continue; }
           out[k] = x;
         } else out[k] = walk(x);
       }
