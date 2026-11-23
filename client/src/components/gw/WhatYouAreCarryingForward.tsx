@@ -64,7 +64,7 @@ export function WhatYouAreCarryingForward({
               to people four check-ins in, beside "4 of 5 done" (journey 4, 23 November 2026). */}
           {mySoloReport?.report ? (
             <Section heading="What you are carrying forward" note="From your own check-in only.">
-            /*
+            {/*
               REVIEW ROUND 3, ITEM 5: THE DARK NAVY CARD IS GONE. Every other card on My work
               (and the prototype's own my-record.jpg) sits on white with a thin border; this one
               alone was a dark, high-contrast box that read as a different kind of thing - a
@@ -72,7 +72,7 @@ export function WhatYouAreCarryingForward({
               the page. `SoloReportBody`'s `on="light"` draws its labels for a light background
               instead (still `on="dark"` by default, unchanged, where the lead's roster shows a
               shared solo report nested in its own dark row).
-            */
+            */}
             <Panel>
               <SoloReportBody report={mySoloReport.report as Record<string, unknown>} on="light" />
               <div className="ds-row-actions">
