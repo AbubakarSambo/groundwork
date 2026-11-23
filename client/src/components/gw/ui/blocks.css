@@ -132,10 +132,11 @@
 .ds-list { margin: 0; padding-left: var(--ds-space-16); }
 .ds-list > li + li { margin-top: var(--ds-space-8); }
 
-/* ── THE CONVERSATION (B3, check-in-start.jpg): one column, the way back above one card, the card ─
-   holding the header, the messages and the box to type in. Used by the check-in, the page between
-   check-ins and the answer-without-an-account page. */
-.ds-ci { width: 100%; max-width: var(--ds-conversation); margin: 0 auto; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--ds-space-16); }
+/* ── THE CONVERSATION (B3, check-in-start.jpg): the way back above one card, the card holding the header, the ──────
+   messages and the box to type in. Used by the check-in, the page between check-ins and the answer link. FULL WIDTH
+   beside the side rail, like Slack (Hafsah, batch 2, group 5, item 3; confirmed 24 November 2026 over the prototype's
+   560px column). Only the answer link, which has no side rail, keeps the 560px column (.ds-alone below). */
+.ds-ci { width: 100%; margin: 0; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--ds-space-16); }
 .ds-ci-back { align-self: flex-start; }
 /* With the way back above it, the conversation is the whole screen (focus), so it keeps the page's own room above and below. */
 .ds-ci-alone { padding: var(--ds-page-top) 0; box-sizing: border-box; }
@@ -185,7 +186,7 @@
 .ds-step-on { background: var(--ds-navy); color: var(--ds-on-ink); box-shadow: none; }
 /* A page that is only the conversation, with nothing around it (a link opened from a phone camera). */
 .ds-alone { height: 100dvh; overflow-y: auto; box-sizing: border-box; padding: var(--ds-page-top) var(--ds-page-side) calc(var(--ds-space-16) + env(safe-area-inset-bottom, 0)); background: var(--ds-paper); display: flex; flex-direction: column; }
-.ds-alone > .ds-ci { gap: var(--ds-space-32); }
+.ds-alone > .ds-ci { gap: var(--ds-space-32); max-width: var(--ds-conversation); margin: 0 auto; }
 /* The box on its own, before a conversation has a card to sit in. */
 .ds-ci-foot-alone { border: var(--ds-line) solid var(--ds-rule); border-radius: var(--ds-corner); }
 /* Something that went wrong, said in the one red (rule: red only for a real problem). */
