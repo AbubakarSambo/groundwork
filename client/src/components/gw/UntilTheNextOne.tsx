@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { groundsApi } from '@/api/grounds'
 import { Composer } from './ui/Composer'
+import { InTheDesignSystem } from './ui/the-design-system'
 import { theNextOne, WRITE_ANYTHING_YOU_WANT_ME_TO_REMEMBER } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { whereAConversationLives } from '@/pages/grounds/ground-tabs'
 
@@ -61,8 +62,10 @@ export function UntilTheNextOne({ groundId, myCheckIns, theLeadChecksInWhenSheCh
   }
 
   return (
-    <div className="gwui-until-next" data-testid="until-the-next-one">
-      {!theLeadChecksInWhenSheChooses && !next.openId && next.says && <p className="gwui-until-next-line">{next.says}</p>}
+    /* Under the finished conversation, in the card's footer (journey 2): the line about the next one, the box, and what was kept. */
+    <InTheDesignSystem.Provider value={true}>
+    <div className="ds-pair" data-testid="until-the-next-one">
+      {!theLeadChecksInWhenSheChooses && !next.openId && next.says && <p className="ds-text-secondary">{next.says}</p>}
       <Composer
         value={draft}
         onChange={setDraft}
@@ -75,20 +78,21 @@ export function UntilTheNextOne({ groundId, myCheckIns, theLeadChecksInWhenSheCh
         sendLabel="Send"
       />
       {waiting.length > 0 && (
-        <div data-testid="kept-for-next-time">
-          <p className="gwui-until-next-line">
+        <div className="ds-pair" data-testid="kept-for-next-time">
+          <p className="ds-text-secondary">
             {theLeadChecksInWhenSheChooses
               ? `I kept ${waiting.length === 1 ? 'what you wrote' : 'everything you wrote'} here, and I will ask you about it when you check in again.`
               : `I kept ${waiting.length === 1 ? 'what you wrote' : 'everything you wrote'} here, and your next check-in will ask you about it.`}
           </p>
-          {waiting.map(n => <p key={n.id} className="gwui-until-next-line">“{n.text}”</p>)}
+          {waiting.map(n => <p key={n.id} className="ds-text-secondary">“{n.text}”</p>)}
         </div>
       )}
       {theLeadChecksInWhenSheChooses && (
-        <p className="gwui-until-next-line">
-          <button type="button" className="gwui-plain-link" onClick={() => checkIn.mutate()} disabled={busy}>Check in again</button>
+        <p className="ds-text-secondary">
+          <button type="button" className="ds-link" onClick={() => checkIn.mutate()} disabled={busy}>Check in again</button>
         </p>
       )}
     </div>
+    </InTheDesignSystem.Provider>
   )
 }

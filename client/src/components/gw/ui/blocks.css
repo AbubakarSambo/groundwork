@@ -132,6 +132,64 @@
 .ds-list { margin: 0; padding-left: var(--ds-space-16); }
 .ds-list > li + li { margin-top: var(--ds-space-8); }
 
+/* ── THE CONVERSATION (B3, check-in-start.jpg): one column, the way back above one card, the card ─
+   holding the header, the messages and the box to type in. Used by the check-in, the page between
+   check-ins and the answer-without-an-account page. */
+.ds-ci { width: 100%; max-width: var(--ds-conversation); margin: 0 auto; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--ds-space-16); }
+.ds-ci-back { align-self: flex-start; }
+/* With the way back above it, the conversation is the whole screen (focus), so it keeps the page's own room above and below. */
+.ds-ci-alone { padding: var(--ds-page-top) 0; box-sizing: border-box; }
+.ds-ci-card { flex: 1 1 auto; min-height: calc(var(--ds-conversation) - var(--ds-space-32) * 4); display: flex; flex-direction: column; background: var(--ds-surface); border: var(--ds-line) solid var(--ds-rule); border-radius: var(--ds-corner); overflow: hidden; }
+.ds-ci-head { display: flex; justify-content: space-between; align-items: center; gap: var(--ds-space-16); padding: var(--ds-space-8) var(--ds-space-16); min-height: var(--ds-tap); border-bottom: var(--ds-line) solid var(--ds-rule); }
+.ds-ci-head-words { min-width: 0; padding: var(--ds-space-8) 0; }
+.ds-ci-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--ds-space-16); display: flex; flex-direction: column; gap: var(--ds-space-16); }
+.ds-ci-banner { padding: var(--ds-space-8) var(--ds-space-16); border-bottom: var(--ds-line) solid var(--ds-rule); background: var(--ds-att-soft); display: flex; flex-wrap: wrap; align-items: center; gap: var(--ds-space-8) var(--ds-space-16); }
+.ds-ci-foot { padding: var(--ds-space-8) var(--ds-space-16); border-top: var(--ds-line) solid var(--ds-rule); background: var(--ds-paper); display: flex; flex-direction: column; gap: var(--ds-space-8); }
+/* A bubble: Groundwork's on the chat colour at the left, the person's in ink at the right. */
+.ds-bub { max-width: 82%; padding: var(--ds-space-8) var(--ds-space-16); border-radius: var(--ds-corner); font-family: var(--ds-font-ui); font-size: var(--ds-text-body); line-height: var(--ds-lh-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ds-bub-them { align-self: flex-start; background: var(--ds-chat); color: var(--ds-ink); border-bottom-left-radius: 0; }
+.ds-bub-me { align-self: flex-end; background: var(--ds-ink); color: var(--ds-on-ink); border-bottom-right-radius: 0; }
+.ds-bub-waiting { opacity: 0.5; }
+.ds-bub > p { margin: 0; }
+/* A list that shows its bullets (the page's reset takes them off every list). */
+.ds-list-bullets { list-style: disc; }
+/* Text a person wrote, with its own line breaks kept. */
+.ds-keep-lines { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* What the person can press to answer: chips, each a tap tall. */
+.ds-chips { display: flex; flex-wrap: wrap; gap: var(--ds-space-8); }
+.ds-chips-stacked { flex-direction: column; align-items: flex-start; }
+.ds-chip { min-height: var(--ds-tap); padding: 0 var(--ds-space-16); border: 0; border-radius: calc(var(--ds-tap) / 2); background: var(--ds-surface); box-shadow: inset 0 0 0 var(--ds-line) var(--ds-rule2); font-family: var(--ds-font-ui); font-size: var(--ds-text-body); line-height: var(--ds-lh-body); color: var(--ds-ink); text-align: left; display: inline-flex; align-items: center; cursor: pointer; }
+.ds-chip:disabled { cursor: not-allowed; color: var(--ds-muted); }
+/* The box to type in: "+", the field and send on one row, each a tap tall. */
+.ds-composer { position: relative; display: flex; align-items: flex-end; gap: var(--ds-space-8); }
+.ds-composer-field { flex: 1 1 auto; min-width: 0; min-height: var(--ds-tap); max-height: calc(var(--ds-tap) * 3); padding: var(--ds-space-8) var(--ds-space-16); border: var(--ds-line) solid var(--ds-rule2); border-radius: var(--ds-corner); background: var(--ds-surface); color: var(--ds-ink); font-family: var(--ds-font-ui); font-size: var(--ds-text-body); line-height: var(--ds-lh-body); resize: none; box-sizing: border-box; }
+.ds-composer-field:focus { outline: var(--ds-line-on) solid var(--ds-act-b); outline-offset: 0; }
+.ds-btn-square { width: var(--ds-tap); padding: 0; flex: 0 0 auto; }
+.ds-composer-menu { position: absolute; bottom: calc(100% + var(--ds-space-8)); left: 0; z-index: 2; display: flex; flex-direction: column; background: var(--ds-surface); border: var(--ds-line) solid var(--ds-rule); border-radius: var(--ds-corner); padding: var(--ds-space-8) 0; }
+.ds-composer-menu > * { min-height: var(--ds-tap); padding: 0 var(--ds-space-16); display: flex; align-items: center; background: none; border: 0; font-family: var(--ds-font-ui); font-size: var(--ds-text-body); color: var(--ds-ink); text-align: left; cursor: pointer; white-space: nowrap; }
+.ds-composer-menu > *:hover { background: var(--ds-band); }
+/* A mark beside a line in a list of what was written down. */
+.ds-row-marked { grid-template-columns: var(--ds-space-16) minmax(0, 1fr) auto; }
+.ds-row-mark { align-self: start; padding-top: var(--ds-space-8); display: flex; }
+/* A link written as a button, inline in text. */
+.ds-link { background: none; border: 0; padding: 0; font: inherit; color: var(--ds-navy); cursor: pointer; text-decoration: underline; }
+.ds-link:disabled { color: var(--ds-muted); cursor: not-allowed; }
+/* A sheet that comes up from the bottom over the conversation (paste text, say what a document shows). */
+.ds-sheet-over { position: fixed; inset: 0; z-index: 9100; background: color-mix(in srgb, var(--ds-ink) 40%, transparent); display: flex; align-items: flex-end; justify-content: center; }
+.ds-sheet { width: 100%; max-width: var(--ds-conversation); background: var(--ds-surface); border-radius: var(--ds-corner) var(--ds-corner) 0 0; padding: var(--ds-space-16); display: flex; flex-direction: column; gap: var(--ds-space-16); box-sizing: border-box; }
+.ds-sheet .ds-composer-field { width: 100%; }
+.ds-sheet-tall { min-height: calc(var(--ds-tap) * 4); }
+/* Steps across the top of a page a person moves through (the answer link: what it is about, answering, who you are, done). */
+.ds-steps { display: flex; flex-wrap: wrap; gap: var(--ds-space-8); margin: 0; padding: 0; list-style: none; }
+.ds-step { min-height: var(--ds-tap); padding: 0 var(--ds-space-16); border-radius: calc(var(--ds-tap) / 2); box-shadow: inset 0 0 0 var(--ds-line) var(--ds-rule2); display: inline-flex; align-items: center; font-family: var(--ds-font-ui); font-size: var(--ds-text-secondary); line-height: var(--ds-lh-secondary); color: var(--ds-ink); }
+.ds-step-on { background: var(--ds-navy); color: var(--ds-on-ink); box-shadow: none; }
+/* A page that is only the conversation, with nothing around it (a link opened from a phone camera). */
+.ds-alone { height: 100dvh; overflow-y: auto; box-sizing: border-box; padding: var(--ds-page-top) var(--ds-page-side) calc(var(--ds-space-16) + env(safe-area-inset-bottom, 0)); background: var(--ds-paper); display: flex; flex-direction: column; }
+.ds-alone > .ds-ci { gap: var(--ds-space-32); }
+/* The box on its own, before a conversation has a card to sit in. */
+.ds-ci-foot-alone { border: var(--ds-line) solid var(--ds-rule); border-radius: var(--ds-corner); }
+/* Something that went wrong, said in the one red (rule: red only for a real problem). */
+.ds-ink-con { color: var(--ds-con); }
 /* ── BAR: a figure against its whole, drawn in SVG units so it needs no size of its own (rule 7) ─ */
 .ds-bar { display: block; width: 100%; height: var(--ds-space-16); }
 .ds-bar .whole { fill: var(--ds-rule); }
@@ -182,4 +240,12 @@
   .ds-table.ds-table-stack td, .ds-table.ds-table-stack th.ds-table-rowhead { border: 0; padding: 0; text-align: left; }
   .ds-table-stack td + td { margin-top: var(--ds-space-8); }
   .ds-table-stack td[data-label]::before { content: attr(data-label); display: block; font-size: var(--ds-text-meta); line-height: var(--ds-lh-meta); color: var(--ds-muted); }
+  .ds-ci-card { border-radius: 0; border-left: 0; border-right: 0; }
+  .ds-ci-alone { padding-bottom: 0; }
+  .ds-ci-alone > .ds-ci-back { padding: 0 var(--ds-page-side); }
+  .ds-row-marked { grid-template-columns: var(--ds-space-16) minmax(0, 1fr); column-gap: var(--ds-space-16); }
+  .ds-row-marked > .ds-row-actions { grid-column: 2; }
+  .ds-bub { max-width: 92%; }
+  /* On a phone only the step you are on ("2. Answering"), so the question and the conversation keep the screen. */
+  .ds-step:not(.ds-step-on) { display: none; }
 }

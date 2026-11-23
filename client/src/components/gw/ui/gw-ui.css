@@ -746,9 +746,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   input.gwui-fs-13:not([type='checkbox']):not([type='radio']),
   input.gwui-fs-13-5:not([type='checkbox']):not([type='radio']),
   textarea.gwui-fs-13,
-  textarea.gwui-fs-13-5,
-  .gwui-ci-sheet-textarea,
-  .gwui-ci-assessment-textarea { font-size: 16px; }
+  textarea.gwui-fs-13-5 { font-size: 16px; }
 }
 
 /* ── NOTE / EMPTY (prototype: .note, an empty sentence, a locked door) ────── */
@@ -1638,21 +1636,10 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 /* A banner between the header and the scrolling conversation: a clarification notice, or that the
    session failed to open. */
-.gwui-ci-banner-info { background: var(--gw-blue-bg); border-bottom: 1px solid var(--gw-blue-b); padding: 8px 16px; font-size: 13px; color: var(--gw-navy); line-height: 20px; }
-.gwui-ci-banner-warn { padding: 12px 16px; background: var(--gw-amber-bg); border-bottom: 1px solid var(--gw-amber-b); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
-.gwui-ci-banner-warn-text { font-size: 13px; color: var(--gw-amber-t); line-height: 18px; }
-.gwui-ci-banner-warn-btn { padding: 4px 12px; border-radius: 8px; background: var(--gw-amber-t); color: var(--gw-white); font-size: 13px; font-weight: 700; border: none; cursor: pointer; font-family: inherit; flex-shrink: 0; line-height: 20px;}
-.gwui-ci-banner-warn-btn[disabled] { opacity: .6; }
 
 /* "What this check-in is about" link, above the first turn. */
 
 /* The read-only recap of an earlier session (correcting it). */
-.gwui-ci-prior { border: 1px dashed var(--gw-border); border-radius: 8px; padding: 8px 12px; margin-bottom: 4px; background: var(--gw-bg); }
-.gwui-ci-prior-label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--gw-muted); margin-bottom: 8px; line-height: 20px;}
-.gwui-ci-prior-list { display: flex; flex-direction: column; gap: 8px; opacity: .72; }
-.gwui-ci-prior-bubble { max-width: 85%; font-size: 13px; line-height: 20px; color: var(--gw-text); border: 1px solid var(--gw-border); border-radius: 8px; padding: 8px 8px; }
-.gwui-ci-prior-bubble-mine { align-self: flex-end; background: var(--gw-blue-bg); }
-.gwui-ci-prior-bubble-theirs { align-self: flex-start; background: var(--gw-white); }
 
 /* The waiting dots in an assistant bubble, and the note once it has taken a while. */
 
@@ -1672,12 +1659,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* "Finish my check-in now", once enough has been said. */
 
 /* Declining the session, and confirming it first. */
-.gwui-ci-settled-box { background: var(--gw-white); border: 1px solid var(--gw-border); border-radius: 8px; padding: 16px 16px; }
-.gwui-ci-settled-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-.gwui-ci-settled-body { font-size: 13px; color: var(--gw-sub); line-height: 21px; }
 .gwui-ci-back-link { font-size: 13px; color: var(--gw-sub); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; line-height: 20px;}
-.gwui-ci-confirm-box { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b); border-radius: 8px; padding: 16px 16px; }
-.gwui-ci-confirm-title { font-size: 14px; font-weight: 700; color: var(--gw-amber-t); margin-bottom: 4px; }
 
 /* "You have finished": the note about where the two reports live, and the row of links under it. */
 .gwui-ci-finished-note { max-width: 460px; margin: 12px auto 0; font-size: 13px; color: var(--gw-sub); line-height: 21px; text-align: center; }
@@ -1691,57 +1673,19 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ci-footer-link { background: none; border: none; padding: 0; font-size: 13px; color: var(--gw-navy); cursor: pointer; font-family: inherit; text-decoration: underline; line-height: 20px;}
 
 /* The "+" menu's own two choices and the privacy line under them. */
-.gwui-ci-attach-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--gw-text); background: none; border: none; width: 100%; text-align: left; font-family: inherit; }
 .gwui-ci-attach-note { padding: 4px 12px 8px; font-size: 13px; color: var(--gw-sub); line-height: 19px; border-top: 1px solid var(--gw-border); margin-top: 4px; }
 
 /* The two bottom sheets (paste text, what a document shows). */
-.gwui-ci-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 9100; display: flex; align-items: flex-end; justify-content: center; }
-.gwui-ci-sheet { background: var(--gw-white); border-radius: 14px 14px 0 0; padding: 16px 16px 32px; width: 100%; max-width: 560px; }
-.gwui-ci-sheet-handle { width: 36px; height: 4px; border-radius: 8px; background: var(--gw-border); margin: 0 auto 16px; }
-.gwui-ci-sheet-title { font-size: 13px; font-weight: 700; color: var(--gw-text); margin-bottom: 4px; line-height: 20px;}
-.gwui-ci-sheet-note { font-size: 13px; color: var(--gw-sub); margin-bottom: 12px; line-height: 20px; }
-.gwui-ci-sheet-label { display: block; font-size: 13px; color: var(--gw-sub); margin-bottom: 4px; line-height: 20px;}
-.gwui-ci-sheet-field { width: 100%; padding: 8px 12px; font-size: 13px; border: 1px solid var(--gw-border); border-radius: 8px; font-family: inherit; outline: none; box-sizing: border-box; margin-bottom: 8px; line-height: 20px;}
-.gwui-ci-sheet-textarea { width: 100%; resize: none; min-height: 140px; padding: 8px 12px; font-size: 13px; line-height: 20px; border: 1px solid var(--gw-border); border-radius: 8px; font-family: inherit; outline: none; box-sizing: border-box; margin-bottom: 8px; }
-.gwui-ci-sheet-textarea-short { min-height: 80px; }
-.gwui-ci-sheet-actions { display: flex; gap: 8px; }
-.gwui-ci-sheet-cancel { padding: 8px 16px; border-radius: 8px; background: none; border: 1px solid var(--gw-border); color: var(--gw-sub); font-size: 13px; cursor: pointer; font-family: inherit; line-height: 20px;}
-.gwui-ci-sheet-submit { flex: 1; padding: 8px 16px; border-radius: 8px; background: var(--gw-navy); color: var(--gw-white); font-size: 13px; font-weight: 700; border: none; cursor: pointer; font-family: inherit; line-height: 20px;}
-.gwui-ci-sheet-submit[disabled] { cursor: not-allowed; opacity: .5; }
 
 /* A document's "what this suggests / what I will do with it" card, and its own correction form. */
-.gwui-ci-assessment { border: 1px solid var(--gw-border); border-radius: 8px; padding: 12px 12px; background: var(--gw-white); max-width: 82%; align-self: flex-start; }
-.gwui-ci-assessment-title { font-size: 13px; font-weight: 700; color: var(--gw-navy); margin-bottom: 8px; line-height: 20px;}
-.gwui-ci-assessment-label { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-sub); margin-bottom: 4px; line-height: 20px;}
-.gwui-ci-assessment-list { margin: 0 0 8px; padding-left: 16px; font-size: 13px; line-height: 21px; }
-.gwui-ci-assessment-list-last { margin: 0; }
-.gwui-ci-assessment-link { margin-top: 8px; font-size: 13px; color: var(--gw-navy); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; padding: 0; line-height: 20px;}
-.gwui-ci-assessment-textarea { width: 100%; padding: 8px 8px; font-size: 13px; border: 1px solid var(--gw-border); border-radius: 8px; font-family: inherit; outline: none; box-sizing: border-box; resize: vertical; margin-bottom: 8px; line-height: 20px;}
-.gwui-ci-assessment-actions { display: flex; gap: 8px; }
-.gwui-ci-assessment-save { padding: 8px 12px; border-radius: 8px; background: var(--gw-navy); color: var(--gw-white); border: none; cursor: pointer; font-size: 13px; font-weight: 700; font-family: inherit; line-height: 20px;}
-.gwui-ci-assessment-save[disabled] { opacity: .6; }
-.gwui-ci-assessment-cancel { padding: 8px 12px; border-radius: 8px; background: none; color: var(--gw-sub); border: 1px solid var(--gw-border); cursor: pointer; font-size: 13px; font-family: inherit; line-height: 20px;}
 
 /* The end card (check-in-end-card.jpg): "What is now in your record", "Why answering matters",
    "What happens next". */
-.gwui-ci-endcard { display: grid; gap: 12px; padding: 4px 0 8px; }
-.gwui-ci-endcard-box { border: 1px solid var(--gw-border); border-radius: 12px; padding: 12px 16px; background: var(--gw-white); }
-.gwui-ci-endcard-heading { margin: 0 0 8px; font-size: 14px; font-weight: 700; color: var(--gw-text); }
-.gwui-ci-endcard-body { margin: 0; font-size: 14px; line-height: 22px; color: var(--gw-text); }
-.gwui-ci-endcard-list { list-style: none; margin: 0; padding: 0; }
-.gwui-ci-endcard-row { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; }
-.gwui-ci-endcard-row + .gwui-ci-endcard-row { border-top: 1px solid var(--gw-border); }
-.gwui-ci-endcard-markcol { width: 16px; flex-shrink: 0; padding-top: 3px; }
-.gwui-ci-endcard-line { display: block; font-size: 14px; font-weight: 700; color: var(--gw-text); line-height: 20px; }
-.gwui-ci-endcard-how { display: block; font-size: 13px; color: var(--gw-sub); line-height: 19px; margin-top: 2px; }
 /* GROUP 3 REVIEW, BATCH B: a real <ul> of <li>, but Tailwind's preflight resets every list to
    `list-style:none`, so this read with no marker at all - the prototype's own "What happens
    next" (s44.js) types a literal "• " before each line. `list-style: disc` restores the bullet
    this list already had room for (padding-left:18px), rather than switching to a hand-typed
    character. */
-.gwui-ci-endcard-next { list-style: disc; margin: 0; padding-left: 16px; display: grid; gap: 4px; }
-.gwui-ci-endcard-next > li { display: list-item; }
-.gwui-ci-endcard-actions { display: grid; gap: 8px; }
 
 /* The page frame itself: the composer pinned to the bottom of the viewport, the card centred and
    capped at 600px, same as the prototype's `.ci-focus`. */
@@ -2466,10 +2410,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ctx-actions > .gwui-menu .gwui-menu-pop { min-width: min(320px, calc(100vw - 32px)); }
 
 /* THE END CARD, LIGHT (sales-first.md, section 5): the next opening as one line, and the fold. */
-.gwui-ci-endcard-row { align-items: flex-start; }
-.gwui-ci-endcard-text { flex: 1; min-width: 0; }
-.gwui-ci-endcard-nextopens { font-weight: 700; }
-.gwui-ci-endcard-more-body { display: grid; gap: 12px; }
 /* THE DONE PAGE'S "FOR TOMORROW" (sales-first.md, section 5), the soft green panel it had as "That's saved". */
 .gwui-done-tomorrow { background: var(--gw-green-bg); border: 1px solid var(--gw-green-b); border-radius: 12px; padding: 16px 16px; display: grid; gap: 8px; }
 .gwui-done-tomorrow-heading { margin: 0; font-size: 14px; font-weight: 700; color: var(--gw-green-t); line-height: 23px;}
@@ -2533,10 +2473,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* The card on its own (a conversation opened without a header) sits directly in the shell, with side room. */
 .gwui-page-shell > .gwui-ci-tab-body { padding: 0 clamp(0px, 3vw, 48px) 12px; }
 .gwui-ci-in-tab, .gwui-ci-in-tab-frame { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.gwui-ci-in-tab .ci-focus { max-width: none; width: 100%; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.gwui-ci-in-tab .ci-card { height: auto; flex: 1; min-height: 360px; }
-.gwui-ci-in-tab .ci-b > .bub { max-width: min(82%, 640px); }
-.gwui-ci-in-tab .ci-b > :not(.bub) { max-width: 720px; width: 100%; }
 @media (max-width: 640px) {
   .gwui-page-shell:has(.gwui-ci-tab-body) { height: calc(100dvh - var(--gw-bottom-nav, 0px)); }
   .gwui-ci-tab-body { padding: 0; margin-left: -18px; margin-right: -18px; width: auto; } /* full width on a phone, past the page's 18px sides */
@@ -2546,8 +2482,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* The end's one pop-up: "Done. Your report is in My work." Closing it leaves the person where they are. */
 
 /* Under a finished conversation: one quiet line about the next one, and the box to add something. */
-.gwui-until-next { display: grid; gap: 4px; }
-.gwui-until-next-line { margin: 0; padding: 8px 16px 0; font-size: 14px; line-height: 21px; color: var(--gw-sub); }
 
 /* ── TABLE (Table.tsx; the scenario boards of docs/prototype/screens/G1-example-check-ins/) ────────────────
    An open table: hairline rows (`--gw-border`) in the board's own white panel, column names 13px muted, cells 14px, a

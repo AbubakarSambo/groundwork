@@ -60,60 +60,66 @@ export function TheEndCard({
   const record = (engine?.inYourRecord ?? []).filter(l => typeof l?.says === 'string' && l.says.trim())
   const next = (engine?.next ?? []).filter(l => typeof l === 'string' && l.trim())
 
+  /*
+   * ON THE DESIGN SYSTEM (journey 2, Hafsah, 23 November 2026), in check-in-end-card.jpg's order: one card holding what goes in the
+   * record, each line a row with its mark on the left and "That's not right" as a link on its right (rule 9); then when the next
+   * one opens, as one line, and what happens next, as one short list; then the one main button. Every value is a token (blocks.css).
+   */
   return (
-    <section aria-label="What I wrote down" className="gwui-ci-endcard">
+    <section aria-label="What I wrote down" className="ds-card">
       {record.length === 0 && (
-        <p className="gwui-ci-endcard-body">
+        <p className="ds-text-body">
           {beingWritten
             ? 'I am still writing down what you said. It takes a few seconds.'
             : <>
                 {engine
                   ? 'I did not find anything in your answers to write down yet.'
                   : 'I could not load what I wrote down.'}
-                {' '}If something is missing,{' '}<button type="button" className="gwui-plain-link" onClick={() => onChange()} disabled={finishing}>tell me</button>.
+                {' '}If something is missing,{' '}<button type="button" className="ds-link" onClick={() => onChange()} disabled={finishing}>tell me</button>.
               </>}
         </p>
       )}
       {record.length > 0 && (
-        <div className="gwui-ci-endcard-box">
-          {/* The approved rename of "1. What is now in your record" (sales-first.md). One short list, each line marked, as the prototype draws it. */}
-          <h2 className="gwui-ci-endcard-heading">What goes in your record</h2>
-          <ul className="gwui-ci-endcard-list">
+        <>
+          {/* The approved rename of "1. What is now in your record" (sales-first.md). */}
+          <h2 className="ds-text-card">What goes in your record</h2>
+          <ul className="ds-rows">
             {record.map((l, i) => (
-              <li key={i} className="gwui-ci-endcard-row">
-                <span className="gwui-ci-endcard-markcol"><ProofMark mark={l.mark} /></span>
-                <span className="gwui-ci-endcard-text">
-                  <span className="gwui-ci-endcard-line">{l.says}</span>
-                  {l.how && <span className="gwui-ci-endcard-how">{l.how}</span>}
-                  <button type="button" className="gwui-plain-link" onClick={() => onChange(l.says)} disabled={finishing}>{THATS_NOT_RIGHT}</button>
-                </span>
+              <li key={i} className="ds-row ds-row-marked">
+                <span className="ds-row-mark"><ProofMark mark={l.mark} /></span>
+                <div className="ds-row-main ds-pair">
+                  <p className="ds-text-body">{l.says}</p>
+                  {l.how && <p className="ds-text-meta">{l.how}</p>}
+                </div>
+                <div className="ds-row-actions">
+                  <button type="button" className="ds-btn ds-btn-link" onClick={() => onChange(l.says)} disabled={finishing}>{THATS_NOT_RIGHT}</button>
+                </div>
               </li>
             ))}
           </ul>
-        </div>
+        </>
       )}
 
-      {nextOpens && <p className="gwui-ci-endcard-body gwui-ci-endcard-nextopens">{nextOpens}</p>}
+      {/* When the next one opens is one line, said once, not a bullet (sales-first.md, section 5). */}
+      {nextOpens && <p className="ds-text-body">{nextOpens}</p>}
 
       {next.length > 0 && (
-        <div className="gwui-ci-endcard-more-body">
-          <h3 className="gwui-ci-endcard-heading">What happens next</h3>
-          <ul className="gwui-ci-endcard-next">
-            {next.map((l, i) => <li key={i} className="gwui-ci-endcard-body">{l}</li>)}
+        <>
+          <h3 className="ds-text-card">What happens next</h3>
+          <ul className="ds-list ds-list-bullets ds-text-body">
+            {next.map((l, i) => <li key={i}>{l}</li>)}
           </ul>
-        </div>
+        </>
       )}
 
       {othersCanSeeWhatYouSay === false && whoCanReadWhatYouSay && (
-        <p className="gwui-ci-endcard-body">{whoCanReadWhatYouSay}</p>
+        <p className="ds-text-secondary">{whoCanReadWhatYouSay}</p>
       )}
 
       {finishing && whileFinishing}
-      <div className="gwui-ci-endcard-actions">
-        <Button kind="primary" wide onClick={onFinish} disabled={finishing}>
-          {finishing ? 'Saving…' : 'That’s right, finish'}
-        </Button>
-      </div>
+      <Button kind="primary" wide onClick={onFinish} disabled={finishing}>
+        {finishing ? 'Saving…' : 'That’s right, finish'}
+      </Button>
     </section>
   )
 }

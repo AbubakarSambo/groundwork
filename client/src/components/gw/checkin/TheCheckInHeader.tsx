@@ -1,4 +1,5 @@
 import '@/components/gw/ui/gw-ui.css'
+import { useTheDesignSystem } from '@/components/gw/ui/the-design-system'
 
 /**
  * THE CHECK-IN'S HEADER (B3, docs/prototype/screens/B3-the-check-in/check-in-start.txt).
@@ -30,6 +31,19 @@ export function TheCheckInHeader({
   onBack?: () => void
   backTitle?: string
 }) {
+  /* On a rebuilt page (journey 2, 23 November 2026), as check-in-start.jpg draws it: the name as the card's title, one meta line
+     under it, and Pause as a link on the right. The way back is the link above the card (ConversationCard's `back`). */
+  if (useTheDesignSystem()) {
+    return (
+      <div className="ds-ci-head">
+        <div className="ds-ci-head-words">
+          <h1 className="ds-text-card">{title}</h1>
+          {underTitle && <p className="ds-text-meta">{underTitle}</p>}
+        </div>
+        {onEnd && <button type="button" onClick={onEnd} className="ds-btn ds-btn-link">{endLabel}</button>}
+      </div>
+    )
+  }
   return (
     <div className="ci-h">
       <div>
