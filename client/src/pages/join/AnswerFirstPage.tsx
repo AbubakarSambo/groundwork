@@ -288,7 +288,7 @@ export function AnswerFirstPage() {
         disabled={busy}
         sendDisabled={!input.trim()}
         placeholder={phase === 'address' && step ? PLACEHOLDERS[step] : 'Type your answer'}
-        ariaLabel={phase === 'address' && step ? PLACEHOLDERS[step] : 'Your answer'}
+        ariaLabel="Your answer"
         sendLabel="Send"
       />
       {phase === 'address' && problem && <p role="alert" className="ds-text-secondary ds-ink-con">{problem}</p>}
@@ -335,10 +335,16 @@ export function AnswerFirstPage() {
                 {what.askedBy ? `${what.askedBy} invited you to “${what.groundLabel}”` : `You were invited to “${what.groundLabel}”`}
               </h1>
             )}
-            {phase === 'reading' && what.schedule && <p className="ds-text-secondary">{what.schedule}</p>}
-            {phase === 'reading' && <p className="ds-text-body">{takes ? `It takes ${inASentence(takes)}. ` : ''}You will get the report at the end.</p>}
-            {/* The reason, above the box, when the first answer did not start the conversation. */}
-            {phase === 'reading' && problem && <p role="alert" className="ds-text-body ds-ink-con">{problem}</p>}
+            {phase === 'reading' && (
+              <>
+                {what.schedule && <p className="ds-text-secondary">{what.schedule}</p>}
+                <p className="ds-text-body">{takes ? `It takes ${inASentence(takes)}. ` : ''}You will get the report at the end.</p>
+                {/* The reason, above the box, when the first answer did not start the conversation. */}
+                {problem && (
+                  <p role="alert" className="ds-text-body ds-ink-con">{problem}</p>
+                )}
+              </>
+            )}
           </header>
 
           {phase === 'done' ? (
