@@ -52,7 +52,6 @@ export const OWN_SPACING_SIZE_AND_COLOUR_PER_FILE: Record<string, number> = {
   'components/gw/the-shared-picture-a-party-reads.tsx': 21,
   'components/gw/TheAnchorBoardSections.tsx': 11,
   'components/gw/TheCheckInYouJustFinished.tsx': 100,
-  'components/gw/TheFiveThingsThatMakeItCheckable.tsx': 15,
   'components/gw/TheIdeasFromYourTeam.tsx': 1,
   'components/gw/TheJudgement.tsx': 14,
   'components/gw/TheLeadsNote.tsx': 1,
