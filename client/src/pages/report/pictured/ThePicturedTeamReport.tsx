@@ -1,4 +1,5 @@
 import { theZoneDatesAreIn } from '@/lib/a-date-reads-the-same-everywhere'
+import { namesToCallAmong } from '@/lib/names-that-tell-people-apart'
 import { ThatsNotRight } from '@/components/gw/ThatsNotRight'
 import { useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useState } from 'react'
@@ -80,8 +81,10 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
   const lastIn = mine.sort((a, c) => String(c.completedAt).localeCompare(String(a.completedAt)))[0] ?? null
   const lastInName = lastIn ? firstName(((ground?.participants ?? []) as Any[]).find((p) => p.id === lastIn.participantId)?.user?.firstName) : ''
   const counting: Any[] = rep.counting ?? []
+  /* Each person by first name, and by the whole name where somebody else in this check-in has the same first name (page audit, 24 November, rows 9 and 11). */
+  const callThem = namesToCallAmong([...counting.map((c) => c.who), ...((b?.participants ?? []) as Any[]).map((p) => p.name)])
   const answered = counting.filter((c) => c.answered)
-  const notIn = counting.filter((c) => !c.answered).map((c) => firstName(c.who))
+  const notIn = counting.filter((c) => !c.answered).map((c) => callThem(c.who))
   const confidence = rep.confidence
 
   /* What moved this session: each deal somebody spoke about on the session's day, with its stages. */
@@ -253,7 +256,7 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
               <div className="pb-two pb-sides">
                 {(d.positions ?? []).map((x: Any) => (
                   <div key={x.who}>
-                    <p className="pb-side-h">{x.who === myName || x.who === 'You' ? 'You' : firstName(x.who)}</p>
+                    <p className="pb-side-h">{x.who === myName || x.who === 'You' ? 'You' : callThem(x.who)}</p>
                     <p className="gwui-panel-text">{`“${x.view}”`}</p>
                   </div>
                 ))}
@@ -328,8 +331,8 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
             <div className="pb-row pb-row-person-did" key={p.who}>
               {/* team-report.jpg: a short summary, and each person opens to what they said in their own words. */}
               {teamsDay
-                ? <button type="button" className="gwui-plain-link pb-person-open" aria-expanded={opened === p.who} onClick={() => setOpened(opened === p.who ? null : p.who)}><b>{p.isYou ? 'You' : firstName(p.who)}</b></button>
-                : <b>{p.isYou ? 'You' : firstName(p.who)}</b>}
+                ? <button type="button" className="gwui-plain-link pb-person-open" aria-expanded={opened === p.who} onClick={() => setOpened(opened === p.who ? null : p.who)}><b>{p.isYou ? 'You' : callThem(p.who)}</b></button>
+                : <b>{p.isYou ? 'You' : callThem(p.who)}</b>}
               {/* Quality pass, 18 October, T-6 and T-7: the server's summary in the third person, marked as the legend below says. */}
               <span>
                 {teamsDay && p.mark && <span className={`pb-dot ${p.mark === 'proven' ? 'pb-dot-proof' : 'pb-dot-said'} pb-dot-inline`} role="img" aria-label={p.mark === 'proven' ? 'Proven' : 'Only someone’s word'} />}
@@ -347,7 +350,7 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
         <p className="pb-foot">Short summaries. Open a person to see what they said, in their own words.</p>
         {teamsDay && opened && ((rep.whatEachPersonSaid ?? []) as Any[]).filter((p) => p.who === opened).map((p) => (
           <Panel key={p.who}>
-            <h3 className="pb-card-h">{`${p.isYou ? 'You' : firstName(p.who)}, in ${p.isYou ? 'your' : 'their'} own words`}</h3>
+            <h3 className="pb-card-h">{`${p.isYou ? 'You' : callThem(p.who)}, in ${p.isYou ? 'your' : 'their'} own words`}</h3>
             {((p.lines ?? []) as string[]).map((l, i) => <p className="gwui-panel-text" key={i}>{`“${l}”`}</p>)}
           </Panel>
         ))}

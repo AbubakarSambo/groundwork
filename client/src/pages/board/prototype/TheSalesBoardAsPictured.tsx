@@ -13,6 +13,7 @@
  * who may read what.
  */
 import { Fragment, useMemo, useState, type ReactNode } from 'react'
+import { namesToCallAmong } from '@/lib/names-that-tell-people-apart'
 import { Section, Panel, EdgeList, EdgeRow, Button, Tag, Table, Empty } from '@/components/gw/ui'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -36,6 +37,8 @@ type Any = any
 export { THE_BOARD_ONLY_CHANGES } from '../TheBoardFrame'
 
 const firstName = (n: string | null | undefined) => (n ?? '').trim().split(/\s+/)[0] || ''
+/* Each person by first name, and by the whole name where somebody else on the check-in has the same first name (page audit, 24 November, row 11). */
+const callThemOn = (b: Any) => namesToCallAmong(((b?.participants ?? []) as Any[]).map((p) => p?.name))
 const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
 const inWords = (n: number) => (n >= 0 && n < NUMBER_WORDS.length ? NUMBER_WORDS[n] : String(n))
 const DAY = 86_400_000
@@ -410,7 +413,7 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
               /* What their work shows, never the day they were last in: that is what the squares beside it say. */
               const tag = aTagForTheWork(reason, dealRows.filter((d) => d.ownerParticipantId === r.participantId), today, r.workTag)
               return {
-                who: <Link to={theirPage(groundId, r.participantId)}>{firstName(r.who)}</Link>,
+                who: <Link to={theirPage(groundId, r.participantId)}>{callThemOn(b)(r.who)}</Link>,
                 line: r.line,
                 tag: tag ? { tag: tag.word, tone: tag.tone === 'proven' ? 'proven' : tag.tone === 'attention' ? 'attention' : 'plain' } : '',
                 squares: <TenSquares squares={lastTen(b, r.participantId)} />,
@@ -501,7 +504,7 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
             onPanel={false}
             limit={50}
             columns={[{ key: 'who', header: 'Who', rowHeader: true, width: '20%' }, { key: 'squares', header: 'The last 10 sessions' }]}
-            rows={gridRows.map((r) => ({ who: firstName(r.name), squares: <TenSquares squares={lastTen(b, r.participantId)} /> }))}
+            rows={gridRows.map((r) => ({ who: callThemOn(b)(r.name), squares: <TenSquares squares={lastTen(b, r.participantId)} /> }))}
           />
         </Section>
       )}
@@ -532,7 +535,7 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
               <Section heading="Coaching, and whether it changed anything" note="Judged by what changed in the weeks after.">
                 <div className="ds-grid ds-grid-3">
                   {coaching.map((c) => (
-                    <Panel as="section" key={c.participantId} heading={firstName(c.who)}>
+                    <Panel as="section" key={c.participantId} heading={callThemOn(b)(c.who)}>
                       {[...(c.probe ?? []), ...(c.encourage ?? [])].map((l: string) => <p key={l} className="ds-text-secondary">{l}</p>)}
                     </Panel>
                   ))}

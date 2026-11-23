@@ -39,7 +39,8 @@ import { theBoardForThisKind } from './each-kind-gets-its-own-board';
 import { theBoardsOwnReadFor } from './the-boards-own-read';
 import { theGlanceAsThisReaderMayReadIt } from '../grounds/what-a-manager-needs-at-a-glance';
 import { theNextStepTheyGave, howARecordIsKnown, theRecordsMark, whatHappensNext } from './what-happens-next-to-a-record';
-import { whereThisTargetStands, theHeadlineQuestion, theDirectionToReadIn, type ATeamAim } from './the-headline-and-where-each-target-stands';
+import { namesToCallAmong } from '../../common/names-that-tell-people-apart';
+import { whereThisTargetStands, theHeadlineQuestion, theDirectionToReadIn, type ATeamAim, type AHeadline } from './the-headline-and-where-each-target-stands';
 import { whereThisIsHeading } from './where-this-is-heading';
 import { whoTheEndingIsAbout } from '../resolution/who-the-ending-is-about';
 import { readWhatMayBeRelevant, whatWasSaidNotRelevant, NOT_RELEVANT_KEY, type SomethingThatMayBeRelevant } from './what-may-be-relevant';
@@ -447,6 +448,31 @@ export class BoardService {
     if (!served || (served.board !== 'the collections board' && served.board !== 'the loans board')) return {};
     const board = await theCollectionsBoardFor(this.prisma, ground.id, reader, now).catch(() => null);
     return board ? { collections: board } : {};
+  }
+
+  /*
+   * THE HEADLINE QUESTION, SAID AS A PERSON WOULD ASK IT (page audit, 24 November, rows 9 and 11). The question is put together from
+   * the lead's own words for the aim, and an aim written as a whole sentence came out as "Will we reach each person on the team builds
+   * a waitlist of 15 shops by 31 December?", on the board and the report alike. The engine's question is the draft; the model says it
+   * as a plain question through the same wording pass and guard as every worded line on the board (every number and name kept, the
+   * draft shipped on refusal), worded once by the warm-up and kept, so opening the board never asks the model (decision 7).
+   */
+  private async theQuestionInPlainWords(headline: AHeadline, mayAsk: boolean): Promise<AHeadline> {
+    try {
+      const [worded] = await wordedByTheModel(
+        [{ key: 'question', text: headline.question }],
+        rememberedCompose(this.prisma, mayAsk
+          ? (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])
+          /* Kept lines only: nothing new is worded, and nothing is written, by opening. */
+          : async () => null, mayAsk),
+      );
+      const question = String(worded?.text ?? '').trim();
+      /* Still a question, or the engine's own stands. */
+      return question.endsWith('?') ? { ...headline, question } : headline;
+    } catch (err: any) {
+      this.logger?.warn?.(`Wording the headline question failed, shipping the engine's words: ${err?.message}`);
+      return headline;
+    }
   }
 
   async get(
@@ -2731,6 +2757,8 @@ export class BoardService {
           const wait = theWaitOf.get(row.participantId);
           return wait ? { ...row, line: `${String(row.line ?? '').trim()} ${wait}`.trim() } : row;
         };
+        /* By first name, and by the whole name where somebody else on the check-in has the same first name (page audit, 24 November, row 11). */
+        const callThem = namesToCallAmong(((ground.participants ?? []) as any[]).map((p) => [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || p?.nameGiven));
         out.eachPersonToday = (out.eachPersonToday as any[]).map((row) => withTheWait((() => {
           const c = today.get(row.participantId);
           const before = last.get(row.participantId);
@@ -2739,7 +2767,7 @@ export class BoardService {
               ? theirLine((said as any[]).filter((l) => l.checkInId === before.id).map((l) => ({ text: cleanText(String(l.text ?? '')), type: l.type ?? null, createdAt: l.createdAt })), deals.filter((d) => d.ownerParticipantId === row.participantId).map((d) => String(d.name ?? '')))
               : null;
             const on = aDaySaidInFull(before.answeredAt);
-            const first = String(row.who ?? '').trim().split(/\s+/)[0] || 'They';
+            const first = callThem(row.who) || 'They';
             const shortDay = new Intl.DateTimeFormat('en-GB', { timeZone: zone, day: 'numeric', month: 'short' }).format(before.answeredAt).replace('Sept', 'Sep');
             return { ...row, line: words ? `On ${on}, ${first} said, “${words}”` : `${first} last checked in on ${on}.`, checkedInToday: false, lastIn: shortDay };
           }
@@ -2754,7 +2782,7 @@ export class BoardService {
             ? theirLine((said as any[]).filter((l) => l.checkInId === c.id).map((l) => ({ text: cleanText(String(l.text ?? '')), type: l.type ?? null, createdAt: l.createdAt })), deals.filter((d) => d.ownerParticipantId === row.participantId).map((d) => String(d.name ?? '')))
             : null;
           /* What they said today is worded as said, by name, as their last check-in's line is: their word, never a fact the board states (Hafsah, 4 November 2026). */
-          const first = String(row.who ?? '').trim().split(/\s+/)[0] || 'They';
+          const first = callThem(row.who) || 'They';
           return { ...row, line: line ? `${first} said, “${line}”` : CHECKED_IN_TODAY, checkedInToday: true };
         })()));
       }
@@ -3651,7 +3679,7 @@ export class BoardService {
         });
         const leadFirst = (ground.participants as any[]).find((p) => p.id === theLeadsRow)?.user?.firstName ?? null;
         const headline = theHeadlineQuestion(aims, deadlineOf(ground as any), now, { askedBy: isInitiator ? 'you' : leadFirst });
-        if (headline) out.headline = headline;
+        if (headline) out.headline = await this.theQuestionInPlainWords(headline, !!opts.mayWordNewLines);
       }
       /*
        * WHERE THIS IS HEADING (request 108 d). To whoever runs the check-in (the lead and the admin who set it
