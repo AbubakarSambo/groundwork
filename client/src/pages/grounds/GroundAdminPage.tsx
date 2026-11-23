@@ -5,6 +5,7 @@ import { scrollToId } from '@/lib/scroll-to'
 import { whenItRunsOut, sayHowLongIsLeft } from '@/lib/when-it-runs-out'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { hasDoneThisSession, whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
+import { theCountOf } from '@/lib/the-one-count'
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -1472,8 +1473,15 @@ export function GroundAdminPage() {
     const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
     return lead ? personLabel(lead) : null
   })()
+  /*
+   * WHO THIS SESSION COUNTS IS THE ONE COUNT'S (the-one-count.ts). The lead checks in when she chooses, so a session she has not answered
+   * does not wait on her, and her row said "You have not checked in for this check-in yet." beside "You have checked in for 2 of the 12
+   * sessions." (page audit, 24 November, row 2). Somebody the count leaves out of this session has no line about it.
+   */
+  const thisSessionsCount = theCountOf(ground, clockRound)
   const whoIsInThisParties = (ground.participants ?? [])
     .filter((p: any) => !p.managingOnly)
+    .filter((p: any) => !thisSessionsCount || thisSessionsCount.onTheCheckIn.includes(p.id) || thisSessionsCount.answered.includes(p.id))
     .map((p: any) => {
       /* The session the header names and counts (`clockRound`, the server's own clock), so a row never says "You have not
          checked in for this session yet" about a different session than the header's count (Hafsah, 30 October 2026). */
