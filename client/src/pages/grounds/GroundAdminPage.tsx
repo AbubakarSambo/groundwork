@@ -1941,8 +1941,10 @@ export function GroundAdminPage() {
           <MyWorkPage
             groundId={id!}
             onAllYourReports={() => goTab('report')}
-            onEveryCheckIn={isInitiator ? () => goTab('report') : undefined}
-            onWhoHasAnswered={isInitiator ? () => goTab('checkins') : undefined}
+            /* Everyone this page draws My work for (the lead, or a party on the page that runs it) had these two links before the
+               rebuild: a party through YourWork, the lead who does not check in as a row of her own. Both get them here. */
+            onEveryCheckIn={() => goTab('report')}
+            onWhoHasAnswered={() => goTab('checkins')}
             rest={(part, self) => (
               <>
                 {/* Every check-in and Who has answered are the lead's, drawn by MyWorkPage in the Your check-ins card. */}

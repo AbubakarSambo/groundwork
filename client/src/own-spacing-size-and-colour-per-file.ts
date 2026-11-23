@@ -97,7 +97,7 @@ export const OWN_SPACING_SIZE_AND_COLOUR_PER_FILE: Record<string, number> = {
   'pages/billing/BillingCallbackPage.tsx': 55,
   'pages/billing/PaymentPage.tsx': 52,
   'pages/billing/PricingPage.tsx': 144,
-  'pages/board/BoardPage.tsx': 116,
+  'pages/board/BoardPage.tsx': 113,
   'pages/board/pictured/pictured-board.css': 551,
   'pages/board/pictured/TheBar.tsx': 5,
   'pages/board/pictured/TheCollectionsBoard.tsx': 1,
