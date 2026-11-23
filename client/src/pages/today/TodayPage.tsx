@@ -8,7 +8,7 @@ import { todayApi, type Need } from '@/api/today'
 import { outstandingNotAlreadyShown } from './outstanding-not-already-shown'
 import { withComingUpTellingTwoApart } from './tell-apart-coming-up'
 import { useAuthStore } from '@/stores/auth'
-import { Page, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp, Panel, Held } from '@/components/gw/ui'
+import { Page, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp, Panel, Held } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { AdminFirstRun } from '@/pages/grounds/an-admin-lands-on-a-check-in-list'
 import { partOfTheDay, whenItComes } from './when-it-comes'
@@ -18,7 +18,7 @@ import { YouAreIn } from './YouAreIn'
 import { NameYourOrganisation } from './NameYourOrganisation'
 import { TheReasonYouMissed } from './TheReasonYouMissed'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
-import { QueueLink, RequestLinks } from '@/pages/suites/QueuePage'
+import { RequestLinks } from '@/pages/suites/QueuePage'
 import { yourRequestsApi, reviewsApi } from '@/api/suites'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
@@ -26,8 +26,6 @@ import { useEffect, type ReactNode } from 'react'
 import { todayGreetingLine } from '@/lib/the-greeting-line-does-not-claim-what-needs-you-does-not'
 import { useAnUnfinishedSetup } from '@/pages/auth/entry-handover'
 import { TheSetupNotSavedYet } from '@/components/gw/TheSetupNotSavedYet'
-import { useTheDesignPass } from '@/lib/the-design-pass'
-import { ShowAll } from '@/components/gw/ui/ShowAll'
 
 /**
  * TODAY (C1, #/today). The wording is copied from docs/prototype/screens/C1-today-and-check-ins/
@@ -55,7 +53,7 @@ import { ShowAll } from '@/components/gw/ui/ShowAll'
  * it (same wording, in whole or in part) is left out of "Needs you", so nothing is said twice
  * (outstanding-not-already-shown.ts).
  *
- * REBUILT FROM THE SHARED PARTS (group 2): `Greeting` for the big heading, in place of the old
+ * REBUILT ON THE DESIGN SYSTEM (journey 3, 23 November 2026): `Page` with the greeting as its title. Before that, REBUILT FROM THE SHARED PARTS (group 2): `Greeting` for the big heading, in place of the old
  * `gw-t-greet`/`gw-today-line` classes; `Section` with its own `note` for "What needs you"; the
  * shared `EdgeList`/`EdgeRow` in place of `NeedsYouList`/`NeedsYouRow` (the same shape, one shared
  * part - `EdgeRow`'s own kinds, `ready`/`decide`/`look`, are exactly `Need`'s); `Note`/`Empty` for
@@ -65,12 +63,6 @@ import { ShowAll } from '@/components/gw/ui/ShowAll'
  */
 export function TodayPage() {
   const user = useAuthStore(s => s.user)
-  /*
-   * THE DESIGN PASS (21 November 2026): Today answers "where are we, what needs me, who needs me" in a glance, as the prototype's
-   * does. "What needs you" comes first, after the line under the greeting, and stops at three with "And N more". The first thing to
-   * start is the one navy button; every other action is a quiet link. The admin's set-up stays as it was (Hafsah, 21 November).
-   */
-  const designPass = useTheDesignPass()
   const [params] = useSearchParams()
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['today'],
@@ -214,7 +206,7 @@ export function TodayPage() {
     onError: () => toast.error('That didn’t send. Try again.'),
   })
 
-  /* The rows of "What needs you", in order: drawn whole with the switch off, or the first three and "And N more" with it on. */
+  /* The rows of "What needs you", in order, every one drawn (Hafsah, 21 November: nothing folded away). */
   const firstStart = needs.findIndex((m: Need) => m.action.label === 'Start it')
   const needRows: ReactNode[] = [
     ...(unfinished ? [<TheSetupNotSavedYet key="unfinished" unfinished={unfinished} primary />] : []),
@@ -229,141 +221,108 @@ export function TodayPage() {
         actions={<>
           {/* ONE NAVY BUTTON (Hafsah, 30 September): only the first "Start it", the most important, is navy. With the design pass on,
               every other action is a quiet link. */}
-          <Button kind={!unfinished && n.action.label === 'Start it' && i === firstStart ? 'primary' : designPass ? 'quiet' : 'secondary'} size="small" to={n.action.to}>{n.action.label}</Button>
+          <Button kind={!unfinished && n.action.label === 'Start it' && i === firstStart ? 'primary' : 'quiet'} to={n.action.to}>{n.action.label}</Button>
           {n.missedReason && <TheReasonYouMissed checkInId={n.missedReason.checkInId} given={n.missedReason.given} />}
         </>}
       />
     )),
     ...moreRows.map((r) => (
       <EdgeRow key={r.key} kind={r.kind} title={r.title} detail={r.detail} to={r.action?.to}
-        actions={r.action ? <Button kind={designPass ? 'quiet' : 'secondary'} size="small" to={r.action.to}>{r.action.label}</Button> : undefined} />
+        actions={r.action ? <Button kind="quiet" to={r.action.to}>{r.action.label}</Button> : undefined} />
     )),
   ]
 
+  /* The line under the greeting, with its one quiet link where the server gives one ("Send it to him on WhatsApp", C1). */
+  const lede = (
+    <>
+      {`${whenItWas(now, 'weekdayAndDay')}.${greetingLine ? ` ${greetingLine}` : ''}`}
+      {lineNudge && <>{' '}<Button kind="quiet" onClick={() => nudge.mutate()} disabled={nudge.isPending || nudge.isSuccess}>{nudge.isSuccess ? 'Sent.' : `Remind ${lineNudge.firstName}`}</Button></>}
+      {lineResend && <>{' '}<Button kind="quiet" onClick={() => resend.mutate()} disabled={resend.isPending || resend.isSuccess}>{resend.isSuccess ? 'Sent again.' : resendLabel}</Button></>}
+      {lineReadyToSend && <>{' '}<Button kind="quiet" onClick={() => sendReady.mutate()} disabled={sendReady.isPending || sendReady.isSuccess}>{sendReady.isPending ? 'Sending…' : sendReady.isSuccess ? 'Sent.' : lineReadyToSend.label}</Button></>}
+    </>
+  )
+
+  /*
+   * JOURNEY 3, ON THE DESIGN SYSTEM (Hafsah, 23 November 2026). Today is a rebuilt page: the greeting is the page's title, the line
+   * under it is the page's one line, "Coming up" is the side column, and every part inside draws from the shared blocks, so the
+   * spacing, the sizes and the buttons are the twelve rules' own. In the prototype's order (C1): what needs you, then since yesterday.
+   */
   return (
-    <Page>
-      <div className="gwui-side gw-today">
-        <div className="gw-col-32">
-          {params.get('welcome') === '1' && (
-            <YouAreIn checkIns={grounds.isSuccess ? (grounds.data?.length ?? 0) : null} mayStart={user?.mayOpenCheckIns !== false} />
+    <Page
+      title={greeting}
+      lede={lede}
+      side={comingUp.length > 0 ? (
+        <ComingUp items={withComingUpTellingTwoApart(comingUp).map(c => ({
+          when: whenItComes(c.at, now),
+          what: c.apart ? `${c.what} (${c.apart})` : c.what,
+          to: c.to,
+        }))} />
+      ) : undefined}
+    >
+      {params.get('welcome') === '1' && (
+        <YouAreIn checkIns={grounds.isSuccess ? (grounds.data?.length ?? 0) : null} mayStart={user?.mayOpenCheckIns !== false} />
+      )}
+
+      {/* Everything under the greeting is drawn whole once /today and the reads its parts make are in (page loads, 22 November 2026,
+          cause C), so nothing under it jumps down. */}
+      <Held waiting={isLoading} alsoFor={[['appeals']]} what="Getting what needs you" count={5}>
+        {/* An organisation still called by the name Groundwork made up ("Hafsah's workspace") is named here, by an admin (26 October). */}
+        <NameYourOrganisation />
+
+        {/* The free trial, one line, for an admin while it runs (Hafsah, 12 October), with the way to Plan and billing beside it. */}
+        {data?.freeTrial && <Note>{data.freeTrial}{' '}<Link to="/settings/billing">Plan and billing</Link></Note>}
+
+        {/* Appeals to decide (C3, U.13): an admin's only. The server refuses anybody else. */}
+        {user?.role === 'ADMIN' && <AppealsToDecide />}
+
+        {/* ONE LIST, AS THE PROTOTYPE: what the lead's nudge adds (needs you, overdue on the team, risks) are rows in
+            "What needs you", most important first, never sections of their own. */}
+        <Section heading="What needs you" note={allNeeds > 1 ? `${allNeeds} things, most important first` : undefined}
+          action={<RequestLinks userId={user?.id} requests={{ show: aSuiteIsOnForYou, label: requestsLinkLabel }} />}>
+          {data && allNeeds === 0 && <Empty>Nothing needs you right now.</Empty>}
+          {allNeeds > 0 && <EdgeList label="What needs you">{needRows}</EdgeList>}
+          {isError && (
+            <>
+              <Note tone="error">What needs you didn’t load. Try again.</Note>
+              <Button kind="quiet" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
+            </>
           )}
-
-          <Greeting
-            title={greeting}
-            subtitle={<>
-              {`${whenItWas(now, 'weekdayAndDay')}.${greetingLine ? ` ${greetingLine}` : ''}`}
-              {/* "Send it to him on WhatsApp" (C1), said with their name: the board's own nudge, for the one person not checked in yet. */}
-              {lineNudge && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => nudge.mutate()} disabled={nudge.isPending || nudge.isSuccess}>{nudge.isSuccess ? 'Sent.' : `Remind ${lineNudge.firstName}`}</button></>}
-              {lineResend && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => resend.mutate()} disabled={resend.isPending || resend.isSuccess}>{resend.isSuccess ? 'Sent again.' : resendLabel}</button></>}
-              {lineReadyToSend && <>{' '}<button type="button" className={`btn ${designPass ? 'quiet' : 'primary'} sm gw-inline-btn gwui-in-a-sentence`} onClick={() => sendReady.mutate()} disabled={sendReady.isPending || sendReady.isSuccess}>{sendReady.isPending ? 'Sending…' : sendReady.isSuccess ? 'Sent.' : lineReadyToSend.label}</button></>}
-            </>}
-          />
-
-          {/* Everything under the greeting is drawn whole once /today and the reads its parts make are in (page loads, 22 November 2026,
-              cause C): the three-row placeholder inside "What needs you" was shorter than the list that replaced it, so everything
-              under it jumped down. */}
-          <Held waiting={isLoading} alsoFor={[['appeals']]} what="Getting what needs you" count={5}>
-          {/* An organisation still called by the name Groundwork made up ("Hafsah's workspace") is named here, by an admin (26 October). */}
-          <NameYourOrganisation />
-
-          {/* The free trial, one line, for an admin while it runs (Hafsah, 12 October). The server decides who reads it. */}
-          {/* With the way to Plan and billing beside it (fix list item 6). Only an admin is served the line. */}
-          {data?.freeTrial && <Note>{data.freeTrial}{' '}<Link to="/settings/billing">Plan and billing</Link></Note>}
-
-          {/* Appeals to decide (C3, U.13): an admin's only. The server refuses anybody else. */}
-          {user?.role === 'ADMIN' && <AppealsToDecide />}
-
-          {/* SINCE YESTERDAY (C1): what moved since the round before, for the check-in the line is about. It comes first, so the page opens with
-              what has moved and then says what needs you (design playbook, rule 4: lead with what is going well, then what needs attention). */}
-          {!designPass && data?.sinceYesterday && (
-            <Section heading={data.sinceYesterday.heading}>
-              <Panel>
-                <p className="t-body">{data.sinceYesterday.says}</p>
-                {data.sinceYesterday.also && <p className="t-small mut">{data.sinceYesterday.also}</p>}
-              </Panel>
-            </Section>
+          {/* Under what needs you, when one of those is a check-in to answer (fix list, item 5). The server decides. */}
+          {data?.checkInOnWhatsApp && (
+            <CheckInOnWhatsApp link={data.checkInOnWhatsApp.link} label={data.checkInOnWhatsApp.label} says={data.checkInOnWhatsApp.says} testId="today-check-in-on-whatsapp" />
           )}
+        </Section>
 
-          {/* ONE LIST, AS THE PROTOTYPE: what the lead's nudge adds (needs you, overdue on the team, risks) are rows in
-              "What needs you", most important first, never sections of their own. */}
-          <Section heading="What needs you" note={allNeeds > 1 ? `${allNeeds} things, most important first` : undefined}
-            action={designPass ? <RequestLinks userId={user?.id} requests={{ show: aSuiteIsOnForYou, label: requestsLinkLabel }} /> : undefined}>
-            {data && allNeeds === 0 && <Empty>Nothing needs you right now.</Empty>}
-            {allNeeds > 0 && (
-              <EdgeList label="What needs you">
-                {designPass ? <ShowAll items={needRows} render={(r) => r} /> : needRows}
-              </EdgeList>
-            )}
-            {isError && (
-              <div>
-                <Note tone="error">What needs you didn’t load. Try again.</Note>
-                <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
-              </div>
-            )}
-            {/* Under what needs you, when one of those is a check-in to answer (fix list, item 5). The server decides. */}
-            {data?.checkInOnWhatsApp && (
-              <CheckInOnWhatsApp link={data.checkInOnWhatsApp.link} label={data.checkInOnWhatsApp.label} says={data.checkInOnWhatsApp.says} testId="today-check-in-on-whatsapp" />
-            )}
-            {designPass ? null : (
-              <>
-                {aSuiteIsOnForYou && <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">{requestsLinkLabel}</Link></p>}
-                <QueueLink userId={user?.id} />
-              </>
-            )}
+        {/* SINCE YESTERDAY (C1): what moved since the round before, in one card, after what needs you, as the prototype. */}
+        {data?.sinceYesterday && (
+          <Section heading={data.sinceYesterday.heading}>
+            <Panel>
+              <p className="ds-text-body">{data.sinceYesterday.says}</p>
+              {data.sinceYesterday.also && <p className="ds-text-secondary">{data.sinceYesterday.also}</p>}
+            </Panel>
           </Section>
-
-          {designPass && data?.sinceYesterday && (
-            <Section heading={data.sinceYesterday.heading}>
-              <Panel>
-                <p className="t-body">{data.sinceYesterday.says}</p>
-                {data.sinceYesterday.also && <p className="t-small mut">{data.sinceYesterday.also}</p>}
-              </Panel>
-            </Section>
-          )}
-
-          {/*
-            A PERSON'S OWN REVIEW APPEAL (decision 113, engine workspace, 9 October: "the review
-            appeal is drawn" - "Not drawn yet: ... the person's card on Today"). Plain heading and
-            sentence, since the prototype has none for this yet; the server's own sentence
-            (`mayAppealSays` is read on the review itself, `appealSays` here) does the real talking.
-            One row per review with something to say, each going to where the full appeal form
-            already lives, so nothing here duplicates the form on `ReviewPage.tsx`.
-          */}
-          {myReviewAppeals.length > 0 && (
-            <Section heading="Your review appeal">
-              <EdgeList label="Your review appeal">
-                {myReviewAppeals.map(r => (
-                  <EdgeRow
-                    key={r.id}
-                    kind="look"
-                    title={r.appealSays ?? 'You can appeal this decision.'}
-                    actions={<Button kind="secondary" size="small" to="/suite/reviews">{r.appealSays ? 'Open your appeal' : 'Appeal this decision'}</Button>}
-                  />
-                ))}
-              </EdgeList>
-            </Section>
-          )}
-
-          {/*
-            SCREEN FAULT 7: THE ADMIN CARD CAME FIRST ON A PHONE, NOT THE GREETING. On a single
-            column (a phone, where this `Stack` is the whole page, not a side-by-side layout) the
-            welcome card and "Get <organisation> going" used to sit above the greeting and "What
-            needs you" - a new admin's first full screen was "You're an admin", with what actually
-            needs her today two screens further down. Moved after "What needs you" so the thing
-            that changes every day comes first, and the one-time welcome comes after it.
-          */}
-          <AdminFirstRun />
-          </Held>
-        </div>
-
-        {comingUp.length > 0 && (
-          <ComingUp first={designPass ? 3 : undefined} items={withComingUpTellingTwoApart(comingUp).map(c => ({
-            when: whenItComes(c.at, now),
-            what: c.apart ? `${c.what} (${c.apart})` : c.what,
-            to: c.to,
-          }))} />
         )}
-      </div>
+
+        {/* A PERSON'S OWN REVIEW APPEAL (decision 113): one row per review with something to say, each going to where the full appeal
+            form already lives. Its action is a link on the right of the row (rule 9). */}
+        {myReviewAppeals.length > 0 && (
+          <Section heading="Your review appeal">
+            <EdgeList label="Your review appeal">
+              {myReviewAppeals.map(r => (
+                <EdgeRow
+                  key={r.id}
+                  kind="look"
+                  title={r.appealSays ?? 'You can appeal this decision.'}
+                  actions={<Button kind="quiet" to="/suite/reviews">{r.appealSays ? 'Open your appeal' : 'Appeal this decision'}</Button>}
+                />
+              ))}
+            </EdgeList>
+          </Section>
+        )}
+
+        {/* The admin's one-time welcome comes after what needs you, so the thing that changes every day comes first (screen fault 7). */}
+        <AdminFirstRun />
+      </Held>
     </Page>
   )
 }
