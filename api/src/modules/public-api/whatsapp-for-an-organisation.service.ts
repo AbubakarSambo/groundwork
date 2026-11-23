@@ -84,6 +84,8 @@ export const I_COULD_NOT_OPEN_THAT_FILE = 'I could not open that file. Could you
 export const PHOTOS_YOU_SEND_HERE_ARE_PROOF = 'Photos you send here are added to your check-in as proof, so your lead can see them.';
 /** The note that it was said, kept on the number so it is never said again. */
 export const TOLD_PROOF_IS_SHARED = 'told:proof-is-shared';
+/** The note that a check-in was said to be still open, with its id and the day (sayOnceADayThatItIsStillOpen). */
+export const TOLD_IT_IS_STILL_OPEN = 'told:still-open';
 export function aFileProblemInWords(err: any): string {
   const said = typeof err?.message === 'string' ? err.message.trim() : '';
   /* One of our own refusals is already a sentence a person can use: a capital, a full stop, several words, and no library words. */
@@ -653,7 +655,7 @@ export class WhatsAppForAnOrganisationService {
        * check-in. Ask answers it, and the check-in stays where it was for the next message.
        */
       const answered = asATextMessage(await this.assistant.respondOnWhatsApp(organizationId, who.personId, text)) || 'Noted.';
-      await say(current.status === 'IN_PROGRESS' ? `${answered}\n\nYour check-in for ${current.label} is still open. Reply here to carry on with it.` : `${answered}\n\nYour check-in for ${current.label} is still open. Reply START when you are ready.`);
+      await say(`${answered}${await this.sayOnceADayThatItIsStillOpen(current, organizationId, from)}`);
       return;
     } else if (pending) {
       if (A_YES.test(text) && who.personId) {
@@ -1138,6 +1140,19 @@ export class WhatsAppForAnOrganisationService {
   private async sayOnceThatProofIsShared(doc: any, organizationId: string, from: string): Promise<string> {
     if (doc?.visibility !== 'OPEN') return '';
     return (await theFirstTimeThisIsSaidTo(this.prisma, from, TOLD_PROOF_IS_SHARED, organizationId)) ? ` ${PHOTOS_YOU_SEND_HERE_ARE_PROOF}` : '';
+  }
+
+  /**
+   * THAT THE CHECK-IN IS STILL OPEN, SAID ONCE A DAY FOR EACH CHECK-IN (Hafsah, 24 November 2026). It ended every reply Ask gave while a
+   * check-in was open: five times in two minutes while she set up another one. The note that it was said is kept in the send log, as the
+   * other things said once are (said-once-to-a-number.ts), so it is said again the next day, never on every reply.
+   */
+  private async sayOnceADayThatItIsStillOpen(current: AnOpenCheckIn, organizationId: string, from: string): Promise<string> {
+    const today = new Date().toISOString().slice(0, 10);
+    if (!(await theFirstTimeThisIsSaidTo(this.prisma, from, `${TOLD_IT_IS_STILL_OPEN}:${current.id}:${today}`, organizationId))) return '';
+    return current.status === 'IN_PROGRESS'
+      ? `\n\nYour check-in for ${current.label} is still open. Reply here to carry on with it.`
+      : `\n\nYour check-in for ${current.label} is still open. Reply START when you are ready.`;
   }
 
   /** Not talking to Ask Groundwork any more, and no pick waiting. Which check-in a message is for is never kept here: it is what it answers. */
