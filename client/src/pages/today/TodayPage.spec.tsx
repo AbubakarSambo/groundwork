@@ -71,11 +71,13 @@ afterEach(() => { vi.useRealTimers() })
    `gwui-edge-h`, `gwui-edge-s`), in place of the old `NeedsYouRow` (`gw-need`, `gw-need-h`, `gw-need-s`) -
    the same shape, one shared part used by every list of things that need a reader. */
 /* 24 October: the prototype's own row markup (.item, .h, .s), one stylesheet, the prototype's. */
-const rows = () => [...document.querySelectorAll('.item')].map(li => ({
-  title: li.querySelector('.h')?.textContent,
-  detail: li.querySelector('.s')?.textContent ?? null,
+/* 23 November (journey 3, the design system): the shared row draws its own design-system markup (.ds-row, its title at
+   .ds-text-card and its detail at .ds-text-secondary) on the rebuilt Today; the row's own title link is .ds-row-link. */
+const rows = () => [...document.querySelectorAll('.ds-row')].map(li => ({
+  title: li.querySelector('.ds-text-card')?.textContent,
+  detail: li.querySelector('.ds-row-main > .ds-text-secondary')?.textContent ?? null,
   /* The row's own link (a row is tapped as a whole, as the prototype's phone Today) is its title, not its action. */
-  action: [...li.querySelectorAll('a:not(.gw-row-link)')].map(a => [a.textContent, a.getAttribute('href')]),
+  action: [...li.querySelectorAll('a:not(.ds-row-link)')].map(a => [a.textContent, a.getAttribute('href')]),
 }))
 
 describe('Today, as the lead', () => {
@@ -125,7 +127,7 @@ describe('Today, as the lead', () => {
   it('says what is coming up, in her own time', async () => {
     open(WAIRIMU, LEAD_READ)
     const aside = await screen.findByRole('complementary', { name: 'Coming up' })
-    expect([...aside.querySelectorAll('.gw-when-row')].map(li => li.textContent)).toEqual([
+    expect([...aside.querySelectorAll('.ds-when')].map(li => li.textContent)).toEqual([
       'Tomorrow, 4pmCheck-in 39 of Sales team, Q3 opens.',
       'FridayKwame, first 90 days ends.',
     ])
@@ -336,9 +338,9 @@ describe('Today has one navy button', () => {
     open(WAIRIMU, LEAD_READ)
     const starts = await screen.findAllByRole('link', { name: 'Start it' })
     expect(starts).toHaveLength(2)
-    expect(starts[0].className).toContain('pri')
-    expect(starts[1].className).not.toContain(' pri')
-    expect(document.querySelectorAll('.btn.pri')).toHaveLength(1)
+    expect(starts[0].className).toContain('ds-btn-main')
+    expect(starts[1].className).not.toContain('ds-btn-main')
+    expect(document.querySelectorAll('.ds-btn-main')).toHaveLength(1)
   })
 })
 

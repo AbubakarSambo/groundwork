@@ -43,14 +43,9 @@ export function MyCheckInSessions({ groundId }: { groundId: string }) {
       </div>
     )
   }
-  if (sessions.length === 0) {
-    return (
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>
-        Nothing on record yet. Your first check-in starts the conversation, and everything you say
-        in it stays here for you to come back to.
-      </div>
-    )
-  }
+  /* No conversation to open yet: nothing is drawn. The card it sits in already counts the check-ins, and "Nothing on record yet" beside
+     "4 of 5 done" was one of three headings that disagreed (journey 4, 23 November 2026). */
+  if (sessions.length === 0) return null
 
   return (
     /* Rows divided by thin rules, as the prototype's lists are, not a box around each one. */
@@ -181,7 +176,7 @@ export function SessionDivider({ sessionNumber, date, isCorrection, correctionOf
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '22px 0 14px' }}>
       <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>
+      <div className="ds-text-meta">
         {label}
       </div>
       <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />

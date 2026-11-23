@@ -6,13 +6,13 @@ import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
 import { reportsApi } from '@/api/reports'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { groundsApi, type MyWork, type ABehaviourRead } from '@/api/grounds'
 import { TheirRecord } from '@/components/gw/TheirRecord'
 import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFinished'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import {
-  Section, Panel, Note, Callout, Stack, Folded, FlexRow, Tag, Text, Select, RowList, Row, FieldRows, FieldRow,
+  Page, Section, Panel, Grid, Stat, EdgeList, EdgeRow, type EdgeKind, Table, Empty, Button, Callout, Tag, Text, Select,
   PartBoundary, Skeleton
 } from '@/components/gw/ui'
 
@@ -28,20 +28,34 @@ import {
  * the lead's view of a person carries no reports of theirs, so nothing here hides anything.
  *
  * NOTHING FROM TODAY'S PAGE IS LOST. What today's My work holds, and what References and resources no longer draws (the targets,
- * the plan as agreed, each person's card and what people are down as doing), is handed in by the calling page as `rest` and
- * drawn after the new sections, by the same code as before.
+ * the plan as agreed, each person's card and what people are down as doing), is handed in by the calling page as `rest`, and each
+ * part is drawn where it belongs on the B7 page (MyWorkPart), by the same code as before. It used to be poured out under the deals,
+ * which made the page two and a half times the picture's length (page-look audit, 23 November 2026).
  *
  * WHERE THE PICTURE AND THE PRODUCT DIFFER (listed for Hafsah in docs/pull-request.md): "To improve" and "Late" are said as
  * sentences rather than joined with a colon; the dot between the library footnote's two parts is a comma.
  */
 type Served = Extract<MyWork, { on: true }>
 
-export function MyWorkPage({ groundId, rest, onAllYourReports }: {
+/**
+ * WHERE THE REST OF MY WORK GOES (the design system, journey 4, Hafsah, 23 November 2026). What My work held before B7 (the
+ * reader's own deliveries, targets and the plan, what keeps coming up, what they are carrying forward, their sessions) is drawn
+ * in the place on the B7 page it belongs to, not poured out under the deals. The calling page draws each part; `'all'` is the
+ * whole of it, in its old order, for when the server says My work's switch is off. `self` is whether the page is the reader's
+ * own: what is only theirs (their deliveries, their carrying forward, their sessions) is drawn only on their own page.
+ */
+export type MyWorkPart = 'achieved' | 'expected' | 'coaching' | 'report' | 'check-ins' | 'after-check-ins'
+export type TheRestOfMyWork = (part: MyWorkPart | 'all', self: boolean) => ReactNode
+
+export function MyWorkPage({ groundId, rest, onAllYourReports, onEveryCheckIn, onWhoHasAnswered }: {
   groundId: string
-  /** Today's My work, and the parts that moved here from References and resources, drawn after the new sections. */
-  rest?: ReactNode
+  /** Today's My work, and the parts that moved here from References and resources, each drawn where it belongs. */
+  rest?: TheRestOfMyWork
   /** Where "All your reports" goes: today's list of every session. */
   onAllYourReports?: () => void
+  /** The lead's two ways into the whole check-in: every session, and who has answered. */
+  onEveryCheckIn?: () => void
+  onWhoHasAnswered?: () => void
 }) {
   const [person, setPerson] = useState<string | null>(null)
   const { data, isLoading, error } = useQuery({
@@ -49,16 +63,22 @@ export function MyWorkPage({ groundId, rest, onAllYourReports }: {
     queryFn: () => groundsApi.myWork(groundId, person),
     enabled: !!groundId,
   })
+  const leadLinks = (onEveryCheckIn || onWhoHasAnswered) && (
+    <>
+      {onEveryCheckIn && <Button kind="quiet" onClick={onEveryCheckIn}>Every check-in</Button>}
+      {onWhoHasAnswered && <Button kind="quiet" onClick={onWhoHasAnswered}>Who has answered</Button>}
+    </>
+  )
   /* The rest of My work starts its own reads now, beside /my-work, not after it (page loads, 22 November 2026: a waterfall). It is
      mounted out of sight until the page above it is drawn, and read from the same cache when it is. */
-  if (isLoading) return <><Skeleton what="Getting My work" shape="rows" /><div hidden>{rest}</div></>
+  if (isLoading) return <><Skeleton what="Getting My work" shape="rows" /><div hidden>{rest?.('all', true)}</div></>
   if (error || !data) return <Callout tone="warning">My work could not be read just now. Try again in a moment.</Callout>
   /* The server says the switch is off: today's page, as it was handed in. */
-  if (!data.on) return <>{rest}</>
+  if (!data.on) return <>{rest?.('all', true)}{leadLinks}</>
   /* The direct morning (lib/the-direct-morning.tsx): said once for the page and the rest of My work inside it. */
   return (
     <TheDirectMorning on={isTheDirectMorningOn(data)}>
-      <PartBoundary><ThePage groundId={groundId} served={data} onPerson={setPerson} rest={rest} onAllYourReports={onAllYourReports} /></PartBoundary>
+      <PartBoundary><ThePage groundId={groundId} served={data} onPerson={setPerson} rest={rest} onAllYourReports={onAllYourReports} leadLinks={leadLinks || null} /></PartBoundary>
     </TheDirectMorning>
   )
 }
@@ -68,120 +88,132 @@ const VERDICT_TONE: Record<ABehaviourRead['verdict'], 'proven' | 'attention' | '
   'Needs work': 'attention',
   'Not enough yet': 'plain',
 }
+const VERDICT_DOT: Record<ABehaviourRead['verdict'], EdgeKind | undefined> = {
+  Strength: 'ready',
+  'Needs work': 'look',
+  'Not enough yet': undefined,
+}
 
-function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
-  groundId: string; served: Served; onPerson: (id: string) => void; rest?: ReactNode; onAllYourReports?: () => void
+/**
+ * MY WORK, IN THE B7 ORDER, FROM THE BUILDING BLOCKS (the twelve layout rules). The person's name is the page's title, their numbers
+ * under it, then the focus, To do, What you achieved, How you're performing, Coaching, their record, Your report, Your check-ins and
+ * Your reports side by side, and the deals. What the B7 picture does not show but people use is drawn where it belongs (MyWorkPart).
+ */
+function ThePage({ groundId, served, onPerson, rest, onAllYourReports, leadLinks }: {
+  groundId: string; served: Served; onPerson: (id: string) => void; rest?: TheRestOfMyWork; onAllYourReports?: () => void; leadLinks: ReactNode
 }) {
   const self = served.view === 'self'
   const first = served.person.firstName
   const your = self ? 'Your' : `${first}’s`
   /* Judgements of a person are served unless the organisation keeps them off (api organisation/person-judgements.ts). */
   const judged = served.judgements !== false
+  const part = (p: MyWorkPart) => rest?.(p, self) ?? null
   return (
-    /* B7: section headings in Literata, as the picture draws them (gwui-b-tab). */
-    <div className="gwui-b-tab">
-    <Stack gap={30}>
-      {/* THE LEAD CHOOSES WHOSE PAGE. Only in her payload. */}
-      {served.people && served.people.length > 0 && (
-        <FlexRow gap={8} align="center" wrap>
-          <Text size="14" ink="sub" as="span">Whose work</Text>
-          <Select value={served.person.participantId} onChange={(e) => onPerson(e.target.value)} aria-label="Whose work">
-            {served.people.map((p) => <option key={p.participantId} value={p.participantId}>{p.name}</option>)}
-          </Select>
-        </FlexRow>
+    <Page
+      title={served.heading}
+      /* THE LEAD CHOOSES WHOSE PAGE. Only in her payload. */
+      action={served.people && served.people.length > 0 ? (
+        <Select value={served.person.participantId} onChange={(e) => onPerson(e.target.value)} aria-label="Whose work">
+          {served.people.map((p) => <option key={p.participantId} value={p.participantId}>{p.name}</option>)}
+        </Select>
+      ) : undefined}
+    >
+      {/* THEIR NUMBERS. The server's topLine is an explainer and a privacy note, so it is not drawn (Hafsah, 15 November 2026). */}
+      {served.numbers.length > 0 && (
+        <div data-gw-my-work-top>
+          <Grid columns={3} label={`${your} numbers`}>
+            {served.numbers.map((n, i) => <Stat key={i} role="listitem" label={n.label} value={n.value} />)}
+          </Grid>
+        </div>
       )}
 
-      {/* THEIR NAME AND THREE NUMBERS */}
-      <PartBoundary><TheTop served={served} /></PartBoundary>
-
-      {/* THE FOCUS THIS WEEK, from the most important Needs work. Not served where the organisation keeps judgements of a person off. */}
-      {/* B7: the focus is the one dark band on the page, named inside the band, not a section heading of its own. */}
+      {/* THE FOCUS THIS WEEK, from the most important Needs work, named inside its card. Not served where judgements of a person are off. */}
       {judged && (served.focus
-        ? <section aria-label={`${your} focus this week`} data-gw-my-work-focus className="gwui-focus-band"><p className="gw-focus-label">{`${your} focus this week`}</p><p className="gwui-focus-line">{served.focus.line}</p><p className="gwui-focus-why">{served.focus.why}</p></section>
-        : <Note tone="muted">{served.focusEmpty}</Note>)}
+        ? (
+          <Panel as="section" aria-label={`${your} focus this week`} data-gw-my-work-focus heading={`${your} focus this week`}>
+            <Text size="body" as="p">{served.focus.line}</Text>
+            <Text size="secondary" as="p">{served.focus.why}</Text>
+          </Panel>
+        )
+        : <Empty>{served.focusEmpty}</Empty>)}
 
       <PartBoundary><ToDo served={served} askedOf={self ? 'Asked of you' : `Asked of ${first}`} /></PartBoundary>
       <PartBoundary><Achieved served={served} heading={self ? 'What you achieved' : `What ${first} achieved`} /></PartBoundary>
+      {part('achieved')}
+      {part('expected')}
       <PartBoundary>
         {judged
           ? <Performing served={served} heading={self ? 'How you’re performing' : `How ${first} is performing`} />
-          : <Section heading={self ? 'How you’re performing' : `How ${first} is performing`}><Note tone="muted">{served.performing.note}</Note></Section>}
+          : <Section heading={self ? 'How you’re performing' : `How ${first} is performing`}><Text size="secondary" as="p">{served.performing.note}</Text></Section>}
       </PartBoundary>
-      <PartBoundary>{(judged || served.coaching.better.length > 0) && <Coaching served={served} />}</PartBoundary>
+      {(judged || served.coaching.better.length > 0) && <PartBoundary><Coaching served={served} /></PartBoundary>}
+      {part('coaching')}
 
       {/* THEIR RECORD, AND THE COACHING GROUNDWORK GAVE THEM: only where the server sends it (the direct morning). */}
-      {served.record && <PartBoundary><TheirRecord record={served.record} asOneFold /></PartBoundary>}
+      {served.record && <PartBoundary><TheirRecord record={served.record} /></PartBoundary>}
 
       {/* THE PERSON'S OWN REPORT, HERE (batch 2, group 5): it used to be a page of its own, then a whole-report page. */}
       {self && !served.reports.private && served.reports.items.length > 0 && <PartBoundary><YourReport groundId={groundId} items={served.reports.items} /></PartBoundary>}
+      {part('report')}
 
       {/* YOUR CHECK-INS AND YOUR REPORTS, side by side */}
-      <div className="gwui-two-up">
-        <PartBoundary><YourCheckInsPanel served={served} judged={judged} /></PartBoundary>
+      <Grid columns={2}>
+        <PartBoundary><YourCheckInsPanel served={served} judged={judged} sessions={part('check-ins')} leadLinks={leadLinks} /></PartBoundary>
         <PartBoundary><YourReportsPanel served={served} self={self} onAllYourReports={onAllYourReports} /></PartBoundary>
-      </div>
+      </Grid>
+      {part('after-check-ins')}
 
       <PartBoundary><Items groundId={groundId} served={served} /></PartBoundary>
-
-      {/* B7 ends with the deals. Everything the page carried before B7 stays, folded under one line, so nothing is lost and the page is B7's length. */}
-      {rest && <Folded summary={self ? 'More from your check-ins' : `More from ${first}’s check-ins`}>{rest}</Folded>}
-    </Stack>
-    </div>
+    </Page>
   )
 }
 
-function TheTop({ served }: { served: Served }) {
+function YourCheckInsPanel({ served, judged, sessions, leadLinks }: { served: Served; judged: boolean; sessions: ReactNode; leadLinks: ReactNode }) {
+  const c = served.checkIns
   return (
-    <div data-gw-my-work-top>
-        {/* The server's topLine is an explainer and a privacy note, so it is not drawn (Hafsah, 15 November 2026). */}
-        <Section heading={served.heading}>
-          {/* B7: three small chips, the number large and its words beside it, not three wide tiles. */}
-          <div className="gwui-chips" role="list" aria-label="Your numbers">
-            {served.numbers.map((n, i) => (
-              <span key={i} className="gwui-chip" role="listitem"><b className="gwui-chip-value">{n.value}</b> <span className="gwui-chip-label">{n.label}</span></span>
-            ))}
-          </div>
-        </Section>
-      </div>
-  )
-}
-
-function YourCheckInsPanel({ served, judged }: { served: Served; judged: boolean }) {
-  return (
-        <Panel heading={served.checkIns.heading}>
-          {served.checkIns.emptySays ? <Note tone="muted">{served.checkIns.emptySays}</Note> : (
-            <FieldRows>
-              <FieldRow label="Done" value={`${served.checkIns.done} of ${served.checkIns.due}`} />
-              {judged && <FieldRow label="On time" value={`${served.checkIns.onTime} of ${served.checkIns.due}`} />}
-              {judged && <FieldRow label="Specific" value={`${served.checkIns.specific} of ${served.checkIns.due}`} />}
-            </FieldRows>
-          )}
-        </Panel>
+    <Panel heading={c.heading}>
+      {c.emptySays ? <Text size="secondary" as="p">{c.emptySays}</Text> : (
+        <Table
+          caption={c.heading}
+          hideHeader
+          onPanel={false}
+          minWidth={0}
+          columns={[{ key: 'what', header: 'What', rowHeader: true }, { key: 'count', header: 'How many', numeric: true }]}
+          rows={[
+            { what: 'Done', count: `${c.done} of ${c.due}` },
+            ...(judged ? [{ what: 'On time', count: `${c.onTime} of ${c.due}` }, { what: 'Specific', count: `${c.specific} of ${c.due}` }] : []),
+          ]}
+        />
+      )}
+      {sessions}
+      {leadLinks && <div className="ds-row-actions">{leadLinks}</div>}
+    </Panel>
   )
 }
 
 function YourReportsPanel({ served, self, onAllYourReports }: { served: Served; self: boolean; onAllYourReports?: () => void }) {
+  const r = served.reports
   return (
-        <Panel heading={served.reports.heading}>
-          {served.reports.private ? <Note tone="muted">{served.reports.private}</Note> : served.reports.items.length === 0 ? (
-            <Note tone="muted">{served.reports.emptySays}</Note>
-          ) : (
-            <Stack gap={8}>
-              <RowList label={served.reports.heading}>
-                {served.reports.items.map((r) => (
-                  <Row key={r.checkInId} columns="minmax(110px, auto) 1fr auto" inset="panel">
-                    <Text size="14" weight={600} as="span">{r.when}</Text>
-                    <span>{r.line}</span>
-                    {self
-                      ? <ReadThisOne checkInId={r.checkInId} />
-                      : <Link to={`/checkin/${r.checkInId}/report`}>Read</Link>}
-                  </Row>
-                ))}
-              </RowList>
-              {onAllYourReports && <div><button type="button" className="gw-link t-small gw-bold" onClick={onAllYourReports}>All your reports</button></div>}
-            </Stack>
-          )}
-        </Panel>
+    <Panel heading={r.heading}>
+      {r.private ? <Text size="secondary" as="p">{r.private}</Text> : r.items.length === 0 ? (
+        <Text size="secondary" as="p">{r.emptySays}</Text>
+      ) : (
+        <>
+          <EdgeList label={r.heading}>
+            {r.items.map((x) => (
+              <EdgeRow
+                key={x.checkInId}
+                reason={null}
+                title={x.when}
+                detail={x.line}
+                actions={self ? <ReadThisOne checkInId={x.checkInId} /> : <Button kind="quiet" to={`/checkin/${x.checkInId}/report`}>Read</Button>}
+              />
+            ))}
+          </EdgeList>
+          {onAllYourReports && <div><Button kind="quiet" onClick={onAllYourReports}>All your reports</Button></div>}
+        </>
+      )}
+    </Panel>
   )
 }
 
@@ -193,32 +225,34 @@ function ToDo({ served, askedOf }: { served: Served; askedOf: string }) {
   const own = all ? allOwn : allOwn.slice(0, Math.max(0, 3 - othersNeed.length))
   const more = allOthers.length + allOwn.length - othersNeed.length - own.length
   return (
-    <Section heading="To do">
-      {othersNeed.length + own.length === 0 ? <Note tone="muted">{emptySays}</Note> : (
-        <Panel pad={false}>
-          <RowList label="To do">
-            {othersNeed.map((t) => (
-              <Row key={t.id} columns="auto 1fr auto" inset="panel">
-                <Tag tone="attention">{askedOf}</Tag>
-                <span data-gw-asked-of={t.id}>{t.text}</span>
-                <Note tone="amber">{t.when}</Note>
-              </Row>
-            ))}
-            {own.map((t) => (
-              <Row key={t.id} columns="auto 1fr auto" inset="panel">
+    <Section heading="To do" action={more > 0 ? <Button kind="quiet" onClick={() => setAll(true)}>{`and ${more} more`}</Button> : undefined}>
+      {othersNeed.length + own.length === 0 ? <Empty>{emptySays}</Empty> : (
+        <EdgeList label="To do">
+          {othersNeed.map((t) => (
+            <EdgeRow
+              key={t.id}
+              kind="look"
+              reason={null}
+              title={t.text}
+              detail={<><Tag tone="attention">{askedOf}</Tag>{' '}<span data-gw-asked-of={t.id}>{t.when}</span></>}
+            />
+          ))}
+          {own.map((t) => (
+            <EdgeRow
+              key={t.id}
+              kind={t.done ? 'ready' : t.late ? 'look' : undefined}
+              reason={null}
+              title={t.text}
+              detail={<>
                 {t.done ? <Tag tone="proven">Done</Tag> : t.late ? <Tag tone="attention">Late</Tag> : <Tag>To do</Tag>}
-                <span>
-                  {t.text}
-                  {t.whose && <Note tone="muted">{t.whose}</Note>}
-                  <ThatsNotRight line={t.text} />
-                </span>
-                {t.when ? <Note tone={t.late ? 'amber' : 'muted'}>{t.when}</Note> : <span />}
-              </Row>
-            ))}
-          </RowList>
-        </Panel>
+                {t.when && <>{' '}<span>{t.when}</span></>}
+                {t.whose && <Text size="meta" as="p">{t.whose}</Text>}
+              </>}
+              actions={<ThatsNotRight line={t.text} />}
+            />
+          ))}
+        </EdgeList>
       )}
-      {more > 0 && <button type="button" className="gw-link t-small gw-start" onClick={() => setAll(true)}>{`and ${more} more`}</button>}
     </Section>
   )
 }
@@ -226,18 +260,13 @@ function ToDo({ served, askedOf }: { served: Served; askedOf: string }) {
 function Achieved({ served, heading }: { served: Served; heading: string }) {
   const a = served.achieved
   return (
-    <Section heading={heading} note={a.note}>
-      {a.items.length === 0 ? <Note tone="muted">{a.emptySays}</Note> : (
-        <Panel pad={false}>
-          <RowList label={heading}>
-            {a.items.map((x, i) => (
-              <Row key={i} columns="1fr auto" inset="panel">
-                <span>{x.text} <ThatsNotRight line={x.text} /></span>
-                <Note tone="muted">{x.proof}</Note>
-              </Row>
-            ))}
-          </RowList>
-        </Panel>
+    <Section heading={heading} note={a.note || undefined}>
+      {a.items.length === 0 ? <Empty>{a.emptySays}</Empty> : (
+        <EdgeList label={heading}>
+          {a.items.map((x, i) => (
+            <EdgeRow key={i} kind="ready" reason={null} title={x.text} detail={x.proof} actions={<ThatsNotRight line={x.text} />} />
+          ))}
+        </EdgeList>
       )}
     </Section>
   )
@@ -245,33 +274,45 @@ function Achieved({ served, heading }: { served: Served; heading: string }) {
 
 const basedOn = (s: string) => `Based on ${s.replace(/^Your\b/, 'your')}.`
 
+/**
+ * THE SEVEN BEHAVIOURS, IN THE LIBRARY'S ORDER. Behaviours the record cannot read yet say the same sentence each; they are drawn as
+ * one row that names them all, rather than six rows saying the same thing (page-look audit, 23 November 2026).
+ */
 function Performing({ served, heading }: { served: Served; heading: string }) {
   const p = served.performing
+  const rows: { key: string; names: string[]; b: ABehaviourRead }[] = []
+  for (const b of p.behaviours) {
+    const same = b.verdict === 'Not enough yet' && !b.means && !b.toImprove
+      ? rows.find((r) => r.b.verdict === b.verdict && !r.b.means && !r.b.toImprove && r.b.happened === b.happened)
+      : undefined
+    if (same) same.names.push(b.name)
+    else rows.push({ key: b.key, names: [b.name], b })
+  }
+  /* "Keeping promises, planning ahead and helping your team": one sentence, so only its first word has a capital. */
+  const lower = (n: string) => n.charAt(0).toLowerCase() + n.slice(1)
+  const together = (names: string[]) => names.length > 1
+    ? `${[names[0], ...names.slice(1, -1).map(lower)].join(', ')} and ${lower(names[names.length - 1])}`
+    : names[0]
   return (
-    <Section heading={heading} note={p.note} foot={p.libraryNote}>
-      <Panel pad={false}>
-        <RowList label={heading}>
-          {p.behaviours.map((b) => (
-            <Row key={b.key} columns="minmax(150px, 220px) 1fr" inset="panel">
-              <div data-gw-behaviour={b.key}>
-                <Text size="14-5" weight={700} as="p">{b.name}</Text>
+    <Section heading={heading} note={p.note || undefined} foot={p.libraryNote || undefined}>
+      <EdgeList label={heading}>
+        {rows.map(({ key, names, b }) => (
+          <div key={key} data-gw-behaviour={b.key}>
+            <EdgeRow
+              kind={VERDICT_DOT[b.verdict]}
+              reason={null}
+              title={together(names)}
+              detail={<>
                 <Tag tone={VERDICT_TONE[b.verdict]}>{b.verdict}</Tag>
-              </div>
-              <Stack gap={4}>
-                <span>{b.happened}</span>
-                {b.means && <Text size="14-5" weight={700} as="p">{b.means}</Text>}
-                {b.toImprove && (
-                  <div>
-                    <Note tone="navy">How to improve</Note>
-                    <span>{b.toImprove}</span>
-                  </div>
-                )}
-                {b.basedOn && <Note tone="muted">{basedOn(b.basedOn)}</Note>}
-              </Stack>
-            </Row>
-          ))}
-        </RowList>
-      </Panel>
+                <Text size="body" as="p">{b.happened}</Text>
+                {b.means && <Text size="body" as="p"><b>{b.means}</b></Text>}
+                {b.toImprove && <><Text size="secondary" as="p"><b>How to improve</b></Text><Text size="body" as="p">{b.toImprove}</Text></>}
+                {b.basedOn && <Text size="meta" as="p">{basedOn(b.basedOn)}</Text>}
+              </>}
+            />
+          </div>
+        ))}
+      </EdgeList>
     </Section>
   )
 }
@@ -281,29 +322,21 @@ function Coaching({ served }: { served: Served }) {
   const judged = served.judgements !== false
   return (
     <Section heading="Coaching">
-      <div className={judged ? 'gwui-two-up' : undefined}>
+      <Grid columns={2}>
         <Panel heading="Things to do better">
-          {c.better.length === 0 ? <Note tone="muted">{c.betterEmpty}</Note> : (
-            <ul className="gwui-panel-list">
-              {c.better.map((l, i) => (
-                <li key={i}>
-                  <span>{l.text}</span>
-                  <Note tone="muted">{l.from}</Note>
-                </li>
-              ))}
-            </ul>
-          )}
+          {c.better.length === 0 ? <Text size="secondary" as="p">{c.betterEmpty}</Text> : c.better.map((l, i) => (
+            <div key={i}>
+              <Text size="body" as="p">{l.text}</Text>
+              <Text size="meta" as="p">{l.from}</Text>
+            </div>
+          ))}
         </Panel>
         {judged && (
           <Panel heading="Keep doing">
-            {c.keep.length === 0 ? <Note tone="muted">{c.keepEmpty}</Note> : (
-              <ul className="gwui-panel-list">
-                {c.keep.map((k) => <li key={k}>{k}</li>)}
-              </ul>
-            )}
+            {c.keep.length === 0 ? <Text size="secondary" as="p">{c.keepEmpty}</Text> : c.keep.map((k) => <Text key={k} size="body" as="p">{k}</Text>)}
           </Panel>
         )}
-      </div>
+      </Grid>
     </Section>
   )
 }
@@ -312,20 +345,26 @@ function Items({ groundId, served }: { groundId: string; served: Served }) {
   const it = served.items
   if (!it.heading) return null
   return (
-    <Section heading={it.heading} note={it.note} action={<Link to={`/grounds/${groundId}/board`}>See all</Link>}>
-      {it.rows.length === 0 ? <Note tone="muted">{it.emptySays}</Note> : (
-        <Panel pad={false}>
-          <RowList label={it.heading}>
-            {it.rows.slice(0, 5).map((r) => (
-              <Row key={r.id} columns="minmax(140px, 1.2fr) minmax(90px, 0.8fr) 1.4fr minmax(90px, 0.8fr)" inset="panel">
-                <Text size="14-5" weight={700} as="span">{r.name}</Text>
-                <span>{r.stage ?? 'No stage yet'}</span>
-                {r.nextBooked ? <span>{r.next}</span> : <Note tone="amber">{r.next}</Note>}
-                {r.proven ? <Tag tone="proven">{r.proof}</Tag> : <Note tone="muted">{r.proof}</Note>}
-              </Row>
-            ))}
-          </RowList>
-        </Panel>
+    <Section heading={it.heading} note={it.note || undefined} action={<Button kind="quiet" to={`/grounds/${groundId}/board`}>See all</Button>}>
+      {it.rows.length === 0 ? <Empty>{it.emptySays}</Empty> : (
+        <Table
+          caption={it.heading}
+          hideHeader
+          onPanel={false}
+          phone="stack"
+          columns={[
+            { key: 'name', header: 'Name', rowHeader: true },
+            { key: 'stage', header: 'Stage' },
+            { key: 'next', header: 'Next step' },
+            { key: 'proof', header: 'Proof' },
+          ]}
+          rows={it.rows.slice(0, 5).map((r) => ({
+            name: r.name,
+            stage: r.stage ?? 'No stage yet',
+            next: r.nextBooked ? r.next : { tag: r.next, tone: 'attention' as const },
+            proof: r.proven ? { tag: r.proof, tone: 'proven' as const } : r.proof,
+          }))}
+        />
       )}
     </Section>
   )
@@ -356,25 +395,21 @@ function YourReport({ groundId, items }: { groundId: string; items: { checkInId:
   if (!row?.sessionNumber) return null
   const inferences = (groundReport as any)?.inferences
   return (
-    <section id="your-report" aria-label="Your report" data-gw-your-report={chosen.checkInId}>
-      <Section heading="Your report" note={chosen.when}>
-        <Stack gap={12}>
-          {session?.onTime && <p className="t-small">{session.onTime}</p>}
-          {/* Where the session's own report stands, in the server's sentence, when there is none to draw (where-a-sessions-report-stands.ts). */}
-          {session && !session.report && session.state && session.state !== 'ready' && session.says && <p className="t-small" role="status">{session.says}</p>}
-          {/* A session answered before signing in kept the report it ended on; that one is drawn, the same as the end showed it. */}
-          {session?.report
-            ? <TheReportYouSawAtTheEnd report={session.report} />
-            : <TheCheckInYouJustFinished checkInId={chosen.checkInId} groundId={groundId} sessionNumber={row.sessionNumber} light pictured />}
-          {Array.isArray(inferences) && inferences.length > 0 && <InferenceReviewPanel groundId={groundId} inferences={inferences} />}
-          <div>
-            <button type="button" className="gw-link t-small" disabled={download.isPending} onClick={() => download.mutate()} aria-label={`Download your check-in ${row.sessionNumber} record`}>
-              {download.isPending ? 'Downloading…' : 'Download your record'}
-            </button>
-          </div>
-        </Stack>
-      </Section>
-    </section>
+    <Section id="your-report" heading="Your report" note={chosen.when}>
+      {session?.onTime && <Text size="secondary" as="p">{session.onTime}</Text>}
+      {/* Where the session's own report stands, in the server's sentence, when there is none to draw (where-a-sessions-report-stands.ts). */}
+      {session && !session.report && session.state && session.state !== 'ready' && session.says && <p className="ds-text-secondary" role="status">{session.says}</p>}
+      {/* A session answered before signing in kept the report it ended on; that one is drawn, the same as the end showed it. */}
+      {session?.report
+        ? <TheReportYouSawAtTheEnd report={session.report} />
+        : <TheCheckInYouJustFinished checkInId={chosen.checkInId} groundId={groundId} sessionNumber={row.sessionNumber} light pictured />}
+      {Array.isArray(inferences) && inferences.length > 0 && <InferenceReviewPanel groundId={groundId} inferences={inferences} />}
+      <div>
+        <Button kind="quiet" disabled={download.isPending} onClick={() => download.mutate()} aria-label={`Download your check-in ${row.sessionNumber} record`}>
+          {download.isPending ? 'Downloading…' : 'Download your record'}
+        </Button>
+      </div>
+    </Section>
   )
 }
 
@@ -382,9 +417,8 @@ function YourReport({ groundId, items }: { groundId: string; items: { checkInId:
 function ReadThisOne({ checkInId }: { checkInId: string }) {
   const [searchParams, setSearchParams] = useSearchParams()
   return (
-    <button
-      type="button"
-      className="gw-link"
+    <Button
+      kind="quiet"
       onClick={() => {
         const next = new URLSearchParams(searchParams)
         next.set('report', checkInId)
@@ -393,6 +427,6 @@ function ReadThisOne({ checkInId }: { checkInId: string }) {
       }}
     >
       Read
-    </button>
+    </Button>
   )
 }

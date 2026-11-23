@@ -29,7 +29,7 @@ const asServedOn = (p: any) => ({
 function Probe() { return <p>{useTheDirectMorning() ? 'The rest of My work is told it is on.' : 'The rest of My work is told it is off.'}</p> }
 const open = (served: any) => {
   vi.mocked(groundsApi.myWork).mockResolvedValue(served)
-  return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><MyWorkPage groundId="g-sales" rest={<Probe />} /></MemoryRouter></QueryClientProvider>)
+  return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><MyWorkPage groundId="g-sales" rest={(part) => (part === 'after-check-ins' || part === 'all' ? <Probe /> : null)} /></MemoryRouter></QueryClientProvider>)
 }
 
 describe('Kevin’s My work', () => {

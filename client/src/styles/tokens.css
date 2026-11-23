@@ -74,6 +74,8 @@
   --ds-content: 1150px;
   --ds-rail: 232px;
   --ds-phone: 860px; /* a media query cannot read a variable, so blocks.css writes 860px in its @media line; the check holds the two equal */
+  /* The conversation's one column (rule 1): a check-in is read, so it keeps the prototype's .ci-focus width. */
+  --ds-conversation: 560px;
 
   /* ACTIONS (rules 8 and 11): every button and every tap target is 44px tall, with 8px corners. */
   --ds-tap: 44px;

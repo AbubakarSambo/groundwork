@@ -21,52 +21,43 @@ import { join } from 'node:path'
 const SRC = readFileSync(join(__dirname, 'AnswerFirstPage.tsx'), 'utf8')
 const CODE = SRC.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
 
+const BLOCKS = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'ui', 'blocks.css'), 'utf8')
+
 /* Changed 15 November 2026 (Hafsah): the question is the heading in every phase, with no caption and no "tap to read it again" fold. It is one
-   heading, so it does not eat the screen; the schedule line under it is only said before the first answer. */
+   heading, so it does not eat the screen; the schedule line under it is only said before the first answer.
+   CHANGED 23 November 2026 (journey 2, the design system): these read the page's structure, not its old inline styles. The heading is the
+   page title from the tokens (24px on a phone), the box is the check-in's own card footer, and the home bar is cleared by the one
+   frame every conversation-only page uses (blocks.css, .ds-alone). What a person sees and can press is unchanged. */
 describe('the question stays at the top as the heading', () => {
   it('is a heading, and there is no folded caption', () => {
-    expect(CODE).toMatch(/<h1 style=\{\{ fontSize: 20/)
+    expect(CODE).toMatch(/<h1 className="ds-text-title">\{what\.theQuestion\}<\/h1>/)
     expect(CODE).not.toMatch(/Tap to read it again/)
     expect(CODE).not.toMatch(/<details/)
   })
 })
 
 describe('the composer stays where a thumb is', () => {
-  it('is pinned to the bottom, with the transcript scrolling under it', () => {
-    expect(CODE).toMatch(/position: 'sticky', bottom: 0/)
+  it('is the card\'s footer, with the transcript scrolling above it', () => {
+    expect(CODE).toMatch(/<ConversationCard header=\{null\} footer=\{box\}>/)
+    expect(BLOCKS).toMatch(/\.ds-ci-body \{[^}]*overflow-y: auto/)
   })
 
   /* A phone's home bar sits over the bottom of the viewport; without this the send button is half
      under it. */
   it('and clears the home bar', () => {
-    expect(CODE).toMatch(/env\(safe-area-inset-bottom, 0px\)/)
+    expect(BLOCKS).toMatch(/\.ds-alone \{[^}]*env\(safe-area-inset-bottom, 0\)/)
   })
 })
 
-/*
- * UPDATED 20 October (the kit's design everywhere): "I am done" is the kit's secondary button now
- * (the shared `gwui-btn gwui-btn-secondary` classes, 44px tall) instead of a hand-styled 40px pill.
- * These three read its style from the source, so they now read the classes. The words, where it
- * sits and what it does are unchanged.
- */
 describe('finishing is visible', () => {
-  /* The one inside the pinned composer ("I am done" calls askWhoTheyAre, as the engine's own close does). */
-  const theTag = () => {
-    const at = CODE.lastIndexOf("onClick={askWhoTheyAre}")
-    return CODE.slice(CODE.lastIndexOf('<button', at), at + 200)
-  }
-  it('is a button, not an underlined link', () => {
-    expect(theTag()).toMatch(/className="btn sec"/)
-    expect(theTag()).not.toMatch(/textDecoration: 'underline'/)
+  /* The one beside the box ("I am done" calls askWhoTheyAre, as the engine's own close does): a 44px second button, never a link. */
+  it('is a button, not an underlined link, and big enough to hit', () => {
+    expect(CODE).toMatch(/<Button kind="secondary" onClick=\{askWhoTheyAre\}>I am done<\/Button>/)
   })
 
-  /* Forty-four pixels: the kit's button, and what a thumb hits reliably. */
-  it('and is big enough to hit', () => {
-    expect(theTag()).not.toMatch(/\bsm\b/)
-  })
-
-  it('and sits beside the send button rather than under the input', () => {
-    expect(CODE).toMatch(/justifyContent: 'space-between'[^}]*\}\}>\s*<button className="btn sec" onClick=\{askWhoTheyAre\}/)
+  it('and sits in the box\'s own footer rather than under the page', () => {
+    const box = CODE.slice(CODE.indexOf('const box = ('), CODE.indexOf('const box = (') + 2500)
+    expect(box).toContain('onClick={askWhoTheyAre}')
   })
 
   /* Nobody should press it wondering whether it throws away what they have just typed. */

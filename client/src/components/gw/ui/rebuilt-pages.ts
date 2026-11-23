@@ -257,6 +257,12 @@ export const REBUILT_PAGES: string[] = [
   'components/gw/PageCrash.tsx',
   'components/gw/GroundGone.tsx',
   /*
+   * JOURNEY 2, A MEMBER'S FIRST CHECK-IN (Hafsah, 23 November 2026): the page between check-ins and the answer link anyone can
+   * open without signing in, rebuilt on the design system's conversation blocks (blocks.css, "THE CONVERSATION").
+   */
+  'components/gw/BetweenCheckIns.tsx',
+  'pages/join/AnswerFirstPage.tsx',
+  /*
    * JOURNEY 6, ASKING GROUNDWORK A QUESTION (D1-ask-groundwork, Hafsah, 23 November 2026): the Ask panel beside a
    * page and Ask as its own page on a phone, on the design system's chat block (blocks.css, `.ds-chat-*`), with the
    * chat bar (`ChatBar`) in place of the check-in's composer and product.css's drawer rules.

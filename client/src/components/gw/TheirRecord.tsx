@@ -1,65 +1,56 @@
-import type React from 'react'
-import { Section, Note, Stack, FoldedLine } from '@/components/gw/ui'
+import { Section, EdgeList, EdgeRow, Text } from '@/components/gw/ui'
 import type { ThePersonsRecordServed } from '@/api/grounds'
 
 /**
  * A PERSON'S RECORD AND THE COACHING GROUNDWORK GAVE THEM (Groundwork does the managing, part 1), as the server serves it: on My work
- * (the person's own, or the lead's view of one person) and in the person's own report. Every sentence is the server's
- * (api board/the-persons-record-in-words.ts); who may read it is decided there, so nothing here hides anything. Drawn only where the
- * payload carries it, which is only where the organisation's direct morning is on.
+ * (the person's own, or the lead's view of one person). Every sentence is the server's (api board/the-persons-record-in-words.ts);
+ * who may read it is decided there, so nothing here hides anything. Drawn only where the payload carries it, which is only where the
+ * organisation's direct morning is on.
+ *
+ * One section, one row a part (the design system, journey 4, 23 November 2026). It used to be a fold of folds, which on a rebuilt
+ * page opened every line at once under its own small heading; now each part is a row with its sentence, what would change it, and
+ * the moments it rests on, the same as every other list on My work.
  */
-export function TheirRecord({ record, asOneFold }: { record: ThePersonsRecordServed; asOneFold?: boolean }) {
-  /* On the person's own report it is one folded line, as the prototype keeps that page short; elsewhere a section. */
-  const Wrap = ({ children }: { children: React.ReactNode }) => asOneFold
-    ? <FoldedLine name={record.heading} fact={record.note}>{children}</FoldedLine>
-    : <Section heading={record.heading} note={record.note}>{children}</Section>
+export function TheirRecord({ record }: { record: ThePersonsRecordServed }) {
+  const lines = (l: string[]) => l.map((x) => <Text key={x} size="secondary" as="p">{x}</Text>)
   return (
     <div data-gw-their-record>
-      <Wrap>
-        {/* One folded row per part, divided by thin rules as the prototype's lists are, not a card each. Every sentence is the server's. */}
-        <div className="gwui-ruled">
+      <Section heading={record.heading} note={record.note || undefined}>
+        <EdgeList label={record.heading}>
           {record.parts.map((p) => (
-            <FoldedLine key={p.heading} name={p.heading} fact={p.says}>
-              <Stack gap={8}>
-                {p.toChange && <p className="t-small"><b>{p.toChange}</b></p>}
-                {p.evidence.length > 0 && (
-                  <ul className="gwui-panel-list">
-                    {p.evidence.map((e) => <li key={e}>{e}</li>)}
-                  </ul>
-                )}
-              </Stack>
-            </FoldedLine>
+            <EdgeRow
+              key={p.heading}
+              reason={null}
+              title={p.heading}
+              detail={<>
+                <Text size="body" as="p">{p.says}</Text>
+                {p.toChange && <Text size="body" as="p"><b>{p.toChange}</b></Text>}
+                {lines(p.evidence)}
+              </>}
+            />
           ))}
           {(record.coaching.length > 0 || !!record.coachingEmpty) && (
-            <FoldedLine name="Coaching from Groundwork" fact={record.coaching.length === 0 ? record.coachingEmpty : undefined}>
-              {record.coaching.length === 0 ? null : (
-                <ul className="gwui-panel-list">
-                  {record.coaching.map((c) => (
-                    <li key={c.said}>
-                      <span>{c.said}</span>
-                      <Note tone="muted">{c.since}</Note>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </FoldedLine>
+            <EdgeRow
+              reason={null}
+              title="Coaching from Groundwork"
+              detail={record.coaching.length === 0
+                ? <Text size="body" as="p">{record.coachingEmpty}</Text>
+                : record.coaching.map((c) => (
+                  <div key={c.said}>
+                    <Text size="body" as="p">{c.said}</Text>
+                    <Text size="secondary" as="p">{c.since}</Text>
+                  </div>
+                ))}
+            />
           )}
           {record.fromYourLead && record.fromYourLead.lines.length > 0 && (
-            <FoldedLine name={record.fromYourLead.heading}>
-              <ul className="gwui-panel-list">
-                {record.fromYourLead.lines.map((l) => <li key={l}>{l}</li>)}
-              </ul>
-            </FoldedLine>
+            <EdgeRow reason={null} title={record.fromYourLead.heading} detail={lines(record.fromYourLead.lines)} />
           )}
           {record.acrossYourCheckIns && record.acrossYourCheckIns.lines.length > 0 && (
-            <FoldedLine name={record.acrossYourCheckIns.heading}>
-              <ul className="gwui-panel-list">
-                {record.acrossYourCheckIns.lines.map((l) => <li key={l}>{l}</li>)}
-              </ul>
-            </FoldedLine>
+            <EdgeRow reason={null} title={record.acrossYourCheckIns.heading} detail={lines(record.acrossYourCheckIns.lines)} />
           )}
-        </div>
-      </Wrap>
+        </EdgeList>
+      </Section>
     </div>
   )
 }

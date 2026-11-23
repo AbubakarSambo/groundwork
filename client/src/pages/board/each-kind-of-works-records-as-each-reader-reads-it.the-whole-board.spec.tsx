@@ -155,9 +155,9 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
     expect(within(dealGrid).queryByText('Next step booked')).toBeNull()
     expect(within(dealGrid).queryByText('Follow-up, no reply')).toBeNull()
 
-    /* Not-known: the server's own reason, under a plain heading built from its own `holds`. */
-    const forecast = screen.getByRole('region', { name: 'Where the sales numbers are likely to end up' })
-    expect(within(forecast).getByText('Groundwork does not keep this yet. It needs numbers from another system, such as payment records or a helpdesk.')).toBeTruthy()
+    /* Not-known: changed 23 November (journey 3). On the rebuilt board a part Groundwork does not keep is not drawn (design guide,
+       rule 10), rather than a heading over a sentence saying there is nothing. */
+    expect(screen.queryByRole('region', { name: 'Where the sales numbers are likely to end up' })).toBeNull()
 
     /* The lead can add a record; changing or removing one lives behind "Change". */
     expect(within(dealGrid).getAllByRole('button', { name: 'Change' }).length).toBe(2)

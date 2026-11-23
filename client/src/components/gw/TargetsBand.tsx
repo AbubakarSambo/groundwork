@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { boardApi } from '@/api/board'
 import { firstNameOrLabel, atTheStart } from '@/lib/utils'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
-import { Panel, RowList, Row, Tag, FieldLabel, TextArea, Note } from '@/components/gw/ui'
+import { Panel, RowList, Row, Tag, FieldLabel, TextArea, Note, useTheDesignSystem } from '@/components/gw/ui'
 
 /**
  * TARGETS, AS THE PROTOTYPE'S CONTEXT PAGE DRAWS THEM (U.7, B2).
@@ -56,6 +56,7 @@ export function TargetsBand({
   /** Hands the target to the context conversation, where it is changed by saying so. */
   onChangeTarget?: (t: Target) => void
 }) {
+  const ds = useTheDesignSystem()
   const qc = useQueryClient()
   const [editing, setEditing] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
@@ -185,7 +186,8 @@ export function TargetsBand({
   }
 
   return (
-    <section aria-label="Targets" className="gwui-mb-14" style={{ maxWidth: 720 }}>
+    /* On a rebuilt page the band lines up with every other section, the full width of the column (rule 1); elsewhere as it was. */
+    <section aria-label="Targets" className={ds ? undefined : 'gwui-mb-14'} style={ds ? undefined : { maxWidth: 720 }}>
       {/* The band's heading, "Targets", is the page's own (Sec in ContextPage), so it is numbered
           with the others. The link sits at its right, as in the prototype. */}
       {isTheLead && (

@@ -8,7 +8,7 @@ import { boardApi, KIND_OF_WORK_OPTIONS, type AServedWorkSection, type AServedWo
 import { isASalesKind } from '@/lib/a-sales-kind'
 import { groundsApi } from '@/api/grounds'
 import { Link } from 'react-router-dom'
-import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack, ProofMark, Stack, Note, SubHeading } from '@/components/gw/ui'
+import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack, ProofMark, Stack, Note, SubHeading, useTheDesignSystem } from '@/components/gw/ui'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -997,6 +997,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   })
 
   const heading = sectionHeading(kindOfWork, section)
+  const ds = useTheDesignSystem()
   const isDealGrid = section.section === 'Deal grid'
   const dealGridRows = section.state === 'filled' || section.state === 'none-yet' ? section.rows : []
   /*
@@ -1018,6 +1019,9 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
     ?? (section.section === 'Themes' && kindOfWork ? THEMES_NOTE[kindOfWork] : undefined)
   /* "Only yours." is not drawn as a note (the standards forbid privacy notes on screens; Dangote rerun, N13). It still says the section is narrowed, for the sentence below. */
 
+  /* ON A REBUILT PAGE, A PART GROUNDWORK DOES NOT KEEP IS NOT DRAWN (journey 3, 23 November 2026): a heading over a sentence saying
+     there is nothing is an empty section (design guide, rule 10). Elsewhere it reads as it did. */
+  if (section.state === 'not-known' && ds) return null
   if (section.state === 'not-known') {
     return (
       <Section heading={heading} note={note}>

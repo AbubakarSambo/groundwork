@@ -135,7 +135,7 @@ export function DeliveredPanel({
         return (
           <div key={d.id} style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 11, marginTop: 11 }}>
             {expectation && (
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 3 }}>
+              <div className="ds-text-meta">
                 Against: {expectation}
               </div>
             )}
@@ -149,7 +149,7 @@ export function DeliveredPanel({
               {d.evidence ? d.evidence : 'You have not said where anyone can see this'}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>
+              <div className="ds-text-meta">
                 {raised ? 'Raised in a check-in' : 'Waiting to be asked about'}
               </div>
               {/* Gone once a session has raised it: taking it back afterwards would edit the run-up

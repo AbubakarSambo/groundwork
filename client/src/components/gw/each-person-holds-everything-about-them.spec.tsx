@@ -36,8 +36,11 @@ describe('each person holds everything about them', () => {
   it('one row per person, managing-only left out, and your own row open', () => {
     render(<EachPerson groundId="g1" people={people as any} targets={targets} toDos={toDos} files={files} asks={asks as any} viewerUserId="u1" isLead={false} />)
     expect(screen.getByText('You')).toBeTruthy()
-    expect(screen.getByText('Miriam')).toBeTruthy()
+    /* Changed 23 November 2026 (journey 4): a colleague with nothing on record is one line for a member, not a card of five empty
+       parts. Miriam has nothing on record here. The lead still reads a card for everyone (the tests below). */
+    expect(screen.getByText('Nothing is on record yet for Miriam.')).toBeTruthy()
     expect(screen.queryByText('Hafiz')).toBeNull()
+    expect(document.body.textContent).not.toContain('Hafiz')
     /* Yours is open: the expectation, the number, the to-do and the ask are all on it. */
     expect(screen.getByText('expectation for p1')).toBeTruthy()
     expect(screen.getByText('4,000,000')).toBeTruthy()

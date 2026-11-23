@@ -128,7 +128,9 @@ describe('the header', () => {
     const heading = await findByRole('heading', { name: 'Sales team, Q3' }, { timeout: 5000 })
     expect(screen.getAllByText('Sales team, Q3')).toHaveLength(1)
     expect(document.querySelector('.ci-back')).toBeNull()
-    expect(heading.closest('.ci-h')?.contains(screen.getByRole('button', { name: 'Skip this one' }))).toBe(true)
+    /* Changed 23 November 2026 (journey 2, the design system): the card's header is drawn from the blocks, .ds-ci-head, not the
+       old .ci-h. Still one line holding the name and "Skip this one". */
+    expect(heading.closest('.ds-ci-head')?.contains(screen.getByRole('button', { name: 'Skip this one' }))).toBe(true)
     expect(await findByText(OPENING, {}, { timeout: 5000 })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'End check-in' })).toBeNull()

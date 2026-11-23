@@ -67,7 +67,8 @@ describe('when a hundred people start at once', () => {
 
   /* The half that was actually broken: the message existed and had nowhere to render. */
   it('and renders the reason on the screen the button is on', () => {
-    const reading = CODE.slice(CODE.indexOf("{phase === 'reading' &&"), CODE.indexOf("{(phase === 'talking' || phase === 'address') &&"))
+    /* Changed 23 November 2026 (journey 2): the reading phase's lines now end where the page turns to "done" or the conversation. */
+    const reading = CODE.slice(CODE.indexOf("{phase === 'reading' &&"), CODE.indexOf("{phase === 'done' ?"))
     expect(reading).toMatch(/\{problem && \(/)
     expect(reading).toMatch(/role="alert"/)
   })
