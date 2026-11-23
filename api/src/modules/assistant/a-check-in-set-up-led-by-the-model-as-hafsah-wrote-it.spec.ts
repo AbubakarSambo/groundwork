@@ -1,5 +1,5 @@
 import { askGroundwork, textOf } from './request-92-harness';
-import { CHECK_IN_SETUP_PROMPT, CHECK_IN_SETUP_KIND } from './a-check-in-set-up-by-talking';
+import { CHECK_IN_SETUP_PROMPT, CHECK_IN_SETUP_KIND, theBriefOf } from './a-check-in-set-up-by-talking';
 
 /**
  * A CHECK-IN SET UP BY TALKING, AS HAFSAH WROTE IT ON WHATSAPP ON 23 NOVEMBER 2026, AND AS SHE READS IT.
@@ -29,7 +29,7 @@ const ABUBAKAR = { id: 'abu', name: 'Abubakar' };
 /** What Gemini gives back for each of her messages: its own words, and the whole of what the set-up holds. */
 const GEMINI: Record<string, any> = {
   'I want to get updates from my team': { reply: 'Happy to set that up. What do you want updates on? Abubakar Sambo reports to you, so tell me if it is him or somebody else as well.' },
-  'I want updates from Abubakar on specifics on the Ai project': { reply: 'Got it, updates from Abubakar Sambo on the specifics of the AI project. How often should he check in, every week or every two weeks?', updatesOn: 'the specifics of the AI project', people: [ABUBAKAR] },
+  'I want updates from Abubakar on specifics on the Ai project': { reply: 'Got it, updates from Abubakar Sambo on the specifics of the AI project. How often should he check in, every week or every two weeks?', updatesOn: 'the specifics of the AI project', brief: 'Abubakar gives updates on the specifics of the AI project, what moved, what is stuck and what comes next.', people: [ABUBAKAR] },
   'I said Abubakar': { reply: 'Yes, Abubakar Sambo is in it. How often should he check in?', people: [ABUBAKAR] },
   'He is under my team': { reply: 'Yes, he reports to you. How often should he check in?', people: [ABUBAKAR] },
   'This is a fucking mess': { reply: 'Fair enough, let me make it quick. I have updates from Abubakar Sambo on the AI project. I only need to know how often he should check in.', people: [ABUBAKAR] },
@@ -151,14 +151,14 @@ describe('Hafsah sets up a check-in by talking, with her six messages', () => {
     const h = hafsah();
     for (const m of HER_SIX) await h.say(m);
     const back = await h.say('every week');
-    expect(back).toBe('Here is the check-in I will open. It is called "Updates on the specifics of the AI project", and it asks for updates on the specifics of the AI project. I will run it as a check-in to keep a read on live work. Abubakar Sambo (abubakar@groundwork.test) will be in it, and they will be emailed an invitation. They will check in every week. Shall I open it?');
+    expect(back).toBe('Here is the check-in I will open. It is called "Updates on the specifics of the AI project", and it asks for updates on the specifics of the AI project. I will run it as a check-in to keep a read on live work. Abubakar Sambo (abubakar@groundwork.test) will be in it, and they will be emailed an invitation. They will read what it is for in these words, "Abubakar gives updates on the specifics of the AI project, what moved, what is stuck and what comes next." They will check in every week. Shall I open it?');
     expect(h.opened).toEqual([]);
     const notYet = await h.say('sounds good I guess');
-    expect(notYet).toMatch(/^Say yes and I will open it\. Here is the check-in I will open\./);
+    expect(notYet).toMatch(/^Here is the check-in I will open\./);
     expect(h.opened).toEqual([]);
     expect(h.invited).toEqual([]);
     expect(await h.say('yes')).toBe('I have opened "Updates on the specifics of the AI project". Abubakar Sambo has been invited.');
-    expect(h.opened[0]).toEqual(expect.objectContaining({ label: 'Updates on the specifics of the AI project', cadence: 'WEEKLY' }));
+    expect(h.opened[0]).toEqual(expect.objectContaining({ label: 'Updates on the specifics of the AI project', cadence: 'WEEKLY', brief: 'Abubakar gives updates on the specifics of the AI project, what moved, what is stuck and what comes next.' }));
     expect(h.invited).toEqual([{ email: 'abubakar@groundwork.test', displayName: 'Abubakar Sambo' }]);
   });
 
@@ -169,5 +169,13 @@ describe('Hafsah sets up a check-in by talking, with her six messages', () => {
     expect(await h.say('no')).toBe('I have stopped setting it up. Nothing was opened and nobody was invited.');
     expect(h.opened).toEqual([]);
     expect(h.invited).toEqual([]);
+  });
+
+  /* Found in the real run (24 November): with no brief from the model, "I want updates on the AI project." was under the 40 characters
+     GroundsService needs before anybody can be invited, so the check-in opened with nobody in it. What the person reads is a full sentence now. */
+  it('what the people in it read about it is a full sentence, long enough that they can be invited, even for the shortest topic', () => {
+    const brief = theBriefOf({ updatesOn: 'sales', cadence: 'DAILY', people: [], asked: 'confirm', said: [] });
+    expect(brief).toBe('You check in every day with your updates on sales.');
+    expect(brief.length).toBeGreaterThanOrEqual(40);
   });
 });

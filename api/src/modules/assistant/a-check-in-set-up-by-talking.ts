@@ -28,6 +28,8 @@ export interface APerson {
 
 export interface TheSetupSoFar {
   updatesOn?: string;
+  /** What the check-in is for, in plain sentences made from her words, as the people in it will read it. */
+  brief?: string;
   people: APerson[];
   cadence?: TheRhythm;
   /** 'confirm' once the whole of it has been said back, so a plain yes opens it. */
@@ -64,21 +66,22 @@ export const CHECK_IN_SETUP_PROMPT = `You are Groundwork, helping somebody set u
 You get the organisation's people, what the set-up has gathered so far, the conversation so far and their new message. Read the whole conversation, not only the last message, and work out what they mean. One message can say several things at once: "updates from Abubakar on the AI project, he's on my team" gives you what it is about and who is in it.
 
 Give back:
-- updatesOn: what they want updates on, in a few of their own words, as it reads after "Updates on", for example "the AI project" or "deals, payments and visits". Leave it out if they have not said.
-- people: everybody who should be in it so far, the whole list, keeping the people already gathered unless they take somebody out. For somebody on the list of people, give their id. A first name means the person on the list with that first name. "My team" or "the people under me" means the people marked as reporting to them. For somebody who is not on the list, give the name they used, and an email address or a phone number only if they typed it. Never make up a name, an address or a number. A sentence is never a name: "He is under my team" tells you where to look for him, it is not a person.
+- updatesOn: what they want updates on, in a few of their own words, as it reads after "Updates on", for example "the AI project" or "deals, payments and visits". A topic is enough: never ask them to be more specific about it. Leave it out if they have not said.
+- brief: what the check-in is for, in one or two plain sentences made from what they said, written for the people in it to read, in full sentences with no colons, for example "Each week you tell me how deals, payments and visits went, and what is stuck." Leave out anything rude or private. Write it from what they have said; never ask them for more to write it with.
+- people: everybody who should be in it so far, the whole list, keeping the people already gathered unless they take somebody out. For somebody on the list of people, give their id. A first name means the person on the list with that first name. Put the whole team in, the people marked as reporting to them, only when they ask for the whole team; "I want updates from my team" said before they name anybody is a general wish, and once they name people, it is those people. "He is under my team" says where he is; it adds nobody. For somebody who is not on the list, give the name they used, and an email address or a phone number only if they typed it. Never make up a name, an address or a number. A sentence is never a name: "He is under my team" tells you where to look for him, it is not a person.
 - cadence: how often, if they said: DAILY, WEEKLY, FORTNIGHTLY or MONTHLY.
-- stops: true only when they ask to stop or cancel setting it up.
+- stops: true only when they ask to stop or cancel setting it up. Being unsure is not stopping: say what they can change, and that nothing opens until they say yes.
 - somethingElse: true only when the message is plainly about something else, not this set-up, for example "how is Kito doing?". Asking whether they can set it up here, asking how it works, being annoyed, or correcting you is about this set-up.
 - reply: what Groundwork says to them next.
 
 How to write the reply:
 - Plain, short, direct sentences, the way a capable colleague talks. No lists, no headings, no colons, no emoji. Use people's names, and call the person you are talking to "you".
 - Answer what they asked first. If they ask whether they can set it up here, say yes, right here, and carry on from what you already have. Never start again.
-- Say briefly what you understood, then ask only for what is still missing.
+- Say briefly what you understood, then ask only about what is listed under "Still missing", after you have taken in their new message. Ask nothing else: never ask what about the topic they want, never ask for more detail, and never ask whether anybody else should be in it. The people you name in your reply are exactly the people in your list.
 - When you looked for somebody on the list and could not find them, say who you looked for, and ask who they mean or for their email address. When more than one person fits, name them and ask which. When somebody has no email address on file, say so and ask for it.
-- If they are annoyed, acknowledge it in a few words and get on with it.
+- If they are annoyed, acknowledge it in a few words, without repeating what they said, and get on with it.
 - Never repeat their words back as if they were somebody's name.
-- Never say the check-in is open or that anybody is invited. When nothing is missing, Groundwork says the whole check-in back right after your reply and asks for their yes, so your reply then only answers anything they asked, in one sentence, or is empty.`;
+- Never say the check-in is open or that anybody is invited. When nothing is missing, Groundwork says the whole check-in back instead of your reply, and asks for their yes.`;
 
 export const CHECK_IN_SETUP_SCHEMA = {
   name: 'the_check_in_set_up',
@@ -88,6 +91,7 @@ export const CHECK_IN_SETUP_SCHEMA = {
     properties: {
       reply: { type: 'string', description: 'What Groundwork says next, in plain sentences.' },
       updatesOn: { type: 'string' },
+      brief: { type: 'string', description: 'What the check-in is for, in one or two plain sentences, for the people in it to read.' },
       people: {
         type: 'array',
         items: { type: 'object', properties: { id: { type: 'string', description: 'Their id on the list of people, if they are on it.' }, name: { type: 'string' }, email: { type: 'string' }, phone: { type: 'string' } }, required: ['name'] },
@@ -170,6 +174,7 @@ export function theModelsTurn(raw: any, s: TheSetupSoFar, roster: OnTheRosterFor
 
   const so: TheSetupSoFar = { ...s, people: [...s.people] };
   if (typeof raw.updatesOn === 'string' && raw.updatesOn.trim()) so.updatesOn = raw.updatesOn.trim().replace(/[.!?]+$/, '').slice(0, 200);
+  if (typeof raw.brief === 'string' && raw.brief.trim()) so.brief = raw.brief.trim().slice(0, 600);
   if (['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY'].includes(raw.cadence)) so.cadence = raw.cadence;
   if (Array.isArray(raw.people)) {
     const people: APerson[] = [];
@@ -210,6 +215,11 @@ function theSituationInWords(scenario: string): string {
   return `${name.charAt(0).toLowerCase()}${name.slice(1)}`;
 }
 
+/** What the check-in is for, as the people in it read it: the model's sentences from her words, or what she wants updates on. */
+export function theBriefOf(s: TheSetupSoFar): string {
+  return s.brief ?? `You check in ${s.cadence ? RHYTHM_SAID[s.cadence] : 'regularly'} with your updates on ${inASentence(s.updatesOn ?? '')}.`;
+}
+
 /** Nothing is missing, so it can be said back. */
 export function readyToSayBack(s: TheSetupSoFar): boolean {
   return whatIsStillMissing(s).length === 0;
@@ -223,6 +233,7 @@ export function saidBack(s: TheSetupSoFar): string {
   return [
     `Here is the check-in I will open. It is called "${theNameFor(updatesOn)}", and it asks for updates on ${updatesOn}. I will run it as a check-in to ${theSituationInWords(s.scenario ?? theSituationFor(updatesOn).scenario)}.`,
     `${saidAsAList(each)} will be in it, and ${one ? 'they' : 'each of them'} will be emailed an invitation.`,
+    `${one ? 'They' : 'Each of them'} will read what it is for in these words, "${theBriefOf(s)}"`,
     `They will check in ${RHYTHM_SAID[s.cadence as TheRhythm]}.`,
     'Shall I open it?',
   ].join(' ');

@@ -189,7 +189,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConversationService } from '../conversation/conversation.service';
 import { readTheSituationAndTheKind, whatTheReadingSets } from '../entry/which-situation-this-is';
 import { keepWhatTheLeadTyped, readTheTargetsSheGaveAtSetUp } from '../grounds/what-the-lead-said-at-set-up';
-import { CHECK_IN_SETUP_KIND, CHECK_IN_SETUP_PROMPT, CHECK_IN_SETUP_PROMPT_KEY, CHECK_IN_SETUP_SCHEMA, SETUP_STOPPED, readyToSayBack, saidBack, theModelsTurn, theNameFor, theSituationFor, theTurnForTheModel, whatToSayWithNoModel, type OnTheRosterForSetUp, type TheSetupSoFar } from './a-check-in-set-up-by-talking';
+import { CHECK_IN_SETUP_KIND, CHECK_IN_SETUP_PROMPT, CHECK_IN_SETUP_PROMPT_KEY, CHECK_IN_SETUP_SCHEMA, SETUP_STOPPED, readyToSayBack, saidBack, theBriefOf, theModelsTurn, theNameFor, theSituationFor, theTurnForTheModel, whatToSayWithNoModel, type OnTheRosterForSetUp, type TheSetupSoFar } from './a-check-in-set-up-by-talking';
 import { asALine, whatIsMissingAcrossThem } from './what-a-target-was-for';
 import {
   THINK_IT_THROUGH_PROMPT, THINK_IT_THROUGH_PROMPT_KEY, THINK_IT_THROUGH_SCHEMA, WHAT_TO_THINK_ABOUT, COULD_NOT_LAY_OUT, NOT_ENOUGH_TO_GO_ON,
@@ -2752,19 +2752,19 @@ export class AssistantService {
       select: { externalId: true, displayName: true, email: true, phone: true, title: true, department: true, managerExternalId: true },
     })).catch(() => [])) as OnTheRosterForSetUp[];
     const version = await this.prompts?.getActive(CHECK_IN_SETUP_PROMPT_KEY).catch(() => null);
-    const raw = await Promise.resolve((this.engine as any).extract?.(version?.content ?? CHECK_IN_SETUP_PROMPT, [{ role: 'user', content: theTurnForTheModel(so, roster, who, message) }], CHECK_IN_SETUP_SCHEMA, { fast: true })).catch(() => null);
+    /* The main model, thinking a little: the fast one put the whole team in when she named one person (real run, 24 November), and who is in it is who gets invited. */
+    const raw = await Promise.resolve((this.engine as any).extract?.(version?.content ?? CHECK_IN_SETUP_PROMPT, [{ role: 'user', content: theTurnForTheModel(so, roster, who, message) }], CHECK_IN_SETUP_SCHEMA, { thinkingBudget: 1024 })).catch(() => null);
     const read = theModelsTurn(raw, so, roster, who, message);
     if (read?.stops) return 'stops';
     if (read?.somethingElse && mayBeSomethingElse) return 'something_else';
     const said = message.trim() ? [...so.said, { words: message, asked }] : so.said;
     let next: TheSetupSoFar = { ...(read?.so ?? so), said, asked: 'talking' };
-    let says = read ? read.reply : whatToSayWithNoModel(next);
+    let says = read?.reply || whatToSayWithNoModel(next);
     if (readyToSayBack(next)) {
-      /* At the say-back, the situation and the kind of work are read from her words, so what is said back is what is opened. */
+      /* The say-back is the product's own words, before anything is opened or sent. The situation and the kind of work are read from her words, so what is said back is what is opened. */
       next = { ...next, ...(await this.theSituationAndKindSheMeans(next)), asked: 'confirm' };
-      says = [read?.reply ?? '', saidBack(next)].filter(Boolean).join(' ');
+      says = saidBack(next);
     }
-    if (!says) says = whatToSayWithNoModel(next);
     const proposal = await this.prisma.assistantProposal.create({
       data: { organizationId, personExternalId: who, kind: CHECK_IN_SETUP_KIND, summary: says, payload: next as never },
     });
@@ -3833,7 +3833,7 @@ export class AssistantService {
         ...(so.kindOfWork ? { kindOfWork: so.kindOfWork } : {}),
         moment: 'STARTING' as never,
         cadence: so.cadence as never,
-        brief: `I want updates on ${so.updatesOn}.`,
+        brief: theBriefOf(so),
       }, role ?? undefined);
     } catch (err: any) {
       return rules('start_a_check_in', text(`I could not open it. ${typeof err?.message === 'string' && err.message ? err.message : 'Something went wrong on our side.'} Nothing was sent.`));
@@ -3841,6 +3841,7 @@ export class AssistantService {
     const invited: string[] = [];
     const notInvited: string[] = gone.length ? [`${saidAsAList(gone)} ${gone.length === 1 ? 'is' : 'are'} no longer on the roster, so ${gone.length === 1 ? 'they were' : 'they were'} left out.`] : [];
     const numbersNotKept: string[] = [];
+    const refused = new Map<string, string[]>();
     for (const p of so.people.filter((q) => !left.has(String(q.email)))) {
       try {
         const added: any = await this.grounds.addParticipant(ground.id, organizationId, me.linkedUserId, { email: p.email as string, displayName: p.name });
@@ -3850,9 +3851,12 @@ export class AssistantService {
             .catch(() => { numbersNotKept.push(p.name); });
         }
       } catch (err: any) {
-        notInvited.push(`${p.name} was not invited. ${typeof err?.message === 'string' && err.message ? err.message : 'The invitation did not send.'}`);
+        const why = typeof err?.message === 'string' && err.message ? err.message : 'The invitation did not send.';
+        refused.set(why, [...(refused.get(why) ?? []), p.name]);
       }
     }
+    /* One reason is said once, with everybody it stopped: the same refusal was said six times over (24 November 2026). */
+    for (const [why, names] of refused) notInvited.push(names.length === 1 ? `${names[0]} was not invited. ${why}` : `${saidAsAList(names)} were not invited. ${why}`);
     const said = [invited.length
       ? `I have opened "${label}". ${saidAsAList(invited)} ${invited.length === 1 ? 'has' : 'have'} been invited.`
       : `I have opened "${label}", but none of those people could be invited.`];
@@ -3871,7 +3875,7 @@ export class AssistantService {
       given: [
         ...so.people.filter((p) => !left.has(String(p.email))).map((p) => [p.name, p.email, p.phone].filter(Boolean).join(', ')),
         ...(so.cadence ? [`How often: ${so.cadence}`] : []),
-        `The brief: I want updates on ${so.updatesOn}.`,
+        `The brief: ${theBriefOf(so)}`,
       ],
     }).catch((err: any) => this.logger.warn(`What the lead said setting up ${ground.id} could not be read: ${err?.message ?? err}`));
     return rules('start_a_check_in', text(said.join(' ')));

@@ -209,7 +209,7 @@ describe('a check-in set up by talking, turn by turn, as Grace the lead reads it
     expect(created).toEqual([]);
     /* Changed 22 November 2026: the situation is said in its card's words (the scenario table), the same words /start uses, since it is now read by the one reading. */
     const back = (await l.say('Every week')).text;
-    expect(back).toBe('Here is the check-in I will open. It is called "Updates on deals, payments and visits", and it asks for updates on deals, payments and visits. I will run it as a check-in to keep a read on live work. Mercy Wairimu (mercy@baridi.co.ke) and Juma Otieno (juma@baridi.co.ke, +254 712 345 678) will be in it, and each of them will be emailed an invitation. They will check in every week. Shall I open it?');
+    expect(back).toBe('Here is the check-in I will open. It is called "Updates on deals, payments and visits", and it asks for updates on deals, payments and visits. I will run it as a check-in to keep a read on live work. Mercy Wairimu (mercy@baridi.co.ke) and Juma Otieno (juma@baridi.co.ke, +254 712 345 678) will be in it, and each of them will be emailed an invitation. Each of them will read what it is for in these words, "You check in every week with your updates on deals, payments and visits." They will check in every week. Shall I open it?');
     expect(created).toEqual([]);
     expect((await l.say('yes')).text).toBe('I have opened "Updates on deals, payments and visits". Mercy Wairimu and Juma Otieno have been invited.');
     expect(created[0]).toEqual(expect.objectContaining({ label: 'Updates on deals, payments and visits', scenario: 'PULSE_CHECK', cadence: 'WEEKLY' }));
