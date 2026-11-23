@@ -15,9 +15,18 @@ const SAID = `People said different things. ${TOPIC}.`;
 
 /* Expectations updated (Hafsah, 30 October 2026: plain language for an impatient first-time lead; a difference is said as what people said, with no "needs settling".) */
 describe('a difference that is a whole sentence, as each reader reads it', () => {
-  it.each([['Amina, who runs it', AMINA], ['Rukia, who checks in, once it is shared', RUKIA], ['Juma, an admin', JUMA]])('%s reads it on the tile as its own sentence', async (_w, reader) => {
-    const t = ((await boardAs(setup as any, ...(reader as readonly [string, string]))).quickRead ?? []).find((x: any) => x.label === 'Differences');
-    expect(t.sub).toBe(SAID);
+  /*
+   * Changed 24 November (page audit, row 6, approved by Hafsah): each finding is said once. The difference is said whole, as its
+   * own sentence, where it stands with both sides; the Differences tile counts it and does not say it again.
+   */
+  it.each([['Amina, who runs it', AMINA], ['Rukia, who checks in, once it is shared', RUKIA], ['Juma, an admin', JUMA]])('%s reads it once, as its own sentence, and the tile does not repeat it', async (_w, reader) => {
+    const b = await boardAs(setup as any, ...(reader as readonly [string, string]));
+    const t = (b.quickRead ?? []).find((x: any) => x.label === 'Differences');
+    expect(t.value).toBe('1');
+    expect(t.sub).toBe('It has not been settled yet.');
+    expect(t.sub).not.toContain(TOPIC);
+    expect(JSON.stringify(b.quickRead)).not.toContain(SAID);
+    expect(JSON.stringify(b.divergence ?? b)).toContain(TOPIC);
   });
   it('Amina reads it the same way among what needs deciding', async () => {
     const d = ((await boardAs(setup as any, ...AMINA)).decisions ?? []).find((x: any) => x.source === 'divergence');

@@ -478,8 +478,10 @@ export function atAGlanceTiles(a: {
       sub: a.stillOpen
         ? (theDifference
           ? `${peopleSaidDifferentThingsAbout(theDifference)}${a.stillOpen > 1 ? ` ${a.stillOpen - 1} more ${a.stillOpen === 2 ? 'difference is' : 'differences are'} still open.` : ''}`
-          /* With more than one, how many (item 21): "2" over "The written report reads this as still open." left "this" pointing at nothing. */
-          : a.stillOpen > 1 ? `The written report reads ${a.stillOpen} differences as still open.` : 'The written report reads this as still open.')
+          /* Said plainly after "People see one thing differently." (page audit, 24 November): "The written report reads this as still
+             open." named the report rather than the people, and "this" pointed at nothing once the tile stopped naming the difference,
+             which is said once, under where things stand. */
+          : a.stillOpen > 1 ? 'None of them has been settled yet.' : 'It has not been settled yet.')
         : a.agreed ? 'The written report finds no disagreement.'
           : a.stillToAnswer === 0 ? (a.notJoinedYet ? `Everybody who has joined has answered. ${notJoinedSaid(a.notJoinedYet)}` : 'Everybody has answered, and the written report names no agreement and no gap yet.')
             /* And where nobody passed a count, say what is true of the report rather than guess at the
