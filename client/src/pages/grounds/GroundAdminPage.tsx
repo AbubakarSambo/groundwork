@@ -2753,6 +2753,11 @@ export function GroundAdminPage() {
           <CheckInPeopleAndSetup
             ground={ground}
             user={user}
+            /* Each person's card, with the lead's note and "Change this in the chat", and what people are down as doing: moved here
+               from My work, where a member's page repeated the whole team (Hafsah, 24 November 2026). Whoever runs the check-in reads them. */
+            eachPerson={isInitiator || canRunThisGround
+              ? <ContextPage ground={ground} role={isInitiator ? 'lead' : 'admin'} viewerUserId={user?.id} only="each-person" />
+              : undefined}
             id={id!}
             navigate={navigate}
             isInitiator={isInitiator}

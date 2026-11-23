@@ -529,6 +529,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
           )}
         </Stack>
       </Section>
+      {props.eachPerson}
       {designPass && whatItIs}
 
       {/* 4. WHEN IT RUNS */}
