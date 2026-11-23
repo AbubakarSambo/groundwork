@@ -192,8 +192,8 @@ export function TargetsBand({
           with the others. The link sits at its right, as in the prototype. */}
       {isTheLead && (
         <div className="gwui-mb-8" style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <a href={`/grounds/${groundId}?tab=settings`} className="gwui-fs-13 gwui-ink-navy">
-            <b>Change who sees them</b>
+          <a href={`/grounds/${groundId}?tab=settings`} className="gwui-fs-13 gwui-ink-navy" style={{ fontWeight: 700 }}>
+            Change who sees them
           </a>
         </div>
       )}

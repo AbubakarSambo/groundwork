@@ -1947,7 +1947,7 @@ export function GroundAdminPage() {
               <>
                 {/* Every check-in and Who has answered are the lead's, drawn by MyWorkPage in the Your check-ins card. */}
                 {(part === 'expected' || part === 'all') && <ContextPage ground={ground} role={isInitiator ? 'lead' : canRunThisGround ? 'admin' : 'party'} viewerUserId={user?.id} only="what-moved-to-my-work" />}
-                {viewerIsAParty && self && (
+                {self && <>{viewerIsAParty && (
           <YourWork
             groundId={id!}
             ground={ground}
@@ -1973,7 +1973,7 @@ export function GroundAdminPage() {
             asTheRestOfMyWork
             part={part}
           />
-                )}
+                )}</>}
               </>
             )}
           />

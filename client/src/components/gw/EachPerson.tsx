@@ -162,9 +162,9 @@ export function EachPerson({
   /*
    * A COLLEAGUE WITH NOTHING ON RECORD IS ONE LINE, NOT A CARD (journey 4, page-look audit, 23 November 2026). A member read six
    * cards that each said "Nothing on record yet" over five empty parts, and could do nothing with any of them: they are one sentence
-   * that names them. The lead reads one line a person, with the one thing she can do there, say what she expects of them.
+   * that names them. The lead keeps every card: on an empty one she reads her own note and sets what is expected of that person.
    */
-  const nothingYet = inOrder.filter((p) => !(viewerUserId && p.userId === viewerUserId) && !factsOf(p).summary)
+  const nothingYet = isLead ? [] : inOrder.filter((p) => !(viewerUserId && p.userId === viewerUserId) && !factsOf(p).summary)
   const cards = inOrder.filter((p) => !nothingYet.includes(p))
   const names = nothingYet.map((p) => atTheStart(labelOf(p)))
 
@@ -356,15 +356,9 @@ export function EachPerson({
         )
       }}
       </ShowAFew>
-      {names.length > 0 && !(isLead && onChangeInChat) && (
+      {names.length > 0 && (
         <p className="ds-text-secondary">{`Nothing is on record yet for ${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0]}.`}</p>
       )}
-      {isLead && onChangeInChat && nothingYet.map((p) => (
-        <p key={p.id} className="ds-text-secondary">
-          {`Nothing is on record yet for ${atTheStart(labelOf(p))}.`}{' '}
-          <QuietLink onClick={() => onChangeInChat(`Change what I expect of ${labelOf(p)} to `, `I want to change what ${groundLabel} expects of ${labelOf(p)}.`)}>Say what you expect of them</QuietLink>
-        </p>
-      ))}
     </div>
   )
 }
