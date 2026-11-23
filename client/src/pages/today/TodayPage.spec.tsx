@@ -228,7 +228,8 @@ describe('Today, for a new organisation’s admin', () => {
    */
   it('greets her and says what needs her before the welcome card and "Get <organisation> going"', async () => {
     const { container } = open(GRACE, { count: 0, line: null, needs: [], comingUp: [] })
-    expect(await screen.findByRole('heading', { name: 'You’re an admin at Nyali Foods' })).toBeTruthy()
+    /* The welcome card is one line now (page audit, 24 November 2026, row 10): "You’re an admin. Set things up". */
+    expect(await screen.findByText(/You’re an admin\./)).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Get Nyali Foods going' })).toBeTruthy()
     expect(screen.getByText('Nothing needs you right now.')).toBeTruthy()
     expect(screen.getByText('Wednesday 23 September.')).toBeTruthy()
@@ -236,7 +237,7 @@ describe('Today, for a new organisation’s admin', () => {
     const text = container.textContent ?? ''
     const greetingAt = text.indexOf('Morning, Grace')
     const needsAt = text.indexOf('What needs you')
-    const welcomeAt = text.indexOf('You’re an admin at Nyali Foods')
+    const welcomeAt = text.indexOf('You’re an admin.')
     const goingAt = text.indexOf('Get Nyali Foods going')
     expect(greetingAt).toBeGreaterThan(-1)
     expect(needsAt).toBeGreaterThan(-1)
