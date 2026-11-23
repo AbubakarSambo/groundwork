@@ -51,7 +51,8 @@ describe('"Connect WhatsApp"', () => {
     } as any)
     renderIt()
     await screen.findByText('You can check in by replying on WhatsApp.')
-    expect(screen.getByText('Optional. Tap to say hello to Groundwork on WhatsApp.')).toBeTruthy()
+    /* UPDATED 24 November 2026 (page audit row 13): the sentence before the link is not in the prototype, so it is cut; the link stays. */
+    expect(screen.queryByText(/Optional\. Tap to say hello/)).toBeNull()
     const link = screen.getByRole('link', { name: 'Connect WhatsApp' })
     expect(link.getAttribute('href')).toBe('https://wa.me/447700900123?text=Hi')
     expect(link.getAttribute('target')).toBe('_blank')

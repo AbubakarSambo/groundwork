@@ -395,7 +395,6 @@ export function SettingsPage() {
                    */}
                   {whatsappOn && user?.connectWhatsApp && (
                     <span className="gwui-field-help">
-                      Optional. Tap to say hello to Groundwork on WhatsApp.{' '}
                       <a
                         className="btn quiet sm"
                         href={user.connectWhatsApp.link}
@@ -489,7 +488,6 @@ export function SettingsPage() {
           <Stack gap={12}>
             {!showEraseConfirm && (
               <div>
-                <p className="gwui-panel-text-muted">Your answers stay in the check-ins, without your name.</p>
                 <button type="button" className="gwui-plain-link" onClick={() => setShowEraseConfirm(true)}>Remove your name and email</button>
               </div>
             )}
@@ -540,16 +538,10 @@ export function SettingsPage() {
 
       <Section heading="This device">
         <Panel>
-          <div className="gwui-sentence-row">
-            <div>
-              <p className="gwui-panel-text">Sign out</p>
-              <p className="gwui-panel-text-muted">Signs you out of Groundwork on this device. Nothing you have written is affected.</p>
-            </div>
-            {/* A PLAIN LINK, NOT A BUTTON (Hafsah, 30 September): "/signout" is a real page
+          {/* A PLAIN LINK, NOT A BUTTON (Hafsah, 30 September): "/signout" is a real page
                 (SignOutPage.tsx) that does the actual signing out as it opens - this only goes
                 there, and does nothing itself. */}
-            <Link className="gwui-open-link" to="/signout" replace>Sign out</Link>
-          </div>
+          <Link className="gwui-open-link" to="/signout" replace>Sign out</Link>
         </Panel>
       </Section>
     </Page>

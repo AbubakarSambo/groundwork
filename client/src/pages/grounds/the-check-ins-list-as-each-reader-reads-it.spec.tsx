@@ -90,10 +90,11 @@ beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(NOW)
 afterEach(() => { vi.useRealTimers() })
 
 describe('the check-ins list, as Hafsah reads it (she runs two and is in two)', () => {
-  it('has the prototype’s heading, sentence and sections, each with how many are open', async () => {
+  /* UPDATED 24 November 2026 (page audit row 14, approved by Hafsah): the sentence under the heading explained the screen, so it is cut. */
+  it('has the prototype’s heading and sections, each with how many are open, and no sentence explaining the screen', async () => {
     open(HAFSAH, [SALES, KWAME, LEADERSHIP, STRATEGY, Q2])
     expect(screen.getByRole('heading', { level: 1, name: 'Check-ins' })).toBeTruthy()
-    expect(screen.getByText('Every check-in you run or take part in. Each has its own board.')).toBeTruthy()
+    expect(screen.queryByText('Every check-in you run or take part in. Each has its own board.')).toBeNull()
     await screen.findByRole('table', { name: 'You run' })
     /* Rebuilt from the shared parts (group 2): each section heading is now the shared `Section`
        component (`sec-h`), in place of the page's own `gw-ci-section-head`. */
