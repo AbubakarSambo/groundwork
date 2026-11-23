@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'fs'
+import { withTheSizes } from '@/styles/read-with-the-sizes'
 import { join, relative } from 'path'
 
 /**
@@ -67,7 +68,8 @@ describe('every field a person types in is the kit\'s', () => {
   })
 
   it('the shared field is 48px tall with 16px words', () => {
-    const css = readFileSync(join(SRC, 'components/gw/ui/gw-ui.css'), 'utf8')
+    /* Read with the six sizes filled in from tokens.css (24 November 2026: every size in the stylesheet is a token). */
+    const css = withTheSizes(readFileSync(join(SRC, 'components/gw/ui/gw-ui.css'), 'utf8'))
     expect(css).toMatch(/\.gwui-input \{[^}]*min-height: 48px;/)
     expect(css).toMatch(/\.gwui-input \{[^}]*font-size: 16px;/)
   })

@@ -8,7 +8,7 @@
 .gw-composer-box { flex: 1; min-width: 0; display: flex; align-items: flex-end; gap: 4px; padding: 4px; border: 1px solid var(--rule2-crisp, var(--rule2)); border-radius: 999px; background: var(--surface); }
 .gw-composer-box:focus-within { box-shadow: 0 0 0 2px var(--act); border-color: transparent; }
 .gw-composer .gw-composer-box textarea.input { border: 0; background: transparent; min-height: 40px; padding: 8px 8px; outline: none; box-shadow: none; }
-.gw-composer-box .ci-sq { width: 44px; height: 44px; border-radius: 50%; font-size: 18px; }
+.gw-composer-box .ci-sq { width: 44px; height: 44px; border-radius: 50%; font-size: var(--ds-text-card); }
 .gw-composer-box .btn.sec.ci-sq { box-shadow: none; background: transparent; }
 .gw-composer textarea.input { flex: 1; min-width: 0; min-height: 48px; max-height: 120px; resize: none; padding: 12px 16px; line-height: 1.5; }
 .gw-composer-menu { position: absolute; bottom: 100%; left: 16px; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; box-shadow: var(--gw-shadow-menu); padding: 4px; z-index: 20; width: 260px; max-width: calc(100vw - 40px); }
@@ -38,7 +38,7 @@
 /* A setting that is on or off, as B8 draws it: a plain checkbox in the navy. */
 .gw-check { width: 20px; height: 20px; margin: 0; accent-color: var(--navy); cursor: pointer; flex: none; }
 /* The prototype's sign-in links sit at the two ends of their row; its own rule styles them as links (a), these are buttons. */
-.signlinks .btn { font-size: 14px; white-space: nowrap; min-height: 44px; padding: 0; }
+.signlinks .btn { font-size: var(--ds-text-secondary); white-space: nowrap; min-height: 44px; padding: 0; }
 
 /* Small layout pieces the prototype writes inline in its own markup; named here once so no component repeats them. */
 .gw-min0 { min-width: 0; }
@@ -52,7 +52,7 @@
 .gw-pt-head { display: flex; gap: 16px; align-items: center; min-width: 0; }
 .gw-pt-sub { margin-top: 4px; }
 .gw-greeting { display: flex; flex-direction: column; gap: 8px; }
-.gw-greeting .t-body { font-size: 18px; }
+.gw-greeting .t-body { font-size: var(--ds-text-card); }
 .gw-aside { display: flex; flex-direction: column; gap: 24px; }
 .gw-when-row { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 8px 0; border-top: 1px solid var(--rule); align-items: baseline; }
 .gw-when-row a { color: var(--ink); text-decoration: none; }
@@ -74,7 +74,7 @@
 .gw-own { max-width: 440px; margin: 0 auto; }
 .gw-own-in { padding: 8px 16px 32px; }
 .gw-mark-line { display: flex; gap: 8px; align-items: flex-start; }
-.gw-story { font-family: var(--name); font-size: 18px; line-height: 1.5; }
+.gw-story { font-family: var(--name); font-size: var(--ds-text-card); line-height: 1.5; }
 .gw-told-row { display: grid; grid-template-columns: 18px 1fr; gap: 8px; padding: 8px 0; border-top: 1px solid var(--rule); }
 .gw-told-row .mut { margin-top: 2px; }
 .gw-gone { text-decoration: line-through; color: var(--muted); }
@@ -98,7 +98,7 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
 .gw-templates-list { display: flex; flex-direction: column; gap: 2px; }
 .gw-templates-list .ci-row { border: 0; background: none; font: inherit; text-align: left; width: 100%; cursor: pointer; }
 .gw-template-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 24px; margin: 0; }
-.gw-template-facts dt { font-size: 13px; color: var(--muted); line-height: 20px;}
+.gw-template-facts dt { font-size: var(--ds-text-meta); color: var(--muted); line-height: 20px;}
 .gw-template-facts dd { margin: 2px 0 0; }
 .gw-ladder-row { grid-template-columns: 160px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); padding: 12px 16px; min-width: 720px; }
 .gw-ladder-head { border-top: 0; }
@@ -107,7 +107,7 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
 /* Release 6, the direction: what changed as numbered steps; a brief line's three fields in one row. */
 .gw-numbered { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; counter-reset: gwn; }
 .gw-numbered li { counter-increment: gwn; display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: baseline; }
-.gw-numbered li::before { content: counter(gwn); width: 22px; height: 22px; border-radius: 50%; background: var(--chat); font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.gw-numbered li::before { content: counter(gwn); width: 22px; height: 22px; border-radius: 50%; background: var(--chat); font-size: var(--ds-text-meta); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .gw-brief-row { display: grid; grid-template-columns: 180px minmax(0, 1fr) 200px; gap: 8px; }
 @media (max-width: 640px) { .gw-brief-row { grid-template-columns: 1fr; } }
 .gw-caps { text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
@@ -137,13 +137,13 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
    an action such as "Say why you missed it" can be reached on every row (restored, 30 October 2026). */
 @media (max-width: 640px) {
   .gw-today .t-greet { font-size: 30px; }
-  .gw-today .gwui-greeting p, .gw-today header p.t-body { font-size: 14px; line-height: 20px; }
-  .gw-today .sec-h .t-h2 { font-size: 18px; }
+  .gw-today .gwui-greeting p, .gw-today header p.t-body { font-size: var(--ds-text-secondary); line-height: 20px; }
+  .gw-today .sec-h .t-h2 { font-size: var(--ds-text-card); }
   .gw-today .list .item:first-child > .acts { justify-self: stretch; }
   .gw-today .list .item:first-child > .acts .btn { width: 100%; }
   .gw-today .list .item:not(:first-child) > .sp { visibility: hidden; }
-  .gw-today .list .item:not(:first-child) .h { font-size: 16px; }
-  .gw-today .list .item:not(:first-child) .s { font-size: 14px; }
+  .gw-today .list .item:not(:first-child) .h { font-size: var(--ds-text-body); }
+  .gw-today .list .item:not(:first-child) .s { font-size: var(--ds-text-secondary); }
 }
 /* A reading's evidence: short lines under it, no bullets. */
 .gw-evidence { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }

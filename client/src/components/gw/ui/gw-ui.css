@@ -135,7 +135,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
  * that must not shift the layout around it.
  */
 
-.gwui-pt-sub { font-size: 16px; line-height: 1.5; color: var(--gw-sub); margin-top: 4px; }
+.gwui-pt-sub { font-size: var(--ds-text-body); line-height: 1.5; color: var(--gw-sub); margin-top: 4px; }
 /* "Almost in", "Out of time", "This link has expired" (prototype): the line under the title is ink, not muted. */
 .gwui-pt-sub-ink { color: var(--gw-text); }
 /* A title-less, centred PageTitle (group 3 drift list, piece 1): the one status line shown alone
@@ -164,7 +164,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 /* ── MARK (prototype: the three bars and "Groundwork", .brand) ──────────── */
 .gwui-mark {
   display: inline-flex; align-items: center; gap: 8px; color: var(--gw-navy); text-decoration: none;
-  font-size: 18px; font-weight: 700; letter-spacing: -.01em; min-height: 44px;
+  font-size: var(--ds-text-card); font-weight: 700; letter-spacing: -.01em; min-height: 44px;
 }
 .gwui-mark:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 3px; border-radius: 8px; }
 /* GROUP 3 REVIEW, BATCH B: the mark, with one action beside it - a signed-out reader's "Sign in"
@@ -178,27 +178,27 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 
 /* ── CALLOUT (prototype: a tinted line injected above the invitation's H1, s44.js:
    `background:var(--chat);border-radius:8px;padding:10px 14px`, class `t-small`) ─────────── */
-.gwui-callout { background: var(--gw-bg); color: var(--gw-text); border-radius: 8px; padding: 8px 12px; font-size: 14px; line-height: 20px; margin: 0; }
+.gwui-callout { background: var(--gw-bg); color: var(--gw-text); border-radius: 8px; padding: 8px 12px; font-size: var(--ds-text-secondary); line-height: 20px; margin: 0; }
 .gwui-callout-success { background: var(--gw-green-bg); color: var(--gw-green-t); }
 
 /* ── SUB-HEADING (join-invite.jpg: "What it asks", "Who sees your answers") ─────────── */
-.gwui-subheading { font-family: var(--gw-font-ui); font-size: 14px; font-weight: 700; color: var(--gw-text); margin: 0 0 4px; }
+.gwui-subheading { font-family: var(--gw-font-ui); font-size: var(--ds-text-secondary); font-weight: 700; color: var(--gw-text); margin: 0 0 4px; }
 .gwui-subheading-list { display: grid; gap: 16px; }
 /* SUB-HEADING'S DARK TONE (group 3, piece 5): a faint label on a dark panel, replacing kit.tsx's
    `Sec title=... on="dark"` (same rgba(255,255,255,.45) the old part used). */
 .gwui-subheading-dark { color: rgba(255, 255, 255, .45); }
-.gwui-subheading-kicker { font-size: 14px; color: var(--gw-sub); letter-spacing: .1px; margin: 16px 0 8px; }
+.gwui-subheading-kicker { font-size: var(--ds-text-secondary); color: var(--gw-sub); letter-spacing: .1px; margin: 16px 0 8px; }
 
 /* ── PANEL TEXT (prototype: a fact's body, inside a panel - 14.5px, 21px line) ─────────── */
-.gwui-panel-text { font-size: 14px; line-height: 21px; color: var(--gw-text); margin: 0; }
-.gwui-panel-text-muted { font-size: 14px; line-height: 21px; color: var(--gw-sub); margin: 0; }
+.gwui-panel-text { font-size: var(--ds-text-secondary); line-height: 21px; color: var(--gw-text); margin: 0; }
+.gwui-panel-text-muted { font-size: var(--ds-text-secondary); line-height: 21px; color: var(--gw-sub); margin: 0; }
 /* A plain list inside a Panel - the You board's own "Your goals"/"Your to-dos"/"What you contributed". */
 .gwui-panel-list { list-style: none; margin: 0; padding: 0; }
-.gwui-panel-list li { padding: 8px 0; border-top: 1px solid var(--gw-border); font-size: 14px; line-height: 20px; color: var(--gw-text); }
+.gwui-panel-list li { padding: 8px 0; border-top: 1px solid var(--gw-border); font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-text); }
 .gwui-panel-list li:first-child { border-top: none; padding-top: 0; }
 
 /* ── FINE PRINT (prototype: the sentence under a button, e.g. "About two minutes…") ─────── */
-.gwui-fine { font-size: 13px; line-height: 20px; color: var(--gw-sub); margin: 0; }
+.gwui-fine { font-size: var(--ds-text-meta); line-height: 20px; color: var(--gw-sub); margin: 0; }
 .gwui-fine-centre { text-align: center; }
 
 /* ── FOOT DIVIDER (a "not right now"/decline footer, set off by a rule above it) ─────────── */
@@ -210,15 +210,15 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    trailing it on the same line - `display: block` here does the same, since the caller passes
    this as a `<span>` next to the value's own text. */
 .gwui-field-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
-.gwui-field-help { display: block; font-size: 14px; color: var(--gw-sub); margin: 2px 0 0; }
+.gwui-field-help { display: block; font-size: var(--ds-text-secondary); color: var(--gw-sub); margin: 2px 0 0; }
 .gwui-form-actions { margin-top: 16px; }
 
 /* ── STEPS (a numbered list of what has and has not happened yet, join-waiting.jpg) ───────────
    Reads as a Panel: 12px corners, 20px top/bottom and 22px sides inside, rows on a 38px pitch,
    the mark bold 16px (green ✓ for a done step, amber ○ for the one still to come). */
 .gwui-steps { list-style: none; margin: 0; padding: 16px 24px; border: 1px solid var(--gw-border); border-radius: 12px; background: var(--gw-card); display: grid; }
-.gwui-step { display: flex; align-items: center; gap: 12px; min-height: 38px; font-size: 14px; line-height: 22px; color: var(--gw-text); }
-.gwui-step-mark { width: 18px; flex: none; font-size: 16px; font-weight: 700; color: var(--gw-amber-t); }
+.gwui-step { display: flex; align-items: center; gap: 12px; min-height: 38px; font-size: var(--ds-text-secondary); line-height: 22px; color: var(--gw-text); }
+.gwui-step-mark { width: 18px; flex: none; font-size: var(--ds-text-body); font-weight: 700; color: var(--gw-amber-t); }
 .gwui-step-done .gwui-step-mark { color: var(--gw-green-t); }
 
 /* ── CHECK-IN HEADER (prototype: PageTitle + .tabs, 18px below) ─────────── */
@@ -232,12 +232,12 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
  */
 .gwui-cih .gw-pt-row { flex-wrap: nowrap; align-items: center; }
 .gwui-cih .gw-pt-head { flex: 1 1 auto; }
-.gwui-cih .gw-pt-row .t-title { font-size: 26px; line-height: 32px; }
+.gwui-cih .gw-pt-row .t-title { font-size: var(--ds-text-title); line-height: 32px; }
 /* A long check-in name in the breadcrumb wraps beside "Check-ins /", not onto a line of its own under it. */
 .gwui-cih .crumb > span:last-child { flex: 1 1 0; min-width: 0; }
 @media (max-width: 640px) {
   .gwui-cih .gw-pt-row { flex-wrap: wrap; }
-  .gwui-cih .gw-pt-row .t-title { font-size: 22px; line-height: 28px; }
+  .gwui-cih .gw-pt-row .t-title { font-size: var(--ds-text-title); line-height: 28px; }
 }
 .gwui-cih-tabs { margin-top: 16px; }
 /* The board's own check-in switcher (trailing) sits in the "Views ▾" slot, at the row's end, on the
@@ -291,7 +291,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 }
 .gwui-tab {
   min-height: 46px; padding: 0 12px; display: inline-flex; align-items: center;
-  font-family: var(--gw-font-ui); font-size: 16px; color: var(--gw-sub); text-decoration: none;
+  font-family: var(--gw-font-ui); font-size: var(--ds-text-body); color: var(--gw-sub); text-decoration: none;
   border: 0; background: none; cursor: pointer; font: inherit;
   border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap;
 }
@@ -307,7 +307,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    drift list, piece 1): a quiet badge, not a Tag - a Tag is a short fact about a thing, and this is
    a footnote on where a sentence came from. No prototype class for it; kept at the 13px floor
    rather than the one-off 11px it replaces. */
-.gwui-inferred-mark { margin-left: 4px; padding: 1px 4px; border-radius: 8px; border: 1px solid var(--gw-border); font-size: 13px; color: var(--gw-sub); white-space: nowrap; line-height: 20px;}
+.gwui-inferred-mark { margin-left: 4px; padding: 1px 4px; border-radius: 8px; border: 1px solid var(--gw-border); font-size: var(--ds-text-meta); color: var(--gw-sub); white-space: nowrap; line-height: 20px;}
 /* THE PRIVATE HALF OF A SESSION'S REPORT (SessionReportPage.tsx, group 3 drift list, piece 1): a
    Panel, inset and tinted, so a reader's own report does not read as the same card as the shared
    report below it - a deliberate distinction this page already drew (own-report.txt has no prototype
@@ -316,7 +316,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 
 /* ── EDGE LIST / EDGE ROW (prototype: .list, .item, .sp) ─────────────────── */
 
-.gwui-edge-h { font-size: 18px; font-weight: 700; line-height: 22px; color: var(--gw-text); overflow-wrap: anywhere; }
+.gwui-edge-h { font-size: var(--ds-text-card); font-weight: 700; line-height: 22px; color: var(--gw-text); overflow-wrap: anywhere; }
 
 .gwui-edge-acts { display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 640px) {
@@ -339,7 +339,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    within it instead of refusing to wrap at all. */
 .gwui-people-table { overflow-x: auto; }
 .gwui-people-head {
-  display: grid; padding: 8px 16px; font-size: 13px; color: var(--gw-sub);
+  display: grid; padding: 8px 16px; font-size: var(--ds-text-meta); color: var(--gw-sub);
   border-bottom: 1px solid var(--gw-border); justify-items: start; line-height: 20px;}
 .gwui-person-row {
   display: grid; padding: 12px 16px; border-top: 1px solid var(--gw-border); align-items: center;
@@ -356,13 +356,13 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 /* B-039: an 80-character name (no spaces long enough to wrap on their own, e.g. "AAAA...A
    BBBB...B") overflowed its column and clipped over the row's other text instead of wrapping,
    the same overflow `.gwui-person-email` already guards against below. */
-.gwui-person-name { font-size: 16px; font-weight: 700; color: var(--gw-text); overflow-wrap: anywhere; }
-.gwui-person-level { font-size: 13px; color: var(--gw-sub); margin-top: 2px; line-height: 20px;}
-.gwui-person-email { font-size: 14px; color: var(--gw-sub); margin-top: 2px; overflow-wrap: anywhere; }
+.gwui-person-name { font-size: var(--ds-text-body); font-weight: 700; color: var(--gw-text); overflow-wrap: anywhere; }
+.gwui-person-level { font-size: var(--ds-text-meta); color: var(--gw-sub); margin-top: 2px; line-height: 20px;}
+.gwui-person-email { font-size: var(--ds-text-secondary); color: var(--gw-sub); margin-top: 2px; overflow-wrap: anywhere; }
 .gwui-person-help {
   grid-column: 1 / -1; margin-top: 12px; padding: 12px 16px; border-radius: 8px;
   display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
-  font-size: 14px;
+  font-size: var(--ds-text-secondary);
 }
 /* B8: what a person still needs reads as a line in their row, in its colour, with no box of its own. */
 .gwui-person-help-look { color: var(--gw-amber-t); background: none; padding: 0; }
@@ -433,11 +433,11 @@ a.gwui-person-row:hover { background: var(--gw-page); }
    title text instead, so the arrow is part of the same inline box as the words it marks and always
    wraps onto the title's own line, never a line of its own. */
 .gwui-folded-summary b::before {
-  content: '▶'; display: inline-block; font-size: 13px; color: var(--gw-sub);
+  content: '▶'; display: inline-block; font-size: var(--ds-text-meta); color: var(--gw-sub);
   transition: transform .15s ease; margin-right: 8px; line-height: 20px;}
 .gwui-folded[open] .gwui-folded-summary b::before { transform: rotate(90deg); }
-.gwui-folded-summary b { font-size: 16px; color: var(--gw-text); }
-.gwui-folded-note { font-size: 14px; color: var(--gw-sub); }
+.gwui-folded-summary b { font-size: var(--ds-text-body); color: var(--gw-text); }
+.gwui-folded-note { font-size: var(--ds-text-secondary); color: var(--gw-sub); }
 .gwui-folded[open] .gwui-folded-summary { border-bottom: 1px solid var(--gw-border); }
 .gwui-folded-body { padding: 0 24px 16px; } /* the summary above already carries 20px below its line */
 /*
@@ -453,8 +453,8 @@ a.gwui-person-row:hover { background: var(--gw-page); }
    on the right - "Anyone with an @domain email", "Baridi's invite link", "Check-ins wait for an
    admin") ─────────────────────────────────────────────────────────────── */
 .gwui-switch-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-.gwui-switch-row-title { font-size: 16px; font-weight: 700; color: var(--gw-text); }
-.gwui-switch-row-detail { font-size: 14px; color: var(--gw-sub); margin-top: 4px; }
+.gwui-switch-row-title { font-size: var(--ds-text-body); font-weight: 700; color: var(--gw-text); }
+.gwui-switch-row-detail { font-size: var(--ds-text-secondary); color: var(--gw-sub); margin-top: 4px; }
 
 /* ── BUTTON ROW (group 3, piece 5): two or more Buttons side by side, left-aligned, wrapping on a
    narrow screen - a panel's own "Add participant" beside "Dismiss", the confirm beside the cancel
@@ -467,12 +467,12 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-filters-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 /* Regular weight, not bold (a picture check found "Team", "Role" and "All teams" bold when the
    prototype has them as an ordinary label, the same weight as the field beside them). */
-.gwui-inline-label { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 400; color: var(--gw-text); }
-.gwui-tree { margin: 0; padding-left: 16px; font-size: 14px; color: var(--gw-text); line-height: 23px;}
+.gwui-inline-label { display: flex; align-items: center; gap: 8px; font-size: var(--ds-text-body); font-weight: 400; color: var(--gw-text); }
+.gwui-tree { margin: 0; padding-left: 16px; font-size: var(--ds-text-secondary); color: var(--gw-text); line-height: 23px;}
 .gwui-tree ul { padding-left: 16px; }
-.gwui-tree-level { font-size: 13px; color: var(--gw-sub); line-height: 20px;}
+.gwui-tree-level { font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 20px;}
 .gwui-open-link {
-  font-size: 14px; font-weight: 400; color: var(--gw-navy); background: none; border: 0;
+  font-size: var(--ds-text-secondary); font-weight: 400; color: var(--gw-navy); background: none; border: 0;
   padding: 0; cursor: pointer; font-family: inherit; text-decoration: none;
 }
 .gwui-open-link:hover { text-decoration: underline; }
@@ -497,7 +497,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
  * tap.
  */
 .gwui-plain-link {
-  font-size: 14px; font-weight: 700; color: var(--gw-navy); background: none; border: 0;
+  font-size: var(--ds-text-secondary); font-weight: 700; color: var(--gw-navy); background: none; border: 0;
   padding: 0; cursor: pointer; font-family: inherit; text-decoration: underline;
   /* 21 NOVEMBER (Hafsah, "Rather pick from a list? See every situation."): it grew itself to 44px with inline-flex, which pulled
      a link inside a sentence off the text's baseline and left the full stop floating. It stays inline now; the 44px tap target is
@@ -531,7 +531,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
  */
 .gwui-icon-btn {
   width: 44px; height: 44px; border-radius: 8px; background: none; border: none;
-  color: var(--gw-sub); font-size: 16px; cursor: pointer; font-family: inherit; flex-shrink: 0;
+  color: var(--gw-sub); font-size: var(--ds-text-body); cursor: pointer; font-family: inherit; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
 }
 /*
@@ -550,7 +550,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-invite-answer { margin-top: 16px; }
 .gwui-invite-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--gw-border); }
 .gwui-invite-link-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-.gwui-invite-link-address { font-size: 14px; color: var(--gw-text); overflow-wrap: anywhere; }
+.gwui-invite-link-address { font-size: var(--ds-text-secondary); color: var(--gw-text); overflow-wrap: anywhere; }
 /*
  * WIDTH CHECK, ITEM 4: "CONNECT YOUR OWN TOOLS" AT 960-1280. Two examples side by side at 280px
  * each left plenty of room on a phone, but on a genuinely two-column layout - a `Panel` holding the
@@ -622,8 +622,8 @@ figure > figcaption.gwui-panel-row { padding-top: var(--gw-space-line); padding-
   display: grid; grid-template-columns: var(--gwui-field-label-w, 220px) minmax(0, 1fr) auto;
   gap: 16px; padding: 12px 0; border-top: 1px solid var(--gw-border); align-items: center;
 }
-.gwui-field-row-label { font-size: 16px; font-weight: 700; color: var(--gw-text); }
-.gwui-field-row-value { font-size: 16px; color: var(--gw-text); min-width: 0; }
+.gwui-field-row-label { font-size: var(--ds-text-body); font-weight: 700; color: var(--gw-text); }
+.gwui-field-row-value { font-size: var(--ds-text-body); color: var(--gw-text); min-width: 0; }
 /*
  * WIDTH CHECK, ITEM 2: THE EXPLANATION SQUEEZED TO ONE WORD PER LINE. A row's three columns -
  * label, value (with its own `gwui-field-help` sentence underneath), and a trailing action - are
@@ -652,7 +652,7 @@ figure > figcaption.gwui-panel-row { padding-top: var(--gw-space-line); padding-
 .gwui-choice {
   min-height: 44px; padding: 0 12px; border-radius: 8px; border: 0;
   box-shadow: inset 0 0 0 1px var(--rule2-crisp); background: var(--gw-card);
-  font: inherit; font-family: var(--gw-font-ui); font-size: 14px; color: var(--gw-text); cursor: pointer; line-height: 23px;}
+  font: inherit; font-family: var(--gw-font-ui); font-size: var(--ds-text-secondary); color: var(--gw-text); cursor: pointer; line-height: 23px;}
 .gwui-choice-on { background: var(--gw-navy); color: var(--gw-white); box-shadow: none; font-weight: 700; }
 /* The chosen option, marked without a second navy button on the page (walkthrough pass 2, item 4:
    sign-up's own "Create account" is already the one navy button). Same ink-outline mark "Choice
@@ -662,8 +662,8 @@ figure > figcaption.gwui-panel-row { padding-top: var(--gw-space-line); padding-
   min-height: 0; height: auto; text-align: left; padding: 12px 12px; display: flex; flex-direction: column; gap: 2px;
   width: 100%;
 }
-.gwui-choice-stacked .gwui-choice-title { font-weight: 700; font-size: 14px; line-height: 23px;}
-.gwui-choice-stacked .gwui-choice-desc { font-size: 14px; color: var(--gw-sub); }
+.gwui-choice-stacked .gwui-choice-title { font-weight: 700; font-size: var(--ds-text-secondary); line-height: 23px;}
+.gwui-choice-stacked .gwui-choice-desc { font-size: var(--ds-text-secondary); color: var(--gw-sub); }
 .gwui-choice-stacked.gwui-choice-on .gwui-choice-desc { color: rgba(255,255,255,.8); }
 
 /* ── SETUP BLOCK (prototype: `blk` on the setup screen, B1-starting-a-check-in/setup.jpg:
@@ -674,9 +674,9 @@ figure > figcaption.gwui-panel-row { padding-top: var(--gw-space-line); padding-
   display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 24px;
   padding: 24px 0; border-top: 1px solid var(--gw-border);
 }
-.gwui-setup-block-title { font-family: var(--gw-font-ui); font-size: 18px; line-height: 23px; font-weight: 700; color: var(--gw-text); margin: 0; }
-.gwui-setup-block-help { font-size: 14px; line-height: 20px; color: var(--gw-sub); margin: 4px 0 0; }
-.gwui-setup-block-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; font-size: 14px; line-height: 20px; color: var(--gw-text); }
+.gwui-setup-block-title { font-family: var(--gw-font-ui); font-size: var(--ds-text-card); line-height: 23px; font-weight: 700; color: var(--gw-text); margin: 0; }
+.gwui-setup-block-help { font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-sub); margin: 4px 0 0; }
+.gwui-setup-block-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-text); }
 /* The blocks follow the width they are given, not the screen's: the same setup sits on a wide page
    and inside the 640px card at the end of the lead's first check-in. Under 720px of room the heading
    sits above its controls, the prototype's own phone layout. */
@@ -693,8 +693,8 @@ figure > figcaption.gwui-panel-row { padding-top: var(--gw-space-line); padding-
   font: inherit; box-shadow: none; outline: none;
 }
 .gwui-choice-card-on { box-shadow: inset 0 0 0 2px var(--gw-text); }
-.gwui-choice-card-title { font-size: 16px; font-weight: 700; color: var(--gw-text); }
-.gwui-choice-card-desc { font-size: 14px; color: var(--gw-sub); margin-top: 4px; line-height: 23px;}
+.gwui-choice-card-title { font-size: var(--ds-text-body); font-weight: 700; color: var(--gw-text); }
+.gwui-choice-card-desc { font-size: var(--ds-text-secondary); color: var(--gw-sub); margin-top: 4px; line-height: 23px;}
 
 /* ── TOGGLE (prototype: a switch, on = --rec / green) ─────────────────────── */
 .gwui-toggle {
@@ -715,10 +715,10 @@ figure > figcaption.gwui-panel-row { padding-top: var(--gw-space-line); padding-
  */
 
 /* ── FORM FIELDS (prototype: label.f, .input) ─────────────────────────────── */
-.gwui-field-label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; font-weight: 700; color: var(--gw-text); }
+.gwui-field-label { display: flex; flex-direction: column; gap: 4px; font-size: var(--ds-text-secondary); font-weight: 700; color: var(--gw-text); }
 .gwui-input {
   min-height: 48px; border-radius: 8px; border: 1px solid var(--rule2-crisp); background: var(--gw-card);
-  padding: 0 16px; font: inherit; font-family: var(--gw-font-ui); font-size: 16px; color: var(--gw-text);
+  padding: 0 16px; font: inherit; font-family: var(--gw-font-ui); font-size: var(--ds-text-body); color: var(--gw-text);
   width: 100%; min-width: 0;
 }
 textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
@@ -746,11 +746,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   input.gwui-fs-13:not([type='checkbox']):not([type='radio']),
   input.gwui-fs-13-5:not([type='checkbox']):not([type='radio']),
   textarea.gwui-fs-13,
-  textarea.gwui-fs-13-5 { font-size: 16px; }
+  textarea.gwui-fs-13-5 { font-size: var(--ds-text-body); }
 }
 
 /* ── NOTE / EMPTY (prototype: .note, an empty sentence, a locked door) ────── */
-.gwui-note { display: block; margin-top: var(--gw-space-line); font-size: 14px; color: var(--gw-sub); }
+.gwui-note { display: block; margin-top: var(--gw-space-line); font-size: var(--ds-text-secondary); color: var(--gw-sub); }
 /* The team box: its helper line, box and notes stack with room between them, never sit on one another. */
 .gwui-team-box { display: flex; flex-direction: column; gap: 8px; scroll-margin-bottom: 120px; }
 .gwui-team-box textarea { scroll-margin-bottom: 120px; }
@@ -774,18 +774,18 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* A centred Note, for the sign-up screen's own "or with your email" divider between Google and the
    email form (signup.jpg), replacing the page-only gwui-auth-or (group 3 drift list, piece 1). */
 .gwui-note-centre { text-align: center; }
-.gwui-empty-line { font-size: 14px; color: var(--gw-sub); }
+.gwui-empty-line { font-size: var(--ds-text-secondary); color: var(--gw-sub); }
 .gwui-empty-panel { max-width: 640px; }
 .gwui-empty-panel-title {
-  font-family: var(--gw-font-ui); font-size: 21px; line-height: 26px; font-weight: 700; color: var(--gw-text); margin: 0 0 8px;
+  font-family: var(--gw-font-ui); font-size: var(--ds-text-section); line-height: 26px; font-weight: 700; color: var(--gw-text); margin: 0 0 8px;
 }
-.gwui-empty-panel-body { font-size: 16px; line-height: 1.5; color: var(--gw-sub); margin: 0; }
+.gwui-empty-panel-body { font-size: var(--ds-text-body); line-height: 1.5; color: var(--gw-sub); margin: 0; }
 .gwui-empty-panel-action { margin-top: 16px; }
 
 /* ── TOAST (prototype: .toast) ─────────────────────────────────────────────── */
 .gwui-toast {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: 90px; z-index: 60;
-  background: var(--gw-text); color: var(--gw-white); padding: 12px 16px; border-radius: 8px; font-size: 14px;
+  background: var(--gw-text); color: var(--gw-white); padding: 12px 16px; border-radius: 8px; font-size: var(--ds-text-secondary);
   box-shadow: var(--gw-shadow-toast); max-width: 90vw; line-height: 23px;}
 
 /* ── MODAL (prototype: .modal-bg, .modal) ────────────────────────────────── */
@@ -801,10 +801,10 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-modal-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
 }
-.gwui-modal-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--gw-text); line-height: 22px; }
+.gwui-modal-title { margin: 0; font-size: var(--ds-text-body); font-weight: 700; color: var(--gw-text); line-height: 22px; }
 .gwui-modal-close {
   flex-shrink: 0; background: none; border: none; padding: 4px 0; font-family: inherit;
-  font-size: 13px; font-weight: 700; color: var(--gw-navy); cursor: pointer; text-decoration: underline; line-height: 20px;}
+  font-size: var(--ds-text-meta); font-weight: 700; color: var(--gw-navy); cursor: pointer; text-decoration: underline; line-height: 20px;}
 
 /* ── CONVERSATION CARD (prototype: .ci-focus, .ci-card, app.css) ─────────── */
 
@@ -839,7 +839,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 .gwui-stage-track-item {
   display: flex; flex-direction: column; align-items: center; gap: 1px; text-align: center;
-  font-size: 13px; padding: 4px 8px; border-radius: 12px; white-space: nowrap;
+  font-size: var(--ds-text-meta); padding: 4px 8px; border-radius: 12px; white-space: nowrap;
   background: var(--gw-bg); color: var(--gw-sub); line-height: 20px;}
 .gwui-stage-track-name  { font-weight: 700; }
 .gwui-stage-track-count { font-weight: 500; }
@@ -865,14 +865,14 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    13.5px is its `.note` (a muted aside). Nothing below 13 is defined here at all now, and
    the guard (the-rebuilt-pages-use-only-the-new-parts.spec.ts) fails the build if a listed
    page - or this file - ever sets one. */
-.gwui-fs-13   { font-size: 13px; line-height: 20px;}
-.gwui-fs-13-5 { font-size: 14px; }
-.gwui-fs-14   { font-size: 14px; }
-.gwui-fs-14-5 { font-size: 14px; }
-.gwui-fs-15   { font-size: 14px; line-height: 23px;}
-.gwui-fs-16   { font-size: 16px; }
-.gwui-fs-17   { font-size: 18px; line-height: 26px;}
-.gwui-fs-18   { font-size: 18px; }
+.gwui-fs-13   { font-size: var(--ds-text-meta); line-height: 20px;}
+.gwui-fs-13-5 { font-size: var(--ds-text-secondary); }
+.gwui-fs-14   { font-size: var(--ds-text-secondary); }
+.gwui-fs-14-5 { font-size: var(--ds-text-secondary); }
+.gwui-fs-15   { font-size: var(--ds-text-secondary); line-height: 23px;}
+.gwui-fs-16   { font-size: var(--ds-text-body); }
+.gwui-fs-17   { font-size: var(--ds-text-card); line-height: 26px;}
+.gwui-fs-18   { font-size: var(--ds-text-card); }
 
 /* Ink (colour only). Named after the token, not the place it is used. */
 .gwui-ink-text  { color: var(--gw-text); }
@@ -991,9 +991,9 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    no new design. `.gwui-rule-left*` is the left-edge marker a found-area or agreed-area block
    draws (report.jpg's own left rule); `.gwui-ink-green-soft` is the softer green `--gw-green-t-soft`
    token the feedback and resolution panels already referenced inline. */
-.gwui-fs-20 { font-size: 21px; }
-.gwui-fs-22 { font-size: 21px; }
-.gwui-fs-30 { font-size: 30px; }
+.gwui-fs-20 { font-size: var(--ds-text-section); }
+.gwui-fs-22 { font-size: var(--ds-text-section); }
+.gwui-fs-30 { font-size: var(--ds-text-title); }
 .gwui-ink-green-soft { color: var(--gw-green-t-soft); }
   
 
@@ -1045,28 +1045,28 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    `.t-title` at 32px, over "Will we reach 25 sales by 30 September?"'s small label) - not a quiet
    12.5px aside. Each ink comes from a CSS custom property the caller sets (light ground or the
    board's dark header), never an inline `color` - see how-it-is-going.tsx. */
-.gwui-how-story  { font-family: var(--gw-font-name); font-size: 30px; line-height: 41px; font-weight: 500; margin: 0 0 8px; color: var(--gwui-how-story); }
-.gwui-how-brief  { font-size: 14px; line-height: 1.5; margin: 0 0 8px; color: var(--gwui-how-brief); }
-.gwui-how-glance { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; font-size: 14px; }
+.gwui-how-story  { font-family: var(--gw-font-name); font-size: var(--ds-text-title); line-height: 41px; font-weight: 500; margin: 0 0 8px; color: var(--gwui-how-story); }
+.gwui-how-brief  { font-size: var(--ds-text-secondary); line-height: 1.5; margin: 0 0 8px; color: var(--gwui-how-brief); }
+.gwui-how-glance { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; font-size: var(--ds-text-secondary); }
 .gwui-how-strong { font-weight: 700; color: var(--gwui-how-strong); }
 .gwui-how-people { color: var(--gwui-how-people); }
 .gwui-how-warn   { font-weight: 700; color: var(--gwui-how-warn); }
 
 /* ── WHAT TO SETTLE TOGETHER (board review, 30 September) ─────────────────────────────────── */
-.gwui-settle-label { font-size: 13px; font-weight: 700; margin-bottom: 3px; color: var(--gwui-settle-label); line-height: 20px;}
-.gwui-settle-body  { font-size: 13px; line-height: 21px; max-width: 68ch; color: var(--gwui-settle-body); }
-.gwui-settle-note  { font-size: 14px; margin-top: 4px; color: var(--gwui-settle-note); }
+.gwui-settle-label { font-size: var(--ds-text-meta); font-weight: 700; margin-bottom: 3px; color: var(--gwui-settle-label); line-height: 20px;}
+.gwui-settle-body  { font-size: var(--ds-text-meta); line-height: 21px; max-width: 68ch; color: var(--gwui-settle-body); }
+.gwui-settle-note  { font-size: var(--ds-text-secondary); margin-top: 4px; color: var(--gwui-settle-note); }
 
 /* ── A SECOND PRESS BEFORE IT IS GONE (board review, 30 September) ────────────────────────── */
 .gwui-confirm { padding: 8px 12px; border-radius: 8px; margin-top: 8px; }
 .gwui-confirm-danger  { background: var(--gw-red-bg); border: 1px solid var(--gw-red-b-soft); }
 .gwui-confirm-caution { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b-soft); }
-.gwui-confirm-saying { font-size: 14px; line-height: 1.5; margin-bottom: 8px; }
+.gwui-confirm-saying { font-size: var(--ds-text-secondary); line-height: 1.5; margin-bottom: 8px; }
 .gwui-confirm-saying-danger  { color: var(--gw-red-t); }
 .gwui-confirm-saying-caution { color: var(--gw-amber-t); }
 .gwui-confirm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .gwui-confirm-btn {
-  padding: 8px 12px; border-radius: 8px; border: none; font-size: 14px; font-weight: 700;
+  padding: 8px 12px; border-radius: 8px; border: none; font-size: var(--ds-text-secondary); font-weight: 700;
   font-family: inherit; cursor: pointer;
 }
 .gwui-confirm-btn:disabled { cursor: wait; }
@@ -1079,7 +1079,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-boards-trigger {
   display: flex; align-items: center; gap: 8px;
   background: white; border: 1px solid var(--gw-border); color: var(--gw-text);
-  border-radius: 8px; padding: 4px 8px; font-size: 14px; font-weight: 700;
+  border-radius: 8px; padding: 4px 8px; font-size: var(--ds-text-secondary); font-weight: 700;
   cursor: pointer; font-family: inherit;
 }
 /*
@@ -1098,18 +1098,18 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 .gwui-boards-option {
   display: block; width: 100%; text-align: left; background: none; border: none;
-  color: var(--gw-text); font-size: 14px; padding: 8px 8px; border-radius: 8px;
+  color: var(--gw-text); font-size: var(--ds-text-secondary); padding: 8px 8px; border-radius: 8px;
   cursor: pointer; font-family: inherit;
 }
 .gwui-boards-option-title { font-weight: 700; }
-.gwui-boards-option-finding { color: var(--gw-sub); font-size: 13px; line-height: 18px; margin-top: 2px; }
+.gwui-boards-option-finding { color: var(--gw-sub); font-size: var(--ds-text-meta); line-height: 18px; margin-top: 2px; }
 
 /* ── GROUP 1 REBUILD: settings, billing, connections, tools, more ─────────────────────────── */
 
 /* A row of counted facts (WhatsApp's "6 people checking in", "212 check-ins this month"). */
 .gwui-stat-row { display: flex; gap: 24px; flex-wrap: wrap; }
-.gwui-stat-num { font-family: var(--gw-font-name); font-size: 24px; color: var(--gw-text); margin: 0; }
-.gwui-stat-label { font-size: 14px; color: var(--gw-sub); margin: 2px 0 0; }
+.gwui-stat-num { font-family: var(--gw-font-name); font-size: var(--ds-text-big); color: var(--gw-text); margin: 0; }
+.gwui-stat-label { font-size: var(--ds-text-secondary); color: var(--gw-sub); margin: 2px 0 0; }
 
 /* The plan cards on Plan and billing (prototype: `.g3`, `PLANS.map` in s20.js/s21.js - three cards
    to a row, not five; the chosen plan's card carries the navy outline and a "Your plan" tag; the
@@ -1120,16 +1120,16 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-plan-card { display: flex; flex-direction: column; gap: 8px; }
 .gwui-plan-card-mine { box-shadow: inset 0 0 0 2px var(--gw-navy); }
 .gwui-plan-card-enterprise { background: var(--gw-bg); }
-.gwui-plan-name { font-size: 16px; font-weight: 700; color: var(--gw-text); margin: 0; }
-.gwui-plan-price { font-family: var(--gw-font-name); font-size: 24px; color: var(--gw-text); margin: 0; }
-.gwui-plan-price span { font-size: 14px; color: var(--gw-sub); font-family: var(--gw-font-ui); }
-.gwui-plan-cap { font-size: 14px; color: var(--gw-sub); margin: 0; }
+.gwui-plan-name { font-size: var(--ds-text-body); font-weight: 700; color: var(--gw-text); margin: 0; }
+.gwui-plan-price { font-family: var(--gw-font-name); font-size: var(--ds-text-big); color: var(--gw-text); margin: 0; }
+.gwui-plan-price span { font-size: var(--ds-text-big); color: var(--gw-sub); font-family: var(--gw-font-ui); }
+.gwui-plan-cap { font-size: var(--ds-text-secondary); color: var(--gw-sub); margin: 0; }
 /* The plans as a table (fix list item 6; the light prototype's s73 .pb-table): each plan's price, seats, extra seat, WhatsApp and
    what it costs for your people. Scrolls sideways inside its own box on a phone, never the page. */
 .gwui-plan-table-wrap { overflow-x: auto; background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; }
 .gwui-plan-table { width: 100%; min-width: 640px; border-collapse: collapse; }
-.gwui-plan-table th { text-align: left; font-size: 13px; font-weight: 400; color: var(--gw-sub); padding: 12px 12px; border-bottom: 1px solid var(--gw-border); line-height: 20px;}
-.gwui-plan-table td { padding: 12px 12px; font-size: 14px; line-height: 20px; color: var(--gw-text); border-top: 1px solid var(--gw-border); vertical-align: middle; }
+.gwui-plan-table th { text-align: left; font-size: var(--ds-text-meta); font-weight: 400; color: var(--gw-sub); padding: 12px 12px; border-bottom: 1px solid var(--gw-border); line-height: 20px;}
+.gwui-plan-table td { padding: 12px 12px; font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-text); border-top: 1px solid var(--gw-border); vertical-align: middle; }
 .gwui-plan-table tbody tr:first-child td { border-top: none; }
 .gwui-plan-table-mine td { background: var(--gw-bg); }
 .gwui-plan-table-mine td:first-child { box-shadow: inset 3px 0 0 var(--gw-navy); }
@@ -1138,27 +1138,27 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 /* A block of example code, in the developer pages. */
 .gwui-code-block {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 21px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--ds-text-meta); line-height: 21px;
   background: var(--gw-navy); color: var(--gw-white); border-radius: 8px; padding: 12px 16px;
   overflow-x: auto; white-space: pre; margin: 0;
 }
 .gwui-code-block-light {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 21px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--ds-text-meta); line-height: 21px;
   background: var(--gw-bg); border: 1px solid var(--gw-border); color: var(--gw-text);
   border-radius: 8px; padding: 12px 12px; overflow-x: auto; white-space: pre; margin: 0;
 }
-.gwui-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 20px;}
+.gwui-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--ds-text-meta); line-height: 20px;}
 
 /* A secret shown once (a new key, a signing secret). */
 .gwui-secret-box { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b); border-radius: 8px; padding: 12px 12px; }
-.gwui-secret-box-label { font-size: 13px; font-weight: 700; color: var(--gw-amber-t); margin: 0 0 4px; line-height: 20px;}
-.gwui-secret-box-value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; color: var(--gw-text); margin: 0; line-height: 20px;}
+.gwui-secret-box-label { font-size: var(--ds-text-meta); font-weight: 700; color: var(--gw-amber-t); margin: 0 0 4px; line-height: 20px;}
+.gwui-secret-box-value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--ds-text-meta); word-break: break-all; color: var(--gw-text); margin: 0; line-height: 20px;}
 
 /* A list of checkboxes with a sentence under each (webhook events, key scopes). */
 .gwui-check-list { display: flex; flex-direction: column; gap: 12px; }
-.gwui-check-row { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; color: var(--gw-text); cursor: pointer; }
+.gwui-check-row { display: flex; align-items: flex-start; gap: 8px; font-size: var(--ds-text-secondary); color: var(--gw-text); cursor: pointer; }
 .gwui-check-row input { margin-top: 4px; flex-shrink: 0; }
-.gwui-check-row-sub { display: block; font-size: 14px; color: var(--gw-sub); margin-top: 2px; }
+.gwui-check-row-sub { display: block; font-size: var(--ds-text-secondary); color: var(--gw-sub); margin-top: 2px; }
 
 /* "More", the phone menu. */
 .gwui-more-list { list-style: none; margin: 0; padding: 0; }
@@ -1168,7 +1168,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   padding: 16px 24px; min-height: 44px;
 }
 .gwui-more-row + .gwui-more-row { border-top: 1px solid var(--gw-border); }
-.gwui-more-row b { font-size: 16px; font-weight: 700; }
+.gwui-more-row b { font-size: var(--ds-text-body); font-weight: 700; }
 
 /* A numbered set of steps, each opened as its own turn comes (Connect WhatsApp). Unlike `Steps`
    (a closed checklist of done/not-done facts), each step here carries its own body and a number
@@ -1178,13 +1178,13 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-numstep:first-child { border-top: none; padding-top: 0; }
 .gwui-numstep-num {
   flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 700; background: var(--gw-card); border: 1px solid var(--gw-border); color: var(--gw-sub);
+  font-size: var(--ds-text-secondary); font-weight: 700; background: var(--gw-card); border: 1px solid var(--gw-border); color: var(--gw-sub);
 }
 .gwui-numstep-num-done { background: var(--gw-green-t); border-color: var(--gw-green-t); color: var(--gw-white); }
 .gwui-numstep-num-now { background: var(--gw-navy); border-color: var(--gw-navy); color: var(--gw-white); }
 .gwui-numstep-body { flex: 1; min-width: 0; }
 .gwui-numstep-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.gwui-numstep-title { font-size: 16px; font-weight: 700; color: var(--gw-text); margin: 0; }
+.gwui-numstep-title { font-size: var(--ds-text-body); font-weight: 700; color: var(--gw-text); margin: 0; }
 
 .gwui-numstep-content { margin-top: 12px; }
 
@@ -1196,38 +1196,38 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-console { border: 1px solid var(--gw-border); border-radius: 12px; overflow: hidden; background: var(--gw-white); }
 .gwui-console-head {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  background: var(--gw-navy); color: var(--gw-white); padding: 12px 16px; font-size: 14px; font-weight: 700;
+  background: var(--gw-navy); color: var(--gw-white); padding: 12px 16px; font-size: var(--ds-text-secondary); font-weight: 700;
 }
 .gwui-console-body { display: flex; min-height: 0; }
 .gwui-console-nav {
   width: 128px; flex-shrink: 0; background: var(--gw-bg); border-right: 1px solid var(--gw-border);
   padding: 8px 0; display: flex; flex-direction: column;
 }
-.gwui-console-nav-item { padding: 8px 12px; font-size: 14px; color: var(--gw-sub); }
+.gwui-console-nav-item { padding: 8px 12px; font-size: var(--ds-text-secondary); color: var(--gw-sub); }
 .gwui-console-nav-item-active { background: var(--gw-white); color: var(--gw-text); font-weight: 700; border-right: 2px solid var(--gw-navy); }
 .gwui-console-main { flex: 1; min-width: 0; padding: 16px 16px; }
 .gwui-console-main-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.gwui-console-main-title { font-size: 14px; font-weight: 700; color: var(--gw-text); margin: 0; line-height: 23px;}
-.gwui-console-main-from { font-size: 13px; color: var(--gw-sub); line-height: 20px;}
-.gwui-console-main-sub { font-size: 14px; color: var(--gw-sub); margin: 4px 0 12px; }
+.gwui-console-main-title { font-size: var(--ds-text-secondary); font-weight: 700; color: var(--gw-text); margin: 0; line-height: 23px;}
+.gwui-console-main-from { font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 20px;}
+.gwui-console-main-sub { font-size: var(--ds-text-secondary); color: var(--gw-sub); margin: 4px 0 12px; }
 .gwui-console-deal { padding: 12px 0; border-top: 1px solid var(--gw-border); }
 .gwui-console-deal:first-of-type { border-top: none; padding-top: 0; }
-.gwui-console-deal-company { font-size: 14px; font-weight: 700; color: var(--gw-text); }
-.gwui-console-deal-person { font-size: 13px; color: var(--gw-sub); margin: 0 0 8px; line-height: 20px;}
+.gwui-console-deal-company { font-size: var(--ds-text-secondary); font-weight: 700; color: var(--gw-text); }
+.gwui-console-deal-person { font-size: var(--ds-text-meta); color: var(--gw-sub); margin: 0 0 8px; line-height: 20px;}
 .gwui-console-dots { display: flex; align-items: center; gap: 8px; margin: 4px 0 4px; }
 .gwui-console-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gw-border); flex-shrink: 0; }
 .gwui-console-dot-on { background: var(--gw-green-t); }
 .gwui-console-dot-line { flex: 1; height: 2px; background: var(--gw-border); }
 .gwui-console-dot-line-on { background: var(--gw-green-t); }
 .gwui-console-stage-names { display: flex; justify-content: space-between; gap: 4px; }
-.gwui-console-stage-name { font-size: 13px; color: var(--gw-sub); flex: 1; text-align: center; line-height: 20px;}
-.gwui-console-foot { font-size: 13px; color: var(--gw-sub); padding: 12px 16px; border-top: 1px solid var(--gw-border); line-height: 20px;}
+.gwui-console-stage-name { font-size: var(--ds-text-meta); color: var(--gw-sub); flex: 1; text-align: center; line-height: 20px;}
+.gwui-console-foot { font-size: var(--ds-text-meta); color: var(--gw-sub); padding: 12px 16px; border-top: 1px solid var(--gw-border); line-height: 20px;}
 .gwui-console-frame { padding: var(--gw-space-block) 20px; }
 
 /* ── EMBED WIDGET EXAMPLE (tools.txt: "Show Groundwork inside your own tool") ────────────────── */
 .gwui-embed-split { display: flex; min-height: 0; }
 .gwui-embed-host { flex: 1.4; min-width: 0; padding: 16px 16px; border-right: 1px solid var(--gw-border); background: var(--gw-bg); }
-.gwui-embed-host-title { font-size: 14px; font-weight: 700; color: var(--gw-text); margin: 0 0 8px; }
+.gwui-embed-host-title { font-size: var(--ds-text-secondary); font-weight: 700; color: var(--gw-text); margin: 0 0 8px; }
 .gwui-embed-table { display: flex; flex-direction: column; }
 /*
  * WIDTH CHECK, ITEM 4: FOUR CELLS WITH NOWHERE TO GO READ AS ONE GARBLED WORD ("Qualified$4,200"),
@@ -1239,16 +1239,16 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  */
 .gwui-embed-row { display: flex; flex-wrap: wrap; row-gap: 2px; gap: 8px; padding: 8px 0; border-top: 1px solid var(--gw-border); }
 .gwui-embed-row:first-child { border-top: none; }
-.gwui-embed-cell { font-size: 13px; color: var(--gw-sub); flex: 1; min-width: 0; line-height: 20px;}
+.gwui-embed-cell { font-size: var(--ds-text-meta); color: var(--gw-sub); flex: 1; min-width: 0; line-height: 20px;}
 .gwui-embed-cell-name { color: var(--gw-text); font-weight: 700; flex: 1.4; }
 .gwui-embed-cell-stage { color: var(--gw-amber-t); font-weight: 700; }
 .gwui-embed-cell-stage-on { color: var(--gw-green-t); }
 .gwui-embed-widget { flex: 1; min-width: 0; padding: 16px 16px; display: flex; flex-direction: column; gap: 12px; }
-.gwui-embed-widget-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--gw-sub); line-height: 20px;}
+.gwui-embed-widget-head { display: flex; align-items: center; justify-content: space-between; font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 20px;}
 .gwui-embed-widget-brand { font-weight: 700; color: var(--gw-navy); letter-spacing: 0.04em; }
-.gwui-embed-widget-msg { font-size: 14px; line-height: 1.5; color: var(--gw-text); background: var(--gw-bg); border-radius: 8px; padding: 12px 12px; margin: 0; }
+.gwui-embed-widget-msg { font-size: var(--ds-text-secondary); line-height: 1.5; color: var(--gw-text); background: var(--gw-bg); border-radius: 8px; padding: 12px 12px; margin: 0; }
 .gwui-embed-widget-replies { display: flex; gap: 8px; flex-wrap: wrap; }
-.gwui-embed-widget-reply { font-size: 13px; font-weight: 700; color: var(--gw-navy); border: 1px solid var(--gw-border); border-radius: 999px; padding: 4px 12px; line-height: 20px;}
+.gwui-embed-widget-reply { font-size: var(--ds-text-meta); font-weight: 700; color: var(--gw-navy); border: 1px solid var(--gw-border); border-radius: 999px; padding: 4px 12px; line-height: 20px;}
 @media (max-width: 640px) {
   .gwui-embed-split { flex-direction: column; }
   .gwui-embed-host { border-right: none; border-bottom: 1px solid var(--gw-border); }
@@ -1275,11 +1275,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.2);
   display: flex; align-items: center; justify-content: center; font-weight: 700;
 }
-.gwui-wa-org { font-size: 14px; font-weight: 700; margin: 0; }
-.gwui-wa-sub { font-size: 13px; margin: 1px 0 0; opacity: .8; line-height: 20px;}
+.gwui-wa-org { font-size: var(--ds-text-secondary); font-weight: 700; margin: 0; }
+.gwui-wa-sub { font-size: var(--ds-text-meta); margin: 1px 0 0; opacity: .8; line-height: 20px;}
 .gwui-wa-body { background: var(--gw-bg); padding: 16px; display: flex; flex-direction: column; gap: 8px; }
 .gwui-wa-bubble {
-  max-width: 82%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 20px; margin: 0;
+  max-width: 82%; padding: 8px 12px; border-radius: 12px; font-size: var(--ds-text-secondary); line-height: 20px; margin: 0;
 }
 .gwui-wa-bubble-them { align-self: flex-start; background: var(--gw-white); color: var(--gw-text); border-bottom-left-radius: 4px; }
 .gwui-wa-bubble-mine { align-self: flex-end; background: #DCF8C6; color: var(--gw-text); border-bottom-right-radius: 4px; }
@@ -1311,42 +1311,42 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 
 /* ── COMING UP (prototype: Today's own sidebar list, app.css) ───────────────────────────────── */
-.gwui-comingup-h { margin: 0 0 12px; font-family: var(--gw-font-ui); font-size: 18px; line-height: 23px; font-weight: 700; color: var(--gw-text); }
+.gwui-comingup-h { margin: 0 0 12px; font-family: var(--gw-font-ui); font-size: var(--ds-text-card); line-height: 23px; font-weight: 700; color: var(--gw-text); }
 
 /* ── WELCOME CARD AND "GET <ORGANISATION> GOING" (prototype: the admin's first-run doors and
    checklist, C1/A3, U.3 and U.5) ────────────────────────────────────────────────────────────── */
 .gwui-first-run { display: grid; gap: 12px; }
 .gwui-welcome-card { display: grid; gap: 12px; padding: 16px 16px; border-radius: 12px; background: var(--gw-white); box-shadow: inset 0 0 0 2px var(--gw-text); }
 .gwui-welcome-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.gwui-welcome-card-head h2 { margin: 0; font-family: var(--gw-font-name); font-size: 21px; font-weight: 700; color: var(--gw-text); }
-.gwui-welcome-card-line { margin: 0; font-size: 14px; line-height: 1.5; color: var(--gw-sub); }
+.gwui-welcome-card-head h2 { margin: 0; font-family: var(--gw-font-name); font-size: var(--ds-text-section); font-weight: 700; color: var(--gw-text); }
+.gwui-welcome-card-line { margin: 0; font-size: var(--ds-text-secondary); line-height: 1.5; color: var(--gw-sub); }
 .gwui-welcome-doors { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
 .gwui-welcome-door { display: block; padding: 12px 12px; border: 1px solid var(--gw-border); border-radius: 8px; text-decoration: none; color: var(--gw-text); }
 .gwui-welcome-door:hover, .gwui-welcome-door:focus-visible { background: var(--gw-page); }
-.gwui-welcome-door b { display: block; font-size: 16px; }
-.gwui-welcome-door span { display: block; margin-top: 2px; font-size: 14px; color: var(--gw-sub); }
+.gwui-welcome-door b { display: block; font-size: var(--ds-text-body); }
+.gwui-welcome-door span { display: block; margin-top: 2px; font-size: var(--ds-text-secondary); color: var(--gw-sub); }
 .gwui-get-going { padding: 16px 16px; border: 1px solid var(--gw-border); border-radius: 12px; background: var(--gw-white); }
 .gwui-get-going-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-.gwui-get-going-head h2 { margin: 0; font-family: var(--gw-font-name); font-size: 21px; font-weight: 700; color: var(--gw-text); }
-.gwui-get-going-head span { font-size: 14px; color: var(--gw-sub); }
+.gwui-get-going-head h2 { margin: 0; font-family: var(--gw-font-name); font-size: var(--ds-text-section); font-weight: 700; color: var(--gw-text); }
+.gwui-get-going-head span { font-size: var(--ds-text-secondary); color: var(--gw-sub); }
 .gwui-get-going ul { list-style: none; margin: 0; padding: 0; }
 .gwui-get-going li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; border-top: 1px solid var(--gw-border); }
-.gwui-get-going-title { font-size: 16px; font-weight: 700; color: var(--gw-text); }
+.gwui-get-going-title { font-size: var(--ds-text-body); font-weight: 700; color: var(--gw-text); }
 
 /* ── CHECK-INS TABLE (prototype: check-ins.txt, C1, U.5 group 2) ────────────────────────────── */
 .gwui-ci-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.gwui-ci-table th { text-align: left; font-size: 13px; font-weight: 400; color: var(--gw-sub); padding: 12px 16px; border-bottom: 1px solid var(--gw-border); line-height: 20px;}
+.gwui-ci-table th { text-align: left; font-size: var(--ds-text-meta); font-weight: 400; color: var(--gw-sub); padding: 12px 16px; border-bottom: 1px solid var(--gw-border); line-height: 20px;}
 .gwui-ci-table th:nth-child(1) { width: 34%; }
 .gwui-ci-table th:nth-child(2) { width: 26%; }
 .gwui-ci-table th:nth-child(3) { width: 19%; }
-.gwui-ci-table td { padding: 16px 16px; vertical-align: middle; font-size: 14px; line-height: 20px; color: var(--gw-text); border-top: 1px solid var(--gw-border); overflow-wrap: anywhere; }
+.gwui-ci-table td { padding: 16px 16px; vertical-align: middle; font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-text); border-top: 1px solid var(--gw-border); overflow-wrap: anywhere; }
 .gwui-ci-table tbody tr:first-child td { border-top: none; }
 .gwui-ci-table tbody tr { cursor: pointer; }
 .gwui-ci-table tbody tr:hover td { background: var(--gw-page); }
-.gwui-ci-table-name { display: block; font-size: 18px; font-weight: 700; color: var(--gw-text); text-decoration: none; line-height: 26px;}
+.gwui-ci-table-name { display: block; font-size: var(--ds-text-card); font-weight: 700; color: var(--gw-text); text-decoration: none; line-height: 26px;}
 .gwui-ci-table-name:hover, .gwui-ci-table-name:focus-visible { text-decoration: underline; }
-.gwui-ci-table-about { margin-top: 2px; font-size: 14px; color: var(--gw-sub); }
-.gwui-ci-table-also { margin-top: 2px; font-size: 13px; color: var(--gw-sub); line-height: 20px;}
+.gwui-ci-table-about { margin-top: 2px; font-size: var(--ds-text-secondary); color: var(--gw-sub); }
+.gwui-ci-table-also { margin-top: 2px; font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 20px;}
 .gwui-ci-table td a { color: var(--gw-text); }
 /*
  * WIDTH CHECK, ITEM 6: "YOUR REPORT IS READY" RAN ON INTO "NEXT: 12 OCTOBER". The "Needs you"
@@ -1376,11 +1376,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 /* ── WAITING FOR YOU (prototype: an admin's check-ins list, awaiting approval, C1, U.5 group 2) ── */
 .gwui-panel-caution { background: var(--gw-amber-bg); border-color: var(--gw-amber-b-soft); }
-.gwui-panel-caution h2 { margin: 0 0 4px; font-family: var(--gw-font-ui); font-size: 18px; line-height: 23px; font-weight: 700; color: var(--gw-amber-t); }
+.gwui-panel-caution h2 { margin: 0 0 4px; font-family: var(--gw-font-ui); font-size: var(--ds-text-card); line-height: 23px; font-weight: 700; color: var(--gw-amber-t); }
 .gwui-waiting-one { background: var(--gw-white); border: 1px solid var(--gw-border); border-radius: 8px; padding: 12px 12px; }
 .gwui-waiting-one + .gwui-waiting-one { margin-top: 8px; }
 .gwui-waiting-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
-.gwui-waiting-acts textarea { width: 100%; box-sizing: border-box; padding: 8px 8px; border-radius: 8px; border: 1px solid var(--gw-border); font: inherit; font-size: 14px; resize: vertical; }
+.gwui-waiting-acts textarea { width: 100%; box-sizing: border-box; padding: 8px 8px; border-radius: 8px; border: 1px solid var(--gw-border); font: inherit; font-size: var(--ds-text-secondary); resize: vertical; }
 
 /* ── CARD GRIDS (the You board, C2, U.12: "Your goals"/"Your to-dos"/"What you contributed" in
    three, "Worth knowing now"/"noticed"/"coaching over time" in two) ────────────────────────────── */
@@ -1408,7 +1408,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 /* ── ROW LIST / ROW (the You board's own lists, C2, U.12) ───────────────────────────────────── */
 .gwui-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--gw-border); }
-.gwui-row { display: grid; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14px; line-height: 20px; color: var(--gw-text); }
+.gwui-row { display: grid; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-text); }
 .gwui-row a { color: var(--gw-navy); font-weight: 700; text-decoration: none; }
 .gwui-row a:hover, .gwui-row a:focus-visible { text-decoration: underline; }
 /* A BUTTON STANDING ALONE AS A ROW'S OWN CHILD KEEPS ITS OWN WIDTH, NOT THE GRID'S (board task,
@@ -1449,13 +1449,13 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* "Named by more than one team" (company.jpg): each team's own column, set off by a thick top
    rule - the product's own shape, no dedicated prototype class. */
 .gwui-team-col { border-top: 3px solid var(--gw-text); padding-top: 8px; }
-.gwui-team-col p { margin: 4px 0 0; font-size: 14px; line-height: 20px; color: var(--gw-text); }
+.gwui-team-col p { margin: 4px 0 0; font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-text); }
 /* "What you say, and where the time goes" (company.jpg): a plain comparison table - the prototype
    itself never draws a real `<table>` (app.css has no table rule at all, only a mobile note that
    "tables become stacked cards"), so this is the product's own shape, at the same sizes
    `gwui-rows`/`gwui-row` already use for a plain list, with real table semantics so "You said" and
    "The check-ins show" read as column headers. */
-.gwui-compare-table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px; color: var(--gw-text); }
+.gwui-compare-table { width: 100%; border-collapse: collapse; font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-text); }
 .gwui-compare-table th, .gwui-compare-table td { text-align: left; padding: 12px 8px 12px 0; border-top: 1px solid var(--gw-border); vertical-align: top; }
 .gwui-compare-table th { font-weight: 700; }
 @media (max-width: 900px) {
@@ -1497,13 +1497,13 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-suite-q { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 /* A record table (time sheets, equipment, spending, customers, the role map): the product's own
    shape, no dedicated prototype class - the prototype draws each of these by hand per screen. */
-.gwui-record-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.gwui-record-table { width: 100%; border-collapse: collapse; font-size: var(--ds-text-secondary); }
 .gwui-record-table th, .gwui-record-table td { text-align: left; vertical-align: top; padding: 12px 16px; border-top: 1px solid var(--gw-border); }
-.gwui-record-table thead th { border-top: 0; font-weight: 500; font-size: 13px; color: var(--gw-sub); line-height: 20px;}
+.gwui-record-table thead th { border-top: 0; font-weight: 500; font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 20px;}
 .gwui-record-table tbody th { font-weight: 700; }
 .gwui-record-table .gwui-nobody { color: var(--gw-red-t); }
 /* The prototype's field (.input): 1.5px hairline in the rule colour, 10px corners, 16px type. Compact in a table row, still 44px to tap. */
-.gwui-record-table select, .gwui-record-table input { font: inherit; font-size: 16px; min-height: 44px; padding: 0 12px; border: 1px solid var(--rule2-crisp); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); max-width: 100%; }
+.gwui-record-table select, .gwui-record-table input { font: inherit; font-size: var(--ds-text-body); min-height: 44px; padding: 0 12px; border: 1px solid var(--rule2-crisp); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); max-width: 100%; }
 @media (max-width: 860px) {
   .gwui-record-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .gwui-record-table, .gwui-record-table tbody, .gwui-record-table tr, .gwui-record-table th, .gwui-record-table td { display: block; width: auto; }
@@ -1518,7 +1518,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  */
 .gwui-record-table-label { display: none; }
 @media (max-width: 860px) {
-  .gwui-record-table-label { display: block; font-size: 13px; font-weight: 700; color: var(--gw-sub); margin-bottom: 2px; line-height: 20px;}
+  .gwui-record-table-label { display: block; font-size: var(--ds-text-meta); font-weight: 700; color: var(--gw-sub); margin-bottom: 2px; line-height: 20px;}
 }
 /* ── PROOF MARK (ProofMark.tsx; prototype: .mk/.mk-proven etc., app.css) - carried over unchanged
    from kit.tsx's gw-mk-*. ───────────────────────────────────────────────────────────────────── */
@@ -1531,7 +1531,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-mk-none      { box-shadow: inset 0 0 0 1px var(--rule2-crisp); }
 /* A review's own quoted words (what a person wrote): the product's own shape, carried over
    unchanged from gw-review-said. */
-.gwui-quoted-text { font-family: var(--gw-font-name); font-size: 16px; line-height: 1.5; margin: 0; }
+.gwui-quoted-text { font-family: var(--gw-font-name); font-size: var(--ds-text-body); line-height: 1.5; margin: 0; }
 
 /* A progress bar against an agreed amount (time sheets' "Hours against what each client agreed"):
    the product's own shape, carried over unchanged from gw-time-bar. */
@@ -1557,8 +1557,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    on the whole board a reader is meant to remember - blue like "info", but at panel-level padding
    and a larger, bolder body, the exact values the one-off box this replaces already carried. */
 .gwui-callout-emphasis { background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); padding: 16px 24px; }
-.gwui-callout-emphasis .gwui-callout-title { font-size: 14px; color: var(--gw-navy); letter-spacing: .4px; margin-bottom: 4px; }
-.gwui-callout-emphasis .gwui-callout-body { font-size: 16px; color: var(--gw-text); font-weight: 700; line-height: 25px; }
+.gwui-callout-emphasis .gwui-callout-title { font-size: var(--ds-text-secondary); color: var(--gw-navy); letter-spacing: .4px; margin-bottom: 4px; }
+.gwui-callout-emphasis .gwui-callout-body { font-size: var(--ds-text-body); color: var(--gw-text); font-weight: 700; line-height: 25px; }
 /* AuthNotice's own two-line shape, inside the same tinted box: a title above the sentence under
    it (signin.jpg's passwordless notice, "Check your email" over the sentence that follows). */
 .gwui-callout-title { font-weight: 700; margin: 0 0 2px; }
@@ -1569,7 +1569,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-password-wrap .gwui-input { padding-right: 76px; }
 .gwui-password-show {
   position: absolute; top: 2px; right: 2px; bottom: 2px; min-width: 64px; padding: 0 12px;
-  border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 14px;
+  border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: var(--ds-text-secondary);
   font-weight: 700; color: var(--gw-navy); cursor: pointer; line-height: 23px;}
 .gwui-password-show:hover { text-decoration: underline; }
 .gwui-password-show:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: -3px; }
@@ -1577,14 +1577,14 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* THE RULES A NEW PASSWORD HAS TO MEET, AND THE STRENGTH BAR MADE ONLY OF THEM (auth-kit.tsx's
    `PasswordRules`/`PasswordStrength`; password.jpg, signup.jpg, reset.jpg). */
 .gwui-rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.gwui-rules li { display: flex; align-items: center; gap: 8px; font-size: 14px; line-height: 20px; color: var(--gw-sub); }
+.gwui-rules li { display: flex; align-items: center; gap: 8px; font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-sub); }
 /* The ticked state, folded into PasswordField's own rules list (group 3 drift list, piece 1); named
    for what it belongs to rather than the generic gwui-rule-met one-off it replaces. */
 .gwui-rules li.gwui-password-rule-met { color: var(--gw-green-t); }
 .gwui-strength-bar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; margin-bottom: 8px; }
 .gwui-strength-bar span { height: 5px; border-radius: 8px; background: var(--gw-rule-2); }
 .gwui-strength-bar span.gwui-strength-on { background: var(--gw-green-t); }
-.gwui-strength-ok { font-size: 14px; font-weight: 700; color: var(--gw-green-t); margin: 0; }
+.gwui-strength-ok { font-size: var(--ds-text-secondary); font-weight: 700; color: var(--gw-green-t); margin: 0; }
 
 /* THE SIGN-IN SCREEN'S SPLIT LAYOUT (SplitPage.tsx; signin.jpg, the one A2 screen drawn this way). */
 /* The left half is the page colour (signin.jpg), not --gw-bg's soft-fill beige - that was the one
@@ -1600,8 +1600,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    first pass): the heading and the form used to sit with no gap at all. */
 .gwui-split-body > * + * { margin-top: var(--gw-space-block); }
 .gwui-split-panel { background: var(--gw-dark); color: var(--gw-white); padding: clamp(24px, 5vw, 72px); display: flex; flex-direction: column; justify-content: center; }
-.gwui-split-panel-line { font-family: var(--gw-font-name); font-size: 30px; line-height: 38px; margin: 0 0 24px; max-width: 540px; }
-.gwui-split-panel-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; font-size: 16px; }
+.gwui-split-panel-line { font-family: var(--gw-font-name); font-size: var(--ds-text-title); line-height: 38px; margin: 0 0 24px; max-width: 540px; }
+.gwui-split-panel-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; font-size: var(--ds-text-body); }
 .gwui-split-panel-list li { display: flex; align-items: center; gap: 12px; }
 .gwui-split-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
 .gwui-split-dot-said { box-shadow: inset 0 0 0 2px var(--gw-white); }
@@ -1630,9 +1630,9 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ci-pause-wrap { position: relative; flex-shrink: 0; }
 
 .gwui-ci-menu { position: absolute; right: 0; top: 40px; z-index: 30; background: var(--gw-white); border: 1px solid var(--gw-border); border-radius: 12px; box-shadow: var(--gw-shadow-menu); padding: 4px; width: 260px; }
-.gwui-ci-menu-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 8px 12px; border-radius: 8px; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 14px; text-align: left; }
+.gwui-ci-menu-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 8px 12px; border-radius: 8px; background: none; border: none; cursor: pointer; font-family: inherit; font-size: var(--ds-text-secondary); text-align: left; }
 .gwui-ci-menu-item-title { font-weight: 700; color: var(--gw-text); }
-.gwui-ci-menu-item-note { font-size: 13px; color: var(--gw-sub); line-height: 19px; }
+.gwui-ci-menu-item-note { font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 19px; }
 
 /* A banner between the header and the scrolling conversation: a clarification notice, or that the
    session failed to open. */
@@ -1644,12 +1644,12 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* The waiting dots in an assistant bubble, and the note once it has taken a while. */
 
 @keyframes gwDotBounce { 0%, 80%, 100% { transform: translateY(0); opacity: .4; } 40% { transform: translateY(-5px); opacity: 1; } }
-.gwui-ci-dot-note { font-size: 13px; color: var(--gw-sub); line-height: 20px;}
+.gwui-ci-dot-note { font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 20px;}
 .gwui-ci-caret { display: inline-block; width: 2px; height: 1em; background: var(--gw-navy); margin-left: 2px; vertical-align: text-bottom; animation: blink .7s step-end infinite; }
 
 /* GroundworkIsWriting.tsx: "<name> is writing…", shown from the moment a reply is asked for until
    it is drawn, in every chat. The dots fade gently and stop under prefers-reduced-motion. */
-.gwui-writing { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--gw-sub); }
+.gwui-writing { display: inline-flex; align-items: center; gap: 8px; font-size: var(--ds-text-secondary); color: var(--gw-sub); }
 .gwui-writing-dots { display: inline-flex; align-items: center; gap: 4px; }
 .gwui-writing-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--gw-sub); animation: gwDotBounce 1.2s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
@@ -1659,21 +1659,21 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* "Finish my check-in now", once enough has been said. */
 
 /* Declining the session, and confirming it first. */
-.gwui-ci-back-link { font-size: 13px; color: var(--gw-sub); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; line-height: 20px;}
+.gwui-ci-back-link { font-size: var(--ds-text-meta); color: var(--gw-sub); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; line-height: 20px;}
 
 /* "You have finished": the note about where the two reports live, and the row of links under it. */
-.gwui-ci-finished-note { max-width: 460px; margin: 12px auto 0; font-size: 13px; color: var(--gw-sub); line-height: 21px; text-align: center; }
+.gwui-ci-finished-note { max-width: 460px; margin: 12px auto 0; font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 21px; text-align: center; }
 .gwui-ci-finished-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; padding-top: 12px; }
 
 /* The composer's own footer strip: the privacy sentence, and the lead's "Set the context"/"Add
    people" links. */
-.gwui-ci-footer-strip { padding: 4px 12px 0; font-size: 13px; color: var(--gw-sub); line-height: 18px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.gwui-ci-footer-strip { padding: 4px 12px 0; font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 18px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .gwui-ci-footer-note { flex: 1; min-width: 200px; }
 .gwui-ci-footer-links { display: flex; gap: 12px; flex-shrink: 0; }
-.gwui-ci-footer-link { background: none; border: none; padding: 0; font-size: 13px; color: var(--gw-navy); cursor: pointer; font-family: inherit; text-decoration: underline; line-height: 20px;}
+.gwui-ci-footer-link { background: none; border: none; padding: 0; font-size: var(--ds-text-meta); color: var(--gw-navy); cursor: pointer; font-family: inherit; text-decoration: underline; line-height: 20px;}
 
 /* The "+" menu's own two choices and the privacy line under them. */
-.gwui-ci-attach-note { padding: 4px 12px 8px; font-size: 13px; color: var(--gw-sub); line-height: 19px; border-top: 1px solid var(--gw-border); margin-top: 4px; }
+.gwui-ci-attach-note { padding: 4px 12px 8px; font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 19px; border-top: 1px solid var(--gw-border); margin-top: 4px; }
 
 /* The two bottom sheets (paste text, what a document shows). */
 
@@ -1695,7 +1695,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ci-finish-wrap { text-align: center; padding: 4px 0; }
 .gwui-ci-record-line { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
 .gwui-ci-record-list { display: flex; flex-direction: column; gap: 8px; }
-.gwui-ci-subject { font-size: 14px; line-height: 21px; color: var(--gw-text); margin: 0; font-weight: 700; }
+.gwui-ci-subject { font-size: var(--ds-text-secondary); line-height: 21px; color: var(--gw-text); margin: 0; font-weight: 700; }
 .gwui-ci-about { display: flex; flex-direction: column; }
 
 /* ── SETTING UP A CHECK-IN (group 3, piece 4, B1-starting-a-check-in) ───────
@@ -1716,8 +1716,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    one-group, one-question, one-grid shape as a situation group. */
 .gwui-situation-group { margin-top: 24px; }
 .gwui-situation-group-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.gwui-situation-group-head h3 { font-size: 16px; font-weight: 700; margin: 0; letter-spacing: -.01em; color: var(--gw-text); }
-.gwui-situation-group-q { font-size: 13px; color: var(--gw-sub); line-height: 20px; margin: 4px 0 12px; max-width: 62ch; }
+.gwui-situation-group-head h3 { font-size: var(--ds-text-body); font-weight: 700; margin: 0; letter-spacing: -.01em; color: var(--gw-text); }
+.gwui-situation-group-q { font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 20px; margin: 4px 0 12px; max-width: 62ch; }
 .gwui-situation-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
 @media (min-width: 700px)  { .gwui-situation-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1000px) { .gwui-situation-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -1744,21 +1744,21 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='8' viewBox='0 0 10 8'%3E%3Cpath d='M1 4l3 3 5-6' stroke='white' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: center;
 }
-.gwui-situation-title { font-size: 14px; font-weight: 700; line-height: 18px; }
+.gwui-situation-title { font-size: var(--ds-text-secondary); font-weight: 700; line-height: 18px; }
 /* The left rule replaces a heading - it says "this is an example" without a label. */
-.gwui-situation-moment { font-size: 13px; color: var(--gw-text); font-style: italic; line-height: 20px; margin: 0; padding-left: 8px; border-left: 2px solid var(--gw-border); }
+.gwui-situation-moment { font-size: var(--ds-text-meta); color: var(--gw-text); font-style: italic; line-height: 20px; margin: 0; padding-left: 8px; border-left: 2px solid var(--gw-border); }
 .gwui-situation-card-selected .gwui-situation-moment { border-left-color: var(--gw-navy); }
-.gwui-situation-more { align-self: flex-start; background: none; border: none; padding: 2px 0; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--gw-navy); line-height: 20px;}
+.gwui-situation-more { align-self: flex-start; background: none; border: none; padding: 2px 0; cursor: pointer; font-family: inherit; font-size: var(--ds-text-meta); font-weight: 700; color: var(--gw-navy); line-height: 20px;}
 .gwui-situation-more:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; border-radius: 8px; }
 .gwui-situation-arc { margin: 4px 0 0; padding: 8px 12px; background: var(--gw-paper-2); border-radius: 8px; display: grid; gap: 8px; }
-.gwui-situation-arc dt { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-muted); margin-bottom: 1px; line-height: 20px;}
-.gwui-situation-arc dd { margin: 0; font-size: 13px; color: var(--gw-sub); line-height: 20px; }
+.gwui-situation-arc dt { font-size: var(--ds-text-meta); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-muted); margin-bottom: 1px; line-height: 20px;}
+.gwui-situation-arc dd { margin: 0; font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 20px; }
 .gwui-situation-arc-warn dt { color: var(--gw-amber-t); }
 /* Cadence, length and count: three numbers a lead compares between two cards. */
 .gwui-situation-meta { display: flex; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--gw-border); }
 .gwui-situation-meta > div { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; }
-.gwui-situation-meta dt { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-muted); margin: 0 0 1px; line-height: 17px; min-height: 24px; }
-.gwui-situation-meta dd { font-size: 13px; font-weight: 700; color: var(--gw-text); margin: 0; font-variant-numeric: tabular-nums; line-height: 20px;}
+.gwui-situation-meta dt { font-size: var(--ds-text-meta); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-muted); margin: 0 0 1px; line-height: 17px; min-height: 24px; }
+.gwui-situation-meta dd { font-size: var(--ds-text-meta); font-weight: 700; color: var(--gw-text); margin: 0; font-variant-numeric: tabular-nums; line-height: 20px;}
 @media (max-width: 620px) {
   .gwui-situation-grid { grid-template-columns: 1fr; }
   .gwui-situation-meta { flex-wrap: wrap; gap: 8px; }
@@ -1776,9 +1776,9 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 @keyframes gwuiSpin { to { transform: rotate(360deg); } }
 .gwui-spinner { display: flex; align-items: center; gap: 8px; padding: 32px 0; color: var(--gw-sub); }
 .gwui-spinner-dot { width: 18px; height: 18px; border: 2px solid var(--gw-border); border-top-color: var(--gw-navy); border-radius: 50%; animation: gwuiSpin 0.7s linear infinite; }
-.gwui-situation-extra-note { font-size: 13px; color: var(--gw-navy); font-weight: 700; margin-top: 2px; line-height: 20px;}
+.gwui-situation-extra-note { font-size: var(--ds-text-meta); color: var(--gw-navy); font-weight: 700; margin-top: 2px; line-height: 20px;}
 .gwui-cg-dimmed { opacity: 0.55; pointer-events: none; }
-.gwui-cg-checkbox-row { font-size: 14px; color: var(--gw-sub); display: flex; gap: 8px; align-items: flex-start; }
+.gwui-cg-checkbox-row { font-size: var(--ds-text-secondary); color: var(--gw-sub); display: flex; gap: 8px; align-items: flex-start; }
 
 /* ── THE DOOR (group 3, piece 4d-1, B1-starting-a-check-in: start.jpg, new.jpg) ─────────────
    TheDoor.tsx: one box, one question. serif heading at the prototype's own clamp, then help text,
@@ -1790,15 +1790,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-phase-steps { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; }
 .gwui-phase-step { display: flex; align-items: center; gap: 4px; }
 .gwui-phase-step-mark {
-  width: 20px; height: 20px; border-radius: 50%; font-size: 13px; font-weight: 700;
+  width: 20px; height: 20px; border-radius: 50%; font-size: var(--ds-text-meta); font-weight: 700;
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--gw-border); color: var(--gw-muted); line-height: 20px;}
 .gwui-phase-step-mark.gwui-phase-step-current { background: var(--gw-navy); color: white; }
 .gwui-phase-step-mark.gwui-phase-step-done { background: var(--gw-green-b); color: white; }
-.gwui-phase-step-label { font-size: 13px; font-weight: 500; color: var(--gw-muted); line-height: 20px;}
+.gwui-phase-step-label { font-size: var(--ds-text-meta); font-weight: 500; color: var(--gw-muted); line-height: 20px;}
 .gwui-phase-step-label-current { font-weight: 700; color: var(--gw-text); }
-.gwui-phase-step-arrow { color: var(--gw-border); font-size: 13px; margin-left: 3px; line-height: 20px;}
-.gwui-phase-steps-hint { font-size: 13px; color: var(--gw-sub); margin: 4px 0 0; line-height: 20px;}
+.gwui-phase-step-arrow { color: var(--gw-border); font-size: var(--ds-text-meta); margin-left: 3px; line-height: 20px;}
+.gwui-phase-steps-hint { font-size: var(--ds-text-meta); color: var(--gw-sub); margin: 4px 0 0; line-height: 20px;}
 
 /* ── THE ENTRY CHAT'S OWN FRAME (group 3, piece 4d-1) ───────────────────────────────────────
    EntryChatPage.tsx: the outer frame, the session header, the start-over bar, the sessions-upgrade
@@ -1833,8 +1833,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 .gwui-ec-session-back { flex-shrink: 0; }
 .gwui-ec-session-name-row { flex: 1 1 200px; min-width: 0; }
-.gwui-ec-session-name { font-size: 14px; font-weight: 700; color: var(--gw-text); }
-.gwui-ec-session-status { font-size: 13px; color: var(--gw-sub); display: flex; align-items: center; gap: 4px; margin-top: 2px; line-height: 20px;}
+.gwui-ec-session-name { font-size: var(--ds-text-secondary); font-weight: 700; color: var(--gw-text); }
+.gwui-ec-session-status { font-size: var(--ds-text-meta); color: var(--gw-sub); display: flex; align-items: center; gap: 4px; margin-top: 2px; line-height: 20px;}
 .gwui-ec-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gw-green-live); display: inline-block; flex-shrink: 0; }
 .gwui-ec-sessions-count { flex-shrink: 0; text-align: right; }
 /*
@@ -1861,7 +1861,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 .gwui-ec-bar { padding: 4px 16px; border-bottom: 1px solid var(--gw-border); background: white; display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
 .gwui-ec-bar-onboarding { padding: 12px 16px; justify-content: space-between; }
-.gwui-ec-confirm-clear { font-size: 13px; color: var(--gw-sub); display: flex; align-items: center; gap: 8px; line-height: 20px;}
+.gwui-ec-confirm-clear { font-size: var(--ds-text-meta); color: var(--gw-sub); display: flex; align-items: center; gap: 8px; line-height: 20px;}
 .gwui-ec-picked-row { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 /*
  * FAULT C4 (reviewer, third round): "START OVER" WRAPPED ONTO TWO LINES AT 390px - or, once this
@@ -1873,7 +1873,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * need or running past the frame.
  */
 .gwui-ec-which-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; white-space: nowrap; }
-.gwui-ec-onboarding-title { font-family: var(--gw-font-name); font-size: 21px; font-weight: 500; color: var(--gw-text); margin: 0; }
+.gwui-ec-onboarding-title { font-family: var(--gw-font-name); font-size: var(--ds-text-section); font-weight: 500; color: var(--gw-text); margin: 0; }
 
 .gwui-ec-messages {
   flex: 1; overflow-y: auto; padding: 16px 16px; display: flex; flex-direction: column; gap: 12px;
@@ -1881,12 +1881,12 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 .gwui-ec-messages-wide { max-width: 1080px; }
 .gwui-ec-messages-narrow { max-width: 680px; }
-.gwui-ec-picked-chip { align-self: flex-end; font-size: 13px; color: var(--gw-sub); padding: 4px 12px; border: 1px solid var(--gw-border); border-radius: 999px; background: white; line-height: 20px;}
+.gwui-ec-picked-chip { align-self: flex-end; font-size: var(--ds-text-meta); color: var(--gw-sub); padding: 4px 12px; border: 1px solid var(--gw-border); border-radius: 999px; background: white; line-height: 20px;}
 
 .gwui-ec-doc-panel { padding: 12px 16px; border-bottom: 1px solid var(--gw-border); background: var(--gw-paper-2); }
 .gwui-ec-doc-panel-inner { max-width: 680px; margin: 0 auto; }
 .gwui-ec-doc-panel-tabs { display: flex; gap: 4px; margin-bottom: 8px; align-items: center; }
-.gwui-ec-doc-upload-label { display: block; border: 1px dashed var(--gw-border); border-radius: 8px; padding: 12px; text-align: center; font-size: 13px; color: var(--gw-sub); cursor: pointer; margin-bottom: 8px; background: white; line-height: 20px;}
+.gwui-ec-doc-upload-label { display: block; border: 1px dashed var(--gw-border); border-radius: 8px; padding: 12px; text-align: center; font-size: var(--ds-text-meta); color: var(--gw-sub); cursor: pointer; margin-bottom: 8px; background: white; line-height: 20px;}
 
 .gwui-ec-composer-wrap { border-top: 1px solid var(--gw-border); background: white; flex-shrink: 0; }
 .gwui-ec-composer-inner { padding: 8px 16px; position: relative; z-index: 101; }
@@ -1955,7 +1955,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-natural-close .gwui-callout { flex: 1; }
 .gwui-ec-natural-close-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .gwui-ec-quick-actions { padding: 8px 16px; border-top: 1px solid var(--gw-border); display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; background: white; align-items: center; }
-.gwui-ec-quick-action { padding: 4px 12px; border-radius: 999px; font-size: 13px; border: 1px solid var(--gw-border); background: transparent; color: var(--gw-sub); cursor: pointer; font-family: inherit; line-height: 20px;}
+.gwui-ec-quick-action { padding: 4px 12px; border-radius: 999px; font-size: var(--ds-text-meta); border: 1px solid var(--gw-border); background: transparent; color: var(--gw-sub); cursor: pointer; font-family: inherit; line-height: 20px;}
 .gwui-ec-quick-action:disabled { opacity: .5; cursor: default; }
 .gwui-ec-quick-action-attach { display: inline-flex; align-items: center; }
 .gwui-ec-quick-actions-end { margin-left: auto; }
@@ -1973,7 +1973,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 .gwui-ec-quick-action-navy { color: var(--gw-navy); font-weight: 700; }
 .gwui-ec-doc-pill { padding: 4px 16px; background: var(--gw-blue-bg); border-top: 1px solid var(--gw-blue-b); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.gwui-ec-doc-pill-name { font-size: 13px; color: var(--gw-navy); flex: 1; line-height: 20px;}
+.gwui-ec-doc-pill-name { font-size: var(--ds-text-meta); color: var(--gw-navy); flex: 1; line-height: 20px;}
 .gwui-ec-modal-actions { display: flex; gap: 8px; margin-top: 12px; }
 .gwui-ec-modal-actions > * { flex: 1; }
 
@@ -1983,82 +1983,82 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-savecard-overlay-shown { opacity: 1; pointer-events: auto; visibility: visible; }
 .gwui-ec-savecard { width: 100%; max-width: 640px; background: white; border-radius: var(--gw-radius-pop); overflow: clip; box-shadow: var(--gw-shadow-modal); }
 .gwui-ec-savecard-header { background: var(--gw-dark); color: white; padding: 16px 24px 16px; }
-.gwui-ec-savecard-eyebrow { font-size: 13px; color: var(--gw-green-b); font-weight: 700; margin-bottom: 4px; line-height: 20px;}
-.gwui-ec-savecard-title { font-size: 18px; font-weight: 700; letter-spacing: -.01em; line-height: 22px; }
+.gwui-ec-savecard-eyebrow { font-size: var(--ds-text-meta); color: var(--gw-green-b); font-weight: 700; margin-bottom: 4px; line-height: 20px;}
+.gwui-ec-savecard-title { font-size: var(--ds-text-card); font-weight: 700; letter-spacing: -.01em; line-height: 22px; }
 .gwui-ec-savecard-venn-row { display: flex; align-items: flex-start; gap: 8px; margin-top: 4px; }
 .gwui-ec-savecard-venn-icon { flex-shrink: 0; margin-top: 2px; background: white; border-radius: 8px; padding: 2px 3px; }
-.gwui-ec-savecard-venn-text { font-size: 13px; color: rgba(255,255,255,.6); line-height: 20px; }
+.gwui-ec-savecard-venn-text { font-size: var(--ds-text-meta); color: rgba(255,255,255,.6); line-height: 20px; }
 .gwui-ec-savecard-venn-text b { color: rgba(255,255,255,.85); }
 .gwui-ec-savecard-stat-row { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
-.gwui-ec-savecard-stat { font-size: 13px; color: rgba(255,255,255,.55); line-height: 20px;}
+.gwui-ec-savecard-stat { font-size: var(--ds-text-meta); color: rgba(255,255,255,.55); line-height: 20px;}
 .gwui-ec-savecard-body { padding: 16px 16px 24px; }
 .gwui-ec-savecard-status { margin-bottom: 16px; }
 .gwui-ec-savecard-retry { background: var(--gw-clay-bg); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
-.gwui-ec-savecard-retry-text { flex: 1; font-size: 13px; color: var(--gw-clay); line-height: 20px; }
-.gwui-ec-savecard-add-pending { font-size: 13px; color: var(--gw-green-t); font-weight: 700; margin-top: 4px; line-height: 20px;}
+.gwui-ec-savecard-retry-text { flex: 1; font-size: var(--ds-text-meta); color: var(--gw-clay); line-height: 20px; }
+.gwui-ec-savecard-add-pending { font-size: var(--ds-text-meta); color: var(--gw-green-t); font-weight: 700; margin-top: 4px; line-height: 20px;}
 .gwui-ec-savecard-add-row { display: flex; gap: 4px; margin-top: 4px; }
-.gwui-ec-savecard-add-error { font-size: 13px; color: var(--gw-red-t); margin-top: 4px; line-height: 20px;}
+.gwui-ec-savecard-add-error { font-size: var(--ds-text-meta); color: var(--gw-red-t); margin-top: 4px; line-height: 20px;}
 .gwui-ec-savecard-whatnext { background: var(--gw-blue-bg); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
 /* SCREEN FAULT 10 (FINAL WALK): "WHAT HAPPENS NEXT" IN CAPITALS. The prototype's own end-card
    (check-in-end-card.txt) writes this heading in sentence case, not as a small label - so the
    uppercase transform is dropped; the rest of the heading's own styling (size, weight, colour,
    spacing) is unchanged. */
-.gwui-ec-savecard-whatnext-title { font-size: 13px; font-weight: 700; color: var(--gw-navy); margin-bottom: 8px; letter-spacing: .06em; line-height: 20px;}
+.gwui-ec-savecard-whatnext-title { font-size: var(--ds-text-meta); font-weight: 700; color: var(--gw-navy); margin-bottom: 8px; letter-spacing: .06em; line-height: 20px;}
 .gwui-ec-savecard-whatnext-list { display: flex; flex-direction: column; gap: 8px; }
 .gwui-ec-savecard-whatnext-row { display: flex; gap: 8px; align-items: flex-start; }
-.gwui-ec-savecard-whatnext-num { width: 22px; height: 22px; border-radius: 50%; background: var(--gw-navy); color: white; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; line-height: 20px;}
-.gwui-ec-savecard-whatnext-text { font-size: 13px; color: var(--gw-text); line-height: 20px; }
+.gwui-ec-savecard-whatnext-num { width: 22px; height: 22px; border-radius: 50%; background: var(--gw-navy); color: white; font-size: var(--ds-text-meta); font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; line-height: 20px;}
+.gwui-ec-savecard-whatnext-text { font-size: var(--ds-text-meta); color: var(--gw-text); line-height: 20px; }
 .gwui-ec-savecard-section { margin-bottom: 16px; }
 /* SAVE STAYS IN VIEW (round 5: at phone width the signed-in lead's Save was far below the team box, and impatient leads left without
    finding it). The section that holds it, the one with "Start over instead", is pinned to the foot of the card while the setup above it
    scrolls. The card clips rather than hides its overflow, so it is not a scroller of its own and the pin follows the page's scroll. */
 .gwui-ec-savecard-section:has(> .gwui-ec-savecard-clear-row) { position: sticky; bottom: 0; z-index: 1; background: white; margin: 24px -20px 16px; padding: 12px 16px; border-top: 1px solid var(--gw-border); }
-.gwui-ec-savecard-helper { font-size: 13px; color: var(--gw-muted); line-height: 20px; text-align: center; padding-top: 8px; }
-.gwui-ec-savecard-clear-row { text-align: center; padding-top: 4px; font-size: 13px; color: var(--gw-muted); line-height: 20px;}
+.gwui-ec-savecard-helper { font-size: var(--ds-text-meta); color: var(--gw-muted); line-height: 20px; text-align: center; padding-top: 8px; }
+.gwui-ec-savecard-clear-row { text-align: center; padding-top: 4px; font-size: var(--ds-text-meta); color: var(--gw-muted); line-height: 20px;}
 .gwui-ec-savecard-clear-confirm { display: inline-flex; gap: 8px; align-items: center; }
 .gwui-ec-savecard-clear-danger { color: var(--gw-red-t); font-weight: 700; }
 .gwui-ec-savecard-field { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
 .gwui-ec-savecard-field-error { border-color: var(--gw-danger); }
-.gwui-ec-savecard-error { font-size: 13px; color: var(--gw-red-t); margin-bottom: 4px; line-height: 20px;}
+.gwui-ec-savecard-error { font-size: var(--ds-text-meta); color: var(--gw-red-t); margin-bottom: 4px; line-height: 20px;}
 .gwui-ec-savecard-or-row { display: flex; align-items: center; gap: 8px; padding: 12px 0 8px; }
-.gwui-ec-savecard-or-text { font-size: 13px; color: var(--gw-muted); line-height: 20px;}
+.gwui-ec-savecard-or-text { font-size: var(--ds-text-meta); color: var(--gw-muted); line-height: 20px;}
 .gwui-ec-savecard-confirm-box { position: sticky; top: 8px; z-index: 5; background: var(--gw-green-bg); border: 1px solid var(--gw-green-b-soft); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
-.gwui-ec-savecard-confirm-title { font-size: 14px; font-weight: 700; color: var(--gw-green-t); margin-bottom: 4px; }
-.gwui-ec-savecard-confirm-body { font-size: 13px; color: var(--gw-green-t); line-height: 21px; }
-.gwui-ec-savecard-confirm-sub { font-size: 13px; color: var(--gw-green-t); line-height: 21px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gw-green-b-soft); }
+.gwui-ec-savecard-confirm-title { font-size: var(--ds-text-secondary); font-weight: 700; color: var(--gw-green-t); margin-bottom: 4px; }
+.gwui-ec-savecard-confirm-body { font-size: var(--ds-text-meta); color: var(--gw-green-t); line-height: 21px; }
+.gwui-ec-savecard-confirm-sub { font-size: var(--ds-text-meta); color: var(--gw-green-t); line-height: 21px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gw-green-b-soft); }
 .gwui-ec-savecard-divider { border-top: 1px solid var(--gw-border); margin-bottom: 16px; }
 .gwui-ec-savecard-name-block { margin-bottom: 12px; }
-.gwui-ec-savecard-name-label { font-size: 13px; font-weight: 700; color: var(--gw-sub); margin-bottom: 4px; line-height: 20px;}
-.gwui-ec-savecard-name-hint { font-size: 13px; color: var(--gw-sub); line-height: 20px; }
+.gwui-ec-savecard-name-label { font-size: var(--ds-text-meta); font-weight: 700; color: var(--gw-sub); margin-bottom: 4px; line-height: 20px;}
+.gwui-ec-savecard-name-hint { font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 20px; }
 .gwui-ec-savecard-invite-block { border-bottom: 1px solid var(--gw-border); margin-bottom: 16px; padding-bottom: 16px; }
-.gwui-ec-savecard-invite-subtext { font-size: 13px; color: var(--gw-muted); line-height: 20px; margin-bottom: 8px; }
-.gwui-ec-savecard-invite-banner { font-size: 13px; color: var(--gw-navy); background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); border-radius: 8px; padding: 8px 12px; line-height: 20px; margin-bottom: 8px; }
-.gwui-ec-savecard-invite-later { font-size: 13px; color: var(--gw-sub); line-height: 20px; margin-bottom: 8px; }
-.gwui-ec-savecard-invite-notice { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b-soft); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 13px; color: var(--gw-amber-t); line-height: 20px; }
+.gwui-ec-savecard-invite-subtext { font-size: var(--ds-text-meta); color: var(--gw-muted); line-height: 20px; margin-bottom: 8px; }
+.gwui-ec-savecard-invite-banner { font-size: var(--ds-text-meta); color: var(--gw-navy); background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); border-radius: 8px; padding: 8px 12px; line-height: 20px; margin-bottom: 8px; }
+.gwui-ec-savecard-invite-later { font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 20px; margin-bottom: 8px; }
+.gwui-ec-savecard-invite-notice { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b-soft); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: var(--ds-text-meta); color: var(--gw-amber-t); line-height: 20px; }
 .gwui-ec-savecard-invite-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
-.gwui-ec-savecard-invite-chip { font-size: 13px; color: var(--gw-green-t); background: var(--gw-green-bg); border-radius: 8px; padding: 4px 8px; line-height: 20px;}
+.gwui-ec-savecard-invite-chip { font-size: var(--ds-text-meta); color: var(--gw-green-t); background: var(--gw-green-bg); border-radius: 8px; padding: 4px 8px; line-height: 20px;}
 .gwui-ec-savecard-invite-context { background: var(--gw-paper-2); border: 1px solid var(--gw-border); border-radius: 8px; padding: 12px 12px; }
 .gwui-ec-savecard-invite-context-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-.gwui-ec-savecard-invite-context-name { font-size: 13px; font-weight: 700; color: var(--gw-text); line-height: 20px;}
-.gwui-ec-savecard-invite-context-more { font-size: 13px; color: var(--gw-muted); line-height: 20px;}
-.gwui-ec-savecard-invite-context-ask { font-size: 13px; color: var(--gw-sub); margin-bottom: 8px; line-height: 20px; }
+.gwui-ec-savecard-invite-context-name { font-size: var(--ds-text-meta); font-weight: 700; color: var(--gw-text); line-height: 20px;}
+.gwui-ec-savecard-invite-context-more { font-size: var(--ds-text-meta); color: var(--gw-muted); line-height: 20px;}
+.gwui-ec-savecard-invite-context-ask { font-size: var(--ds-text-meta); color: var(--gw-sub); margin-bottom: 8px; line-height: 20px; }
 .gwui-ec-savecard-row-gap8 { display: flex; gap: 8px; }
 .gwui-ec-savecard-row-gap8-grow-last > *:last-child { flex: 1; }
 
 .gwui-ec-savecard-invite-add-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .gwui-ec-savecard-invite-add-row > :first-child { flex: 1; }
 .gwui-ec-savecard-link-row { display: flex; align-items: center; gap: 8px; }
-.gwui-ec-savecard-link-box { flex: 1; font-size: 13px; color: var(--gw-navy); background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); border-radius: 8px; padding: 8px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 20px;}
+.gwui-ec-savecard-link-box { flex: 1; font-size: var(--ds-text-meta); color: var(--gw-navy); background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); border-radius: 8px; padding: 8px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 20px;}
 .gwui-ec-savecard-done { text-align: center; padding-top: 8px; }
-.gwui-ec-savecard-done-text { font-size: 13px; color: var(--gw-muted); padding-top: 8px; line-height: 21px; }
+.gwui-ec-savecard-done-text { font-size: var(--ds-text-meta); color: var(--gw-muted); padding-top: 8px; line-height: 21px; }
 
 /* 4D-4: the closed-session invite bar, and the check-in composer's own centred width (the
    message list above it centres the same way, still with its own inline maxWidth/margin until
    that part of this rebuild reaches it). */
 .gwui-ec-invite-bar { border-top: 1px solid var(--gw-border); background: white; flex-shrink: 0; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
 .gwui-ec-invite-bar-text { flex: 1; }
-.gwui-ec-invite-bar-title { font-size: 13px; font-weight: 700; color: var(--gw-text); line-height: 20px;}
-.gwui-ec-invite-bar-sub { font-size: 13px; color: var(--gw-sub); margin-top: 2px; line-height: 20px;}
+.gwui-ec-invite-bar-title { font-size: var(--ds-text-meta); font-weight: 700; color: var(--gw-text); line-height: 20px;}
+.gwui-ec-invite-bar-sub { font-size: var(--ds-text-meta); color: var(--gw-sub); margin-top: 2px; line-height: 20px;}
 .gwui-ec-checkin-composer-wrap { max-width: 680px; width: 100%; margin: 0 auto; }
 .gwui-ec-fills-in { width: 300px; flex-shrink: 0; padding: 16px 16px 16px 0; overflow-y: auto; }
 
@@ -2073,7 +2073,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * fills the width inside the page's 16px gutter.
  */
 .gwui-ec-bar-onboarding { background: transparent; border-bottom: 0; padding: 32px 48px 16px; }
-.gwui-ec-bar-onboarding .gwui-ec-onboarding-title { font-size: 26px; line-height: 32px; }
+.gwui-ec-bar-onboarding .gwui-ec-onboarding-title { font-size: var(--ds-text-title); line-height: 32px; }
 .gwui-ec-onboarding-talk { gap: 48px; padding: 0 48px 24px; }
 .gwui-ec-onboarding-talk > .gwui-ec-onboarding-col { flex: 0 1 760px; background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; overflow: hidden; }
 .gwui-ec-onboarding-talk .gwui-ec-messages { padding: 20px; max-width: none; }
@@ -2088,7 +2088,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 @media (max-width: 640px) {
   .gwui-ec-bar-onboarding { padding: 16px; }
-  .gwui-ec-bar-onboarding .gwui-ec-onboarding-title { font-size: 22px; line-height: 28px; }
+  .gwui-ec-bar-onboarding .gwui-ec-onboarding-title { font-size: var(--ds-text-title); line-height: 28px; }
   .gwui-ec-onboarding-talk { padding: 0 16px 16px; }
   .gwui-ec-onboarding-talk .gwui-ec-messages { padding: 16px; }
   .gwui-ec-onboarding-talk .gwui-ec-composer-inner { padding: 4px 12px 12px; }
@@ -2096,17 +2096,17 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 .gwui-ec-checkin { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .gwui-ec-checkin-notice { background: var(--gw-amber-bg); border-bottom: 1px solid var(--gw-amber-b-soft); padding: 8px 16px; flex-shrink: 0; }
-.gwui-ec-checkin-notice-inner { max-width: 680px; margin: 0 auto; font-size: 13px; color: var(--gw-amber-t); line-height: 20px; }
+.gwui-ec-checkin-notice-inner { max-width: 680px; margin: 0 auto; font-size: var(--ds-text-meta); color: var(--gw-amber-t); line-height: 20px; }
 .gwui-ec-checkin-messages { flex: 1; overflow-y: auto; padding: 16px 16px; display: flex; flex-direction: column; gap: 12px; max-width: 680px; width: 100%; margin: 0 auto; box-sizing: border-box; }
-.gwui-ec-checkin-starting { font-size: 13px; color: var(--gw-sub); text-align: center; padding: 24px; line-height: 20px;}
+.gwui-ec-checkin-starting { font-size: var(--ds-text-meta); color: var(--gw-sub); text-align: center; padding: 24px; line-height: 20px;}
 
-.gwui-ec-checkin-note { font-size: 13px; color: var(--gw-sub); text-align: center; padding: 4px 12px 8px; line-height: 20px; }
+.gwui-ec-checkin-note { font-size: var(--ds-text-meta); color: var(--gw-sub); text-align: center; padding: 4px 12px 8px; line-height: 20px; }
 .gwui-ec-checkin-note-row { display: flex; align-items: center; gap: 8px; justify-content: center; padding: 0 12px 8px; }
 
 /* The lead's own first-check-in briefing (showAdminBriefing - see the note above where this
    renders about why it may be unreachable today). */
-.gwui-ec-field-label { font-size: 13px; font-weight: 700; color: var(--gw-sub); margin-bottom: 4px; line-height: 20px;}
-.gwui-ec-card-title { font-size: 13px; font-weight: 700; color: var(--gw-text); margin-bottom: 2px; line-height: 20px;}
+.gwui-ec-field-label { font-size: var(--ds-text-meta); font-weight: 700; color: var(--gw-sub); margin-bottom: 4px; line-height: 20px;}
+.gwui-ec-card-title { font-size: var(--ds-text-meta); font-weight: 700; color: var(--gw-text); margin-bottom: 2px; line-height: 20px;}
 .gwui-ec-card-title-700 { font-weight: 700; }
 .gwui-ec-rule { flex: 1; height: 1px; background: var(--gw-border); }
 
@@ -2126,20 +2126,20 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-setrow-more { margin-top: 4px; }
 
 /* The correction thread inside the report's own dark card (TheReportYouSawAtTheEnd's correctionSlot). */
-.gwui-ec-correction-intro { font-size: 13px; color: rgba(255,255,255,.75); margin-bottom: 4px; line-height: 20px;}
+.gwui-ec-correction-intro { font-size: var(--ds-text-meta); color: rgba(255,255,255,.75); margin-bottom: 4px; line-height: 20px;}
 .gwui-ec-correction-thread { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
-.gwui-ec-correction-bubble { max-width: 88%; padding: 8px 8px; border-radius: 8px; font-size: 13px; line-height: 20px; }
+.gwui-ec-correction-bubble { max-width: 88%; padding: 8px 8px; border-radius: 8px; font-size: var(--ds-text-meta); line-height: 20px; }
 .gwui-ec-correction-bubble-user { align-self: flex-end; background: var(--gw-green-b); color: var(--gw-dark); }
 .gwui-ec-correction-bubble-assistant { align-self: flex-start; background: rgba(255,255,255,.1); color: rgba(255,255,255,.9); }
-.gwui-ec-correction-field { width: 100%; min-height: 64px; padding: 8px 8px; font-size: 13px; line-height: 20px; border: none; border-radius: 8px; font-family: inherit; outline: none; box-sizing: border-box; resize: vertical; background: rgba(255,255,255,.94); color: var(--gw-text); }
+.gwui-ec-correction-field { width: 100%; min-height: 64px; padding: 8px 8px; font-size: var(--ds-text-meta); line-height: 20px; border: none; border-radius: 8px; font-family: inherit; outline: none; box-sizing: border-box; resize: vertical; background: rgba(255,255,255,.94); color: var(--gw-text); }
 .gwui-ec-correction-actions { display: flex; gap: 8px; margin-top: 8px; }
 
 /* The two small centred confirmation dialogs (New scenario conflict, and End this session - the
    second one Modal'd already in 4d-2). Both read the same way: a sentence, then two ways out. */
 .gwui-ec-confirm-overlay { position: fixed; inset: 0; background: rgba(10,22,40,0.55); z-index: 40; display: flex; align-items: center; justify-content: center; padding: 0 16px; }
 .gwui-ec-confirm-box { background: white; border-radius: 12px; padding: 24px; max-width: 380px; width: 100%; }
-.gwui-ec-confirm-title { font-size: 16px; font-weight: 700; color: var(--gw-dark); margin-bottom: 8px; }
-.gwui-ec-confirm-body { font-size: 13px; color: var(--gw-sub); line-height: 21px; margin-bottom: 16px; }
+.gwui-ec-confirm-title { font-size: var(--ds-text-body); font-weight: 700; color: var(--gw-dark); margin-bottom: 8px; }
+.gwui-ec-confirm-body { font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 21px; margin-bottom: 16px; }
 .gwui-ec-confirm-actions { display: flex; gap: 8px; }
 .gwui-ec-confirm-actions > * { flex: 1; }
 
@@ -2196,15 +2196,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  */
 .gwui-sr { overflow: hidden; }
 .gwui-sr-head     { padding: 16px 16px; }
-.gwui-sr-head-title { font-size: 14px; line-height: 1.5; color: var(--gw-text); }
-.gwui-sr-head-shared { font-size: 14px; color: var(--gw-sub); margin-top: 2px; }
+.gwui-sr-head-title { font-size: var(--ds-text-secondary); line-height: 1.5; color: var(--gw-text); }
+.gwui-sr-head-shared { font-size: var(--ds-text-secondary); color: var(--gw-sub); margin-top: 2px; }
 .gwui-sr-counted  { border-top: 1px solid var(--gw-border); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
-.gwui-sr-counted-item { font-size: 13px; color: var(--gw-text); line-height: 20px;}
+.gwui-sr-counted-item { font-size: var(--ds-text-meta); color: var(--gw-text); line-height: 20px;}
 .gwui-sr-counted-item.gwui-sr-muted { color: var(--gw-sub); }
 .gwui-sr-finding  { border-top: 1px solid var(--gw-border); padding: 16px 16px; background: var(--gw-amber-bg); }
-.gwui-sr-finding-label { font-size: 13px; font-weight: 700; color: var(--gw-amber-t); margin-bottom: 8px; line-height: 20px;}
-.gwui-sr .gwui-find     { font-size: 16px; line-height: 22px; font-weight: 700; color: var(--gw-text); margin: 0; max-width: 58ch; }
-.gwui-sr .gwui-find-why { font-size: 13px; line-height: 21px; color: var(--gw-amber-t); display: block; }
+.gwui-sr-finding-label { font-size: var(--ds-text-meta); font-weight: 700; color: var(--gw-amber-t); margin-bottom: 8px; line-height: 20px;}
+.gwui-sr .gwui-find     { font-size: var(--ds-text-body); line-height: 22px; font-weight: 700; color: var(--gw-text); margin: 0; max-width: 58ch; }
+.gwui-sr .gwui-find-why { font-size: var(--ds-text-meta); line-height: 21px; color: var(--gw-amber-t); display: block; }
 .gwui-sr .gwui-find-why-basis { margin-top: 8px; }
 .gwui-sr .gwui-find-why-also  { margin-top: 4px; opacity: .85; }
 .gwui-sr-row      { border-top: 1px solid var(--gw-border); padding: 16px 16px; }
@@ -2214,27 +2214,27 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* U.9 THIRD REVIEW: ONE CLASS, FOR ONE SENTENCE, NOT A FIGURE CLASS AND A CAPTION CLASS. Each tile
    used to be a big figure over a small caption; it is one sentence now, set at a size that reads
    as body text rather than as a scoreboard digit. */
-.gwui-sr .gwui-tile-txt { font-size: 13px; font-weight: 700; line-height: 20px; color: var(--gw-text); }
+.gwui-sr .gwui-tile-txt { font-size: var(--ds-text-meta); font-weight: 700; line-height: 20px; color: var(--gw-text); }
 .gwui-sr .gwui-tile-good  { color: var(--gw-green-t); }
 .gwui-sr .gwui-tile-watch { color: var(--gw-amber-t); }
-.gwui-sr-parent   { margin: 0 0 4px; font-size: 14px; font-weight: 700; line-height: 20px; color: var(--gw-text); }
-.gwui-sr-why      { margin: 0; font-size: 14px; color: var(--gw-sub); max-width: 68ch; line-height: 22px; }
+.gwui-sr-parent   { margin: 0 0 4px; font-size: var(--ds-text-secondary); font-weight: 700; line-height: 20px; color: var(--gw-text); }
+.gwui-sr-why      { margin: 0; font-size: var(--ds-text-secondary); color: var(--gw-sub); max-width: 68ch; line-height: 22px; }
 .gwui-sr-quotes   { display: grid; gap: 12px; }
-.gwui-sr-quote    { font-size: 14px; font-style: italic; color: var(--gw-text); max-width: 68ch; line-height: 22px; }
-.gwui-sr-cite     { font-size: 13px; color: var(--gw-muted); margin-top: 4px; line-height: 20px;}
-.gwui-sr-statement{ margin: 0; font-size: 14px; color: var(--gw-text); max-width: 68ch; line-height: 22px; }
-.gwui-sr-position { margin: 0; font-size: 13px; color: var(--gw-text); max-width: 68ch; line-height: 21px; }
-.gwui-sr-caption-label { margin: 0 0 2px; font-size: 13px; color: var(--gw-sub); line-height: 20px;}
-.gwui-sr-caption-text  { margin: 0; font-size: 13px; color: var(--gw-text); max-width: 68ch; line-height: 21px; }
-.gwui-sr-source-line   { margin: 0; font-size: 13px; font-style: italic; color: var(--gw-sub); max-width: 68ch; line-height: 21px; }
+.gwui-sr-quote    { font-size: var(--ds-text-secondary); font-style: italic; color: var(--gw-text); max-width: 68ch; line-height: 22px; }
+.gwui-sr-cite     { font-size: var(--ds-text-meta); color: var(--gw-muted); margin-top: 4px; line-height: 20px;}
+.gwui-sr-statement{ margin: 0; font-size: var(--ds-text-secondary); color: var(--gw-text); max-width: 68ch; line-height: 22px; }
+.gwui-sr-position { margin: 0; font-size: var(--ds-text-meta); color: var(--gw-text); max-width: 68ch; line-height: 21px; }
+.gwui-sr-caption-label { margin: 0 0 2px; font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 20px;}
+.gwui-sr-caption-text  { margin: 0; font-size: var(--ds-text-meta); color: var(--gw-text); max-width: 68ch; line-height: 21px; }
+.gwui-sr-source-line   { margin: 0; font-size: var(--ds-text-meta); font-style: italic; color: var(--gw-sub); max-width: 68ch; line-height: 21px; }
 .gwui-sr-toggle-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-.gwui-sr-muted-inline { font-size: 13px; color: var(--gw-sub); line-height: 20px;}
-.gwui-sr-item-title { font-size: 13px; font-weight: 700; color: var(--gw-text); margin-bottom: 4px; line-height: 20px;}
-.gwui-sr-muted-prose { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 21px; }
-.gwui-sr-section-note { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 21px; margin-top: 8px; }
-.gwui-sr-person-saying { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 21px; }
-.gwui-sr-person-finding { font-size: 13px; color: var(--gw-text); margin-top: 4px; padding: 8px 8px; max-width: 68ch; line-height: 21px; }
-.gwui-sr-footer   { font-size: 13px; color: var(--gw-sub); line-height: 21px; }
+.gwui-sr-muted-inline { font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 20px;}
+.gwui-sr-item-title { font-size: var(--ds-text-meta); font-weight: 700; color: var(--gw-text); margin-bottom: 4px; line-height: 20px;}
+.gwui-sr-muted-prose { font-size: var(--ds-text-meta); color: var(--gw-sub); max-width: 68ch; line-height: 21px; }
+.gwui-sr-section-note { font-size: var(--ds-text-meta); color: var(--gw-sub); max-width: 68ch; line-height: 21px; margin-top: 8px; }
+.gwui-sr-person-saying { font-size: var(--ds-text-meta); color: var(--gw-sub); max-width: 68ch; line-height: 21px; }
+.gwui-sr-person-finding { font-size: var(--ds-text-meta); color: var(--gw-text); margin-top: 4px; padding: 8px 8px; max-width: 68ch; line-height: 21px; }
+.gwui-sr-footer   { font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 21px; }
 .gwui-sr-footer-line { display: block; margin-bottom: 4px; }
 .gwui-sr-definitions { display: grid; gap: 12px; margin-top: 12px; }
 .gwui-sr-agree-wrap { margin-top: 12px; }
@@ -2244,12 +2244,12 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-sr-built-from { margin-top: 8px; }
 .gwui-sr-rests-on-item { margin-top: 12px; }
 @media (max-width: 640px) {
-  .gwui-sr .gwui-find     { font-size: 14px; line-height: 23px; font-weight: 700; }
-  .gwui-sr .gwui-find-why { font-size: 13px; line-height: 20px;}
+  .gwui-sr .gwui-find     { font-size: var(--ds-text-secondary); line-height: 23px; font-weight: 700; }
+  .gwui-sr .gwui-find-why { font-size: var(--ds-text-meta); line-height: 20px;}
   /* Stacked, the divider is the rule ABOVE each tile, not a stripe down its left edge. */
   .gwui-sr .gwui-tile     { padding: 12px 16px; }
   .gwui-sr .gwui-tile-n   { border-left: none; border-top: 1px solid var(--gw-border); }
-  .gwui-sr .gwui-tile-txt { font-size: 14px; }
+  .gwui-sr .gwui-tile-txt { font-size: var(--ds-text-secondary); }
 }
 
 
@@ -2257,12 +2257,12 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* ===== THE LIGHT PARTS (light prototype, 13 October 2026; docs/light-rebuild/sales-first.md,
    "Shared pieces"). Each is written up in docs/the-parts-against-the-prototype.md. ===== */
 /* "Updated Wed 23 Sep, 6pm ⓘ", the full sentence one tap away */
-.gwui-upd { display: inline-block; font-size: 14px; color: var(--gw-sub); }
+.gwui-upd { display: inline-block; font-size: var(--ds-text-secondary); color: var(--gw-sub); }
 .gwui-upd > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 4px; padding: 8px 0; margin: -10px 0; } /* tap area from padding and an equal negative margin, as .crumb a does: the row is one line tall */
 .gwui-upd > summary::-webkit-details-marker { display: none; }
 .gwui-upd > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
 .gwui-upd-full { display: block; margin-top: 4px; line-height: 1.5; max-width: 70ch; }
-.gwui-upd-plain { font-size: 14px; color: var(--gw-sub); line-height: 1.5; }
+.gwui-upd-plain { font-size: var(--ds-text-secondary); color: var(--gw-sub); line-height: 1.5; }
 /* The folded line: name, one-line fact, chevron */
 .gwui-folds { border: 1px solid var(--gw-border); border-radius: 12px; overflow: hidden; background: var(--gw-card); display: flex; flex-direction: column; }
 .gwui-fold + .gwui-fold { border-top: 1px solid var(--gw-border); }
@@ -2270,9 +2270,9 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-fold > summary::-webkit-details-marker { display: none; }
 .gwui-fold > summary:hover { background: var(--gw-paper-2); }
 .gwui-fold > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: -2px; }
-.gwui-fold-name { font-weight: 700; font-size: 16px; color: var(--gw-text); }
-.gwui-fold-fact { font-size: 14px; color: var(--gw-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gwui-fold-chev { justify-self: end; font-size: 18px; color: var(--gw-sub); transition: transform .15s; }
+.gwui-fold-name { font-weight: 700; font-size: var(--ds-text-body); color: var(--gw-text); }
+.gwui-fold-fact { font-size: var(--ds-text-secondary); color: var(--gw-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gwui-fold-chev { justify-self: end; font-size: var(--ds-text-card); color: var(--gw-sub); transition: transform .15s; }
 .gwui-fold[open] > summary .gwui-fold-chev, .gwui-box[open] > summary .gwui-fold-chev { transform: rotate(90deg); }
 .gwui-fold-body { padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 12px; overflow-x: auto; }
 .gwui-fold-body > .sec { margin-top: 0; }
@@ -2288,8 +2288,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-box > summary:hover { background: var(--gw-paper-2); }
 .gwui-box > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: -2px; }
 .gwui-box[open] > summary { border-bottom: 1px solid var(--gw-border); }
-.gwui-box-name { font-weight: 700; font-size: 18px; color: var(--gw-text); line-height: 26px;}
-.gwui-box-facts { font-size: 14px; color: var(--gw-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gwui-box-name { font-weight: 700; font-size: var(--ds-text-card); color: var(--gw-text); line-height: 26px;}
+.gwui-box-facts { font-size: var(--ds-text-secondary); color: var(--gw-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gwui-box-body { display: flex; flex-direction: column; }
 .gwui-box-body > .gwui-fold > summary.gwui-fold-sum { padding-left: 32px; }
 .gwui-box-body > .gwui-fold > .gwui-fold-body { padding-left: 32px; }
@@ -2298,29 +2298,29 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-needs { border: 1px solid var(--gw-border); border-radius: 12px; background: var(--gw-card); overflow: hidden; }
 .gwui-need { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 12px 16px; }
 .gwui-need + .gwui-need { border-top: 1px solid var(--gw-border); }
-.gwui-need-what { font-weight: 700; font-size: 16px; line-height: 22px; color: var(--gw-text); }
-.gwui-need-from { font-size: 14px; color: var(--gw-sub); margin-top: 3px; line-height: 20px; }
+.gwui-need-what { font-weight: 700; font-size: var(--ds-text-body); line-height: 22px; color: var(--gw-text); }
+.gwui-need-from { font-size: var(--ds-text-secondary); color: var(--gw-sub); margin-top: 3px; line-height: 20px; }
 .gwui-need-why { margin-top: 4px; }
-.gwui-need-why > summary { cursor: pointer; font-size: 14px; color: var(--gw-navy); list-style: none; font-weight: 700; }
+.gwui-need-why > summary { cursor: pointer; font-size: var(--ds-text-secondary); color: var(--gw-navy); list-style: none; font-weight: 700; }
 .gwui-need-why > summary::-webkit-details-marker { display: none; }
 .gwui-need-why > summary::before { content: "› "; }
-.gwui-need-quote { font-size: 14px; margin-top: 4px; color: var(--gw-text); line-height: 23px; }
+.gwui-need-quote { font-size: var(--ds-text-secondary); margin-top: 4px; color: var(--gw-text); line-height: 23px; }
 .gwui-need-btns { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .gwui-need-btn-main, .gwui-need-btn-quiet { display: inline-flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 /* "Show all" after three */
-.gwui-show-all { background: none; border: 0; color: var(--gw-navy); font: inherit; font-weight: 700; font-size: 14px; padding: 8px 0; cursor: pointer; align-self: flex-start; min-height: 44px; }
+.gwui-show-all { background: none; border: 0; color: var(--gw-navy); font: inherit; font-weight: 700; font-size: var(--ds-text-secondary); padding: 8px 0; cursor: pointer; align-self: flex-start; min-height: 44px; }
 .gwui-show-all:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
 /* Number tiles that swipe on a phone */
 .gwui-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
 .gwui-tile { border: 1px solid var(--gw-border); border-radius: 8px; padding: 12px 12px; background: var(--gw-card); }
-.gwui-tile-label { font-size: 13px; color: var(--gw-sub); line-height: 20px;}
-.gwui-tile-value { font-size: 21px; margin-top: 4px; color: var(--gw-text); font-weight: 700; }
-.gwui-tile-sub { font-size: 13px; color: var(--gw-sub); margin-top: 2px; line-height: 20px;}
+.gwui-tile-label { font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 20px;}
+.gwui-tile-value { font-size: var(--ds-text-section); margin-top: 4px; color: var(--gw-text); font-weight: 700; }
+.gwui-tile-sub { font-size: var(--ds-text-meta); color: var(--gw-sub); margin-top: 2px; line-height: 20px;}
 /* A small menu button for grouped actions */
 .gwui-menu { position: relative; display: inline-block; }
 .gwui-menu > summary { list-style: none; cursor: pointer; }
 .gwui-menu > summary::-webkit-details-marker { display: none; }
-.gwui-menu-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: 14px; box-sizing: border-box; }
+.gwui-menu-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: var(--ds-text-secondary); box-sizing: border-box; }
 .gwui-menu-btn::after { content: " ▾"; white-space: pre; }
 .gwui-menu-btn-main { background: var(--gw-navy); border-color: var(--gw-navy); color: var(--gw-white); }
 .gwui-menu-btn:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
@@ -2330,11 +2330,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 @media (max-width: 640px) {
   
   
-  .gwui-cih .gwui-pt-sub { font-size: 13px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 20px;}
+  .gwui-cih .gwui-pt-sub { font-size: var(--ds-text-meta); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 20px;}
   .gwui-fold > summary.gwui-fold-sum, .gwui-box > summary.gwui-box-sum { grid-template-columns: minmax(0, 44%) minmax(0, 1fr) 16px; gap: 8px; padding: 12px 12px; }
   .gwui-box-body > .gwui-fold > summary.gwui-fold-sum, .gwui-box-body > .gwui-fold > .gwui-fold-body { padding-left: 24px; }
-  .gwui-fold-name, .gwui-box-name { font-size: 14px; line-height: 23px;}
-  .gwui-fold-fact, .gwui-box-facts { font-size: 13px; line-height: 20px;}
+  .gwui-fold-name, .gwui-box-name { font-size: var(--ds-text-secondary); line-height: 23px;}
+  .gwui-fold-fact, .gwui-box-facts { font-size: var(--ds-text-meta); line-height: 20px;}
   .gwui-fold-body { padding: 2px 12px 12px; }
   .gwui-need { grid-template-columns: 1fr; }
   .gwui-need-btns { justify-content: flex-start; }
@@ -2348,7 +2348,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-light-slot:empty, .gwui-light-folds:empty { display: none; }
 .gwui-light-needs { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
 .gwui-light-needs:not(:has(.gwui-light-slot > *)) { display: none; }
-.gwui-light-needs > .gwui-light-slot > .sec .sec-h .t-h2 { font-size: 21px; }
+.gwui-light-needs > .gwui-light-slot > .sec .sec-h .t-h2 { font-size: var(--ds-text-section); }
 .gwui-light-else { margin-top: 24px; }
 /* A line, a box or a summary with nothing in it for this reader is not drawn: nothing says more than what is inside. */
 .gwui-fold:has(> .gwui-fold-body > .gwui-light-part):not(:has(.gwui-light-part > *)) { display: none; }
@@ -2367,11 +2367,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-light-glance-rows { border: 1px solid var(--gw-border); border-radius: 12px; background: var(--gw-card); display: flex; flex-direction: column; }
 .gwui-light-glance-row { display: grid; grid-template-columns: minmax(170px, 240px) minmax(0, 1fr); gap: 12px; padding: 12px 16px; align-items: baseline; }
 .gwui-light-glance-row + .gwui-light-glance-row { border-top: 1px solid var(--gw-border); }
-.gwui-light-glance-name { font-weight: 700; font-size: 16px; color: var(--gw-text); }
-.gwui-light-glance-fact { font-size: 14px; color: var(--gw-sub); line-height: 20px; }
+.gwui-light-glance-name { font-weight: 700; font-size: var(--ds-text-body); color: var(--gw-text); }
+.gwui-light-glance-fact { font-size: var(--ds-text-secondary); color: var(--gw-sub); line-height: 20px; }
 .gwui-light-glance-line { display: block; }
 .gwui-light-full { margin-top: 16px; }
-.gwui-light-full > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: 14px; box-sizing: border-box; }
+.gwui-light-full > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: var(--ds-text-secondary); box-sizing: border-box; }
 .gwui-light-full > summary::-webkit-details-marker { display: none; }
 .gwui-light-full > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
 .gwui-light-full-body { margin-top: 4px; }
@@ -2382,16 +2382,16 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 /* ===== THE LIGHT REPORTS (docs/light-rebuild/sales-first.md, section 2; s60, s62 and the share menu in s71) ===== */
 .gwui-light-report-part { display: flex; flex-direction: column; gap: 12px; }
-.gwui-light-report-h { font-size: 21px; font-weight: 700; line-height: 27px; color: var(--gw-text); margin: 0; }
+.gwui-light-report-h { font-size: var(--ds-text-section); font-weight: 700; line-height: 27px; color: var(--gw-text); margin: 0; }
 .gwui-light-report-more-h { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.gwui-light-report-note { font-size: 14px; color: var(--gw-sub); }
+.gwui-light-report-note { font-size: var(--ds-text-secondary); color: var(--gw-sub); }
 .gwui-light-report-share { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-.gwui-menu-item { display: block; width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 8px 12px; font: inherit; font-size: 14px; color: var(--gw-text); cursor: pointer; min-height: 44px; }
+.gwui-menu-item { display: block; width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 8px 12px; font: inherit; font-size: var(--ds-text-secondary); color: var(--gw-text); cursor: pointer; min-height: 44px; }
 .gwui-menu-item:hover { background: var(--gw-paper-2); }
 .gwui-menu-item:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: -2px; }
 .gwui-menu-item:disabled { color: var(--gw-sub); cursor: default; }
 .gwui-light-report-do { font-weight: 700; }
-.gwui-light-report-from { font-size: 13px; color: var(--gw-sub); margin: 2px 0 0; line-height: 20px;}
+.gwui-light-report-from { font-size: var(--ds-text-meta); color: var(--gw-sub); margin: 2px 0 0; line-height: 20px;}
 /* "Where each target stands" on the sales goals board: each target's figure on the right (sales-first.md, section 3) */
 .gwui-target-figure { margin-left: auto; text-align: right; }
 
@@ -2405,7 +2405,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* THE END CARD, LIGHT (sales-first.md, section 5): the next opening as one line, and the fold. */
 /* THE DONE PAGE'S "FOR TOMORROW" (sales-first.md, section 5), the soft green panel it had as "That's saved". */
 .gwui-done-tomorrow { background: var(--gw-green-bg); border: 1px solid var(--gw-green-b); border-radius: 12px; padding: 16px 16px; display: grid; gap: 8px; }
-.gwui-done-tomorrow-heading { margin: 0; font-size: 14px; font-weight: 700; color: var(--gw-green-t); line-height: 23px;}
+.gwui-done-tomorrow-heading { margin: 0; font-size: var(--ds-text-secondary); font-weight: 700; color: var(--gw-green-t); line-height: 23px;}
 /* THE LIGHT OWN REPORT (sales-first.md, sections 2 and 5): the mark on each of their lines. */
 .gwui-own-mark { display: inline-flex; align-items: center; align-self: center; }
 .gwui-own-more { display: grid; gap: 8px; }
@@ -2422,13 +2422,13 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-stack-32 { display: flex; flex-direction: column; gap: 32px; }
 .gwui-three-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .gwui-field-with-label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.gwui-setup-problem { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-bd); border-radius: 8px; padding: 4px 12px; font-size: 14px; color: var(--gw-text); }
+.gwui-setup-problem { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-bd); border-radius: 8px; padding: 4px 12px; font-size: var(--ds-text-secondary); color: var(--gw-text); }
 .gwui-ruled { border-top: 1px solid var(--gw-rule); }
 .gwui-ruled-row { border-bottom: 1px solid var(--gw-rule); }
 .gwui-person-part { border-bottom: 1px solid var(--gw-rule); padding: 16px 0; }
-.gwui-person-part-name { margin: 0; font-size: 18px; font-weight: 700; color: var(--gw-text); line-height: 26px;}
-.gwui-session-row-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 0; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 400; color: var(--gw-text); text-align: left; line-height: 23px;}
-.gwui-session-row-open { font-size: 14px; color: var(--gw-navy); font-weight: 700; flex-shrink: 0; }
+.gwui-person-part-name { margin: 0; font-size: var(--ds-text-card); font-weight: 700; color: var(--gw-text); line-height: 26px;}
+.gwui-session-row-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 0; background: none; border: none; cursor: pointer; font-family: inherit; font-size: var(--ds-text-secondary); font-weight: 400; color: var(--gw-text); text-align: left; line-height: 23px;}
+.gwui-session-row-open { font-size: var(--ds-text-secondary); color: var(--gw-navy); font-weight: 700; flex-shrink: 0; }
 .gwui-session-row-body { padding: 4px 0 16px; display: flex; flex-direction: column; gap: 12px; }
 /* B6, References and resources: the top band, a suggestion's compact row, and How we work's four parts side by side. */
 .gwui-ref-band { background: var(--gw-blue-bg); border-radius: 8px; padding: 8px 16px; }
@@ -2437,16 +2437,16 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-four-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; align-items: start; }
 .gwui-composer-aside { padding: 4px 16px 8px; }
 /* B8, People and setup: the summary line in Literata, and a field's label small and quiet above it. */
-.gwui-b8-line { margin: 0; font-family: var(--gw-font-name); font-size: 18px; font-weight: 500; line-height: 26px; color: var(--gw-text); }
-.gwui-b8-field-label { font-size: 13px; color: var(--gw-sub); line-height: 20px;}
+.gwui-b8-line { margin: 0; font-family: var(--gw-font-name); font-size: var(--ds-text-card); font-weight: 500; line-height: 26px; color: var(--gw-text); }
+.gwui-b8-field-label { font-size: var(--ds-text-meta); color: var(--gw-sub); line-height: 20px;}
 /* B6, B7 and B8 (References and resources, My work, People and setup): section headings in Literata, as the pictures draw them. */
-.gwui-b-tab .sec-h .t-h2 { font-family: var(--gw-font-name); font-weight: 500; font-size: 21px; line-height: 28px; }
+.gwui-b-tab .sec-h .t-h2 { font-family: var(--gw-font-name); font-weight: 500; font-size: var(--ds-text-section); line-height: 28px; }
 
 /* On a phone the setup summary is one line above the conversation ("4 people · Sales team"), which opens it. */
 .gwui-ec-panel-line { flex: none; margin: 8px 16px 0; max-height: 60vh; overflow-y: auto; }
 .gwui-ec-panel-line > summary {
   cursor: pointer; list-style: none; padding: 8px 12px; border: 1px solid var(--gw-border); border-radius: 8px;
-  background: var(--gw-surface, var(--gw-white)); color: var(--gw-text); font-size: 14px; font-weight: 600; min-height: 44px; box-sizing: border-box;
+  background: var(--gw-surface, var(--gw-white)); color: var(--gw-text); font-size: var(--ds-text-secondary); font-weight: 600; min-height: 44px; box-sizing: border-box;
 }
 .gwui-ec-panel-line > summary::-webkit-details-marker { display: none; }
 .gwui-ec-panel-line[open] > summary { margin-bottom: 8px; }
@@ -2483,11 +2483,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    inside its own box (`.gwui-table-wrap` is the scroller) or, for sentence columns, stacks each row (`-stack`). */
 .gwui-table-wrap { overflow-x: auto; padding: 8px 24px; }
 .gwui-table-wrap-stack { overflow-x: visible; }
-.gwui-table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 21px; color: var(--gw-text); }
-.gwui-table-caption { caption-side: top; text-align: left; font-size: 14px; font-weight: 700; padding: 12px 0 4px; }
-.gwui-table th { text-align: left; font-size: 13px; font-weight: 400; color: var(--gw-sub); padding: 12px 16px 8px 0; border-bottom: 1px solid var(--gw-border); vertical-align: bottom; }
+.gwui-table { width: 100%; border-collapse: collapse; font-size: var(--ds-text-secondary); line-height: 21px; color: var(--gw-text); }
+.gwui-table-caption { caption-side: top; text-align: left; font-size: var(--ds-text-secondary); font-weight: 700; padding: 12px 0 4px; }
+.gwui-table th { text-align: left; font-size: var(--ds-text-meta); font-weight: 400; color: var(--gw-sub); padding: 12px 16px 8px 0; border-bottom: 1px solid var(--gw-border); vertical-align: bottom; }
 .gwui-table td, .gwui-table th.gwui-table-rowhead { padding: 12px 16px 12px 0; vertical-align: top; border-top: 1px solid var(--gw-border); overflow-wrap: anywhere; }
-.gwui-table th.gwui-table-rowhead { font-size: 14px; font-weight: 700; color: var(--gw-text); border-bottom: 0; }
+.gwui-table th.gwui-table-rowhead { font-size: var(--ds-text-secondary); font-weight: 700; color: var(--gw-text); border-bottom: 0; }
 .gwui-table tbody tr:first-child td, .gwui-table tbody tr:first-child th.gwui-table-rowhead { border-top: 0; }
 .gwui-table thead.gwui-sr-only + tbody tr:first-child td, .gwui-table thead.gwui-sr-only + tbody tr:first-child th.gwui-table-rowhead { border-top: 1px solid var(--gw-border); }
 .gwui-table .gwui-table-num { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0; padding-left: 16px; }
@@ -2498,8 +2498,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-table-flag { display: block; margin-top: 4px; font-weight: 700; color: var(--gw-amber-t); }
 .gwui-table-dot { display: inline-block; width: 12px; height: 12px; margin-right: 12px; border-radius: 50%; border: 2px solid var(--gw-text); box-sizing: border-box; vertical-align: -1px; flex: none; }
 .gwui-table-dot-on { background: var(--gw-green-t); border-color: var(--gw-green-t); }
-.gwui-table-sub { display: block; margin-top: 2px; font-size: 13px; color: var(--gw-sub); }
-.gwui-table-lead { display: block; font-size: 14px; font-weight: 700; color: var(--gw-text); }
+.gwui-table-sub { display: block; margin-top: 2px; font-size: var(--ds-text-meta); color: var(--gw-sub); }
+.gwui-table-lead { display: block; font-size: var(--ds-text-secondary); font-weight: 700; color: var(--gw-text); }
 @media (max-width: 640px) {
   .gwui-table-wrap { padding: 4px 16px; }
   .gwui-table-stack thead { display: none; }
@@ -2508,70 +2508,70 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-table-stack tbody tr:first-child { border-top: 0; }
   .gwui-table-stack td, .gwui-table-stack th.gwui-table-rowhead { border-top: 0; padding: 2px 0; }
   .gwui-table-stack thead.gwui-sr-only + tbody tr:first-child td, .gwui-table-stack thead.gwui-sr-only + tbody tr:first-child th.gwui-table-rowhead { border-top: 0; }
-  .gwui-table-stack td[data-label]::before { content: attr(data-label); display: block; font-size: 13px; line-height: 17px; color: var(--gw-sub); }
+  .gwui-table-stack td[data-label]::before { content: attr(data-label); display: block; font-size: var(--ds-text-meta); line-height: 17px; color: var(--gw-sub); }
   .gwui-table-stack td.gwui-table-num { text-align: left; padding-left: 0; }
   /* A long name or word wraps inside the phone's width instead of pushing the page sideways (board assessment, 15 November: 668px at 390). */
   .gwui-table-stack td, .gwui-table-stack th.gwui-table-rowhead { min-width: 0; overflow-wrap: anywhere; }
   /* Two or more gaps in a row are said once, in one line, instead of a label and 'Not said yet' for each (board assessment, 15 November). */
   .gwui-table-stack tr:has(.gwui-table-gaps) td.gwui-table-missing { display: none; }
-  .gwui-table-stack .gwui-table-gaps { color: var(--gw-sub); font-size: 14px; }
+  .gwui-table-stack .gwui-table-gaps { color: var(--gw-sub); font-size: var(--ds-text-secondary); }
   .gwui-table-stack tr.gwui-table-hl { padding: 12px 8px; }
   .gwui-table-stack tr.gwui-table-hl td, .gwui-table-stack tr.gwui-table-hl th { padding-left: 0; padding-right: 0; }
 }
 /* The scenario boards' own lines (pages/preview/scenario-boards/*): the lead sentence in Literata (gov.jpg's "Where it stands"), the
    outcome cards, the line inside a table cell, and the dark card's words. */
-.gwui-scn-lead { font-family: var(--gw-font-name); font-size: 24px; line-height: 34px; color: var(--gw-text); margin: 4px 0 0; }
+.gwui-scn-lead { font-family: var(--gw-font-name); font-size: var(--ds-text-title); line-height: 34px; color: var(--gw-text); margin: 4px 0 0; }
 .gwui-scn-outcomes { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.gwui-scn-outcome { padding: 16px 16px; font-size: 18px; font-weight: 700; line-height: 22px; }
+.gwui-scn-outcome { padding: 16px 16px; font-size: var(--ds-text-card); font-weight: 700; line-height: 22px; }
 .gwui-table-inline { display: inline; }
 .gwui-table-indent { padding-left: 24px; }
 .gwui-table-foot { padding: 0 24px 16px; }
 .gwui-table-on-dark { color: var(--gw-white); margin: 0 0 4px; }
-.gwui-table-on-dark-sub { color: rgba(255, 255, 255, .78); margin: 0 0 12px; font-size: 14px; line-height: 21px; }
+.gwui-table-on-dark-sub { color: rgba(255, 255, 255, .78); margin: 0 0 12px; font-size: var(--ds-text-secondary); line-height: 21px; }
 .gwui-two-up-top { align-items: start; }
-@media (max-width: 640px) { .gwui-scn-lead { font-size: 21px; line-height: 29px; } }
+@media (max-width: 640px) { .gwui-scn-lead { font-size: var(--ds-text-section); line-height: 29px; } }
 .panel.gwui-panel-dark { background: var(--gw-dark); border-color: var(--gw-dark); color: var(--gw-white); }
 
 /* ── wip/scenario-boards-1: the team boards' parts (eng, founder, ops, support; pages/preview/TeamBoardParts.tsx) ─────────── */
 .gwui-tb-head { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 48px; align-items: start; }
-.gwui-tb-question { margin: 0 0 4px; font-size: 14px; line-height: 21px; color: var(--gw-sub); }
-.gwui-tb-headline { margin: 4px 0 0; font-family: var(--gw-font-name); font-weight: 400; font-size: 30px; line-height: 35px; color: var(--gw-text); }
+.gwui-tb-question { margin: 0 0 4px; font-size: var(--ds-text-secondary); line-height: 21px; color: var(--gw-sub); }
+.gwui-tb-headline { margin: 4px 0 0; font-family: var(--gw-font-name); font-weight: 400; font-size: var(--ds-text-title); line-height: 35px; color: var(--gw-text); }
 .gwui-tb-bar { height: 14px; border-radius: 8px; background: var(--gw-amber-bg); overflow: hidden; margin: 12px 0 16px; }
 .gwui-tb-bar-fill { display: block; height: 100%; background: var(--gw-green-t); border-radius: 8px; }
-.gwui-tb-under { margin: 0 0 8px; font-size: 16px; line-height: 24px; color: var(--gw-text); }
-.gwui-tb-reported { margin: 0; font-size: 14px; line-height: 20px; color: var(--gw-sub); }
+.gwui-tb-under { margin: 0 0 8px; font-size: var(--ds-text-body); line-height: 24px; color: var(--gw-text); }
+.gwui-tb-reported { margin: 0; font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-sub); }
 .gwui-tb-targets { list-style: none; margin: 0; padding: 0; }
 .gwui-tb-target { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--gw-border); }
 .gwui-tb-target:first-child { border-top: 0; }
-.gwui-tb-target-name { display: block; font-weight: 700; font-size: 14px; line-height: 21px; color: var(--gw-text); }
-.gwui-tb-target-value { display: block; font-size: 14px; line-height: 21px; color: var(--gw-sub); }
+.gwui-tb-target-name { display: block; font-weight: 700; font-size: var(--ds-text-secondary); line-height: 21px; color: var(--gw-text); }
+.gwui-tb-target-value { display: block; font-size: var(--ds-text-secondary); line-height: 21px; color: var(--gw-sub); }
 .gwui-tb-need { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--gw-border); }
 .gwui-tb-need:last-child { border-bottom: 1px solid var(--gw-border); }
 .gwui-tb-need-main { border-left: 3px solid var(--gw-navy); padding-left: 16px; min-width: 0; }
 .gwui-tb-need-amber .gwui-tb-need-main { border-left-color: var(--gw-amber-t); }
 .gwui-tb-need-dark .gwui-tb-need-main { border-left-color: var(--gw-text); }
-.gwui-tb-need-what { margin: 0; font-size: 18px; font-weight: 700; line-height: 24px; color: var(--gw-text); }
-.gwui-tb-need-sub { margin: 0; font-size: 14px; line-height: 23px; color: var(--gw-sub); }
+.gwui-tb-need-what { margin: 0; font-size: var(--ds-text-card); font-weight: 700; line-height: 24px; color: var(--gw-text); }
+.gwui-tb-need-sub { margin: 0; font-size: var(--ds-text-secondary); line-height: 23px; color: var(--gw-sub); }
 .gwui-tb-need-sub .gwui-tb-chip { margin-left: 8px; }
-.gwui-tb-chip { display: inline-block; padding: 2px 12px; border-radius: 999px; background: var(--gw-amber-bg); font-size: 14px; font-weight: 700; line-height: 22px; color: var(--gw-text); }
-.gwui-tb-strip { display: block; margin-top: 4px; padding: 2px 16px; border-radius: 999px; background: var(--gw-amber-bg); font-size: 14px; font-weight: 700; line-height: 22px; color: var(--gw-text); }
-.gwui-tb-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 0 0 12px; font-size: 14px; color: var(--gw-sub); }
+.gwui-tb-chip { display: inline-block; padding: 2px 12px; border-radius: 999px; background: var(--gw-amber-bg); font-size: var(--ds-text-secondary); font-weight: 700; line-height: 22px; color: var(--gw-text); }
+.gwui-tb-strip { display: block; margin-top: 4px; padding: 2px 16px; border-radius: 999px; background: var(--gw-amber-bg); font-size: var(--ds-text-secondary); font-weight: 700; line-height: 22px; color: var(--gw-text); }
+.gwui-tb-legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 0 0 12px; font-size: var(--ds-text-secondary); color: var(--gw-sub); }
 .gwui-tb-legend > span { display: inline-flex; align-items: center; }
 .gwui-tb-legend .gwui-table-dot { margin-right: 4px; }
 .gwui-tb-items tbody tr:first-child td, .gwui-tb-items tbody tr:first-child th.gwui-table-rowhead { background: var(--gw-blue-bg); }
-.gwui-tb-flag { display: block; margin-top: 2px; font-size: 13px; font-weight: 400; color: var(--gw-red-t); }
+.gwui-tb-flag { display: block; margin-top: 2px; font-size: var(--ds-text-meta); font-weight: 400; color: var(--gw-red-t); }
 .gwui-tb-flag-amber { color: var(--gw-amber-t); }
 .gwui-tb-next { color: var(--gw-navy); }
 .gwui-tb-stage { display: inline-flex; align-items: flex-start; }
 .gwui-tb-stage .gwui-table-dot { margin-top: 4px; }
 .gwui-tb-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-.gwui-tb-detail-title { margin: 0 0 8px; font-family: var(--gw-font-name); font-weight: 400; font-size: 21px; line-height: 28px; color: var(--gw-text); }
+.gwui-tb-detail-title { margin: 0 0 8px; font-family: var(--gw-font-name); font-weight: 400; font-size: var(--ds-text-section); line-height: 28px; color: var(--gw-text); }
 .gwui-tb-pairs { margin: 0; border-top: 1px solid var(--gw-border); }
-.gwui-tb-pair { display: grid; grid-template-columns: 138px minmax(0, 1fr); gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--gw-border); font-size: 14px; line-height: 21px; }
+.gwui-tb-pair { display: grid; grid-template-columns: 138px minmax(0, 1fr); gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--gw-border); font-size: var(--ds-text-secondary); line-height: 21px; }
 .gwui-tb-pair:last-child { border-bottom: 0; }
 .gwui-tb-pair dt { color: var(--gw-sub); }
 .gwui-tb-pair dd { margin: 0; color: var(--gw-text); }
-.gwui-tb-nextband { margin: 0 0 16px; padding: 8px 12px; border-radius: 8px; background: var(--gw-blue-bg); font-size: 14px; line-height: 21px; color: var(--gw-text); }
+.gwui-tb-nextband { margin: 0 0 16px; padding: 8px 12px; border-radius: 8px; background: var(--gw-blue-bg); font-size: var(--ds-text-secondary); line-height: 21px; color: var(--gw-text); }
 .gwui-tb-nextband strong { color: var(--gw-navy); }
 .gwui-tb-detail-side { display: flex; flex-direction: column; align-items: center; }
 .gwui-tb-detail-side .gwui-tb-nextband { align-self: stretch; }
@@ -2579,29 +2579,29 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-tb-sq { width: 8px; height: 17px; border-radius: 8px; background: var(--gw-navy); border: 1px solid var(--gw-navy); box-sizing: border-box; }
 .gwui-tb-squares-lg .gwui-tb-sq { width: 16px; height: 16px; border-radius: 8px; }
 .gwui-tb-sq-off { background: var(--gw-card); border-color: #E6E0D2; }
-.gwui-tb-who { display: grid; grid-template-columns: 112px auto; row-gap: 4px; align-items: center; font-size: 14px; color: var(--gw-text); margin: 0; }
+.gwui-tb-who { display: grid; grid-template-columns: 112px auto; row-gap: 4px; align-items: center; font-size: var(--ds-text-secondary); color: var(--gw-text); margin: 0; }
 .gwui-tb-who dt { margin: 0; } .gwui-tb-who dd { margin: 0; }
 .gwui-tb-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start; }
-.gwui-tb-card-title { margin: 0 0 8px; font-size: 16px; font-weight: 700; line-height: 22px; color: var(--gw-text); }
+.gwui-tb-card-title { margin: 0 0 8px; font-size: var(--ds-text-body); font-weight: 700; line-height: 22px; color: var(--gw-text); }
 .gwui-tb-stats { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 12px; }
 .gwui-tb-stat { display: block; }
-.gwui-tb-stat-n { display: block; font-size: 18px; font-weight: 700; line-height: 24px; color: var(--gw-text); }
-.gwui-tb-stat-l { display: block; font-size: 13px; line-height: 19px; color: var(--gw-sub); }
-.gwui-tb-card-text { margin: 0 0 8px; font-size: 14px; line-height: 21px; color: var(--gw-text); }
-.gwui-tb-card-names { margin: 0; font-size: 13px; line-height: 19px; color: var(--gw-sub); }
-.gwui-tb-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 24px; margin: 0 0 4px; font-size: 14px; line-height: 21px; color: var(--gw-text); }
+.gwui-tb-stat-n { display: block; font-size: var(--ds-text-card); font-weight: 700; line-height: 24px; color: var(--gw-text); }
+.gwui-tb-stat-l { display: block; font-size: var(--ds-text-meta); line-height: 19px; color: var(--gw-sub); }
+.gwui-tb-card-text { margin: 0 0 8px; font-size: var(--ds-text-secondary); line-height: 21px; color: var(--gw-text); }
+.gwui-tb-card-names { margin: 0; font-size: var(--ds-text-meta); line-height: 19px; color: var(--gw-sub); }
+.gwui-tb-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 24px; margin: 0 0 4px; font-size: var(--ds-text-secondary); line-height: 21px; color: var(--gw-text); }
 .gwui-tb-facts-one { grid-column: 1 / -1; margin: 0; }
 .gwui-tb-fact-k { color: var(--gw-sub); }
 .gwui-tb-blocker-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
-.gwui-tb-clear { margin: 8px 0 0; padding: 8px 12px; border-radius: 8px; background: var(--gw-blue-bg); font-size: 14px; line-height: 21px; color: var(--gw-text); }
+.gwui-tb-clear { margin: 8px 0 0; padding: 8px 12px; border-radius: 8px; background: var(--gw-blue-bg); font-size: var(--ds-text-secondary); line-height: 21px; color: var(--gw-text); }
 .gwui-tb-clear strong { color: var(--gw-navy); }
 .gwui-tb-lines { list-style: none; margin: 0; padding: 0; }
 .gwui-tb-lines > li { padding: 12px 0; border-top: 1px solid var(--gw-border); }
 .gwui-tb-lines > li:first-child { border-top: 0; padding-top: 4px; }
-.gwui-tb-lines > li p { margin: 4px 0 0; font-size: 14px; line-height: 21px; color: var(--gw-sub); }
+.gwui-tb-lines > li p { margin: 4px 0 0; font-size: var(--ds-text-secondary); line-height: 21px; color: var(--gw-sub); }
 .gwui-tb-lines em { font-style: italic; }
 .gwui-tb-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.gwui-tb-bars-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 110px; gap: 12px; align-items: center; font-size: 14px; color: var(--gw-text); }
+.gwui-tb-bars-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 110px; gap: 12px; align-items: center; font-size: var(--ds-text-secondary); color: var(--gw-text); }
 .gwui-tb-bars-track { height: 14px; border-radius: 8px; border: 2px solid var(--gw-text); background: var(--gw-card); box-sizing: border-box; overflow: hidden; }
 .gwui-tb-bars-fill { display: block; height: 100%; background: var(--gw-green-t); }
 .gwui-tb-heat { position: relative; display: block; min-height: 44px; box-sizing: border-box; line-height: 20px; min-width: 40px; padding: 12px 0; text-align: center; font-weight: 700; border-radius: 8px; background: var(--gw-amber-bg); }
@@ -2612,21 +2612,21 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-tb-week-done { color: var(--gw-green-t); } .gwui-tb-week-carried { color: var(--gw-amber-t); } .gwui-tb-week-dropped { color: var(--gw-red-t); }
 .gwui-tb-assume { padding: 8px 0; border-top: 1px solid var(--gw-border); }
 .gwui-tb-assume:first-of-type { border-top: 0; }
-.gwui-tb-assume-sub { display: block; font-size: 13px; line-height: 19px; color: var(--gw-sub); margin-bottom: 4px; }
+.gwui-tb-assume-sub { display: block; font-size: var(--ds-text-meta); line-height: 19px; color: var(--gw-sub); margin-bottom: 4px; }
 .gwui-tb-volume { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 16px; margin: 0; padding: 0; list-style: none; }
-.gwui-tb-volume-n { display: block; font-family: var(--gw-font-name); font-size: 24px; line-height: 30px; color: var(--gw-text); }
-.gwui-tb-volume-l { display: block; font-size: 14px; line-height: 21px; color: var(--gw-sub); }
-.gwui-tb-volume-src { display: flex; align-items: center; font-size: 14px; color: var(--gw-text); }
+.gwui-tb-volume-n { display: block; font-family: var(--gw-font-name); font-size: var(--ds-text-big); line-height: 30px; color: var(--gw-text); }
+.gwui-tb-volume-l { display: block; font-size: var(--ds-text-secondary); line-height: 21px; color: var(--gw-sub); }
+.gwui-tb-volume-src { display: flex; align-items: center; font-size: var(--ds-text-secondary); color: var(--gw-text); }
 .gwui-tb-volume-src .gwui-table-dot { margin-right: 4px; }
 .gwui-tb-cause { padding: 4px 0 8px; }
-.gwui-tb-cause-row { display: flex; justify-content: space-between; font-size: 14px; font-weight: 400; color: var(--gw-text); }
+.gwui-tb-cause-row { display: flex; justify-content: space-between; font-size: var(--ds-text-secondary); font-weight: 400; color: var(--gw-text); }
 .gwui-tb-cause-row strong { font-weight: 700; }
 .gwui-tb-cause-track { display: block; height: 8px; border-radius: 8px; background: var(--gw-amber-bg); margin: 4px 0; overflow: hidden; }
 .gwui-tb-cause-fill { display: block; height: 100%; background: var(--gw-navy); }
 .gwui-tb-boards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .gwui-tb-boards > li { padding: 16px 24px; display: grid; gap: 8px; justify-items: start; }
 .gwui-tb-link { color: var(--gw-navy); font-weight: 400; }
-.gwui-tb-plain-h { margin: 0; font-family: var(--gw-font-name); font-weight: 400; font-size: 21px; line-height: 28px; color: var(--gw-text); }
+.gwui-tb-plain-h { margin: 0; font-family: var(--gw-font-name); font-weight: 400; font-size: var(--ds-text-section); line-height: 28px; color: var(--gw-text); }
 .gwui-tb-ask { padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 @media (max-width: 900px) {
   .gwui-tb-head, .gwui-tb-detail { grid-template-columns: minmax(0, 1fr); gap: 16px; }
@@ -2634,7 +2634,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-tb-boards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 640px) {
-  .gwui-tb-headline { font-size: 24px; line-height: 30px; }
+  .gwui-tb-headline { font-size: var(--ds-text-title); line-height: 30px; }
   .gwui-tb-need { grid-template-columns: minmax(0, 1fr); }
   .gwui-tb-cards, .gwui-tb-boards, .gwui-tb-facts, .gwui-tb-volume { grid-template-columns: minmax(0, 1fr); }
   .gwui-tb-bars-row { grid-template-columns: minmax(0, 1fr) 90px; }
@@ -2650,39 +2650,39 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-evd-client { border-color: var(--gw-navy); }
 .gwui-evd-decided { border-color: var(--gw-navy); background: var(--gw-navy); }
 .gwui-evd-faint { border-color: var(--gw-border); }
-.gwui-evd-key { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; line-height: 19px; color: var(--gw-text); }
+.gwui-evd-key { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: var(--ds-text-meta); line-height: 19px; color: var(--gw-text); }
 .gwui-evd-key .gwui-table-dot { width: 12px; height: 12px; margin-right: 4px; }
 .gwui-scn-answer { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 32px; align-items: start; }
 .gwui-scn-bar { height: 14px; margin-top: 16px; border-radius: 8px; background: var(--gw-bar-track); overflow: hidden; }
 .gwui-scn-bar > span { display: block; height: 100%; border-radius: 8px; background: var(--gw-green-t); }
 .gwui-scn-foot { margin: 12px 0 0; }
-.gwui-scn-needs-h { margin: 0 0 8px; font-size: 18px; line-height: 26px; font-weight: 700; color: var(--gw-text); }
+.gwui-scn-needs-h { margin: 0 0 8px; font-size: var(--ds-text-card); line-height: 26px; font-weight: 700; color: var(--gw-text); }
 .gwui-scn-needs { list-style: none; margin: 0; padding: 0; }
 .gwui-scn-needs > li { padding: 12px 0; border-top: 1px solid var(--gw-border); }
-.gwui-scn-needs > li .gwui-table-lead { font-size: 14px; }
+.gwui-scn-needs > li .gwui-table-lead { font-size: var(--ds-text-secondary); }
 .gwui-scn-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .gwui-scn-cards-4 { grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); }
 .gwui-scn-cards-3 { grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
 .gwui-scn-card { padding: 16px 16px; display: grid; gap: 8px; align-content: start; }
 .gwui-scn-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.gwui-scn-card-top .gwui-table-lead { font-size: 16px; line-height: 24px; min-width: 0; }
+.gwui-scn-card-top .gwui-table-lead { font-size: var(--ds-text-body); line-height: 24px; min-width: 0; }
 .gwui-scn-card-top .tag, .gwui-scn-card-top > span { flex: none; }
 .gwui-scn-card-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .gwui-scn-patterns { list-style: none; margin: 0; padding: 0; }
 .gwui-scn-pattern { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0 12px 16px; border-left: 3px solid var(--gw-navy); border-bottom: 1px solid var(--gw-border); }
 .gwui-scn-pattern-attention { border-left-color: var(--gw-amber-t); }
-.gwui-scn-pattern-h { margin: 0; font-size: 18px; line-height: 24px; font-weight: 700; color: var(--gw-text); }
-.gwui-scn-outcome-sub { display: block; margin-top: 4px; font-size: 14px; line-height: 21px; font-weight: 400; color: var(--gw-sub); }
+.gwui-scn-pattern-h { margin: 0; font-size: var(--ds-text-card); line-height: 24px; font-weight: 700; color: var(--gw-text); }
+.gwui-scn-outcome-sub { display: block; margin-top: 4px; font-size: var(--ds-text-secondary); line-height: 21px; font-weight: 400; color: var(--gw-sub); }
 .gwui-scn-next { color: var(--gw-navy); }
 .gwui-scn-bare .gwui-table-wrap { padding: 0; }
 .gwui-scn-notice { padding: 16px 24px; }
 .panel.gwui-scn-notice-strong { border: 2px solid var(--gw-text); }
-.gwui-scn-notice-h { margin: 0 0 4px; font-size: 18px; line-height: 24px; font-weight: 700; color: var(--gw-text); }
-.gwui-scn-notice-text { margin-bottom: 8px; font-size: 16px; line-height: 24px; }
-.gwui-scn-quote { font-family: var(--gw-font-name); font-size: 16px; line-height: 25px; color: var(--gw-text); margin: 4px 0 0; }
+.gwui-scn-notice-h { margin: 0 0 4px; font-size: var(--ds-text-card); line-height: 24px; font-weight: 700; color: var(--gw-text); }
+.gwui-scn-notice-text { margin-bottom: 8px; font-size: var(--ds-text-body); line-height: 24px; }
+.gwui-scn-quote { font-family: var(--gw-font-name); font-size: var(--ds-text-body); line-height: 25px; color: var(--gw-text); margin: 4px 0 0; }
 .gwui-scn-cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 32px; }
 .gwui-scn-said { color: var(--gw-sub); }
-.gwui-scn-quote-lead { font-size: 18px; line-height: 28px; margin: 0 0 4px; }
+.gwui-scn-quote-lead { font-size: var(--ds-text-card); line-height: 28px; margin: 0 0 4px; }
 .gwui-scn-plain { font-weight: 400; }
 .gwui-table th.gwui-table-rowhead .gwui-table-sub { font-weight: 400; }
 @media (max-width: 760px) {
@@ -2706,10 +2706,10 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-scb-need::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 4px; background: var(--gw-navy); }
 .gwui-scb-edge-att::before { background: var(--gw-amber-t); }
 .gwui-scb-edge-dark::before { background: var(--gw-text); }
-.gwui-scb-need-text { margin: 0; font-size: 14px; line-height: 23px; color: var(--gw-sub); }
-.gwui-scb-from { display: inline-block; padding: 2px 8px; border-radius: 12px; background: var(--gw-slate); color: var(--gw-text); font-size: 14px; line-height: 20px; font-weight: 700; }
+.gwui-scb-need-text { margin: 0; font-size: var(--ds-text-secondary); line-height: 23px; color: var(--gw-sub); }
+.gwui-scb-from { display: inline-block; padding: 2px 8px; border-radius: 12px; background: var(--gw-slate); color: var(--gw-text); font-size: var(--ds-text-secondary); line-height: 20px; font-weight: 700; }
 .gwui-scb-from-wide { display: block; margin: 2px 0 0 4px; padding: 4px 8px; border-radius: 12px; }
-.gwui-scb-legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 0; font-size: 14px; }
+.gwui-scb-legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 0; font-size: var(--ds-text-secondary); }
 .gwui-scb-legend .gwui-table-dot { margin-right: 4px; }
 .gwui-scb-selected { display: none; }
 .gwui-table tr:has(.gwui-scb-selected) td, .gwui-table tr:has(.gwui-scb-selected) th { background: var(--gw-blue-bg); }
@@ -2717,27 +2717,27 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-scb-sub-con { color: var(--gw-red-t); }
 .gwui-scb-next { color: var(--gw-navy); }
 .gwui-scb-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-.gwui-scb-detail-title { margin: 0 0 4px; padding-bottom: 4px; border-bottom: 1px solid var(--gw-border); font-family: var(--gw-font-name); font-size: 18px; line-height: 26px; font-weight: 400; }
+.gwui-scb-detail-title { margin: 0 0 4px; padding-bottom: 4px; border-bottom: 1px solid var(--gw-border); font-family: var(--gw-font-name); font-size: var(--ds-text-card); line-height: 26px; font-weight: 400; }
 .gwui-scb-facts { margin: 0; }
-.gwui-scb-facts > div { display: grid; grid-template-columns: 138px minmax(0, 1fr); gap: 8px; padding: 8px 0; border-top: 1px solid var(--gw-border); font-size: 14px; }
+.gwui-scb-facts > div { display: grid; grid-template-columns: 138px minmax(0, 1fr); gap: 8px; padding: 8px 0; border-top: 1px solid var(--gw-border); font-size: var(--ds-text-secondary); }
 .gwui-scb-facts > div:first-child { border-top: 0; }
 .gwui-scb-facts dt { color: var(--gw-sub); }
 .gwui-scb-facts dd { margin: 0; }
 .gwui-scb-detail-side { display: grid; gap: 12px; justify-items: center; }
-.gwui-scb-next-box { width: 100%; box-sizing: border-box; margin: 0; padding: 8px 12px; border-radius: 8px; background: var(--gw-blue-bg); font-size: 14px; line-height: 21px; }
+.gwui-scb-next-box { width: 100%; box-sizing: border-box; margin: 0; padding: 8px 12px; border-radius: 8px; background: var(--gw-blue-bg); font-size: var(--ds-text-secondary); line-height: 21px; }
 .gwui-scb-next-box strong { color: var(--gw-navy); }
-.gwui-scb-linkbtn { background: none; border: 0; padding: 0 4px; font: inherit; font-size: 14px; color: var(--gw-navy); cursor: pointer; }
-.gwui-scb-linkbtn-bold { font-weight: 700; font-size: 16px; }
+.gwui-scb-linkbtn { background: none; border: 0; padding: 0 4px; font: inherit; font-size: var(--ds-text-secondary); color: var(--gw-navy); cursor: pointer; }
+.gwui-scb-linkbtn-bold { font-weight: 700; font-size: var(--ds-text-body); }
 .gwui-scb-pips { display: inline-flex; gap: 2.7px; vertical-align: middle; }
 .gwui-scb-pip { width: 9px; height: 20px; border-radius: 8px; border: 1px solid #D9CDB6; box-sizing: border-box; background: var(--gw-white); }
 .gwui-scb-pip-on { background: var(--gw-navy); border-color: var(--gw-navy); }
-.gwui-scb-compact .gwui-table td, .gwui-scb-compact .gwui-table th.gwui-table-rowhead { padding: 4px 16px 4px 0; border-top: 0; font-size: 14px; font-weight: 400; vertical-align: middle; }
+.gwui-scb-compact .gwui-table td, .gwui-scb-compact .gwui-table th.gwui-table-rowhead { padding: 4px 16px 4px 0; border-top: 0; font-size: var(--ds-text-secondary); font-weight: 400; vertical-align: middle; }
 .gwui-scb-compact .gwui-table-wrap { padding: 12px 24px; }
 .gwui-scb-squares { display: inline-flex; gap: 4px; vertical-align: middle; }
 .gwui-scb-sq { width: 16px; height: 16px; border-radius: 8px; border: 1px solid #D9CDB6; box-sizing: border-box; background: var(--gw-white); }
 .gwui-scb-sq-on { background: var(--gw-navy); border-color: var(--gw-navy); }
 .gwui-scb-bars, .gwui-scb-steps { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
-.gwui-scb-bar-top { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; margin-bottom: 4px; }
+.gwui-scb-bar-top { display: flex; justify-content: space-between; gap: 12px; font-size: var(--ds-text-secondary); margin-bottom: 4px; }
 .gwui-scb-track { position: relative; display: block; height: 12px; border-radius: 8px; background: var(--gw-slate); }
 .gwui-scb-track-thin { height: 10px; }
 .gwui-scb-fill { display: block; height: 100%; border-radius: 8px; }
@@ -2745,7 +2745,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-scb-fill-on { background: var(--gw-green-t); }
 .gwui-scb-fill-navy { background: var(--gw-navy); }
 .gwui-scb-tick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--gw-navy); }
-.gwui-scb-steps li { display: grid; grid-template-columns: 38% minmax(0, 1fr) 56px; gap: 8px; align-items: center; font-size: 14px; }
+.gwui-scb-steps li { display: grid; grid-template-columns: 38% minmax(0, 1fr) 56px; gap: 8px; align-items: center; font-size: var(--ds-text-secondary); }
 .gwui-scb-steps li > span:last-child { white-space: nowrap; }
 .gwui-scb-steps-reported li { grid-template-columns: 150px minmax(0, 1fr) 118px; }
 .gwui-scb-steps-reported li > span:last-child { white-space: normal; }
@@ -2758,10 +2758,10 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-scb-card { padding: 16px 24px; display: grid; gap: 8px; align-content: start; }
 .gwui-scb-stats { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .gwui-scb-stats span { display: grid; }
-.gwui-scb-stats strong { font-size: 18px; line-height: 24px; }
-.gwui-scb-stats small { font-size: 13px; color: var(--gw-sub); }
-.gwui-scb-who { margin: 0; font-size: 13px; line-height: 19px; color: var(--gw-sub); }
-.gwui-scb-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 16px; margin-top: 8px; font-size: 14px; }
+.gwui-scb-stats strong { font-size: var(--ds-text-card); line-height: 24px; }
+.gwui-scb-stats small { font-size: var(--ds-text-meta); color: var(--gw-sub); }
+.gwui-scb-who { margin: 0; font-size: var(--ds-text-meta); line-height: 19px; color: var(--gw-sub); }
+.gwui-scb-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 16px; margin-top: 8px; font-size: var(--ds-text-secondary); }
 .gwui-scb-meta p { margin: 0; color: var(--gw-text); }
 .gwui-scb-meta p span { color: var(--gw-sub); }
 .gwui-scb-meta-wide { grid-column: 1 / -1; }
@@ -2794,7 +2794,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 
 /* A long list says its shape first, and what is not drawn waits behind one press. */
-.gwui-table-summary { margin: 0 0 8px; font-size: 14px; line-height: 21px; color: var(--gw-text); }
+.gwui-table-summary { margin: 0 0 8px; font-size: var(--ds-text-secondary); line-height: 21px; color: var(--gw-text); }
 .gwui-table-more { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 0 8px; border-top: 1px solid var(--gw-border); }
 .gwui-table-more p { margin: 0; color: var(--gw-sub); }
 
@@ -2806,7 +2806,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gw-pt-titleline { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 12px; }
 .gw-pt-titleline .t-title { margin: 0; }
 .gw-pt-meta { margin-bottom: 0; }
-.gw-pt-updated { font-size: 13px; line-height: 18px; color: var(--gw-sub); margin: 0; }
+.gw-pt-updated { font-size: var(--ds-text-meta); line-height: 18px; color: var(--gw-sub); margin: 0; }
 
 /* ── SKELETON (design playbook rule 1): grey shapes the size of the real content, in place of the word "Loading". Sizes are the real
    content's own: a row is 16px of padding around a 22px line and a 23px line, a card is a panel. ─────────────────────────────── */

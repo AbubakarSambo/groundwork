@@ -44,7 +44,7 @@ html.design-pass .sec-h > span > a { display: inline-flex; align-items: center; 
    beside it (components/gw/ChooseAFile.tsx). */
 html.design-pass .dp-file { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 html.design-pass .dp-file input[type='file'] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
-html.design-pass .dp-file-name { font-size: 14px; line-height: 20px; color: var(--gw-sub); overflow-wrap: anywhere; min-width: 0; }
+html.design-pass .dp-file-name { font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-sub); overflow-wrap: anywhere; min-width: 0; }
 html.design-pass .dp-file input[type='file']:focus-visible + .btn { outline: 3px solid var(--gw-focus-ring); outline-offset: 2px; }
 
 /* ── FORMS: a label sits with its field, and fields stand apart ─────────────────────────────
@@ -65,7 +65,7 @@ html.design-pass .gw-composer-box .ci-sq { flex: none; }
 /* ── "GROUNDWORK IS WRITING…" ────────────────────────────────────────────────────────────────
    Before: 14px in the faint brown, paler than everything else in the conversation. Now it reads at the
    size and colour of the messages around it, with the dots in navy. */
-html.design-pass .gwui-writing { font-size: 16px; color: var(--gw-text); }
+html.design-pass .gwui-writing { font-size: var(--ds-text-body); color: var(--gw-text); }
 html.design-pass .gwui-writing-dot { background: var(--gw-navy); }
 
 /* ── THE CHECK-IN ON A PHONE ─────────────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ html.design-pass .gwui-writing-dot { background: var(--gw-navy); }
    "What needs you" above it. Now one quiet card with a hairline, and the four ways in as rows split by
    thin rules, each a full-width line you tap. */
 html.design-pass .gwui-welcome-card { box-shadow: inset 0 0 0 1px var(--gw-border); padding: 16px 24px; }
-html.design-pass .gwui-welcome-card-head h2 { font-size: 21px; font-weight: 500; }
+html.design-pass .gwui-welcome-card-head h2 { font-size: var(--ds-text-section); font-weight: 500; }
 html.design-pass .gwui-welcome-doors { display: block; border-top: 1px solid var(--gw-border); }
 html.design-pass .gwui-welcome-doors > li { border-bottom: 1px solid var(--gw-border); }
 html.design-pass .gwui-welcome-door { border: 0; border-radius: 0; padding: 12px 0; min-height: 44px; }
@@ -94,13 +94,13 @@ html.design-pass .gwui-welcome-door:hover b { text-decoration: underline; }
    Before: "What they receive" was a 12px navy label, the two choices 13 and 12px, the radio
    buttons 13px, and "Who gets it" a 17px-tall line of 12px navy text. Now the page's own sizes, and
    each choice is a whole line you tap. */
-html.design-pass .dp-legend { padding: 0; font-size: 14px; line-height: 20px; font-weight: 700; color: var(--gw-text); }
+html.design-pass .dp-legend { padding: 0; font-size: var(--ds-text-secondary); line-height: 20px; font-weight: 700; color: var(--gw-text); }
 html.design-pass .dp-choice { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; min-height: 44px; cursor: pointer; }
 html.design-pass .dp-choice > input { margin-top: 2px; }
-html.design-pass .dp-choice-title { display: block; font-size: 16px; line-height: 24px; font-weight: 700; color: var(--gw-text); }
-html.design-pass .dp-choice-says { display: block; font-size: 14px; line-height: 20px; color: var(--gw-sub); }
-html.design-pass .dp-summary { font-size: 14px; font-weight: 700; color: var(--gw-navy); cursor: pointer; }
-html.design-pass .dp-list { margin: 4px 0 0; padding-left: 20px; font-size: 14px; line-height: 20px; color: var(--gw-sub); }
+html.design-pass .dp-choice-title { display: block; font-size: var(--ds-text-body); line-height: 24px; font-weight: 700; color: var(--gw-text); }
+html.design-pass .dp-choice-says { display: block; font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-sub); }
+html.design-pass .dp-summary { font-size: var(--ds-text-secondary); font-weight: 700; color: var(--gw-navy); cursor: pointer; }
+html.design-pass .dp-list { margin: 4px 0 0; padding-left: 20px; font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-sub); }
 
 /* ── FIELDS ARE AS WIDE AS WHAT GOES IN THEM ────────────────────────────────────────────────
    Before: on Spending, the Suites settings and the leave policy, a team's name, an amount or one
@@ -166,7 +166,7 @@ html.design-pass .gwui-auth-card .gw-org-rows { gap: 0; border-top: 1px solid va
 html.design-pass .gwui-auth-card .gw-org-row { border: 0; border-bottom: 1px solid var(--gw-border); border-radius: 0; padding: 12px 0; background: transparent; }
 
 /* "What is Groundwork?" under a link that did not work was 13px and 20px tall. */
-html.design-pass .gwui-fine > a:only-child { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; font-weight: 700; color: var(--gw-navy); text-decoration: none; }
+html.design-pass .gwui-fine > a:only-child { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--ds-text-secondary); font-weight: 700; color: var(--gw-navy); text-decoration: none; }
 
 /* ── THE LEAVE POLICY SETTINGS ───────────────────────────────────────────────────────────────
    Before: "See or change its settings" on Leave requests opened the whole leave policy, forty fields and
@@ -237,8 +237,8 @@ html.design-pass { --gw-muted: #4E4236; --faint: #4E4236; --muted: #4E4236; }
 html.design-pass .dp-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--gw-border); }
 html.design-pass .dp-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 4px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--gw-border); min-height: 48px; }
 html.design-pass .dp-row-main { min-width: 0; }
-html.design-pass .dp-row-title { display: block; font-size: 16px; line-height: 24px; font-weight: 700; color: var(--gw-text); overflow-wrap: anywhere; }
-html.design-pass .dp-row-line { display: block; font-size: 14px; line-height: 20px; color: var(--gw-sub); overflow-wrap: anywhere; margin: 0; }
+html.design-pass .dp-row-title { display: block; font-size: var(--ds-text-body); line-height: 24px; font-weight: 700; color: var(--gw-text); overflow-wrap: anywhere; }
+html.design-pass .dp-row-line { display: block; font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-sub); overflow-wrap: anywhere; margin: 0; }
 html.design-pass .dp-row-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; column-gap: 16px; }
 html.design-pass .dp-row-acts > :is(a, button) { min-height: 44px; display: inline-flex; align-items: center; }
 html.design-pass .dp-row-body { grid-column: 1 / -1; }
@@ -266,14 +266,14 @@ html.design-pass .dp-page-action { display: flex; flex-wrap: wrap; gap: 12px 24p
    hairline rows, with no box round it. */
 html.design-pass .gwui-folds { border: 0; border-radius: 0; background: transparent; overflow: visible; border-top: 1px solid var(--gw-border); }
 html.design-pass .dp-unfolded { margin: 0; }
-html.design-pass .dp-unfolded-h { font-size: 18px; line-height: 24px; font-weight: 700; color: var(--gw-text); margin: 0 0 8px; }
+html.design-pass .dp-unfolded-h { font-size: var(--ds-text-card); line-height: 24px; font-weight: 700; color: var(--gw-text); margin: 0 0 8px; }
 html.design-pass .dp-unfolded-body > * + * { margin-top: 12px; }
 html.design-pass .dp-unfolded-row > .dp-row-body > * + * { margin-top: 12px; }
 html.design-pass .dp-unfolded-row > .dp-row-body:empty { display: none; }
 
 /* THE LEAVE POLICY: each part under its own heading, split by a hairline; a type of leave or an office is a group of
    fields with a hairline above it, never the browser's grey box round a fieldset. */
-html.design-pass .dp-part-h { font-size: 18px; line-height: 24px; font-weight: 700; color: var(--gw-text); margin: 0; }
+html.design-pass .dp-part-h { font-size: var(--ds-text-card); line-height: 24px; font-weight: 700; color: var(--gw-text); margin: 0; }
 html.design-pass .dp-leave-policy > form,
 html.design-pass .dp-leave-policy > div[aria-label] { padding-top: 16px; border-top: 1px solid var(--gw-border); display: flex; flex-direction: column; gap: 12px; }
 html.design-pass .dp-leave-policy fieldset { border: 0; margin: 0; padding: 12px 0 0; border-top: 1px solid var(--gw-border); min-width: 0; }
@@ -298,15 +298,14 @@ html.design-pass .dp-row-main > .gwui-note > .btn.quiet::after { content: ''; po
    is Atkinson Hyperlegible bold. Now they are the same. */
 html.design-pass .gwui-b-tab .sec-h .t-h2 { font-family: var(--gw-font-ui); font-weight: 700; }
 
-/* THE BOARDS, AS THE PROTOTYPE DRAWS THEM (Hafsah, 21 November: "follow the prototype verbatim"). Measured with getComputedStyle on
-   groundwork-prototype.html#/c/sales/board at 1280 against the product's sales board: the question is the small muted line above
-   the answer, the answer is 32px Literata, the note under the deals and the board's foot lines are 14.5px, and a tag is 13.5px with
-   13px corners. Only on the pictured boards (.pb), so no other page's type scale moves. */
-html.design-pass .pb .pb-q { font-size: 14.5px; line-height: 22px; color: var(--muted); }
-html.design-pass .pb .pb-answer { font-size: 32px; line-height: 40px; }
+/* THE BOARDS, AS THE PROTOTYPE DRAWS THEM (Hafsah, 21 November: "follow the prototype verbatim"): the question is the small muted line
+   above the answer, the answer is the big Literata line, and the note under the deals, the board's foot lines and a tag are secondary
+   text, with 13px corners on a tag. Since 24 November every size is one of the six (tokens.css), not the prototype's 14.5, 13.5 and 32. */
+html.design-pass .pb .pb-q { font-size: var(--ds-text-secondary); line-height: var(--ds-lh-secondary); color: var(--muted); }
+html.design-pass .pb .pb-answer { font-size: var(--ds-text-big); line-height: var(--ds-lh-big); }
 html.design-pass .pb .pb-below,
-html.design-pass .pb .pb-foot { font-size: 14.5px; }
-html.design-pass .pb .tag { font-size: 13.5px; border-radius: 13px; }
+html.design-pass .pb .pb-foot { font-size: var(--ds-text-secondary); }
+html.design-pass .pb .tag { font-size: var(--ds-text-secondary); border-radius: 13px; }
 
 /* A NEW ORGANISATION (Ruth's path). Before: the placeholders ("For example, Baridi Foundation") were the same weight and
    nearly the same brown as a real answer, so the fields looked filled in; and "How many people will use it?" sat right
@@ -318,7 +317,7 @@ html.design-pass .gw-auth-fld + .gw-auth-fld { margin-top: 8px; }
    buttons, and buttons came in 36, 44 and 54 pixels. Now every button is 40 pixels high, and the 44-pixel tap area is
    drawn round it, invisibly, so nothing gets harder to press. */
 html.design-pass .btn:not(.quiet):not(.gw-proto *) { min-height: 40px; position: relative; }
-html.design-pass .btn.big:not(.quiet):not(.gw-proto *) { min-height: 40px; font-size: 16px; line-height: 24px; padding: 0 20px; }
+html.design-pass .btn.big:not(.quiet):not(.gw-proto *) { min-height: 40px; font-size: var(--ds-text-body); line-height: 24px; padding: 0 20px; }
 html.design-pass .btn.sm:not(.quiet):not(.gw-proto *) { min-height: 40px; }
 html.design-pass .btn:not(.quiet):not(.gw-proto *)::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max(100%, 44px); transform: translateY(-50%); }
 
@@ -332,12 +331,12 @@ html.design-pass :is(.gwui-input, .input, .gw-auth-input):focus:not(.gw-proto *)
 html.design-pass :is(.gwui-input, .input, .gw-auth-input):focus-visible:not(.gw-proto *) { outline: 0; border-color: var(--gw-navy); box-shadow: 0 0 0 3px rgba(12, 68, 124, 0.18); }
 
 /* A list's count, with room above (the filters) and below (the list's first rule). */
-html.design-pass .dp-count { margin: 4px 0 8px; font-size: 14px; line-height: 20px; color: var(--gw-sub); }
+html.design-pass .dp-count { margin: 4px 0 8px; font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-sub); }
 html.design-pass .gwui-filters-row { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; }
 
 /* TEN ROWS A PAGE (Paged): the count and Previous, the page numbers and Next, quiet, at the foot of the list. */
 html.design-pass .dp-pages { list-style: none; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; padding: 12px 0; }
-html.design-pass .dp-pages-count { font-size: 14px; line-height: 20px; color: var(--gw-sub); }
+html.design-pass .dp-pages-count { font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-sub); }
 html.design-pass .dp-pages-links { display: flex; flex-wrap: wrap; gap: 0 4px; }
 html.design-pass .dp-pages-links > button { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-weight: 400; }
 html.design-pass .dp-pages-links > button[aria-current='page'] { font-weight: 700; color: var(--gw-text); text-decoration: underline; }
@@ -346,7 +345,7 @@ html.design-pass .dp-pages-links > button:disabled { color: var(--gw-sub); curso
 /* YOUR OWN REQUESTS and EVERYTHING WAITING FOR YOU (RequestLinks): one line, the normal link weight, beside what they
    belong to. */
 html.design-pass .dp-links-quiet { column-gap: 20px; }
-html.design-pass .dp-links-quiet .gwui-plain-link { font-weight: 400; font-size: 14px; }
+html.design-pass .dp-links-quiet .gwui-plain-link { font-weight: 400; font-size: var(--ds-text-secondary); }
 html.design-pass .gw-pt-row { align-items: center; }
 
 /* The two request links: plain links on one line (they wrap together on a phone), each with a 44px target drawn round it. */
@@ -374,8 +373,8 @@ html.design-pass .dp-people-head { display: none; }
 html.design-pass .dp-people .dp-cell { display: none; }
 @media (min-width: 900px) {
   html.design-pass .dp-people-row { grid-template-columns: minmax(0, 2.8fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.4fr) 128px; column-gap: 16px; align-items: start; }
-  html.design-pass .dp-people-head { display: grid; font-size: 13px; line-height: 18px; font-weight: 700; color: var(--gw-sub); min-height: 0; padding: 8px 0; }
-  html.design-pass .dp-people .dp-cell { display: block; font-size: 14px; line-height: 20px; color: var(--gw-text); overflow-wrap: anywhere; padding-top: 2px; }
+  html.design-pass .dp-people-head { display: grid; font-size: var(--ds-text-meta); line-height: 18px; font-weight: 700; color: var(--gw-sub); min-height: 0; padding: 8px 0; }
+  html.design-pass .dp-people .dp-cell { display: block; font-size: var(--ds-text-secondary); line-height: 20px; color: var(--gw-text); overflow-wrap: anywhere; padding-top: 2px; }
   html.design-pass .dp-people .dp-on-a-phone { display: none; }
 }
 
@@ -384,3 +383,24 @@ html.design-pass .dp-choice-row { border-bottom: 1px solid var(--gw-border); pad
 html.design-pass .dp-choice-row:first-of-type { border-top: 1px solid var(--gw-border); }
 html.design-pass .dp-inline-form { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 html.design-pass .dp-inline-form > .gwui-input { max-width: 320px; }
+
+/* THE PORTED PAGES' TYPE, ON THE SIX SIZES (page audit, Hafsah, 24 November 2026). The pages ported from the prototype's markup (.gw-proto:
+   the Desk, the boards) draw with the prototype's own app.css (pages/board/prototype/the-prototype-boards.css, generated from it), whose
+   classes sit between the six sizes: small text at 14.5px, tiny at 13, a tag and a note at 13.5, a row's heading and a quote at 17, a row's
+   line and a choice at 15. Each class reads its size from tokens.css here instead, so one source owns every size on every page. */
+html.design-pass body .gw-proto .t-title { font-size: var(--ds-text-title); line-height: var(--ds-lh-title); }
+html.design-pass body .gw-proto .t-h2 { font-size: var(--ds-text-section); line-height: var(--ds-lh-section); }
+html.design-pass body .gw-proto .t-h3,
+html.design-pass body .gw-proto .item .h,
+html.design-pass body .gw-proto .quote { font-size: var(--ds-text-card); line-height: var(--ds-lh-card); }
+html.design-pass body .gw-proto .t-body,
+html.design-pass body .gw-proto .btn { font-size: var(--ds-text-body); }
+html.design-pass body .gw-proto .btn.big { font-size: var(--ds-text-card); }
+html.design-pass body .gw-proto .t-small,
+html.design-pass body .gw-proto .item .s { font-size: var(--ds-text-secondary); line-height: var(--ds-lh-secondary); }
+html.design-pass body .gw-proto .btn.sm,
+html.design-pass body .gw-proto .tag,
+html.design-pass body .gw-proto .note,
+html.design-pass body .gw-proto .seg button,
+html.design-pass body .gw-proto .viewsmenu > div a { font-size: var(--ds-text-secondary); }
+html.design-pass body .gw-proto .t-tiny { font-size: var(--ds-text-meta); line-height: var(--ds-lh-meta); }
