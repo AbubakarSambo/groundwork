@@ -105,12 +105,14 @@ export function ContextPage({
   role: 'lead' | 'admin' | 'party'
   viewerUserId?: string | null
   /**
-   * RELEASE 1B (pull request 3 of 3): ONLY THE PARTS THAT MOVE TO MY WORK. With Release 1B's switch on, References and resources
-   * no longer draws the targets, the plan as agreed, each person's card and what people are down as doing ("progress and
-   * promises, which belong on the board and in My work"), so My work draws them, here, by this same code, with the same words,
-   * controls and rules. Left out, the page is exactly as before.
+   * RELEASE 1B (pull request 3 of 3): ONLY THE PARTS THAT MOVED OFF THIS PAGE. With Release 1B's switch on, References and
+   * resources no longer draws the targets, the plan as agreed, each person's card and what people are down as doing, so other
+   * pages draw them, here, by this same code, with the same words, controls and rules. My work draws the targets and the plan
+   * ('what-moved-to-my-work'). Each person's card and what people are down as doing are the lead's, and People and setup draws
+   * them for whoever runs the check-in ('each-person'); a member's own page no longer repeats the team (Hafsah, 24 November 2026:
+   * the board already shows the team). Left out, the page is exactly as before.
    */
-  only?: 'what-moved-to-my-work'
+  only?: 'what-moved-to-my-work' | 'each-person'
 }) {
   const id: string = ground.id
   const qc = useQueryClient()
@@ -668,7 +670,7 @@ export function ContextPage({
                 />
               </>
             ) : (
-              !theBrief && (
+              !only && !theBrief && (
                 <Callout>
                   {/*
                     "IN THE CONVERSATION BELOW" ONLY WHEN THERE IS ONE (real-user walk, Kijani
@@ -827,6 +829,10 @@ export function ContextPage({
               describes. Nothing is expected of them yet, so there is nothing to have delivered
               against, and the honest render is no card at all.
             */}
+    </>
+  )
+  const partDelivered = (
+    <>
             {myParticipant && !(myParticipant as any).managingOnly &&
               ((myParticipant as any)?.objective?.all ?? []).length > 0 && (
               <DeliveredPanel
@@ -1471,17 +1477,9 @@ export function ContextPage({
     </>
   )
 
-  if (only === 'what-moved-to-my-work') {
-    /* Each part is a section of My work's own page, so they sit in its column, 32px apart like every other section there. */
-    return (
-      <>
-        {partD}
-        {partPlan}
-        {partF}
-        {partH}
-      </>
-    )
-  }
+  /* Each part is a section of the page it is drawn on, so they sit in its column, 32px apart like every other section there. */
+  if (only === 'what-moved-to-my-work') return <>{partD}{partPlan}</>
+  if (only === 'each-person') return <>{partF}{partH}</>
 
   return (
     <div>
@@ -1514,6 +1512,7 @@ export function ContextPage({
                 {partD}
                 {partE}
                 {partF}
+                {partDelivered}
                 {partG}
                 {partH}
                 {partI}
@@ -1532,7 +1531,7 @@ export function ContextPage({
                 {isTheLead && <WaitingForYouToConfirm groundId={id!} heading="Needs you" />}
                 {partC}
                 {partE}
-                {!isLead && partF}
+                {!isLead && <>{partF}{partDelivered}</>}
                 <div>
                 <Section heading="Everything else" note="Tap any line to see more" />
                 <div className="gwui-folds">

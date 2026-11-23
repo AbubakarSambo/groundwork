@@ -174,6 +174,7 @@
     "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
     "parts": [
      {
+      "key": "claims",
       "heading": "What you said and what shows it",
       "says": "You said four times that something was sold, paid or signed. None of them has proof on file, and you took one back later.",
       "toChange": "Adding the photo, slip or link when you say something is done would change this.",
@@ -185,6 +186,7 @@
       ]
      },
      {
+      "key": "promises",
       "heading": "Promises",
       "says": "Neither of the two promises you made that came due was kept. Two are past their day with nothing said about them yet.",
       "toChange": "Promising less, and saying early when a date will move, would change this.",
@@ -194,6 +196,7 @@
       ]
      },
      {
+      "key": "check-ins",
       "heading": "Your check-ins",
       "says": "You did two of two check-ins, all on time. Two of them named the item, what changed and the day.",
       "toChange": null,
@@ -378,6 +381,7 @@
     "note": "This is read from what Aisha said in Aisha’s check-ins and what is on file. It changes only when something new comes in.",
     "parts": [
      {
+      "key": "claims",
       "heading": "What Aisha said and what shows it",
       "says": "Aisha said four times that something was sold, paid or signed. None of them has proof on file, and Aisha took one back later.",
       "toChange": "Adding the photo, slip or link when Aisha says something is done would change this.",
@@ -389,6 +393,7 @@
       ]
      },
      {
+      "key": "promises",
       "heading": "Promises",
       "says": "Neither of the two promises Aisha made that came due was kept. Two are past their day with nothing said about them yet.",
       "toChange": "Promising less, and saying early when a date will move, would change this.",
@@ -398,6 +403,7 @@
       ]
      },
      {
+      "key": "check-ins",
       "heading": "Aisha’s check-ins",
       "says": "Aisha did two of two check-ins, all on time. Two of them named the item, what changed and the day.",
       "toChange": null,
@@ -612,6 +618,7 @@
     "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
     "parts": [
      {
+      "key": "claims",
       "heading": "What you said and what shows it",
       "says": "You said once that something was sold, paid or signed, and it has proof on file.",
       "toChange": null,
@@ -620,6 +627,7 @@
       ]
      },
      {
+      "key": "blockers",
       "heading": "Blockers",
       "says": "You raised one blocker, and did not say what you had tried first.",
       "toChange": null,
@@ -628,6 +636,7 @@
       ]
      },
      {
+      "key": "check-ins",
       "heading": "Your check-ins",
       "says": "You did two of two check-ins, all on time. Two of them named the item, what changed and the day.",
       "toChange": null,
@@ -848,6 +857,7 @@
     "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
     "parts": [
      {
+      "key": "claims",
       "heading": "What you said and what shows it",
       "says": "You said four times that something was sold, paid or signed. Three of them have proof on file.",
       "toChange": null,
@@ -859,6 +869,7 @@
       ]
      },
      {
+      "key": "promises",
       "heading": "Promises",
       "says": "You kept one of the two promises that came due. One was not done.",
       "toChange": null,
@@ -868,6 +879,7 @@
       ]
      },
      {
+      "key": "figures",
       "heading": "Figures that changed",
       "says": "You put a figure right yourself.",
       "toChange": null,
@@ -876,6 +888,7 @@
       ]
      },
      {
+      "key": "blockers",
       "heading": "Blockers",
       "says": "You raised two blockers and said what you had tried first on one of them.",
       "toChange": null,
@@ -885,6 +898,7 @@
       ]
      },
      {
+      "key": "check-ins",
       "heading": "Your check-ins",
       "says": "You did six of six check-ins, all on time. Six of them named the item, what changed and the day.",
       "toChange": null,
@@ -1073,6 +1087,7 @@
     "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
     "parts": [
      {
+      "key": "claims",
       "heading": "What you said and what shows it",
       "says": "You said three times that something was sold, paid or signed. None of them has proof on file, and you took two back later.",
       "toChange": "Adding the photo, slip or link when you say something is done would change this.",
@@ -1083,6 +1098,7 @@
       ]
      },
      {
+      "key": "promises",
       "heading": "Promises",
       "says": "Neither of the two promises you made that came due was kept. Two were not done.",
       "toChange": "Promising less, and saying early when a date will move, would change this.",
@@ -1092,6 +1108,7 @@
       ]
      },
      {
+      "key": "figures",
       "heading": "Figures that changed",
       "says": "One figure you gave changed from one check-in to the next, with nothing said about why.",
       "toChange": "Saying so yourself when a figure changes, with what shows the new one, would change this.",
@@ -1100,6 +1117,7 @@
       ]
      },
      {
+      "key": "time",
       "heading": "Where your time went",
       "says": "Juja Hardware cannot buy now, and you have not spent a check-in on it since.",
       "toChange": null,
@@ -1108,6 +1126,7 @@
       ]
      },
      {
+      "key": "blockers",
       "heading": "Blockers",
       "says": "You raised four blockers and said what you had tried first on none of them.",
       "toChange": "Trying one thing before raising a blocker, and saying what was tried, would change this.",
@@ -1119,6 +1138,7 @@
       ]
      },
      {
+      "key": "check-ins",
       "heading": "Your check-ins",
       "says": "You did six of six check-ins, four of them on time. Five of them named the item, what changed and the day.",
       "toChange": "Naming the item, what changed and the day, every time, would change this.",
@@ -1366,6 +1386,7 @@
     "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
     "parts": [
      {
+      "key": "claims",
       "heading": "What you said and what shows it",
       "says": "You said five times that something was sold, paid or signed, and every one has proof on file.",
       "toChange": null,
@@ -1378,6 +1399,7 @@
       ]
      },
      {
+      "key": "promises",
       "heading": "Promises",
       "says": "You kept five of the seven promises that came due, one of them late. Two were not done.",
       "toChange": null,
@@ -1392,6 +1414,7 @@
       ]
      },
      {
+      "key": "time",
       "heading": "Where your time went",
       "says": "Sunrise Primary School cannot buy now, and you talked about it in two check-ins after that was on record.",
       "toChange": null,
@@ -1400,6 +1423,7 @@
       ]
      },
      {
+      "key": "blockers",
       "heading": "Blockers",
       "says": "You raised one blocker, and did not say what you had tried first.",
       "toChange": null,
@@ -1408,6 +1432,7 @@
       ]
      },
      {
+      "key": "check-ins",
       "heading": "Your check-ins",
       "says": "You did six of six check-ins, five of them on time. Six of them named the item, what changed and the day.",
       "toChange": null,
@@ -1600,6 +1625,7 @@
     "note": "This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.",
     "parts": [
      {
+      "key": "promises",
       "heading": "Promises",
       "says": "You made one promise that came due, and it was not kept. You said later it was not done.",
       "toChange": "Promising less, and saying early when a date will move, would change this.",
@@ -1608,6 +1634,7 @@
       ]
      },
      {
+      "key": "blockers",
       "heading": "Blockers",
       "says": "You raised two blockers and said what you had tried first on none of them.",
       "toChange": "Trying one thing before raising a blocker, and saying what was tried, would change this.",
@@ -1617,6 +1644,7 @@
       ]
      },
      {
+      "key": "check-ins",
       "heading": "Your check-ins",
       "says": "You did six of six check-ins, all on time. Five of them named the item, what changed and the day.",
       "toChange": null,
@@ -1797,6 +1825,7 @@
     "note": "This is read from what Joseph said in Joseph’s check-ins and what is on file. It changes only when something new comes in.",
     "parts": [
      {
+      "key": "claims",
       "heading": "What Joseph said and what shows it",
       "says": "Joseph said three times that something was sold, paid or signed. None of them has proof on file, and Joseph took two back later.",
       "toChange": "Adding the photo, slip or link when Joseph says something is done would change this.",
@@ -1807,6 +1836,7 @@
       ]
      },
      {
+      "key": "promises",
       "heading": "Promises",
       "says": "Neither of the two promises Joseph made that came due was kept. Two were not done.",
       "toChange": "Promising less, and saying early when a date will move, would change this.",
@@ -1816,6 +1846,7 @@
       ]
      },
      {
+      "key": "figures",
       "heading": "Figures that changed",
       "says": "One figure Joseph gave changed from one check-in to the next, with nothing said about why.",
       "toChange": "Saying so at once when a figure changes, with what shows the new one, would change this.",
@@ -1824,6 +1855,7 @@
       ]
      },
      {
+      "key": "time",
       "heading": "Where Joseph’s time went",
       "says": "Juja Hardware cannot buy now, and Joseph has not spent a check-in on it since.",
       "toChange": null,
@@ -1832,6 +1864,7 @@
       ]
      },
      {
+      "key": "blockers",
       "heading": "Blockers",
       "says": "Joseph raised four blockers and said what had been tried first on none of them.",
       "toChange": "Trying one thing before raising a blocker, and saying what was tried, would change this.",
@@ -1843,6 +1876,7 @@
       ]
      },
      {
+      "key": "check-ins",
       "heading": "Joseph’s check-ins",
       "says": "Joseph did six of six check-ins, four of them on time. Five of them named the item, what changed and the day.",
       "toChange": "Naming the item, what changed and the day, every time, would change this.",

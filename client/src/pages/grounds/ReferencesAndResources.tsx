@@ -1,20 +1,18 @@
 import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   groundsApi, type ReferencesAndResources, type AReferenceLine, type AReferenceKind, type AnEvidencePage,
 } from '@/api/grounds'
-import { documentsApi } from '@/api/documents'
 import {
   Section, Panel, Button, Note, Callout, Stack, FlexRow, Tag, Text, TextField, TextArea, Select, FieldLabel, FieldRows, FieldRow,
   RowList, Row, SubHeading, Folded, Skeleton
 } from '@/components/gw/ui'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
-import { AddADocument } from '@/components/gw/AddADocument'
+import { AttachAFile } from '@/components/gw/AttachAFile'
 import { FromAPlan } from '@/components/gw/ThePlanPage'
 import { useAskStore } from '@/stores/ask'
-import { UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
 
 /**
  * REFERENCES AND RESOURCES, AS THE B6 PICTURES DRAW IT (Release 1B, pull request 2 of 3; Hafsah's references-and-my-work.md of
@@ -484,17 +482,10 @@ function AddSomething({ groundId, kind, onKind, people, contextEnabled, onDone }
   const [text, setText] = useState('')
   const [label, setLabel] = useState('')
   const [who, setWho] = useState('')
-  const [reviewing, setReviewing] = useState<{ id: string; name: string } | null>(null)
-  const fileInput = useRef<HTMLInputElement>(null)
   const add = useMutation({
     mutationFn: () => groundsApi.addAReference(groundId, { kind: kind as AReferenceKind, text, ...(kind === 'KEY_FACT' ? { label } : {}), ...(kind === 'PERSON_NOTE' || kind === 'HELP_WITH' ? { aboutParticipantId: who } : {}) }),
     onSuccess: () => { toast.success('Added. Your team’s check-ins use it from now on.'); setText(''); setLabel(''); onDone() },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
-  })
-  const upload = useMutation({
-    mutationFn: (f: File) => documentsApi.upload(groundId, f),
-    onSuccess: (res: any, f) => { if (res?.id) setReviewing({ id: res.id, name: f.name }) },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That file did not upload. Nothing was added, so try again.'),
   })
   const aboutAPerson = kind === 'PERSON_NOTE' || kind === 'HELP_WITH'
   return (
@@ -507,18 +498,7 @@ function AddSomething({ groundId, kind, onKind, people, contextEnabled, onDone }
           </Select>
         </div>
         {kind === 'PLAN' && <FromAPlan groundId={groundId} />}
-        {kind === 'DOCUMENT' && (
-          reviewing ? (
-            <AddADocument groundId={groundId} docId={reviewing.id} fileName={reviewing.name} contextEnabled={contextEnabled} placeName="References and resources"
-              onChooseAnother={() => { setReviewing(null); fileInput.current?.click() }} onClose={() => { setReviewing(null); onDone() }} />
-          ) : (
-            <FlexRow gap={8} align="center" wrap>
-              <input ref={fileInput} type="file" accept={UPLOAD_ACCEPT_ATTR} hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = '' }} />
-              <Button kind="secondary" size="small" onClick={() => fileInput.current?.click()} disabled={upload.isPending}>{upload.isPending ? 'Adding…' : 'Choose a file'}</Button>
-              <Note tone="muted">It starts private to you. You choose who can read it once it is in.</Note>
-            </FlexRow>
-          )
-        )}
+        {kind === 'DOCUMENT' && <AttachAFile groundId={groundId} contextEnabled={contextEnabled} label="Choose a file" onDone={onDone} />}
         {kind !== 'PLAN' && kind !== 'DOCUMENT' && (
           <>
             {aboutAPerson && (

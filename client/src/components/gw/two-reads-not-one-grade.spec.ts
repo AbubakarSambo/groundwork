@@ -21,7 +21,6 @@ const read = (...p: string[]) => readFileSync(join(__dirname, ...p), 'utf8')
 const RECORD = read('MyRecord.tsx')
 /* Both reads moved to the top of the page, above what they summarise. See the two its below. */
 const SUPPORT = read('WhatYourRecordCanSupport.tsx')
-const FIVE = read('TheFiveThingsThatMakeItCheckable.tsx')
 /* The per-session phrase, extracted to its own file when the session list moved to the Report tab
    and two surfaces needed the same reading. */
 const PHRASE = read('how-checkable-was-that-session.ts')
@@ -83,16 +82,15 @@ describe('my record', () => {
    * the whole history and the read it makes possible; specificity is about how much was in one
    * session. So one card is about the record, and the other is about a session and names which.
    */
-  it('keeps the part that IS about the run, and the part somebody can act on', () => {
+  /* The part somebody can act on is "Your focus this week" and the "Check-in quality" row on My work now; the five-things list that
+     said it a third time went (Hafsah, 24 November 2026). */
+  it('keeps the part that IS about the run', () => {
     expect(SUPPORT).toContain('Your answers are getting more checkable than check-in')
-    expect(FIVE).toContain('Add one or two next time')
-    expect(FIVE).toContain('mostUseful')
   })
 
   it('and confidence says which of the two reads it is', () => {
     /* One reads the whole record; the other names the single session it read. */
     expect(SUPPORT).toContain('What your record can support')
-    expect(FIVE).toMatch(/Check-in \$\{sessionNumber\} was mostly about the situation around you/)
   })
 
   it('and neither is a bar or a grade word', () => {
@@ -102,7 +100,7 @@ describe('my record', () => {
      * `a-guard-that-a-comment-satisfies-is-not-a-guard` names, in the mirror.
      */
     const code = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-    for (const src of [code(SUPPORT), code(FIVE)]) {
+    for (const src of [code(SUPPORT)]) {
       expect(src).not.toMatch(/\[1,2,3,4,5\]\.map/)
       expect(src).not.toContain('moderate')
     }

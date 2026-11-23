@@ -11,9 +11,9 @@ import { Tag } from '@/components/gw/ui/Tag'
 import { Button } from '@/components/gw/ui/Button'
 import { WhatYouAreCarryingForward } from '../WhatYouAreCarryingForward'
 import { WhatYourRecordCanSupport } from '../WhatYourRecordCanSupport'
-import { TheFiveThingsThatMakeItCheckable } from '../TheFiveThingsThatMakeItCheckable'
 import { MyRecord } from '../MyRecord'
-import { PatternPanel } from '@/components/gw/ui'
+import { PatternPanel, EdgeList, EdgeRow } from '@/components/gw/ui'
+import { AttachAFile } from '../AttachAFile'
 import type { ServedPattern } from '@/api/patterns'
 import { MyCheckInSessions } from '../MyCheckInSessions'
 import { WhatToWalkInWith } from '../WhatToWalkInWith'
@@ -44,8 +44,7 @@ import type { MyWorkPart } from '@/pages/grounds/MyWorkPage'
  *
  * WHAT STAYS BEYOND THE PROTOTYPE'S OWN LIST, AND WHY. `WhatYouAreCarryingForward` (the one-line
  * summary the next session opens from, and the Share control that puts it in front of the others),
- * `WhatYourRecordCanSupport`/`TheFiveThingsThatMakeItCheckable` (how checkable this reader's own
- * account has been, and what would make the next one land harder), and `MyRecord`'s own panels
+ * `WhatYourRecordCanSupport` (how checkable this reader's own account has been), and `MyRecord`'s own panels
  * (the resolution control near the end of a check-in, the "insights locked" empty state) are real,
  * served, previously-reviewed features with nowhere else to live - the prototype's own mock is one
  * scenario's screenshot, not an exhaustive list of everything this product may honestly show. Left
@@ -120,8 +119,7 @@ export interface YourWorkProps {
   report: any
   totalSessions: number | null
   completedCount: number
-  /** This reader's own finished sessions, newest first, exactly as the caller already builds them
-      for `TheFiveThingsThatMakeItCheckable` (carries `specificityDimensions` too). */
+  /** This reader's own finished sessions, newest first. */
   myFinishedSessions: any[]
   /** One dot per session, done and still to come, exactly as `WhatYourRecordCanSupport` already
       reads it - passed straight through rather than rebuilt here, so the corrected/todo states and
@@ -176,8 +174,8 @@ export interface YourWorkProps {
   asTheRestOfMyWork?: boolean
   /**
    * WHICH PART OF THE REST, ON THE B7 PAGE (the design system, journey 4, 23 November 2026). MyWorkPage.tsx draws each part where it
-   * belongs: what you say you delivered under What you achieved, what success looks like with the targets, what keeps coming up and
-   * what would make your next check-in count for more under Coaching, what you are carrying forward under Your report, your sessions
+   * belongs: what you say you delivered and your files under What you achieved, what success looks like with the targets, what keeps
+   * coming up under Coaching, what you are carrying forward with your report once you open it, your sessions
    * inside the Your check-ins card, and how much your record can support, corrections and the sign-off under the two cards.
    * Left out, or 'all', the whole rest is drawn in its old order (My work's switch off).
    */
@@ -226,24 +224,32 @@ export function YourWork({
             expectations={((myParticipant as any)?.objective?.all ?? []).map((o: any) => ({ id: o.id, text: o.text }))}
           />
         )}
-        {show('expected') && leadFirstName && (
-          <Section heading="What success looks like" note="In your words, next to their own">
-            {/* headingIsTheCallers: WhatSuccessLooksLike draws its own heading unless told this Section already has it. */}
-            <WhatSuccessLooksLikeFor groundId={groundId} yourName={myName} headingIsTheCallers />
+        {/* YOUR FILES, AND ATTACHING ONE (Hafsah, 24 November 2026): all that was kept of the "You" card, whose other parts said
+            "Nothing on record", "Nothing outstanding" and "Nothing yet". With no files, only "Attach something" is drawn. */}
+        {show('achieved') && myParticipant && (
+          <Section heading="Your files" action={<AttachAFile groundId={groundId} contextEnabled={ground?.contextEnabled === true} label="Attach something" />}>
+            {myFiles.length > 0 && (
+              <EdgeList label="Your files">
+                {myFiles.map((f) => (
+                  <EdgeRow
+                    key={f.id}
+                    reason={null}
+                    title={f.fileName ?? f.name}
+                    detail={f.visibility === 'OPEN'
+                      ? 'Everyone in this check-in can read it.'
+                      : f.visibility === 'CLOSED' ? 'Whoever runs this check-in can read it.' : 'Only you can read it.'}
+                  />
+                ))}
+              </EdgeList>
+            )}
           </Section>
         )}
+        {/* Drawn only once somebody has said what success looks like (the board's rule): an empty section is not drawn. */}
+        {show('expected') && leadFirstName && <WhatSuccessLooksLikeFor groundId={groundId} yourName={myName} asASection />}
         {show('coaching') && patterns.length > 0 && (
           <Section heading="Something that keeps coming up">
             {patterns.map((p) => <PatternPanel key={p.id} pattern={p} invalidateKey={['my-record', groundId]} leadFirstName={leadFirstName} />)}
           </Section>
-        )}
-        {show('coaching') && (
-          <TheFiveThingsThatMakeItCheckable
-            dimensions={(myFinishedSessions[0] as any)?.specificityDimensions ?? null}
-            sessionNumber={(myFinishedSessions[0] as any)?.sessionNumber ?? null}
-            mostUseful={(myRecord as any)?.insightsLocked ? null : specificity?.mostUseful}
-            strongest={(myRecord as any)?.insightsLocked ? null : specificity?.strongest}
-          />
         )}
         {/* B-080: she never checks in, so there is no record of her own to carry forward. */}
         {show('report') && !managing && (

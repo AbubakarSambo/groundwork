@@ -44,7 +44,6 @@ const WHAT_A_PARTICIPANT_READS = [
   'MyRecord.tsx',
   'WhatYourRecordCanSupport.tsx',
   'WhatTheReportCanSayYet.tsx',
-  'TheFiveThingsThatMakeItCheckable.tsx',
   'WhatYouAreCarryingForward.tsx',
   'HowThisHasMoved.tsx',
   'DeliveredPanel.tsx',

@@ -61,6 +61,10 @@ export function DeliveredPanel({
 
   const textFor = (id: string | null) => expectations.find(e => e.id === id)?.text ?? null
 
+  /* NOTHING SAID YET, NOTHING DRAWN (Hafsah, 24 November 2026): an empty part draws nothing. What somebody delivered is said in
+     their check-in, which asks about it; once something is on this list, the list and the form to add to it are drawn. */
+  if (deliveries.length === 0) return null
+
   return (
     <div style={{ marginBottom: 16 }}>
       {/*
@@ -86,7 +90,7 @@ export function DeliveredPanel({
         other write: the context chat belongs to the lead, so taking this away would leave a
         participant with no way at all to say what they did.
       */}
-      <details open={deliveries.length === 0} style={{ marginBottom: 14 }}>
+      <details style={{ marginBottom: 14 }}>
         <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', listStyle: 'revert', marginBottom: 10 }}>
           Say what you delivered
         </summary>

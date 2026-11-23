@@ -204,7 +204,8 @@ describe('My work, as each reader reads it', () => {
     wrap(<MyWorkPage groundId="g-sales" rest={(part, self) => <p>{`Today’s ${part}, ${self ? 'her own' : 'not hers'}`}</p>} />)
     await screen.findByRole('heading', { name: 'Mercy’s work' })
     const said = screen.getAllByText(/^Today’s /).map((p) => p.textContent)
-    expect(said).toEqual(['Today’s achieved, her own', 'Today’s expected, her own', 'Today’s coaching, her own', 'Today’s report, her own', 'Today’s check-ins, her own', 'Today’s after-check-ins, her own'])
+    /* What she carries forward is drawn with her report once she opens it (Hafsah, 24 November 2026), so not here. */
+    expect(said).toEqual(['Today’s achieved, her own', 'Today’s expected, her own', 'Today’s coaching, her own', 'Today’s check-ins, her own', 'Today’s after-check-ins, her own'])
     const order = [...document.querySelectorAll('h2, p')].map((e) => e.textContent)
     expect(order.indexOf('Today’s achieved, her own')).toBeGreaterThan(order.indexOf('What you achieved'))
     expect(order.indexOf('Today’s expected, her own')).toBeLessThan(order.indexOf('How you’re performing'))
@@ -246,13 +247,20 @@ describe('with the switch off, My work and the Context page are as before', () =
     expect(screen.getByText('What people are down as doing')).toBeTruthy()
     expect(screen.getAllByText(/Sell 120 dispensers/).length).toBeGreaterThan(0)
     full.unmount()
-    wrap(<ContextPage ground={ground} role="lead" viewerUserId="u-grace" only="what-moved-to-my-work" />)
+    const mine = wrap(<ContextPage ground={ground} role="lead" viewerUserId="u-grace" only="what-moved-to-my-work" />)
     expect(screen.getByText('The plan, as agreed')).toBeTruthy()
     expect(screen.getByText('10 new leads a week')).toBeTruthy()
+    /* Each person's card and what people are down as doing went to People and setup (Hafsah, 24 November 2026). */
+    expect(screen.queryByText('What people are down as doing')).toBeNull()
+    expect(screen.queryByText('Call the bursar at Ruiru')).toBeNull()
+    expect(screen.queryByText(/Sell 120 dispensers/)).toBeNull()
+    /* No targets: nothing is drawn, not a "Nothing yet." */
+    expect(screen.queryByText(/^Nothing yet/)).toBeNull()
+    mine.unmount()
+    wrap(<ContextPage ground={ground} role="lead" viewerUserId="u-grace" only="each-person" />)
     expect(screen.getByText('What people are down as doing')).toBeTruthy()
     expect(screen.getByText('Call the bursar at Ruiru')).toBeTruthy()
-    expect(screen.getByText('Each person’s card')).toBeTruthy()
-    expect(screen.queryByText(/Sell 120 dispensers/)).toBeNull()
+    expect(screen.queryByText('The plan, as agreed')).toBeNull()
   })
 })
 
