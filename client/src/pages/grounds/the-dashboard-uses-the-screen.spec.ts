@@ -65,13 +65,16 @@ describe('the dashboard uses the screen it is given', () => {
     /* CHANGED IN BATCH 2, GROUP 5 (Hafsah, item 3): on a computer the conversation runs the full width beside the sidebar, like
        Slack, and the reading width moved onto each message (gw-ui.css, `.gwui-ci-in-tab .ci-b > .bub`), so the Check-in tab is
        no longer a 600 column. */
-    expect(CHECK_IN).toMatch(/maxWidth: tab === 'chat' \? undefined : 1150/)
+    /* CHANGED 23 NOVEMBER 2026 (the design system, rule 12): the 1150 is the one token, --ds-content, read through `ds-page-in`,
+       not a number written on the page. Every tab but the conversation takes it. */
+    expect(CHECK_IN).toMatch(/tab === 'chat' \? ' gwui-ci-tab-body' : ' ds-page-in'/)
     expect(CHECK_IN).toContain("gwui-ci-tab-body")
     /* GroundParticipantPage.tsx's own `docs` tab draws the very same `ContextPage` the lead's page
        does, and context.jpg is the same screen either way - so it widens here too, beside `record`
        and `settings`; the conversation and the party's own report (own-report.jpg draws it as a
        narrow column, the same measure as the chat) are what stay narrow now. */
-    expect(PARTY).toMatch(/maxWidth: \(tab === 'settings' \|\| tab === 'record' \|\| tab === 'docs'\) \? \d+ : 600/)
+    expect(PARTY).toMatch(/\(tab === 'settings' \|\| tab === 'record' \|\| tab === 'docs'\) \? ' ds-page-in' : ' gwui-centered-column'/)
+    expect(PARTY).toMatch(/\(tab === 'settings' \|\| tab === 'record' \|\| tab === 'docs'\) \? undefined : \{ maxWidth: 600 \}/)
   })
 
   it("and People and setup, Context, sessions and My work are the exceptions - none of them a reading column", () => {
@@ -87,7 +90,7 @@ describe('the dashboard uses the screen it is given', () => {
      * GROUP 3 REVIEW, BATCH B: widened from "People and setup" alone to every tab except the
      * conversation - see the test above for why.
      */
-    expect(CHECK_IN).toMatch(/tab === 'chat' \? undefined : 1150/)
+    expect(CHECK_IN).toMatch(/tab === 'chat' \? ' gwui-ci-tab-body' : ' ds-page-in'/)
     expect(CHECK_IN).toMatch(/from '@\/components\/gw\/ui\/Page'/)
   })
 
@@ -97,7 +100,7 @@ describe('the dashboard uses the screen it is given', () => {
        GROUP 3 REVIEW, BATCH B: Context and resources (`docs`) joins them - context.jpg draws it at
        the same full width, and it is the same `ContextPage` component GroundAdminPage.tsx draws.
        Only the conversation and the party's own report stay at the reading width now. */
-    expect(PARTY).toMatch(/\(tab === 'settings' \|\| tab === 'record' \|\| tab === 'docs'\) \? 1150 : 600/)
+    expect(PARTY).toMatch(/\(tab === 'settings' \|\| tab === 'record' \|\| tab === 'docs'\) \? ' ds-page-in' : ' gwui-centered-column'/)
   })
 
   it('it is a cap, not a fixed width, so it still fits a narrow screen', () => {

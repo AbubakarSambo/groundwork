@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
@@ -78,9 +78,12 @@ describe('the session history under My work', () => {
     expect(screen.queryByText('Sent it. They liked it but want to wait until after December.')).toBeNull()
   })
 
-  it('says so plainly when there is nothing on record yet', async () => {
-    mount({ sessions: [] })
-    expect(await screen.findByText(/Nothing on record yet/)).toBeInTheDocument()
+  /* Changed 23 November 2026 (journey 4): the list sits inside the Your check-ins card on My work, which already counts the
+     check-ins, so with no conversation to open it draws nothing. "Nothing on record yet" beside "4 of 5 done" contradicted it. */
+  it('draws nothing when there is no conversation to open yet', async () => {
+    const { container } = mount({ sessions: [] })
+    await waitFor(() => expect(container.textContent).toBe(''))
+    expect(screen.queryByText(/Nothing on record yet/)).toBeNull()
   })
 
   it('says so plainly when the history could not be loaded', async () => {
