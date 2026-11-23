@@ -37,9 +37,12 @@ describe('the team’s report, as Grace reads it', () => {
     vi.mocked(boardApi.get).mockResolvedValue((BOARDS as any).grace)
     return render(<QueryClientProvider client={qc()}><MemoryRouter><ThePicturedTeamReport groundId={G} sessionNumber={R.grace.teamReport.sessionNumber} ground={{ label: 'Sales team, Q4', checkIns: [], participants: [], directMorningOn: on }} /></MemoryRouter></QueryClientProvider>)
   }
-  it('off: when it was last updated, and how it changes, as before', async () => {
+  /* Changed 24 November (page audit, row 9, approved by Hafsah): "It only changes when something new comes in..." explained the
+     report, and the server no longer writes it, so neither reading has it. */
+  it('off: when it was last updated, with no sentence on how it changes', async () => {
     open(false)
-    expect(await screen.findByText(`Last updated on Tuesday 20 October at 8am, when Joseph checked in. ${ONLY_CHANGES}`)).toBeTruthy()
+    expect(await screen.findByText('Last updated on Tuesday 20 October at 8am, when Joseph checked in.')).toBeTruthy()
+    expect(text()).not.toContain(ONLY_CHANGES)
     expect(text()).toContain('Things Groundwork can’t tell from what it has, and what it will ask next.')
   })
   it('on: when it was last updated and who checked in, the day, and what she does not know yet, with no explanation', async () => {
@@ -57,10 +60,11 @@ describe('the team’s report, as Kevin reads it once it is shared', () => {
     vi.mocked(reportsApi.sessionReport).mockResolvedValue(R.kevin.teamReport.data)
     return render(<QueryClientProvider client={qc()}><MemoryRouter><TheDirectMorning on={on}><TheSessionsReport groundId={G} sessionNumber={R.kevin.teamReport.sessionNumber} light /></TheDirectMorning></MemoryRouter></QueryClientProvider>)
   }
-  it('off: "Nothing here decides who is right." under it, as before', async () => {
+  /* Changed 24 November (page audit, row 6, approved by Hafsah): the footer's sentences explained the report, and they are gone. */
+  it('off: no sentence under it explaining the report', async () => {
     open(false)
     await screen.findByText('One question to answer')
-    expect(text()).toContain('People are still answering, so this moves. Everybody in this check-in reads this same report. Nothing here decides who is right.')
+    expect(text()).not.toMatch(/People are still answering|Nothing here decides who is right|reads this same report/)
     expect(screen.getByText('The picture from everybody')).toBeTruthy()
   })
   it('on: the question to answer, what everybody said, and a plain footer', async () => {
@@ -68,7 +72,7 @@ describe('the team’s report, as Kevin reads it once it is shared', () => {
     await screen.findByText('One question to answer')
     expect(screen.getAllByText(/There is a difference in how sales are being counted towards the goal\./).length).toBeGreaterThan(0)
     expect(screen.getByText('What everybody said')).toBeTruthy()
-    expect(screen.getByText('People are still answering.')).toBeTruthy()
+    expect(text()).not.toContain('People are still answering')
     expect(text()).not.toMatch(/decides who is right|reads this same report|The picture from everybody|conversation worth having/)
   })
 })

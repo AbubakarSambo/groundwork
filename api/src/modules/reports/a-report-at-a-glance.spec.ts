@@ -25,8 +25,14 @@ describe('a session report at a glance', () => {
       eachPersonDid: '3 people, each in their own words',
       picture: 'Samuel Kiprop is waiting for 3 things',
       goodLooksLike: 'What success looks like is stated, but nobody has said anything about it in a check-in yet',
-      sitsUnder: 'Nothing above this has been named yet',
     });
+  });
+
+  /* Changed 24 November (page audit, row 6): where nothing above it is named, the part says so itself, once, and its folded line
+     carries no second copy. A named parent is still the line's fact. */
+  it('names what it sits under only where something is named', () => {
+    expect(theSessionReportAtAGlance({ cascade: { parentNamed: 'Grow revenue' } }).sitsUnder).toBe('Grow revenue');
+    expect(theSessionReportAtAGlance({ cascade: { parentNamed: null } }).sitsUnder).toBeUndefined();
   });
 
   it('says nothing for a part the reader is not served', () => {

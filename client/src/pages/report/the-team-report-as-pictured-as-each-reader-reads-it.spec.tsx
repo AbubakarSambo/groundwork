@@ -67,14 +67,15 @@ it('Wairimu reads the team’s report as pictured, and may share it named or wit
   expect(screen.getByText('Only you can see this until you share it')).toBeTruthy()
   expect(screen.getByText('Share without names')).toBeTruthy()
   expect(screen.getByText('Share with the team')).toBeTruthy()
-  /* team-report.jpg: the reading and its sentence in one bold line beside the three bars. */
-  expect(screen.getByText('How much this report can rely on: medium. There is enough here to talk about, and not enough to settle anything.')).toBeTruthy()
+  /* The reading and its sentence in one bold line beside the three bars, with no colon (changed 24 November, page audit, rows 6 and 9). */
+  expect(screen.getByText('This report can be relied on a fair amount. There is enough here to talk about, and not enough to settle anything.')).toBeTruthy()
   expect(screen.getByRole('link', { name: 'Yesterday' }).getAttribute('href')).toBe('/grounds/g1/session/37')
   expect(screen.getByRole('link', { name: 'This week' }).getAttribute('href')).toBe('/grounds/g1/report/week')
   expect(screen.getByText('Three sales moved forward today.')).toBeTruthy()
   expect(screen.getByText('Will do: did not say')).toBeTruthy()
   expect(screen.getByText('“It is not ready.”').closest('div')?.textContent).toContain('You')
-  expect(screen.getByText('It cannot show Omar’s day, because Omar did not check in.')).toBeTruthy()
+  /* Omar is named once, in the count above (changed 24 November, page audit, row 9). */
+  expect(screen.getByText('It cannot show the day of anyone who did not check in.')).toBeTruthy()
   expect(screen.getByText('Yes, it counts')).toBeTruthy()
   expect(screen.getByText('No, it doesn’t')).toBeTruthy()
   expect(screen.getByRole('link', { name: 'See every other part of this report' }).getAttribute('href')).toBe('/grounds/g1/session/38?whole=1')

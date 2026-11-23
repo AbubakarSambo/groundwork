@@ -415,14 +415,16 @@ export function wasAskedAndNotAnswered(question: string, turns: readonly { role:
 /* ------------------------------------------------------------------------------------------------ T-12: how sure it is */
 
 /**
- * The kit's closing line: "How sure Groundwork is about this report: sure about Kilele Hotel, which is backed by M-Pesa, and
- * Greenfield Supermarket, which has a signed order. Not sure about the deals still open, which are each person’s word so far."
+ * How sure Groundwork is, said in sentences with no colon, beside how much the report can rely on (page audit, 24 November, rows 6 and
+ * 9: the report said it twice, "How much this report can rely on:" and "How sure Groundwork is about this report:"). "Groundwork is sure
+ * about Kilele Hotel, which is backed by M-Pesa, and Greenfield Supermarket, which has a signed order. It is not sure about the deals
+ * still open, which are each person’s word so far."
  */
 export function howSureGroundworkIs(won: readonly { name: string; paid: boolean; signed: boolean; byMPesa: boolean; mpesaCode?: string | null }[], openDeals: number): string {
   const sure = [...won.filter((d) => d.paid), ...won.filter((d) => !d.paid && d.signed)].map((d) => `${d.name}, which ${d.paid ? (d.byMPesa ? 'is backed by M-Pesa' : d.mpesaCode ? `M-Pesa code ${d.mpesaCode} backs` : 'is backed by a payment record') : 'has a signed order'}`);
-  const notSure = openDeals ? 'Not sure about the deals still open, which are each person’s word so far.' : '';
-  if (!sure.length) return `How sure Groundwork is about this report: not sure yet, because no sale has a payment or a signed order behind it.${notSure ? ` ${notSure}` : ''}`;
-  return `How sure Groundwork is about this report: sure about ${sure.length > 1 ? `${sure.slice(0, -1).join(', ')}, and ${sure[sure.length - 1]}` : sure[0]}.${notSure ? ` ${notSure}` : ''}`;
+  const notSure = openDeals ? 'It is not sure about the deals still open, which are each person’s word so far.' : '';
+  if (!sure.length) return `Groundwork is not sure yet, because no sale has a payment or a signed order behind it.${openDeals ? ' The deals still open are each person’s word so far.' : ''}`;
+  return `Groundwork is sure about ${sure.length > 1 ? `${sure.slice(0, -1).join(', ')}, and ${sure[sure.length - 1]}` : sure[0]}.${notSure ? ` ${notSure}` : ''}`;
 }
 
 /**

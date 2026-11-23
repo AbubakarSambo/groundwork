@@ -232,7 +232,7 @@ export async function withTheSalesReadings<T>(prisma: Prisma, groundId: string, 
       day,
       title: `The team’s report, ${aDayWithItsWeekday(day)}`,
       /* The same day as the title, in the organisation's own day (the kit: "Last updated on Wednesday 23 September at 6pm, when Miriam checked in."). */
-      lastUpdated: `Last updated on ${aDayWithItsWeekday(aDayKey(lastIn, zone))} at ${time}${lastInName ? `, when ${lastInName} checked in` : ''}. It only changes when something new comes in, such as a check-in, a document or a number from another system.`,
+      lastUpdated: `Last updated on ${aDayWithItsWeekday(aDayKey(lastIn, zone))} at ${time}${lastInName ? `, when ${lastInName} checked in` : ''}.`,
       inShort: [...inShortFromTheMoves(moves, dayWord, day, theFirstMoveOnRecord(deals, zone)), ...news],
       /* What moved: the stage each deal reached, said in the third person from what the deal holds, else its owner's own line (T-4, T-5). */
       moved: moves.map((m) => {

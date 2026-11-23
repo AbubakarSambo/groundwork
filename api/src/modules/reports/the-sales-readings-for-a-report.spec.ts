@@ -55,7 +55,7 @@ describe('the team’s report, as Grace is served it', () => {
     const r: any = await withTheSalesReadings(aBed(), G, 5, 'u-grace', REPORT());
     expect(r.releaseOneSalesReport).toBe(true);
     expect(r.theTeamsDay.title).toBe('The team’s report, Saturday 17 October');
-    expect(r.theTeamsDay.lastUpdated).toBe('Last updated on Saturday 17 October at 4:01pm, when Mercy checked in. It only changes when something new comes in, such as a check-in, a document or a number from another system.');
+    expect(r.theTeamsDay.lastUpdated).toBe('Last updated on Saturday 17 October at 4:01pm, when Mercy checked in.');
     expect(r.theTeamsDay.inShort).toEqual(['Two sales moved forward on 17 October, but neither of them has proof yet.']);
     expect(r.theTeamsDay.moved.map((m: any) => `${m.name}, ${m.owner}, ${m.from} to ${m.to}`)).toEqual(['Savannah Cafe, Kevin, Quoted to Won', 'Tuskys Westgate, Mercy, Contacted to Quoted']);
     expect(r.theTeamsDay.whyTheNumbersDontMatch).toBeNull();

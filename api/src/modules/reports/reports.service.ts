@@ -4312,7 +4312,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
            endpoint took ten seconds and the page waited on it before drawing the shared half. */
         const [worded, wordedQ] = await Promise.all([
           this.phrase('the picture from everybody', drafts),
-          question ? this.phrase('the conversation worth having', [question]) : Promise.resolve({} as Record<string, string>),
+          question && question.key === 'question' ? this.phrase('the conversation worth having', [question]) : Promise.resolve({} as Record<string, string>),
         ]);
         const pictureLines = drafts.map((d) => worded[d.key] ?? d.text);
         /* Keyed as well, so the page can lead with the finding and leave out the lines the tiles and
@@ -4357,7 +4357,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
           ? {
             key: findingKey,
             text: picture.find((l) => l.key === findingKey)!.text,
-            basis: picture.find((l) => l.key === 'basis')?.text ?? null,
             wouldHaveSurfaced: wouldHaveSurfaced?.say ?? null,
           }
           : null;
@@ -4369,7 +4368,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
           sharedPicture: drafts.length ? pictureLines.join(' ') : null,
           pictureBasis: drafts.length ? 'engines' : 'none',
           /* An old row's field names come out and a sentence said twice is said once (journey walk rows 1 and 2; no-field-names-on-the-page.ts). */
-          theConversationWorthHaving: question ? readableWithoutFieldNames(wordedQ.question ?? question.text) : null,
+          /* A question drawn from the difference is not said again: the difference is said once, where things stand (page audit, 24 November, row 6). */
+          theConversationWorthHaving: question && question.key === 'question' ? readableWithoutFieldNames(wordedQ.question ?? question.text) : null,
           /* How the question is found is the lead's method; a participant with none is told nothing about it. */
           whyNoQuestion: question || oneTime || !viewerIsLead ? null : WHY_NO_QUESTION,
           /* The direction itself, for the page to draw as lists. Null off a discovery ground. */

@@ -31,15 +31,17 @@ const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*
 describe('who the report is counting', () => {
   it('names people, and says which one is you', () => {
     /* U.9: said as a sentence now, "You have checked in." rather than "Miriam (you) · Answered". */
-    expect(strip(VIEW)).toContain("if (c.isYou) return c.answered ? 'You have checked in.' : 'You have not checked in yet.'")
+    /* Changed 24 November (page audit, row 6): only who is missing is named, and the reader among them is "You". */
+    expect(strip(VIEW)).toContain("missing.filter((c) => c.isYou).map(() => 'You')")
   })
 
   it('says whether each person has answered, which is the only state left', () => {
     const code = strip(VIEW)
-    expect(code).toContain('has not checked in yet.')
+    expect(code).toContain('not checked in yet.')
     /* Was 'Answered, and shown theirs'. That second state existed only to report who had pressed
        the reveal, which is deleted - see there-is-no-reveal.spec.ts. */
-    expect(code).toContain("c.answered ? `${c.who} has checked in.` : `${c.who} has not checked in yet.`")
+    /* Changed 24 November (page audit, row 6): who has answered is the count; only who has not is named. */
+    expect(code).toContain('const missing = counting.filter((c) => !c.answered)')
   })
 
   it('takes the label from the report rather than joining a roster on the page', () => {

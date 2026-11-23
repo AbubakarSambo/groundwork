@@ -80,12 +80,14 @@ describe('disputing is owner-scoped and deletes nothing', () => {
   });
 });
 
-describe('confidence says what it is counting', () => {
+/* Changed 24 November (page audit, row 6, approved by Hafsah): the note explaining that these are lines taken from what people said
+   was a sentence explaining the report, and it is gone. The read still says how much there is and why. */
+describe('confidence says how much there is, and no sentence explaining the report', () => {
   const base = { answered: 2, ofPeople: 2, documented: 0, saidInAll: 5, agreed: 1, stillOpen: 0, commitments: 1, commitmentsWithOwnerAndDate: 1 };
-  it('carries the note whenever there is anything to count', () => {
-    expect(howMuchThereIsToGoOn(base).note).toMatch(/lines taken from what people said/);
-  });
-  it('and not when there is nothing', () => {
-    expect(howMuchThereIsToGoOn({ ...base, saidInAll: 0 }).note).toBeNull();
+  it('has its saying and its reasons, and no note', () => {
+    const c = howMuchThereIsToGoOn(base) as any;
+    expect(c.saying).toBeTruthy();
+    expect(Array.isArray(c.reasons)).toBe(true);
+    expect('note' in c).toBe(false);
   });
 });
