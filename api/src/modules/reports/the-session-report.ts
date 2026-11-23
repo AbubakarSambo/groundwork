@@ -577,6 +577,10 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
      shows as backed, and it does not raise the documented share. */
   const documented = input.entries.filter((e) => !e.recallBased && countsAsASource(e.backedBy)).length;
   const backedPct = input.entries.length ? Math.round((documented / input.entries.length) * 100) : null;
+  /*
+   * EACH THING SAID ONCE (page audit, 24 November, row 6, approved by Hafsah). The difference is named where things stand, with
+   * both sides and what would settle it, so its tile counts it and does not name it again.
+   */
   const atAGlance: AGlanceRead[] = theDifferencesReadAgreesWithTheQuestion(atAGlanceTiles({
     agreed, stillOpen, movedOnTargets: input.movedOnTargets, blocked: input.blocked, waiting: input.waiting ?? 0,
     targetsSet: input.targetsSet ?? 0,
@@ -588,7 +592,6 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     stillToAnswer: Math.max(0, (input.peopleInAll ?? input.answeredThisSession.length) - input.answeredThisSession.length),
     notJoinedYet: input.notJoinedYet ?? 0,
     /* And so the two that have something to name, name it rather than repeating their own label. */
-    theDifference: openWithReasons[0]?.topic ?? null,
     theBlocker: input.theFirstBlocker ?? null,
     worries: input.worries ?? 0,
     theWorry: input.theFirstWorry ?? null,

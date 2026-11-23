@@ -162,10 +162,14 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
     expect(await screen.findByText('Remove "Nyama Choma Palace" from this board? This cannot be undone.')).toBeTruthy()
   })
 
-  it('a colleague reads the same kind of work and record, but gets no way to change either', async () => {
+  /* Changed 24 November (page audit, row 1, approved by Hafsah): a person in a sales check-in reads only their own part of the
+     board (board-as-participant.txt), so the line about the kind of work and the team's deal grid are the lead's. */
+  it('a colleague reads only their own part, with no way to change anything', async () => {
     me = { id: 'u-akinyi', firstName: 'Akinyi', role: 'MEMBER' }
     renderBoard({ ...SALES_ORG, myParticipantId: 'p-akinyi', canEditFrame: false })
-    expect(await screen.findByText('This check-in is about a sales organisation of several teams, and its deals.')).toBeTruthy()
+    expect(await screen.findByRole('link', { name: 'Every check-in' })).toBeTruthy()
+    expect(screen.queryByText('This check-in is about a sales organisation of several teams, and its deals.')).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Every deal, day by day' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Change' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Choose' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Add a record' })).toBeNull()

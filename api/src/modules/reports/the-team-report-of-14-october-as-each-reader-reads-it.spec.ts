@@ -89,7 +89,7 @@ describe('the team’s report for Wednesday 14 October, as Grace is served it', 
   });
 
   it('T-12: the kit’s closing line, from the payment record and the signed order', () => {
-    expect(grace.theTeamsDay.howSure).toBe('How sure Groundwork is about this report: sure about Kilele Hotel, which is backed by M-Pesa, and Greenfield Supermarket, which has a signed order. Not sure about the deals still open, which are each person’s word so far.');
+    expect(grace.theTeamsDay.howSure).toBe('Groundwork is sure about Kilele Hotel, which is backed by M-Pesa, and Greenfield Supermarket, which has a signed order. It is not sure about the deals still open, which are each person’s word so far.');
   });
 });
 

@@ -68,6 +68,8 @@ describe.each([['the lead', 'u-lead'], ['a participant', 'u-amani'], ['an admin'
   it('carries no field name anywhere, and the conversation worth having says each sentence once', async () => {
     const served = await serve(reader);
     expect(JSON.stringify(served)).not.toMatch(/\b(atStake|settledBy|whyItMatters):/);
-    expect(served.theConversationWorthHaving).toBe(`Clarity on onboarding support. ${AT_STAKE}`);
+    /* Changed 24 November (page audit, row 6): the difference is said once, under where things stand, and not again as the question. */
+    expect(served.theConversationWorthHaving).toBeNull();
+    expect(JSON.stringify(served).split(AT_STAKE).length).toBe(2);
   });
 });

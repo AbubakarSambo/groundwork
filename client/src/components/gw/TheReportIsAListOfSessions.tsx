@@ -59,7 +59,6 @@ export interface SessionRow {
 
 export const EVERY_SESSION = {
   heading: 'Every check-in',
-  intro: 'Below is the board, then one line for each check-in, newest first. Open a check-in to see its report.',
   board: 'The board',
   boardSub: 'Everything so far',
   shared: 'Shared',
@@ -116,7 +115,6 @@ export function TheReportIsAListOfSessions({
   return (
     <section aria-labelledby="every-session">
       <h2 id="every-session" style={{ fontSize: 17, fontWeight: 700, margin: '0 0 4px', color: 'var(--gw-text)' }}>{EVERY_SESSION.heading}</h2>
-      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px', margin: '0 0 14px' }}>{EVERY_SESSION.intro}</p>
 
       {boardRenders && (
         <button

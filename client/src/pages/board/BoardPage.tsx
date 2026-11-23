@@ -468,17 +468,6 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
   )
 }
 
-/**
- * THE WHOLE CHECK-IN, FOLDED - OR NOT, FOR A LEAD (B5's board-as-participant.txt).
- *
- * A participant's board leads with their own short personal view (see `TheParticipantsOwnView`
- * below); everything else this reader already receives - the same sections a lead sees, minus
- * their editing controls and minus anything privacy already keeps from them - stays exactly as it
- * was, just folded under one name below the personal view, so nothing they could read today is
- * taken away. The lead's own board is unchanged: for them this renders its children plainly.
- */
-/** So "Today's team picture is shared." can open this fold and jump straight to it - see item 6. */
-const THE_WHOLE_CHECK_IN_ID = 'the-whole-check-in'
 
 function OverTimeSection({ groundId, viewerRunsThisCheckIn }: { groundId: string; viewerRunsThisCheckIn: boolean }) {
   const { data } = useQuery({
@@ -495,12 +484,6 @@ function OverTimeSection({ groundId, viewerRunsThisCheckIn }: { groundId: string
   )
 }
 
-function MaybeFolded({ fold, children }: { fold: boolean; children: ReactNode }) {
-  /* Open, never folded: everything below the participant's own view is on the page as it is for the lead (Hafsah, 13 November 2026). */
-  if (!fold) return <>{children}</>
-  /* `ds-flow` draws no box of its own, so the sections inside keep the page's 32px between them (blocks.css). */
-  return <div id={THE_WHOLE_CHECK_IN_ID} className="ds-flow">{children}</div>
-}
 
 
 /**
@@ -603,22 +586,6 @@ function ActionButtons({ groundId, action }: { groundId: string; action?: AnActi
   )
 }
 
-/**
- * ONE FOLD, NOT A FOLD INSIDE A FOLD (board review, sales piece C, item 1).
- *
- * "Everything else from this check-in" (the sections the prototype's own sales board does not
- * show) used to render inside its own `Folded` always - for a lead that is the only fold on the
- * page, but for a participant it sat inside `MaybeFolded`'s own "The whole check-in" fold too, so
- * opening one fold revealed a second one, not the content itself. A participant already has an
- * outer fold around everything past their own personal view; this reads straight into it instead
- * of wrapping it again. Nothing inside is removed either way.
- */
-function FoldEverythingElseUnless({ alreadyFolded, children }: { alreadyFolded: boolean; children: ReactNode }) {
-  if (alreadyFolded) return <>{children}</>
-  /* Open to begin with (Hafsah, 13 November 2026): these are lists to read. */
-  /* Not a fold at all: it started open, so it was a heading that hid nothing (Hafsah, 15 November). */
-  return <>{children}</>
-}
 
 /**
  * THE PARTICIPANT'S OWN VIEW, FIRST (B5's board-as-participant.txt). A participant's board used to
@@ -700,7 +667,7 @@ function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, g
               ? (teamPicture?.forDay ? `The team’s report for ${teamPicture.forDay} is shared.` : direct ? 'Today’s team report is shared.' : 'Today’s team picture is shared.')
               : direct ? 'Today’s team report isn’t shared yet.' : 'Today’s team picture isn’t shared yet.'}
           </Text>
-          <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: '23px'}}>
+          <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4">
             {shared
               ? null
               /* board-as-participant.txt: "Wairimu usually shares it by 7pm." - the server sends no
@@ -736,8 +703,7 @@ function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, g
               redirect kept only for the rare case nothing has completed for this reader yet.
             */
             /* RELEASE TEST, 21 NOVEMBER 2026, BUG 36: "Open today's team picture." opened Amani's own report, which "Read your own report"
-               below already opens. It opens the team's report now: /grounds/:id/report opens the Report tab with the shared report
-               unfolded (B-203, GroundParticipantPage's openedDirectlyOnReport). */
+               below already opens. It opens the team's report now: /grounds/:id/report opens the Report tab, where the shared report is. */
             <Link to={`/grounds/${groundId}/report`} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
               {teamPicture?.forDay ? 'Open it.' : direct ? 'Open today’s team report.' : 'Open today’s team picture.'}
             </Link>
@@ -748,7 +714,7 @@ function TheParticipantsOwnView({ pictured = false, board, myFirstName = null, g
                   "...Your own report is ready now. / Read your own report"). The non-shared branch
                   above already carries this sentence as part of its own paragraph; the shared
                   branch had none at all. */}
-              {shared && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: '23px'}}>{teamPicture?.yourReportFor ? `Your report for ${teamPicture.yourReportFor} is ready.` : 'Your own report is ready now.'}</div>}
+              {shared && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4">{teamPicture?.yourReportFor ? `Your report for ${teamPicture.yourReportFor} is ready.` : 'Your own report is ready now.'}</div>}
               <div className="gwui-mt-10">
                 <UIButton kind="secondary" wide={pictured} to={`/checkin/${myLatestCheckInId}/report`}>Read your own report</UIButton>
               </div>
@@ -3355,7 +3321,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             kind of work's own sections already use. */}
         {(hasSectionServed('ideasFromTheTeam') || !!ideasFromYourTeam) && <TheIdeasFromYourTeam ideasFromYourTeam={ideasFromYourTeam} />}
 
-        <MaybeFolded fold={participantFoldsWhole}>
+        {/* A person in a sales check-in reads only their own part, as pictured (board-as-participant.txt: the team picture, "Your
+            deals", "Your share" and "Every check-in"); the rest of this board is the lead's (page audit, 24 November, row 1). */}
+        {!participantFoldsWhole && (<>
 
         {/*
           PIECES 12, 13 AND 20: "ARE WE MOVING TOGETHER?" (plan section 5, row 6). Moved above,
@@ -3959,7 +3927,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           and not in this check-in, the availability poll, the alignment feed, and the methodology
           legend.
         */}
-        <FoldEverythingElseUnless alreadyFolded={participantFoldsWhole || light}>
+        <>
         {/*
           PROJECT BOARD REVIEW 1, FIX 11: "OPEN ISSUES", FOLDED HERE ON THESE BOARDS - see the
           comment where it would otherwise have drawn, above.
@@ -5237,7 +5205,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           produced. It is for the person who wants to know where a line came from, and that person
           goes looking after they have read it, not before.
         */}
-        </FoldEverythingElseUnless>
+        </>
 
 
         {/*
@@ -5246,7 +5214,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           opening the board rebuilds nothing. The line at the top says what is true.
         */}
 
-        </MaybeFolded>
+        </>)}
 
         {/*
           THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN PARTICIPANT: "EVERY SESSION" AT THE VERY END OF

@@ -16,7 +16,7 @@
      "reasons": [
       "Kevin’s “Ngong Road Minimart wants 5 units. Ali confirmed it” and Kevin’s “I can get you the signed order from Roysambu Gym”, and four more, have no date."
      ],
-     "note": "These are lines taken from what people said, not lines they wrote. Anyone can mark one of their own as not what they said, and it stops counting."
+     "note": null
     },
     "whereThingsStand": {
      "agreed": 3,
@@ -902,7 +902,7 @@
     "theTeamsDay": {
      "day": "2026-10-20",
      "title": "The team’s report, Tuesday 20 October",
-     "lastUpdated": "Last updated on Tuesday 20 October at 8am, when Joseph checked in. It only changes when something new comes in, such as a check-in, a document or a number from another system.",
+     "lastUpdated": "Last updated on Tuesday 20 October at 8am, when Joseph checked in.",
      "inShort": [
       "Two sales moved forward today, but neither of them has proof yet.",
       "Peter is waiting on your specific area to focus on."
@@ -1096,7 +1096,7 @@
       "6 of 36 lines are backed by a document. The rest is from memory.",
       "6 of the 8 commitments have no owner or no date. Naming one of each would make them checkable."
      ],
-     "note": "These are lines taken from what people said, not lines they wrote. Anyone can mark one of their own as not what they said, and it stops counting."
+     "note": null
     },
     "whereThingsStand": {
      "agreed": 3,

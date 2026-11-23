@@ -35,7 +35,8 @@ const aDay = (at: string | Date) => new Intl.DateTimeFormat('en-GB', { weekday: 
 const aTime = (at: string | Date) => new Intl.DateTimeFormat('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: theZoneDatesAreIn() }).format(new Date(at)).replace(':00', '').replace(/\s/g, '').toLowerCase()
 const isoDay = (at: string | Date) => new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: theZoneDatesAreIn() }).format(new Date(at))
 const listed = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0] ?? '')
-const RELY: Record<string, string> = { thin: 'low', partial: 'medium', solid: 'high' }
+/* How much the report can be relied on, said as a sentence with no colon (page audit, 24 November, rows 6 and 9). */
+const RELY: Record<string, string> = { thin: 'a little', partial: 'a fair amount', solid: 'a lot' }
 const theNoFor = (yes: string) => (/^Yes, it /.test(yes) ? 'No, it doesn’t' : 'No')
 
 export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { groundId: string; sessionNumber: number; ground: Any }) {
@@ -132,7 +133,7 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
         {/* faith90-team-report.jpg: the check-in's own header as the board draws it, "Your check-in" and the tabs, above the first report's note. */}
         <TheCheckInsOwnHeader groundId={groundId} ground={ground} sessionNumber={sessionNumber} label={label} />
         {lastIn && (
-          <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName} checked in` : ''}.${direct ? '' : ' It only changes when something new comes in, such as a check-in, a document or a number from another system.'}`}</p>
+          <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName} checked in` : ''}.`}</p>
         )}
         <Panel className="pb-first-report">
           <h3 className="pb-card-h">The first team report</h3>
@@ -153,9 +154,9 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
       <div className="pb-report-head">
         <div>
           {teamsDay?.lastUpdated
-            ? <p className="pb-updated">{direct ? String(teamsDay.lastUpdated).replace(' It only changes when something new comes in, such as a check-in, a document or a number from another system.', '') : teamsDay.lastUpdated}</p>
+            ? <p className="pb-updated">{teamsDay.lastUpdated}</p>
             : lastIn && (
-              <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName} checked in` : ''}.${direct ? '' : ' It only changes when something new comes in, such as a check-in, a document or a number from another system.'}`}</p>
+              <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName} checked in` : ''}.`}</p>
             )}
           <p className="pb-report-count">
             {`Check-in ${sessionNumber}. ${answered.length} of ${counting.length} people checked in.`}
@@ -194,8 +195,9 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
               {[1, 2, 3].map((i) => <i key={i} className={i <= (({ thin: 1, partial: 2, solid: 3 } as Record<string, number>)[confidence.band] ?? 0) ? 'on' : ''} />)}
             </span>
             <div>
-              <p className="pb-rely-h">{`How much this report can rely on: ${RELY[confidence.band] ?? 'not said'}. ${confidence.saying}`}</p>
-              {((confidence.reasons ?? []) as string[]).length > 0 && <p className="pb-sub pb-rely-why">{(confidence.reasons as string[]).join(' ')}</p>}
+              <p className="pb-rely-h">{[RELY[confidence.band] ? `This report can be relied on ${RELY[confidence.band]}.` : null, confidence.saying].filter(Boolean).join(' ')}</p>
+              {/* How sure Groundwork is (sales-team-report.txt's closing line) belongs with how much the report can rely on: said once, here. */}
+              {[...((confidence.reasons ?? []) as string[]), teamsDay?.howSure].filter(Boolean).length > 0 && <p className="pb-sub pb-rely-why">{[...((confidence.reasons ?? []) as string[]), teamsDay?.howSure].filter(Boolean).join(' ')}</p>}
             </div>
           </div>
         </Panel>
@@ -269,7 +271,8 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
       <Section heading="What this report can’t tell you">
         {/* team-report.jpg: plain sentences on the page, not in a box. */}
         <div className="pb-cant-tell">
-          {notIn.length > 0 && <p>{`It cannot show ${listed(notIn.map((n) => `${n}’s`))} day, because ${listed(notIn)} did not check in.`}</p>}
+          {/* Who did not check in is named once, in the count at the top (page audit, 24 November, row 9). */}
+          {notIn.length > 0 && <p>It cannot show the day of anyone who did not check in.</p>}
           {rep.whatWentQuiet && <p>{rep.whatWentQuiet}</p>}
           {!notIn.length && !rep.whatWentQuiet && <p>Everybody checked in, and nothing anybody was waiting on has gone quiet.</p>}
         </div>
@@ -347,7 +350,6 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
             </div>
           ))}
         </div>
-        <p className="pb-foot">Short summaries. Open a person to see what they said, in their own words.</p>
         {teamsDay && opened && ((rep.whatEachPersonSaid ?? []) as Any[]).filter((p) => p.who === opened).map((p) => (
           <Panel key={p.who}>
             <h3 className="pb-card-h">{`${p.isYou ? 'You' : callThem(p.who)}, in ${p.isYou ? 'your' : 'their'} own words`}</h3>
@@ -366,8 +368,6 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
 
       <Link to={`/grounds/${groundId}?tab=report`} className="pb-wide-btn">Every check-in</Link>
 
-      {/* sales-team-report.txt: the closing line, how sure Groundwork is about this report (T-12). */}
-      {teamsDay?.howSure && <p className="pb-how-sure">{teamsDay.howSure}</p>}
 
       <div className="pb-whole-board-link">
         <Link to={`/grounds/${groundId}/session/${sessionNumber}?whole=1`} className="gwui-plain-link">See every other part of this report</Link>
@@ -383,8 +383,6 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
  * to answer, so it is not offered here.
  */
 export function TheTeamReportIsNotSharedYet({ groundId, sessionNumber, ground }: { groundId: string; sessionNumber: number; ground: Any }) {
-  /* The direct morning (lib/the-direct-morning.tsx), as for the report itself. */
-  const direct = useTheDirectMorning() || isTheDirectMorningOn(ground)
   const me = useAuthStore((st) => st.user)
   const label = ground?.label ?? 'This check-in'
   const parties: Any[] = ground?.participants ?? []
@@ -401,7 +399,7 @@ export function TheTeamReportIsNotSharedYet({ groundId, sessionNumber, ground }:
     <Page>
       <PageTitle crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label, to: `/grounds/${groundId}/board` }]} title="The team’s report isn’t shared yet" />
       {lastIn && (
-        <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName === firstName(me?.firstName) ? 'you' : lastInName} checked in` : ''}.${direct ? '' : ' It only changes when something new comes in, such as a check-in, a document or a number from another system.'}`}</p>
+        <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName === firstName(me?.firstName) ? 'you' : lastInName} checked in` : ''}.`}</p>
       )}
       <Panel>
         <p className="gwui-panel-text">{sharing?.says ?? `${leadFirst} has not shared it yet. You’ll get an email when ${leadFirst} does.`}</p>

@@ -1,6 +1,5 @@
 import type { Drafted } from './the-engine-drafts-it-the-model-words-it';
 import { peopleSaidDifferentThingsAbout, isAWholeSentence } from './what-people-said-differently-about';
-import { someOfThemHave } from './some-of-them-has-or-have';
 import { roleMapFor, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
 import { WHO_CAN_MOVE_IT, WHAT_IT_MEANS, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
 
@@ -150,12 +149,8 @@ export function draftThePicture(i: PictureInput): Drafted[] {
     out.push({ key: 'numbers', text: fact.endsWith('.') ? fact : `${fact}.`, mustKeep: [] });
   }
 
-  /* Who this rests on, and how much there is to go on. Both are counts. */
-  out.push({
-    key: 'basis',
-    text: `${someOfThemHave(i.answered, i.ofPeople, 'answered this check-in.')} ${i.confidence.saying}`,
-    mustKeep: [i.confidence.saying],
-  });
+  /* Who answered and how much there is to go on are not a line of the picture: the count is said once, at the top of the report,
+     and how much it can rely on once, in its own place (page audit, 24 November, row 6). */
 
   /* The four reads, only where one wants attention. A row of "None" is the tiles' job, not prose. */
   /* The tiles say what the tiles say. A line restating them ("Differences: 1, still open. How much was
@@ -356,7 +351,10 @@ export function draftTheQuestion(i: QuestionInput): Drafted | null {
   if (difference) {
     const settles = (difference.settledBy ?? '').trim().replace(/\s+/g, ' ');
     return {
-      key: 'question',
+      /* Keyed as the difference it is: the report says it once, where things stand, with what would settle it, and never a
+         second time as the question (page audit, 24 November, row 6). The page still has a question, so it never says there
+         is none. */
+      key: 'difference',
       /* A topic that is a whole sentence is said as one, never after "settles" (item 18): Tunde read "That is what
          settles the delivery deadline for the analysis is not agreed upon." */
       text: isAWholeSentence(difference.topic)

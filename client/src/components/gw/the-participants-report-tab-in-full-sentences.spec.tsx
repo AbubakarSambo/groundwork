@@ -50,10 +50,10 @@ describe('the participant’s "Your sessions" list reads as sentences', () => {
   it('says how many sessions, and each row as its own sentences, not dot-joined fragments', () => {
     renderReportTab()
     expect(screen.getByText('Your check-ins')).toBeTruthy()
-    expect(screen.getByText('You have one finished check-in, with its own report.')).toBeTruthy()
-    expect(screen.getByText('Check-in 1')).toBeTruthy()
-    expect(screen.getByText('You checked in on 27 Sept 2026.')).toBeTruthy()
-    expect(screen.getByText('What you said was specific in places.')).toBeTruthy()
+    /* Changed 24 November (page audit, row 5): the list is open, a heading and one link a row, so the count line that sat on its
+       fold is gone, and each row's date and rating are one line of sentences. */
+    expect(screen.getByRole('link', { name: 'Your report for check-in 1' })).toBeTruthy()
+    expect(document.body.textContent).toContain('You checked in on 27 Sept 2026. What you said was specific in places.')
     expect(document.body.textContent).not.toMatch(/Finished 27 Sept 2026 · /)
     expect(document.body.textContent).not.toContain('Your check-ins · 1')
   })

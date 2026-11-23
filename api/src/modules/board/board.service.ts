@@ -2749,17 +2749,10 @@ export class BoardService {
         const deals = isInitiator
           ? (((await ((this.prisma as any).workItem?.findMany?.({ where: { groundId, kind: 'deal' }, select: { name: true, ownerParticipantId: true } }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[])
           : [];
-        /* Their open wait, in the words of the row it replaces (whereEachPersonIs' `theWait`), after whatever line is said here: the line
-           from their last check-in took the row's place, and the wait was lost from the row of anybody who had not answered yet (re-test,
-           22 November evening, R-10: "Not in yet" beside Amani, who was waiting on Baraka for the delivery date). */
-        const theWaitOf = new Map<string, string | null>(((out.eachPerson as any[]) ?? []).map((r) => [r.participantId, r.theWait ?? null]));
-        const withTheWait = (row: any) => {
-          const wait = theWaitOf.get(row.participantId);
-          return wait ? { ...row, line: `${String(row.line ?? '').trim()} ${wait}`.trim() } : row;
-        };
         /* By first name, and by the whole name where somebody else on the check-in has the same first name (page audit, 24 November, row 11). */
         const callThem = namesToCallAmong(((ground.participants ?? []) as any[]).map((p) => [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || p?.nameGiven));
-        out.eachPersonToday = (out.eachPersonToday as any[]).map((row) => withTheWait((() => {
+        /* A wait is said once, under Blockers (page audit, 24 November, row 11), never again on the person's line here. */
+        out.eachPersonToday = (out.eachPersonToday as any[]).map((row) => (() => {
           const c = today.get(row.participantId);
           const before = last.get(row.participantId);
           if (!c && before) {
@@ -2784,11 +2777,9 @@ export class BoardService {
           /* What they said today is worded as said, by name, as their last check-in's line is: their word, never a fact the board states (Hafsah, 4 November 2026). */
           const first = callThem(row.who) || 'They';
           return { ...row, line: line ? `${first} said, “${line}”` : CHECKED_IN_TODAY, checkedInToday: true };
-        })()));
+        })());
       }
     }
-    /* `theWait` is only for the line above: the row's own `says` is what every reader of the row is served. */
-    if (Array.isArray(out.eachPerson)) out.eachPerson = (out.eachPerson as any[]).map(({ theWait: _w, ...row }) => row);
 
     /*
      * THE RECORDS THIS KIND OF WORK NEEDS (request 76): deals and their stages, releases, tickets, a

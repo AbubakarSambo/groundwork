@@ -17,7 +17,7 @@ describe('a payment coming in is a sale moving forward (U29)', () => {
     expect(day.title).toBe('The team’s report, Friday 16 October');
     expect(day.inShort[0]).toBe('One sale moved forward on 16 October, and it has proof.');
     expect(day.moved.map((m: any) => [m.name, m.says, m.proven])).toEqual([['Juja Hardware', 'Now paid.', true]]);
-    expect(day.howSure).toBe('How sure Groundwork is about this report: sure about Kilele, which is backed by M-Pesa, Juja Hardware, which M-Pesa code TGH5K2M9QX backs, Ngong Road Minimart, which M-Pesa code SFK2P8LQ4C backs, and Savannah Cafe, which M-Pesa code RBT7Y3KQ2P backs. Not sure about the deals still open, which are each person’s word so far.');
+    expect(day.howSure).toBe('Groundwork is sure about Kilele, which is backed by M-Pesa, Juja Hardware, which M-Pesa code TGH5K2M9QX backs, Ngong Road Minimart, which M-Pesa code SFK2P8LQ4C backs, and Savannah Cafe, which M-Pesa code RBT7Y3KQ2P backs. It is not sure about the deals still open, which are each person’s word so far.');
     expect(JSON.stringify(day)).not.toMatch(/No sale moved forward|no sale has a payment or a signed order/);
   });
   it('the session before says the payments of Thursday moved Ngong Road Minimart and Savannah Cafe, each said as paid, never as signed', async () => {

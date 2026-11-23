@@ -72,7 +72,8 @@ describe('the team’s report, as Grace reads it', () => {
     expect(screen.getByText('I sent Peter the quote for 30 units, KES 150,000, by email this morning.')).toBeTruthy()
     expect(screen.queryByText(/Greenfield took delivery/)).toBeNull()
     expect(screen.getByText('Kasarani Gym is still on, I will see the owner on Monday.')).toBeTruthy()
-    expect(screen.getByText('Short summaries. Open a person to see what they said, in their own words.')).toBeTruthy()
+    /* Changed 24 November (page audit, row 9): the sentence explaining the list is gone. */
+    expect(screen.queryByText('Short summaries. Open a person to see what they said, in their own words.')).toBeNull()
     /* Nothing the record cannot work out. */
     expect(screen.queryByText('Why the numbers don’t match')).toBeNull()
   })
@@ -161,7 +162,8 @@ describe('the team’s report, as Grace reads it', () => {
       ],
       whyTheNumbersDontMatch: null,
       whereTheySeeItDifferently: ['You expect Kevin, Mercy and Joseph to sell 40 units each.', 'Kevin said on 13 October that Kevin’s own aim is all 120 units, not 40. Kevin has not told you.'],
-      howSure: 'How sure Groundwork is about this report: sure about Kilele Hotel, which is backed by M-Pesa, and Greenfield Supermarket, which has a signed order. Not sure about the deals still open, which are each person’s word so far.',
+      /* The server's words since 24 November (page audit, rows 6 and 9): no colon. */
+      howSure: 'Groundwork is sure about Kilele Hotel, which is backed by M-Pesa, and Greenfield Supermarket, which has a signed order. It is not sure about the deals still open, which are each person’s word so far.',
     }
     vi.mocked(reportsApi.sessionReport).mockResolvedValue({
       ...SERVED, released: true, theTeamsDay: DAY,
@@ -182,9 +184,12 @@ describe('the team’s report, as Grace reads it', () => {
     wrap()
     await screen.findByRole('heading', { name: 'The team’s report, Wednesday 14 October' })
     const text = document.body.textContent ?? ''
-    expect(text).toContain('How much this report can rely on: medium. All 3 people checked in, and 3 of the 26 things said have a document behind them.')
-    expect(text).toContain('Joseph’s “I\'ll ask Grace first about the price, then I\'ll call Mr Kariuki back” has no date.')
-    expect(text).not.toContain('can rely on: high')
+    /* Changed 24 November (page audit, rows 6 and 9): one line on how much it can rely on, with no colon, and how sure Groundwork is
+       said with it, once, not again at the foot. */
+    expect(text).toContain('This report can be relied on a fair amount. All 3 people checked in, and 3 of the 26 things said have a document behind them.')
+    expect(text).toContain(`Joseph’s “I'll ask Grace first about the price, then I'll call Mr Kariuki back” has no date. ${DAY.howSure}`)
+    expect(text.split(DAY.howSure).length).toBe(2)
+    expect(text).not.toMatch(/can rely on:|How sure Groundwork is about this report:/)
     for (const l of DAY.inShort) expect(screen.getByText(l)).toBeTruthy()
     expect(screen.getByText('Jane said yes to 6 units at KES 30,000. Jane pays a KES 15,000 deposit on Friday 16 October.')).toBeTruthy()
     expect(screen.getByText('Now quoted. Mercy quoted Rose KES 10,000 for 2 units.')).toBeTruthy()
@@ -197,7 +202,6 @@ describe('the team’s report, as Grace reads it', () => {
     expect(screen.getByText('Kevin is waiting on Ali at Ngong Road Minimart and on Jane’s deposit at Savannah Cafe. Neither came up after 14 October.')).toBeTruthy()
     expect(screen.getByText('What Upper Hill Offices needs')).toBeTruthy()
     expect(text).not.toContain('How are you making your number?')
-    expect(screen.getByText(DAY.howSure)).toBeTruthy()
   })
 
   it('D-3: the question’s "No" is the prototype’s quiet button beside the answer', async () => {

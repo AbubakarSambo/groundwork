@@ -1,10 +1,12 @@
 import { whereEachPersonIs, type PersonRow } from './where-each-person-is-against-their-number';
 
 /**
- * RE-TEST, 22 NOVEMBER 2026 EVENING (R-10). On Tuesday Wairimu's sales board read, for Amani, "On Sunday 22 November, Amani said, “Mama
- * Njeri Duka in Kilimani signed the order ...” Not in yet." and nothing of her wait on Baraka for the delivery date. The sales board's line
- * from somebody's last check-in takes the place of the row's `says`, and the wait went with it. The row now carries its wait in the same
- * words (`theWait`, from aWaitInWords), and the sales board's line says it after whatever it says.
+ * RE-TEST, 22 NOVEMBER 2026 EVENING (R-10), AND THE PAGE AUDIT OF 24 NOVEMBER (ROW 11).
+ *
+ * On 22 November the sales board's "The team today" line lost Amani's wait on Baraka, so the row carried a second copy of it
+ * (`theWait`) to put after her last check-in's line. On 24 November the lead read the same wait three times: in "The team today",
+ * under Blockers and under "The signals behind them". Hafsah approved saying each blocker once, under Blockers, so that second copy is
+ * gone. The row's own sentence still says the wait, for the boards that draw `says`.
  */
 const row = (over: Partial<PersonRow>): PersonRow => ({
   participantId: 'p-amani', who: 'Amani Wekesa', nameIsTheirRole: false, target: null, count: 0, roundsSoFar: 3,
@@ -15,14 +17,9 @@ describe('a wait is said on the row of somebody who has not answered yet', () =>
   it('Amani, waiting on Baraka for the delivery date', () => {
     const [r] = whereEachPersonIs([row({ inTheWay: [{ what: 'The delivery date for Mama Njeri', owner: 'Baraka', days: 2, tried: 'asked-once', since: '22 November' }] })], 12);
     expect(r.says).toBe('Amani Wekesa has not checked in yet, and has been waiting on Baraka for the delivery date for Mama Njeri since 22 November.');
-    expect(r.theWait).toBe('Amani Wekesa has been waiting on Baraka for the delivery date for Mama Njeri since 22 November.');
   });
-  it('Sade, waiting on the reader for the price list', () => {
-    const [r] = whereEachPersonIs([row({ participantId: 'p-sade', who: 'Sade Balogun', inTheWay: [{ what: 'the price list', owner: 'Wairimu', onTheReader: true, days: 1, tried: 'nothing', since: '22 November' }] })], 12);
-    expect(r.theWait).toBe('Sade Balogun has been waiting on you for the price list since 22 November.');
-  });
-  it('nobody waiting is no wait', () => {
-    const [r] = whereEachPersonIs([row({})], 12);
-    expect(r.theWait).toBeNull();
+  it('no second copy of the wait is served for the team-today line', () => {
+    const [r] = whereEachPersonIs([row({ inTheWay: [{ what: 'the price list', owner: 'Wairimu', onTheReader: true, days: 1, tried: 'nothing', since: '22 November' }] })], 12);
+    expect('theWait' in r).toBe(false);
   });
 });

@@ -161,19 +161,17 @@ describe('with Release 1\'s sales board on', () => {
     const b = await boardAs(daily(), ...BISI);
     const today = new Map((b.eachPersonToday ?? []).map((r: any) => [r.participantId, r]));
     /* Worded as said, by name (Hafsah, 4 November 2026): his word, never a fact the board states. */
-    /* Changed 22 November evening (R-10): the row says the person's open wait after its line, in the words the board's own row uses, so a
-       wait is never lost from it. */
-    expect((today.get('p-kwame') as any).line).toBe('Kwame said, “I met Mr. Kariuki from Juja Hardware.” Kwame Mensah has been waiting on you for the approval of five applications since 16 September.');
+    /* Changed again 24 November (page audit, row 11): a wait is said once, under Blockers, never after the person's line here. */
+    expect((today.get('p-kwame') as any).line).toBe('Kwame said, “I met Mr. Kariuki from Juja Hardware.”');
     expect((today.get('p-kwame') as any).checkedInToday).toBe(true);
-    expect((today.get('p-ngozi') as any).line).toBe('Hasn’t checked in today. Ngozi Eze has been waiting on Mr. Adebayo for a date for the credit decision since 16 September.');
+    expect((today.get('p-ngozi') as any).line).toBe('Hasn’t checked in today.');
     expect((today.get('p-ngozi') as any).checkedInToday).toBe(false);
     expect(JSON.stringify(b.eachPersonToday)).not.toContain('has not checked in yet');
   });
 
   it('point 10: Juma, an admin who only reads, reads that they checked in, never their words', async () => {
     const b = await boardAs(daily(), ...JUMA);
-    /* Changed 22 November evening (R-10): an open wait follows the line, as it is in the row's own sentence every reader of the row is served. */
-    for (const r of (b.eachPersonToday ?? []) as any[]) expect(['Checked in today.', 'Hasn’t checked in today.']).toContain(String(r.line).split(/(?<=\.) /)[0]);
+    for (const r of (b.eachPersonToday ?? []) as any[]) expect(['Checked in today.', 'Hasn’t checked in today.']).toContain(r.line);
     expect(JSON.stringify(b.eachPersonToday)).not.toContain('Kariuki');
   });
 
