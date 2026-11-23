@@ -106,14 +106,16 @@ describe('a target row\'s own buttons, not three buttons', () => {
     const lower = await screen.findAllByRole('button', { name: /One fewer/ })
     const raise = screen.getAllByRole('button', { name: /One more/ })
     const remove = screen.getAllByRole('button', { name: /Remove target/ })
+    /* UPDATED 23 NOVEMBER (the board rebuilt on the design system): the design system's buttons have one height, so there is no
+       small size to check. What the reader sees is the same: Lower and Raise are second buttons, never the main one, and Remove is a
+       quiet link, never a red danger button. */
     for (const b of [...lower, ...raise]) {
-      expect(b.className).toContain('sec')
-      expect(b.className).toContain('sm')
+      expect(b.className).toMatch(/ds-btn-second|\bsec\b/)
+      expect(b.className).not.toMatch(/ds-btn-main|\bpri\b/)
     }
     for (const b of remove) {
-      expect(b.className).toContain('quiet')
-      expect(b.className).toContain('sm')
-      expect(b.className.endsWith('danger')).toBe(false)
+      expect(b.className).toMatch(/ds-btn-link|\bquiet\b/)
+      expect(b.className).not.toMatch(/danger/)
     }
   })
 })
