@@ -1,4 +1,5 @@
 import { TICKET_KINDS, isATicketsKind, theTicketGrid } from './TheTicketsBoard'
+import { WhereThisIsHeadingBody } from '../WhereThisIsHeadingBody'
 import { theShapeOfTheRecords } from './the-shape-of-a-list'
 import { theZoneDatesAreIn } from '@/lib/a-date-reads-the-same-everywhere'
 import { howOftenTheTeamChecksIn } from '@/lib/the-closing-after-your-first-check-in'
@@ -301,8 +302,8 @@ export function useWhatNeedsYou({ b, groundId, deals, sessionRows, manyInTeams =
       detail: 'Share it when you are ready.',
       node: (
         <span className="pb-own-team-actions">
-          <Button kind="secondary" size="small" onClick={() => shareNow.mutate()} disabled={shareNow.isPending}>Share now</Button>
-          {!sharing?.held && sharing?.at && <Button kind="secondary" size="small" onClick={() => holdIt.mutate()} disabled={holdIt.isPending}>Hold it</Button>}
+          <Button kind="quiet" onClick={() => shareNow.mutate()} disabled={shareNow.isPending}>Share now</Button>
+          {!sharing?.held && sharing?.at && <Button kind="quiet" onClick={() => holdIt.mutate()} disabled={holdIt.isPending}>Hold it</Button>}
         </span>
       ),
     })
@@ -325,7 +326,7 @@ export function useWhatNeedsYou({ b, groundId, deals, sessionRows, manyInTeams =
   for (const s of (b.atTheStallRule ?? []) as Any[]) {
     items.push({
       key: `stalled-${s.participantId}`, kind: 'look', title: s.title, detail: s.detail,
-      node: <Button kind="secondary" size="small" to={`/grounds/${groundId}?tab=context`}>{s.ask}</Button>,
+      node: <Button kind="quiet" to={`/grounds/${groundId}?tab=context`}>{s.ask}</Button>,
     })
   }
   /*
@@ -339,7 +340,7 @@ export function useWhatNeedsYou({ b, groundId, deals, sessionRows, manyInTeams =
         key: `chasing-${c.participantId}`, kind: 'look',
         title: `${c.first} has followed up ${c.deals === 1 ? 'a lead' : `the same ${c.deals} leads`} with no reply for ${c.checkIns} check-ins`,
         detail: `The stall rule says drop ${c.deals === 1 ? 'it' : 'them'}. Nothing on record says why ${c.first} is still following ${c.deals === 1 ? 'it' : 'them'} up.`,
-        node: <Button kind="secondary" size="small" to={`/grounds/${groundId}?tab=context`}>{`Ask ${c.first}`}</Button>,
+        node: <Button kind="quiet" to={`/grounds/${groundId}?tab=context`}>{`Ask ${c.first}`}</Button>,
       })
     }
   }
@@ -372,7 +373,7 @@ export function useWhatNeedsYou({ b, groundId, deals, sessionRows, manyInTeams =
       items.push({
         key: `p-${x.id}`, kind: 'look', title: `${who}: ${String(x.whatHappened).charAt(0).toLowerCase()}${String(x.whatHappened).slice(1).replace(/\.$/, '')}`,
         detail: 'This keeps coming up, three check-ins in a row.',
-        node: <Button kind="secondary" size="small" to={`/grounds/${groundId}/person/${x.participantId}`}>Open</Button>,
+        node: <Button kind="quiet" to={`/grounds/${groundId}/person/${x.participantId}`}>Open</Button>,
       })
     }
   }
@@ -385,7 +386,7 @@ export function useWhatNeedsYou({ b, groundId, deals, sessionRows, manyInTeams =
       items.push({
         key: 'untold', kind: 'look', title: untold.length === 1 ? `${list} has not been told their target` : `${untold.length} people have not been told their target`,
         detail: untold.length === 1 ? 'This comes from the targets.' : `They are ${list}. This comes from the targets.`,
-        node: <Button kind="secondary" size="small" to={`/grounds/${groundId}`}>Open</Button>,
+        node: <Button kind="quiet" to={`/grounds/${groundId}`}>Open</Button>,
       })
     }
   }
@@ -1143,20 +1144,10 @@ export function OpenIssues({ b, renderActions }: { b: Any; renderActions: (a: An
 
 /* ------------------------------------------------------------------ where this is heading */
 
-/* The picture's short name for each ending the engine offers (board-as-lead.txt, kwame-board.txt), in the picture's order. */
-export const OUTCOME_WORDS: Record<string, string> = {
-  ALIGNED: 'On course',
-  REACH_WITH_A_CHANGE: 'Reach it with a change',
-  GAPS_IDENTIFIED: 'Change the target',
-  KEEP: 'Keep on',
-  EXTEND: 'Extend settling-in',
-  RESTRUCTURE: 'Change the role',
-  EXIT: 'Part ways',
-}
-export const OUTCOME_ORDER = ['ALIGNED', 'REACH_WITH_A_CHANGE', 'GAPS_IDENTIFIED', 'KEEP', 'EXTEND', 'RESTRUCTURE', 'EXIT']
+/* The picture's short name for each ending, owned by the one drawing of this section. */
+export { OUTCOME_WORDS, OUTCOME_ORDER } from '../WhereThisIsHeadingBody'
 
 export function WhereThisIsHeading({ b, onRecordTheDecision, readOnly = false }: { b: Any; onRecordTheDecision: () => void; readOnly?: boolean }) {
-  const designPass = useTheDesignPass()
   const d = b.whereThisIsHeading
   if (!d) return null
   /* A board with nothing on it draws no outcomes and no 'Record the decision': nobody has answered, no piece of work and no figure is on record, so there is nothing to decide. */
@@ -1164,42 +1155,8 @@ export function WhereThisIsHeading({ b, onRecordTheDecision, readOnly = false }:
   const anyWork = ((b.workRecords ?? []) as Any[]).some((x) => (x.rows ?? []).length > 0)
   const anyFigure = ((b.objectives ?? []) as Any[]).some((o) => o.count != null)
   if (!answered && !anyWork && !anyFigure && !(d.signals ?? []).length && !d.decided) return null
-  const rank = (v: string) => (OUTCOME_ORDER.includes(v) ? OUTCOME_ORDER.indexOf(v) : 99)
-  const outcomes: Any[] = (d.outcomes ?? []).filter((o: Any) => o.value !== 'NOT_YET').sort((a: Any, c: Any) => rank(a.value) - rank(c.value))
-  return (
-    <Section heading={d.heading ?? 'Where this is heading'} note={designPass && d.about ? d.about : undefined}>
-      <div className="pb-heading">
-        <div>
-          <h3 className="pb-small-h">The possible outcomes</h3>
-          {outcomes.length ? outcomes.map((o) => (
-            <div className="pb-outcome" key={o.value}>
-              {OUTCOME_WORDS[o.value] ?? o.says}
-              {o.more && <span className="pb-outcome-sub">{o.more}</span>}
-            </div>
-          )) : <p className="gwui-panel-text">{d.outcomesSays}</p>}
-        </div>
-        <div>
-          <h3 className="pb-small-h">The signals behind them</h3>
-          {(d.signals ?? []).length ? (d.signals ?? []).map((s: Any, i: number) => (
-            <div className="pb-signal" key={i}>
-              <span className={`pb-dot ${s.mark === 'proven' ? 'pb-dot-proof' : 'pb-dot-said'}`} />
-              <span><b>{s.says}</b><span className="pb-from">{s.from}</span></span>
-            </div>
-          )) : <p className="gwui-panel-text">{d.signalsSays}</p>}
-          <Panel>
-            <h3 className="pb-small-h" style={{ color: 'var(--gw-text)' }}>What would settle it</h3>
-            {(d.whatWouldSettleIt ?? []).length
-              ? d.whatWouldSettleIt.map((w: string) => <p className="gwui-panel-text" key={w}>{w}</p>)
-              : <p className="gwui-panel-text">{d.whatWouldSettleItSays}</p>}
-          </Panel>
-          <div className="pb-decides">
-            <b>{d.whoDecides}</b>
-            {d.decided ? <p>{d.decided}</p> : readOnly ? null : <button type="button" className="btn sec" onClick={onRecordTheDecision}>{d.recordTheDecision ?? 'Record the decision'}</button>}
-          </div>
-        </div>
-      </div>
-    </Section>
-  )
+  /* One drawing for every board (WhereThisIsHeadingBody.tsx, journey 3). */
+  return <WhereThisIsHeadingBody d={d} onRecordTheDecision={onRecordTheDecision} readOnly={readOnly} />
 }
 
 /* ------------------------------------------------------------------ ask, and what Groundwork recommends */

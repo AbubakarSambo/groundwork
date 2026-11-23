@@ -44,10 +44,11 @@ function open(read: Promise<unknown>) {
   return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/today']}><TodayPage /></MemoryRouter></QueryClientProvider>)
 }
 
-const rows = () => [...document.querySelectorAll('.item')].map((li) => ({
-  title: li.querySelector('.h')?.textContent,
-  detail: li.querySelector('.s')?.textContent ?? null,
-  action: [...li.querySelectorAll('a:not(.gw-row-link)')].map((a) => [a.textContent, a.getAttribute('href')]),
+/* 23 November (journey 3): the rebuilt Today's rows are the design system's (.ds-row). */
+const rows = () => [...document.querySelectorAll('.ds-row')].map((li) => ({
+  title: li.querySelector('.ds-text-card')?.textContent,
+  detail: li.querySelector('.ds-row-main > .ds-text-secondary')?.textContent ?? null,
+  action: [...li.querySelectorAll('a:not(.ds-row-link)')].map((a) => [a.textContent, a.getAttribute('href')]),
 }))
 
 describe('Today, for a lead who left a setup unfinished', () => {

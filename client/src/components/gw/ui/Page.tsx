@@ -1,4 +1,5 @@
 import React, { createContext, useContext } from 'react'
+import { Link } from 'react-router-dom'
 import { InTheDesignSystem } from './the-design-system'
 import './gw-ui.css'
 
@@ -18,12 +19,14 @@ import './gw-ui.css'
 /** Whether this page sits inside another page's frame (a check-in's tab inside the check-in's own page). */
 const InsideAPage = createContext(false)
 
-export function Page({ narrow, title, lede, action, side, children }: {
+export function Page({ narrow, title, crumbs, lede, action, side, children }: {
   narrow?: boolean
   /** The page's name. Giving it makes this a rebuilt page. */
   title?: string
-  /** At most one line under the title. */
-  lede?: string
+  /** Where this page sits, as a line of links above the title: "Check-ins / Sales team, Q3" (board-as-lead.txt). */
+  crumbs?: { label: string; to?: string }[]
+  /** At most one line under the title. It may hold a link inside the sentence. */
+  lede?: React.ReactNode
   /** The page's one main action, at the top right. */
   action?: React.ReactNode
   /** A side column, a third of the width, under the main column on a phone. */
@@ -45,6 +48,11 @@ export function Page({ narrow, title, lede, action, side, children }: {
           <div className="ds-page-in">
             <header className="ds-page-head">
               <div className="ds-page-words">
+                {crumbs && crumbs.length > 0 && (
+                  <nav aria-label="Where you are" className="ds-text-meta ds-page-crumbs">
+                    {crumbs.map((c, i) => <React.Fragment key={c.label + i}>{i > 0 && ' / '}{c.to ? <Link to={c.to}>{c.label}</Link> : c.label}</React.Fragment>)}
+                  </nav>
+                )}
                 <Title className="ds-text-title">{title}</Title>
                 {lede && <p className="ds-text-body ds-page-lede">{lede}</p>}
               </div>
