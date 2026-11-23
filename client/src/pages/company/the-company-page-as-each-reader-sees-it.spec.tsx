@@ -124,13 +124,16 @@ describe('what each level understood, and the figures, as each reader is served 
 
 
 describe('Grace, an admin, reads the Desk top to bottom', () => {
-  it('the shared context first, then the directory, then the strategy, each drawn once', async () => {
+  /* UPDATED 24 November 2026 (page audit row 3): Grace may open People, so the Desk sends her there for who works here instead of listing
+     everyone a second time; the list, in plain sentences with phone numbers, is still read by whoever cannot open People (Miriam, below). */
+  it('the shared context first, then where everyone is, then the strategy, each drawn once', async () => {
     open(GRACE, GRACES)
     expect(await screen.findByText('2 teams and 5 people work here, and there were 3 check-ins this week.')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1, name: 'Baridi Appliances' })).toBeInTheDocument()
     expect(screen.getByText('Desk')).toBeInTheDocument()
-    expect(screen.getByText('This is where Baridi Appliances keeps its policies, handbook, procedures and documents, and a list of everyone who works here.')).toBeInTheDocument()
-    expect(sections()).toEqual(['Policies, handbook and documents', 'Who works here', 'Is the strategy moving?'])
+    expect(screen.getByText('This is where Baridi Appliances keeps its policies, handbook, procedures and documents.')).toBeInTheDocument()
+    expect(sections()).toEqual(['Policies, handbook and documents', 'Is the strategy moving?'])
+    expect(screen.getByRole('link', { name: 'People' })).toHaveAttribute('href', '/org/members')
     /* The priorities are drawn once: there is no second page, and no link to one. */
     expect(screen.getAllByRole('region', { name: 'Priority 1' })).toHaveLength(1)
     expect(screen.queryByRole('link', { name: 'Company context' })).toBeNull()
@@ -150,8 +153,15 @@ describe('Grace, an admin, reads the Desk top to bottom', () => {
     expect(companyApi.document).toHaveBeenCalledWith('desk:leave-policy')
   })
 
-  it('reads the directory in plain sentences, with phone numbers where people have them', async () => {
+  it('reads that everyone who works here is on People, with no second list', async () => {
     open(GRACE, GRACES)
+    const line = await screen.findByText((_, el) => el?.tagName === 'P' && el.textContent === 'Everyone who works here, with their phone numbers, is on People.')
+    expect(line).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Who works here' })).toBeNull()
+  })
+
+  it('whoever cannot open People reads the directory in plain sentences, with phone numbers where people have them', async () => {
+    open(MIRIAM, GRACES)
     const list = await screen.findByRole('list', { name: 'Who works here' })
     expect([...list.querySelectorAll(':scope > li')].map(li => li.textContent)).toEqual([
       'Grace WanjiruChief executive. Their phone number is +254700000001.',
@@ -275,7 +285,11 @@ describe('when there is nothing yet, or it fails', () => {
     open(GRACE, { ...GRACES, priorities: [], desk: { documents: [], directory: [], mayAdd: false } })
     expect(await screen.findByText('No priorities yet.')).toBeInTheDocument()
     expect(screen.getByText('Nothing has been added to the Desk yet.')).toBeInTheDocument()
-    expect(screen.getByText('Nobody is listed here yet.')).toBeInTheDocument()
+  })
+
+  it('whoever cannot open People is told nobody is listed yet', async () => {
+    open(MIRIAM, { ...GRACES, priorities: [], desk: { documents: [], directory: [], mayAdd: false } })
+    expect(await screen.findByText('Nobody is listed here yet.')).toBeInTheDocument()
   })
 
   it('says it did not load, and offers to try again', async () => {

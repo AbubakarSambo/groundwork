@@ -85,9 +85,10 @@ describe('Amani, a member, reads what is hers', () => {
     expect(document.body.textContent).not.toMatch(/at risk|PIP|exit/i)
   })
 
-  it('reads her performance history, newest first, her leave and her requests, each in the server’s own sentence', async () => {
+  /* UPDATED 24 November 2026 (page audit row 4): her reports and reviews are the one list "Your own reports", the prototype's heading. */
+  it('reads her own reports and reviews, newest first, her leave and her requests, each in the server’s own sentence', async () => {
     open(AMANI, AMANIS, { leave: true, spend: true, reviews: true })
-    const h = section('Your performance history')
+    const h = section('Your own reports')
     expect(within(h).getByText('Your report from Sales team, Q4')).toBeInTheDocument()
     expect(within(h).getByText('It was written from your answers on 19 November.')).toBeInTheDocument()
     expect(await within(h).findByText('Your review, October')).toBeInTheDocument()
@@ -105,7 +106,8 @@ describe('Amani, a member, reads what is hers', () => {
     expect(within(section('What you said you’d do')).getByText(/You have not said you would do anything in a check-in yet/)).toBeInTheDocument()
     expect(within(section('Coaching')).getByText(/There is no coaching step for you yet/)).toBeInTheDocument()
     expect(within(section('Something that keeps coming up')).getByText(/Nothing has come up often enough about your work to name/)).toBeInTheDocument()
-    expect(within(section('Your performance history')).getByText(/You have no reviews or reports yet/)).toBeInTheDocument()
+    /* 24 November 2026 (page audit row 4): with no report or review yet, the list is not drawn at all. */
+    expect(screen.queryByRole('heading', { name: 'Your own reports' })).toBeNull()
     await screen.findByRole('heading', { name: 'Your to-dos' })
     expect(screen.queryByRole('heading', { name: 'Your leave' })).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Your requests' })).toBeNull()

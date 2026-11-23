@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { readFileSync } from 'fs'
+import { withTheSizes } from '@/styles/read-with-the-sizes'
 import { join } from 'path'
 import { Button } from './Button'
 import { Tag } from './Tag'
@@ -27,11 +28,11 @@ import { PeopleTable, PeopleTableHead, PersonRow } from './PeopleTable'
  * docs/prototype/source/app.css, as it actually renders (the file sets some colours three times
  * over - the LAST value in the cascade is the one on screen).
  */
-const CSS = readFileSync(join(__dirname, 'gw-ui.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+const CSS = withTheSizes(readFileSync(join(__dirname, 'gw-ui.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ''))
 /* UPDATED 24 October (Hafsah: "one stylesheet, the prototype's"): Button, Tag, Section, Panel and EdgeRow are drawn with the
    prototype's own classes (.btn, .tag, .sec, .panel, .item), so their values are pinned here in styles/prototype.css,
    the prototype's stylesheet copied verbatim, rather than in the kit's copy of the same values, which is gone. */
-const PROTO = readFileSync(join(__dirname, '../../../styles/prototype.css'), 'utf8')
+const PROTO = withTheSizes(readFileSync(join(__dirname, '../../../styles/prototype.css'), 'utf8'))
 
 describe('Button', () => {
   it('draws the four kinds, each saying what happens', () => {

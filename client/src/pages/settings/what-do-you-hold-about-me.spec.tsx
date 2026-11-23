@@ -102,7 +102,9 @@ describe('what the page shows', () => {
    */
   it('is a plain text link, not a second boxed button beside "Download it"', () => {
     expect(CODE).toMatch(/className="gwui-plain-link" onClick=\{\(\) => setShowEraseConfirm\(true\)\}>Remove your name and email</)
-    expect(CODE).toMatch(/Your answers stay in the check-ins, without your name\./)
+    /* UPDATED 24 November 2026 (page audit row 13): the sentence beside the link is not in the prototype, so it is cut. What stays and
+       what goes is said once, in the confirmation ("stays on the record, without your name on it", checked below). */
+    expect(CODE).not.toMatch(/Your answers stay in the check-ins, without your name\./)
   })
 })
 

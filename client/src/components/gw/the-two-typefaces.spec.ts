@@ -1,4 +1,5 @@
 import { readFileSync, readdirSync, statSync } from 'fs'
+import { withTheSizes } from '@/styles/read-with-the-sizes'
 import { join } from 'path'
 import { describe, it, expect } from 'vitest'
 
@@ -61,7 +62,8 @@ describe('the two typefaces are served by the app itself', () => {
  * .t-h2, .t-h3, .t-body, .t-small, .t-tiny in styles/prototype.css); the product's copies (.gw-t-*) were removed with the
  * other competing styles. The greeting and title are clamped in the prototype (clamp(min, vw, max)): the largest is read.
  */
-const PROTO = strip(readFileSync(join(SRC, 'styles/prototype.css'), 'utf8'))
+/* Read with the six sizes filled in from tokens.css (24 November 2026: every size in the stylesheet is a token). */
+const PROTO = withTheSizes(strip(readFileSync(join(SRC, 'styles/prototype.css'), 'utf8')))
 describe('the type scale', () => {
   const size = (cls: string) => {
     /* A size that scales with the screen is rounded to a whole pixel since 25 October (crisp text): round(nearest,clamp(min,vw,max),1px). The largest is read. */
@@ -78,9 +80,10 @@ describe('the type scale', () => {
     expect(size('t-body')).toBe(16)
   })
 
-  it('and nothing in it is smaller than 13', () => {
+  /* 24 November 2026: the tiny size is the design system's meta size, 12px (tokens.css), no longer the prototype's 13px. */
+  it('and nothing in it is smaller than the meta size, 12', () => {
     const all = ['t-greet', 't-title', 't-h2', 't-h3', 't-body', 't-small', 't-tiny'].map(size)
-    expect(Math.min(...all)).toBeGreaterThanOrEqual(13)
+    expect(Math.min(...all)).toBeGreaterThanOrEqual(12)
   })
 
   it('the greeting and title are Literata; headings and things to act on are bold Atkinson', () => {

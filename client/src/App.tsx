@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { mayOpenPeople } from '@/lib/who-may-open-people'
 import { PageCrash } from '@/components/gw/PageCrash'
 import EveryReportSideBySide from '@/pages/preview/EveryReportSideBySide'
 import { Release4Boards } from '@/pages/preview/Release4Boards'
@@ -250,7 +251,7 @@ function MayOpenCheckIns({ children }: { children: React.ReactNode }) {
 
 function WhoMayAddPeople({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore()
-  return <ADoorYouCannotOpen may={user?.role === 'ADMIN' || user?.mayAddPeople === true} what="open People">{children}</ADoorYouCannotOpen>
+  return <ADoorYouCannotOpen may={mayOpenPeople(user)} what="open People">{children}</ADoorYouCannotOpen>
 }
 
 function AdminsOnly({ children, what = 'add people to your organisation' }: { children: React.ReactNode; what?: 'add people to your organisation' | 'connect your systems' | 'connect your organisation’s WhatsApp number' | 'open People' }) {

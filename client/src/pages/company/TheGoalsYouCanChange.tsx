@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { companyApi, type AGoalYouMayChange, type AGoalAsGiven, type TheGoalsYouMayChange } from '@/api/company'
 import { useAuthStore } from '@/stores/auth'
 import { whatSuccessLooksLike } from './CompanyPage'
-import { Section, Panel, Button, Note, Empty, RowList, Row, SubHeading, FieldLabel, TextField, Select } from '@/components/gw/ui'
+import { Section, Panel, Button, Note, RowList, Row, SubHeading, FieldLabel, TextField, Select } from '@/components/gw/ui'
 
 /**
  * ADDING A GOAL TO THE DESK, AND TYING CHECK-INS TO IT (Hafsah, 21 November 2026: "For desk: adding strategy or goals and tying them
@@ -20,30 +21,36 @@ import { Section, Panel, Button, Note, Empty, RowList, Row, SubHeading, FieldLab
 export function TheGoalsYouCanChange() {
   const user = useAuthStore(s => s.user)
   const { data } = useQuery({ queryKey: ['company-goals'], queryFn: companyApi.goals, enabled: !!user && (user.role === 'ADMIN' || user.role === 'LEAD'), retry: false, staleTime: 30_000 })
+  /* ONE "ADD OR CHANGE A GOAL" (page audit row 3, Hafsah, 24 November 2026). The goals themselves, who owns each and what feeds it,
+     are on the priority cards above, so they are not listed a second time. This is the one link; it opens the editor where it stands,
+     and arriving at #goals (Company context) opens it too. */
+  const { hash } = useLocation()
+  const [shown, setShown] = useState(hash === '#goals')
   const [open, setOpen] = useState<string | null>(null)
   if (!data?.mayChange) return null
   const goals = data.goals ?? []
-  const heading = data.mayChooseOwner ? 'Add or change a goal' : 'Your goals, and the check-ins that feed them'
+  if (!shown) {
+    return <p className="t-small"><button type="button" className="gwui-plain-link gwui-tap-44" onClick={() => setShown(true)}>Add or change a goal</button></p>
+  }
   return (
-    <Section heading={heading} action={open ? undefined : <Button kind="secondary" size="small" onClick={() => setOpen('new')}>Add a goal</Button>}>
-      {open === 'new' && <AGoalForm data={data} onDone={() => setOpen(null)} />}
-      {goals.length === 0 ? (
-        <Empty>{data.mayChooseOwner ? 'There are no goals on the Desk yet. Add the first one, and choose the check-ins that feed it.' : 'You do not own a goal on the Desk yet. Add one, and choose which of your check-ins feed it.'}</Empty>
-      ) : (
-        <RowList label={heading}>
-          {goals.map(g => (
-            <Row key={g.id} columns="minmax(0, 1fr) auto">
-              <div>
-                <b>{g.title}</b>
-                <p className="gwui-panel-text">{aGoalsLine(g)}</p>
-                {open === g.id && <AGoalForm data={data} goal={g} onDone={() => setOpen(null)} />}
-              </div>
-              {open !== g.id && <button type="button" className="gwui-plain-link gwui-tap-44" onClick={() => setOpen(g.id)} aria-label={`Change ${g.title}`}>Change it</button>}
-            </Row>
-          ))}
-        </RowList>
-      )}
-    </Section>
+    <div id="goals">
+      <Section heading="Add or change a goal" action={open ? undefined : <Button kind="secondary" size="small" onClick={() => setOpen('new')}>Add a goal</Button>}>
+        {open === 'new' && <AGoalForm data={data} onDone={() => setOpen(null)} />}
+        {goals.length > 0 && (
+          <RowList label="Goals you can change">
+            {goals.map(g => (
+              <Row key={g.id} columns="minmax(0, 1fr) auto">
+                <div>
+                  <b>{g.title}</b>
+                  {open === g.id && <AGoalForm data={data} goal={g} onDone={() => setOpen(null)} />}
+                </div>
+                {open !== g.id && <button type="button" className="gwui-plain-link gwui-tap-44" onClick={() => setOpen(g.id)} aria-label={`Change ${g.title}`}>Change it</button>}
+              </Row>
+            ))}
+          </RowList>
+        )}
+      </Section>
+    </div>
   )
 }
 
