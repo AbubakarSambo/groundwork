@@ -173,7 +173,7 @@ export function BetweenCheckIns({ groundLabel, myCheckIns, groundId, canChangeTh
             onSend={send}
             disabled={mode === 'note' ? addNote.isPending : asking}
             sendDisabled={!draft.trim() || (mode === 'note' ? addNote.isPending : asking)}
-            placeholder={mode === 'note' ? WRITE_ANYTHING_YOU_WANT_ME_TO_REMEMBER : 'Ask, or add a note'}
+            placeholder={WRITE_ANYTHING_YOU_WANT_ME_TO_REMEMBER}
             sendLabel={mode === 'note' ? 'Save' : 'Send'}
           />
         }
@@ -214,7 +214,7 @@ export function BetweenCheckIns({ groundLabel, myCheckIns, groundId, canChangeTh
                         <Button kind="quiet" onClick={() => setConfirmDeleteId(null)}>Keep it</Button>
                       </>
                     ) : (
-                      <Button kind="quiet" onClick={() => setConfirmDeleteId(n.id)}>Delete</Button>
+                      <Button kind="quiet" aria-label="Delete this note" onClick={() => setConfirmDeleteId(n.id)}>Delete</Button>
                     )}
                   </div>
                 </li>
