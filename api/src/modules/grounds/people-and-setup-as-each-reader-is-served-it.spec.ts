@@ -83,7 +83,7 @@ describe('the lead, Grace, reads the whole page', () => {
       { participantId: 'p-joseph', says: "Nobody has described Joseph Mutua's role here, so Joseph gets the general questions.", fix: 'add-their-role' },
       { participantId: 'p-peter', says: "Peter Ouma can't start, because the invitation to Peter bounced.", fix: 'fix-the-address' },
     ]);
-    expect(r.sessions).toBe('3 of 18 sessions done. Sessions already done are never removed.');
+    expect(r.sessions).toBe('3 of 18 sessions done.');
     /* The number that sentence says, served beside it, so the lead's own count can be read as hers (22 November 2026). */
     expect(r.teamSessionsDone).toBe(3);
     expect(r.joinedWithTheLink).toBe('1 person has answered with it.');

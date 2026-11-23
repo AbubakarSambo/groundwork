@@ -111,17 +111,22 @@ describe('Wanjiru, who runs it', () => {
     /* The first render of the whole page takes over a second on one worker; the default wait of one second ran out before it. */
     await waitFor(() => expect(whatItIs().getByText('Groundwork read this from what you wrote when setting it up. Save changes to confirm it.')).toBeTruthy(), { timeout: 5000 })
     expect(whatItIs().getByText('Collect what’s owed')).toBeTruthy()
+    /* One line with "Change" now (page audit, 24 November 2026, row 2): the choices are listed once "Change" is pressed. */
+    expect(whatItIs().queryByLabelText('Kind of work')).toBeNull()
+    fireEvent.click(whatItIs().getByRole('button', { name: 'Change, Kind of work' }))
     const kind = whatItIs().getByLabelText('Kind of work') as HTMLSelectElement
     expect([...kind.options].map((o) => o.textContent)).toEqual(['Fee notes and invoices', 'Loan repayments'])
     expect(kind.value).toBe('invoices or fee notes')
-    expect(whatItIs().getByText('The scenario and kind of work decide the board, the reports, and what each check-in asks about.')).toBeTruthy()
+    /* No sentence explains the page any more (page audit, 24 November 2026, row 2). */
+    expect(whatItIs().queryByText('The scenario and kind of work decide the board, the reports, and what each check-in asks about.')).toBeNull()
     expect(groundsApi.confirmTheType).not.toHaveBeenCalled()
   })
 
   it('saving stores the kind of work she chose as confirmed, and nothing is stored before she saves', async () => {
     ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_WANJIRU)
     renderPage(props())
-    await waitFor(() => expect(whatItIs().getByLabelText('Kind of work')).toBeTruthy(), { timeout: 5000 })
+    await waitFor(() => expect(whatItIs().getByRole('button', { name: 'Change, Kind of work' })).toBeTruthy(), { timeout: 5000 })
+    fireEvent.click(whatItIs().getByRole('button', { name: 'Change, Kind of work' }))
     fireEvent.change(whatItIs().getByLabelText('Kind of work'), { target: { value: 'loans' } })
     expect(groundsApi.confirmTheType).not.toHaveBeenCalled()
     fireEvent.click(screen.getAllByRole('button', { name: 'Save changes' })[0])
@@ -137,6 +142,7 @@ describe('an admin who does not run it', () => {
     await waitFor(() => expect(whatItIs().getByText('Groundwork read this from what Wanjiru wrote when setting it up. Wanjiru has not confirmed it yet.')).toBeTruthy(), { timeout: 5000 })
     expect(whatItIs().getByText('Fee notes and invoices')).toBeTruthy()
     expect(whatItIs().queryByLabelText('Kind of work')).toBeNull()
+    expect(whatItIs().queryByRole('button', { name: 'Change, Kind of work' })).toBeNull()
   })
 })
 
@@ -145,7 +151,8 @@ describe('with Release 2 off', () => {
     const { checkInType: _gone, ...asBefore } = SERVED_TO_WANJIRU
     ;(groundsApi.peopleAndSetup as any).mockResolvedValue(asBefore)
     renderPage(props({ ground: { ...FEE_NOTES, scenario: 'PULSE_CHECK', kindOfWork: 'sales team' }, groundScenario: 'PULSE_CHECK' }))
-    await waitFor(() => expect(whatItIs().getByLabelText('Kind of work')).toBeTruthy(), { timeout: 5000 })
+    await waitFor(() => expect(whatItIs().getByRole('button', { name: 'Change, Kind of work' })).toBeTruthy(), { timeout: 5000 })
+    fireEvent.click(whatItIs().getByRole('button', { name: 'Change, Kind of work' }))
     const kind = whatItIs().getByLabelText('Kind of work') as HTMLSelectElement
     expect([...kind.options].map((o) => o.value)).toEqual(['', 'sales team', 'sales org'])
     expect(whatItIs().queryByText(/Save changes to confirm it/)).toBeNull()
@@ -162,7 +169,9 @@ describe('Wanjiru, who runs it and checks in herself, reads her own count beside
   it('her own sessions, then the sessions the team has finished, as served', async () => {
     ;(groundsApi.peopleAndSetup as any).mockResolvedValue({ ...SERVED_TO_WANJIRU, sessions: '1 of 12 sessions done. Sessions already done are never removed.', teamSessionsDone: 1 })
     renderPage(props({ mySessionsDone: 3, plannedSessions: 12 }))
-    await waitFor(() => expect(screen.getByText('1 of 12 sessions done. Sessions already done are never removed.')).toBeTruthy(), { timeout: 5000 })
-    expect(screen.getByText('You have checked in for 3 of the 12 sessions. The team has finished 1.')).toBeTruthy()
+    /* Changed (page audit, 24 November 2026, row 2): the team's count is on the "How long" line, and her own is the status on her own
+       row of "Who's in it", said once; the "Your check-ins" line that repeated both went. */
+    await waitFor(() => expect(screen.getByText(/1 of 12 sessions done\./)).toBeTruthy(), { timeout: 5000 })
+    expect(screen.getByText('You have checked in for 3 of the 12 sessions.')).toBeTruthy()
   })
 })

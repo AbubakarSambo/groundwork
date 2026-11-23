@@ -67,9 +67,10 @@ beforeEach(() => {
 })
 
 describe('the Sessions roster, on the reader\'s own row', () => {
-  it('Rukia reads "Your expectation is set. You have seen it." about herself, and "Expectation set. They have seen it." about Amani', async () => {
+  /* On People and setup's one list now (page audit, 24 November 2026, row 8): the other person's line names its subject too. */
+  it('Rukia reads "Your expectation is set. You have seen it." about herself, and "Their expectation is set. They have seen it." about Amani', async () => {
     renderPage()
     expect(await screen.findByText('Your expectation is set. You have seen it.')).toBeTruthy()
-    expect(await screen.findByText('Expectation set. They have seen it.')).toBeTruthy()
+    expect(await screen.findByText('Their expectation is set. They have seen it.')).toBeTruthy()
   })
 })

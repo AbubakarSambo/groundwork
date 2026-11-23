@@ -32,6 +32,7 @@ import { whatAnAdminHereCanSee } from '@/lib/what-an-admin-here-can-see'
  * because every one of them was rendered correctly by a passing test suite.
  */
 
+const PEOPLE = readFileSync(join(__dirname, 'PeopleAndSetupAsPictured.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
 const SRC = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
@@ -95,7 +96,9 @@ describe('the chat is here at all', () => {
      * content differs by role. The point of this check is that the list KEEPS ITS OWN TAB rather
      * than being folded into the conversation, which is still true.
      */
-    expect(CODE).toMatch(/tab === 'checkins'/)
+    /* Changed (page audit, 24 November 2026, row 8): the list of who has answered is People and setup's one list of people now, so
+       its own key lands there rather than on a second copy of the same people. */
+    expect(CODE).toMatch(/sessions: 'settings'/)
     /* A lead who is also a party sees both: everyone's state, and their own account. */
     expect(groundTabs({ canRunThisCheckIn: true, isAParty: true }).some(t => t.key === 'sessions')).toBe(true)
     expect(groundTabs({ canRunThisCheckIn: true, isAParty: true }).some(t => t.key === 'record')).toBe(true)
@@ -157,7 +160,7 @@ describe('the four things mounting it exposed', () => {
    * person and ordered by session cannot produce that.
    */
   it('each person\'s sessions run in order along their row', () => {
-    expect(CODE).toMatch(/\(a\.sessionNumber \?\? 0\) - \(b\.sessionNumber \?\? 0\)/)
+    expect(PEOPLE).toMatch(/\(a\.sessionNumber \?\? 0\) - \(b\.sessionNumber \?\? 0\)/)
   })
 
   /** And they are that person's sessions, not everybody's. This is the BUG7 protection, structural. */
@@ -165,7 +168,7 @@ describe('the four things mounting it exposed', () => {
     /* B-080: `&& !c.isSetup` added - a set-up row is not a session (see
        one-row-per-person-per-session.spec.ts for the full reason). Still filtered to this one
        person, which is what this test protects. */
-    expect(CODE).toMatch(/\.filter\(\(c: any\) => c\.participantId === p\.id && !c\.isSetup\)/)
+    expect(PEOPLE).toMatch(/\.filter\(\(c: any\) => c\.participantId === p\.id && !c\.isSetup\)/)
   })
 
   it('the history computation this protected is gone, not fixed twice', () => {
@@ -210,7 +213,8 @@ describe('the four things mounting it exposed', () => {
 
   /** A person's row is labelled from their own record, which is stronger than resolving an id. */
   it('and a row is labelled from the participant it belongs to', () => {
-    expect(CODE).toContain('{personLabel(p)}')
+    /* On People and setup's one list (page audit, 24 November 2026, row 8), from whereThisPersonIs. */
+    expect(PEOPLE).toContain('{row.name}')
   })
 
   /**

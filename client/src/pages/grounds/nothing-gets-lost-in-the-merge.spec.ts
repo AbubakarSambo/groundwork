@@ -42,6 +42,9 @@ import { describe, it, expect } from 'vitest'
  */
 const PAGES = [
   'GroundAdminPage.tsx',
+  /* The roster of "Who has answered" folded into People and setup's one list (page audit, 24 November 2026, row 8): ending early,
+     the invite link and who asked to join moved with it. This guard fired for each of them, which is what it is for. */
+  'PeopleAndSetupAsPictured.tsx',
   'GroundParticipantPage.tsx',
   '../report/ReportPage.tsx',
   '../board/BoardPage.tsx',

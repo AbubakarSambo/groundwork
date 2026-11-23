@@ -24,7 +24,8 @@ const strip = (f: string) =>
   readFileSync(join(__dirname, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '')
 
 const SCREENS = {
-  'the roster': strip('GroundAdminPage.tsx'),
+  /* Approving a request to join moved with the roster to People and setup (page audit, 24 November 2026, row 8). */
+  'the roster': strip('GroundAdminPage.tsx') + strip('PeopleAndSetupAsPictured.tsx'),
   'the setup flow': strip('CreateGroundPage.tsx'),
   /*
    * MOVED FROM THE DEAD REPORT BODY (1 October 2026). The report's own add-a-hidden-contributor

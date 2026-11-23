@@ -36,41 +36,30 @@ const BOARD = strip(readFileSync(join(__dirname, '..', 'board', 'BoardPage.tsx')
 /* 4 November 2026: the docs tab is one element now, `{tab === 'docs' && <ReferencesAndResourcesPage ... />}` (Release 1B's
    switch went), so the slice ends at "{tab === 'docs' &&" rather than "{tab === 'docs' && (", which no longer exists: with
    the old anchor the slice ran to the end of the file and took in the report tab's own "Add a person". */
-const SESSIONS_END = ADMIN.indexOf("{tab === 'docs' &&")
-const SESSIONS_TAB = ADMIN.slice(ADMIN.indexOf("{tab === 'checkins' && ("), SESSIONS_END)
 const SETUP_TAB = ADMIN.slice(ADMIN.indexOf("{tab === 'settings' && ("), ADMIN.indexOf('{shareCodeModalOpen && ('))
+const PEOPLE = strip(readFileSync(join(__dirname, 'PeopleAndSetupAsPictured.tsx'), 'utf8'))
 
+/*
+ * THE SESSIONS TAB IS GONE (page audit, 24 November 2026, row 8, approved by Hafsah): "Who has answered" listed all fourteen people a
+ * second time, so it folded into People and setup's one list. Each person's check-in dots and "Copy check-in link" are on their row
+ * there, and the closing control moved with it.
+ */
 describe('the sessions tab', () => {
-  it('reads the real slices, so an empty one cannot pass', () => {
-    expect(SESSIONS_END).toBeGreaterThan(ADMIN.indexOf("{tab === 'checkins' && ("))
-    expect(SESSIONS_TAB.length).toBeGreaterThan(2000)
+  it('has no tab of its own, and its key lands on People and setup', () => {
+    expect(ADMIN).not.toContain("{tab === 'checkins' && (")
+    expect(ADMIN).toMatch(/sessions: 'settings'/)
     expect(SETUP_TAB.length).toBeGreaterThan(2000)
   })
 
-  it('no longer carries the alignment feed', () => {
-    expect(SESSIONS_TAB).not.toContain('Alignment feed')
+  it('keeps the closing control, worded with the plain word "check-in", on People and setup', () => {
+    expect(PEOPLE).toContain('End early with a last check-in')
+    expect(PEOPLE).toContain('groundsApi.beginClosingSession(groundId)')
   })
 
-  it('no longer carries a second entrance to adding a person', () => {
-    expect(SESSIONS_TAB).not.toContain('Add a person')
+  it('and each row keeps its check-in dots and "Copy check-in link"', () => {
+    expect(PEOPLE).toContain('Copy check-in link')
+    expect(PEOPLE).toContain('gwui-tag-control')
   })
-
-  it('and no longer carries the broadcast link', () => {
-    expect(SESSIONS_TAB).not.toContain('<ShareSection')
-  })
-
-  it('but keeps the closing control, worded with the plain word "check-in"', () => {
-    /*
-     * WORDING UPDATED (group 3's review, request batch A, fault 6): "session" is internal jargon
-     * on a button a lead presses; the product calls the thing a person answers a "check-in"
-     * everywhere else on this screen ("Start a new check-in"). This does not reopen the settled
-     * "session" vs "round" naming (one-word-and-it-is-session.spec.ts) - that is a different axis.
-     */
-    expect(SESSIONS_TAB).toContain('End early with a last check-in')
-  })
-})
-
-describe('where they went', () => {
   it('the ways in are together, in "Who\'s in it"', () => {
     /*
      * REPOINTED (People and setup rebuild, 29 Sept): Setup's numbered "band 1" is gone with the

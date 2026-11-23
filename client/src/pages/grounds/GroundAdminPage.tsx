@@ -1,5 +1,4 @@
 import { AnAdminDecidesWhetherItStarts } from './an-admin-decides-whether-it-starts'
-import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
 import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
 import { scrollToId } from '@/lib/scroll-to'
 import { whenItRunsOut, sayHowLongIsLeft } from '@/lib/when-it-runs-out'
@@ -13,9 +12,8 @@ import { ReferencesAndResourcesPage } from './ReferencesAndResources'
 import { MyWorkPage } from './MyWorkPage'
 import { REFERENCES_AND_RESOURCES } from '@/lib/the-references-tab'
 import { YourWork } from '@/components/gw/checkin/YourWork'
-import { Note, Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty, Folded, Modal, Skeleton } from '@/components/gw/ui'
+import { Note, Callout, Button, Panel, Stack, Empty, Folded, Modal, Skeleton } from '@/components/gw/ui'
 import { theClosingAfterYourFirstCheckIn, takeTheFirstCheckInClosing, theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
-import { initialsOf } from '@/pages/org/people-here'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
@@ -26,31 +24,22 @@ import { personLabel as onePersonsLabel, peopleLabels, atTheStart } from '@/lib/
 import { TheReportIsAListOfSessions, type SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
 import { buildSessionRows } from '@/lib/session-rows'
 import { reportsApi } from '@/api/reports'
-import { conversationApi } from '@/api/conversation'
-import { participantRequestsApi } from '@/api/participantRequests'
 import { participantsApi } from '@/api/participants'
-import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
-import { waitsForItsStart } from '@/lib/the-leads-note'
 import { useOpenSession } from '@/hooks/useOpenSession'
 import { SessionPaywallModal } from '@/components/gw/checkin/SessionPaywallModal'
 import { BetweenCheckIns } from '@/components/gw/BetweenCheckIns'
 import { UntilTheNextOne } from '@/components/gw/UntilTheNextOne'
 import { ChatPage } from '@/pages/chat/ChatPage'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
-import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { Page } from '@/components/gw/ui/Page'
 import { billingApi } from '@/api/billing'
 import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
 import { rememberWhoWasNotInvited } from './who-was-not-invited'
 import { TheyWereNotInvited } from './TheyWereNotInvited'
-import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
-import { copy } from '@/components/gw/copying-can-fail'
-import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { SendTheReportToEveryone } from '@/components/gw/SendTheReportToEveryone'
-import { numberUpToTenInWords } from '@/lib/a-number-up-to-ten-in-words'
 import { GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
 
 /**
@@ -95,7 +84,7 @@ export const MOMENT_LABELS: Record<string, string> = {
  * being deleted: a lead scanning twelve sessions for who has not checked in wants the
  * list, and that is a genuinely different question from reading what was said.
  */
-type Tab = 'chat' | 'overview' | 'checkins' | 'myrecord' | 'docs' | 'report' | 'settings'
+type Tab = 'chat' | 'overview' | 'myrecord' | 'docs' | 'report' | 'settings'
 
 /**
  * The shared tab keys from `ground-tabs.ts`, and this page's own older names for the same tabs.
@@ -103,7 +92,7 @@ type Tab = 'chat' | 'overview' | 'checkins' | 'myrecord' | 'docs' | 'report' | '
  * means.
  */
 const FROM_TAB_KEY: Record<string, Tab> = {
-  chat: 'chat', report: 'report', sessions: 'checkins', context: 'docs', settings: 'settings',
+  chat: 'chat', report: 'report', sessions: 'settings', checkins: 'settings', context: 'docs', settings: 'settings',
   /**
    * B-223: `?tab=mywork` AND `?tab=people` ARE THE OUTER TAB ROW'S OWN KEYS (see `outerTabOf`
    * and the tab row's definition below), not in this map before now - so a link carrying either
@@ -133,7 +122,7 @@ const FROM_TAB_KEY: Record<string, Tab> = {
   record: 'myrecord',
 }
 const TO_TAB_KEY: Partial<Record<Tab, string>> = {
-  chat: 'chat', report: 'report', checkins: 'sessions', myrecord: 'record', docs: 'context', settings: 'settings',
+  chat: 'chat', report: 'report', myrecord: 'record', docs: 'context', settings: 'settings',
 }
 
 
@@ -206,7 +195,7 @@ export function GroundAdminPage() {
    */
   const [tab, setTab] = useState<Tab>(() => {
     const asked = searchParams.get('tab') ?? ''
-    return FROM_TAB_KEY[asked] ?? (['chat', 'checkins', 'docs', 'report', 'settings'].includes(asked) ? (asked as Tab) : 'chat')
+    return FROM_TAB_KEY[asked] ?? (['chat', 'docs', 'report', 'settings'].includes(asked) ? (asked as Tab) : 'chat')
   })
   /*
    * THE CURRENT TAB, READABLE FROM INSIDE AN ALREADY-IN-FLIGHT REQUEST. `tab` itself is fine for
@@ -284,8 +273,6 @@ export function GroundAdminPage() {
   // Fix-and-resend for bounced invites (participant must not have accepted)
   const [fixingEmailId, setFixingEmailId] = useState<string | null>(null)
   const [fixingEmailValue, setFixingEmailValue] = useState('')
-  const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
-  const [editingRoleValue, setEditingRoleValue] = useState('')
 
   /*
    * "A PAGE FLASHES FOR A SECOND AND THEN GOES TO THE CHECK-IN PAGE."
@@ -345,18 +332,6 @@ export function GroundAdminPage() {
     .filter((c: any) => ((ground as any)?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
     .sort((a: any, b: any) => (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0))
 
-  /**
-   * EVERYONE WHO ACTUALLY CHECKS IN ON THIS GROUND.
-   *
-   * B-100: A LEAD WHO ONLY MANAGES IS NOT SOMEONE WHO CHECKS IN, AND THE CHECK-IN TAB'S OWN
-   * ROSTER AND "ONCE EVERYBODY IS IN" LINE STILL COUNTED HER. "Your sessions" (B-080) already
-   * leaves her out, but the People list on the Check-ins tab still listed her own row with "Not
-   * started" and "Copy check-in link", and the total it counted against ("once all three people
-   * are in") still carried her, when only the two who answer were ever going to. The same
-   * `managingOnly` exclusion `rail-attention.ts`/`WhosInItRoster.tsx` already apply, here too.
-   */
-  const participantsWhoCheckIn = ((ground as any)?.participants ?? []).filter((p: any) => !p.managingOnly)
-
   /*
    * EVERYBODY ON THIS PAGE, NAMED ONCE (request 36). Their name, else the address the lead typed,
    * never the lead's note about them; with no name "a colleague", or "one colleague", "another
@@ -367,18 +342,6 @@ export function GroundAdminPage() {
   const labelInASentence = (p: any): string => labelsHere.get(p?.id) ?? onePersonsLabel(p)
   /** At the start of a line: "Another colleague". */
   const personLabel = (p: any): string => atTheStart(labelInASentence(p))
-
-  /*
-   * ONE NAME EVERYWHERE SOMEBODY WITH NO SEAT IS SHOWN (walkthrough pass 2, item 1). Only for the
-   * sessions roster below, which used `personLabel` above and so could GUESS a name out of the
-   * address the lead typed ("zawadi.u8@example.test" became "Zawadi U8") - a third answer next to
-   * "Somebody invited by email" on People and setup (WhosInItRoster.tsx) and "A colleague" on the
-   * board, for the very same person. This keeps the same "one colleague"/"another colleague"/"a
-   * third colleague" counting `personLabel` already gives when nobody has an address to show either,
-   * and otherwise falls back to the plain address itself - never a name nobody gave.
-   */
-  const rosterLabels = peopleLabels((ground as any)?.participants ?? [], { forTheLead: true, neverGuessFromAnAddress: true })
-  const nameOnTheRoster = (p: any): string => atTheStart(rosterLabels.get(p?.id) ?? onePersonsLabel(p))
 
   /**
    * ONE ROW PER SESSION, AND WHO EACH ROW IS COUNTING.
@@ -630,10 +593,13 @@ export function GroundAdminPage() {
   useEffect(() => {
     if (isLoading || !ground) return
     if (isInitiator || viewerIsAParty) return
-    const inMyWorkGroup = (['checkins', 'myrecord'] as Tab[]).includes(tab)
+    /* B-143 (Hafsah, 10 October): `?tab=checkins` and `?tab=sessions` send this reader to the board too, though for everybody else they
+       open People and setup's one list now (page audit, 24 November 2026, row 8). */
+    const askedForTheRoster = ['checkins', 'sessions'].includes(searchParams.get('tab') ?? '')
+    const inMyWorkGroup = tab === 'myrecord' || askedForTheRoster
     if (tab !== 'report' && tab !== 'chat' && !inMyWorkGroup) return
     navigate(`/grounds/${id}/board`, { replace: true })
-  }, [isLoading, ground, isInitiator, viewerIsAParty, tab, id, navigate])
+  }, [isLoading, ground, isInitiator, viewerIsAParty, tab, id, navigate, searchParams])
 
   /**
    * A LEAD'S OWN RECORD, FETCHED ONLY WHEN THEY ARE IN THE CHECK-IN.
@@ -694,58 +660,11 @@ export function GroundAdminPage() {
     staleTime: 60 * 1000,
   })
 
-  const { data: pendingRequests = [] } = useQuery({
-    queryKey: ['participant-requests', id],
-    queryFn: () => participantRequestsApi.list(id!),
-    enabled: !!id && isInitiator,
-    retry: false,
-  })
-
   const { data: shareCardData, isLoading: shareCardLoading } = useQuery({
     queryKey: ['contributor-code-share-card', shareCodeId],
     queryFn: () => billingApi.getContributorCodeShareCard(shareCodeId!),
     enabled: !!shareCodeId && shareCodeModalOpen,
     retry: false,
-  })
-
-  const approveRequest = useMutation({
-    // The server already invites the person as part of approving the request
-    // (participant-requests.controller.ts's update() calls grounds.addParticipant
-    // itself on APPROVED) - a second client-side addParticipant call here was
-    // redundant and, since the participant row now exists, hit the "unaccepted
-    // invite" branch and silently re-sent a second invite email for the same
-    // approval.
-    mutationFn: (req: ParticipantRequest) => participantRequestsApi.update(id!, req.id, 'APPROVED'),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['participant-requests', id] })
-      qc.invalidateQueries({ queryKey: ['ground', id] })
-      toast.success('They have been added to the check-in.')
-    },
-    /* See below: the server's own sentence, for the same reason. */
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add them.'),
-  })
-
-  const dismissRequest = useMutation({
-    mutationFn: (reqId: string) => participantRequestsApi.update(id!, reqId, 'DISMISSED'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['participant-requests', id] }),
-    onError: () => toast.error('That request was not dismissed - it is still in the list. Try again.'),
-  })
-
-  const [confirmClosing, setConfirmClosing] = useState(false)
-  const closingSession = useMutation({
-    mutationFn: () => groundsApi.beginClosingSession(id!),
-    onSuccess: (r) => {
-      toast.success(`Closing check-in begun - ${r.participantsFlagged} ${r.participantsFlagged === 1 ? 'person' : 'people'} will do their last one.`)
-      setConfirmClosing(false)
-      qc.invalidateQueries({ queryKey: ['ground', id] })
-    },
-    onError: () => toast.error('The closing check-in did not open. Nothing has changed for anyone - try again.'),
-  })
-
-  const remind = useMutation({
-    mutationFn: (checkInId: string) => conversationApi.remind(checkInId),
-    onSuccess: () => toast.success('Reminder sent'),
-    onError: () => toast.error('The reminder did not go out - nobody has been emailed. Try again.'),
   })
 
   const fixEmail = useMutation({
@@ -791,43 +710,11 @@ export function GroundAdminPage() {
     onError: () => toast.error('It did not send again. The original invite still works - try again in a moment.'),
   })
 
-  const copyInviteLink = useMutation({
-    mutationFn: async (participantId: string) => {
-      const { inviteUrl } = await groundsApi.getParticipantInviteUrl(id!, participantId)
-      if (!(await copy(inviteUrl))) throw new Error('Copying is not available here. Select the link and copy it yourself.')
-      return inviteUrl
-    },
-    onSuccess: () => toast.success('Invite link copied. It is the same link as their email - send it however you like.'),
-    onError: (e: any) =>
-      toast.error(e?.response?.data?.message ?? 'Could not get the invite link.'),
-  })
-
-  /**
-   * And once they have accepted, the same problem with no answer. "Copy invite link" refuses from
-   * that moment on, and the address of an open check-in existed only inside a scheduled email - so
-   * a person who missed that email could not reach their own check-in and the lead could not send
-   * it to them. This copies the link to the one that is open now. It mints nothing.
-   */
-  const copyCheckInLink = useMutation({
-    mutationFn: async (participantId: string) => {
-      const { checkInUrl } = await groundsApi.getParticipantCheckInUrl(id!, participantId)
-      if (!(await copy(checkInUrl))) throw new Error('Copying is not available here. Select the link and copy it yourself.')
-      return checkInUrl
-    },
-    onSuccess: () => toast.success('Check-in link copied. Send it however you like.'),
-    /* The server's sentence, not ours: it knows whether they have no open check-in or have not
-       accepted yet, and those need different things from the lead. */
-    onError: (e: any) =>
-      toast.error(e?.response?.data?.message ?? 'Could not get the check-in link.'),
-  })
-
   const updateRole = useMutation({
     mutationFn: ({ participantId, role }: { participantId: string; role: string }) =>
       participantsApi.updateRole(participantId, role),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['ground', id] })
-      setEditingRoleId(null)
-      setEditingRoleValue('')
       toast.success('Role updated')
     },
     onError: () => toast.error('Their role did not change. Nothing else was altered - try again.'),
@@ -1180,9 +1067,6 @@ export function GroundAdminPage() {
     )
   }
 
-  /* Null while the check-in is live. See lib/a-ground-that-has-ended. */
-  const ended = howItEnded(ground as any)
-
   /* There is no lead page (10 Sep 2026): a ground is open from the moment it is made, and the person
      leading it goes straight to their check-in like everybody else. */
 
@@ -1423,7 +1307,7 @@ export function GroundAdminPage() {
    *   What I shared       -> My work (sub-tab "What I shared", a party only)
    *   Setup              -> People and setup (unchanged content, new label)
    */
-  const inMyWork = (['report', 'checkins', 'myrecord'] as Tab[]).includes(tab)
+  const inMyWork = (['report', 'myrecord'] as Tab[]).includes(tab)
   /**
    * FAULT 3: "MY WORK" HAS TO LAND IN THE SAME PLACE, HOWEVER IT WAS REACHED.
    *
@@ -1928,7 +1812,7 @@ export function GroundAdminPage() {
         {inMyWork && tab !== 'myrecord' && (
           <div className="gwui-button-row">
             {isInitiator && tab !== 'report' && <button type="button" className="gwui-plain-link" onClick={() => goTab('report')}>Every check-in</button>}
-            {isInitiator && tab !== 'checkins' && <button type="button" className="gwui-plain-link" onClick={() => goTab('checkins')}>Who has answered</button>}
+            {isInitiator && <button type="button" className="gwui-plain-link" onClick={() => goTab('settings')}>Who has answered</button>}
             {isInitiator
               ? <button type="button" className="gwui-plain-link" onClick={() => goTab('myrecord')}>Each person’s work</button>
               : viewerIsAParty && <button type="button" className="gwui-plain-link" onClick={() => goTab('myrecord')}>Your own record</button>}
@@ -1944,7 +1828,7 @@ export function GroundAdminPage() {
             /* Everyone this page draws My work for (the lead, or a party on the page that runs it) had these two links before the
                rebuild: a party through YourWork, the lead who does not check in as a row of her own. Both get them here. */
             onEveryCheckIn={() => goTab('report')}
-            onWhoHasAnswered={() => goTab('checkins')}
+            onWhoHasAnswered={() => goTab('settings')}
             rest={(part, self) => (
               <>
                 {/* Every check-in and Who has answered are the lead's, drawn by MyWorkPage in the Your check-ins card. */}
@@ -1981,648 +1865,7 @@ export function GroundAdminPage() {
           />
         )}
 
-        {tab === 'checkins' && (
-          <Stack gap={18}>
-            {/* Who is overdue belongs with who has answered, and Remind is on the rows just below. */}
-            {(ground.overdue ?? 0) > 0 && (
-              <Callout tone="info" title={`${ground.overdue} ${ground.overdue === 1 ? 'person is' : 'people are'} overdue.`}>
-                A missed check-in is not a lost check-in. Use Remind. The most common reason a
-                check-in is missed is that the email went to spam. Their next check-in picks up
-                where they left off.
-              </Callout>
-            )}
-
-            {/*
-              WHO IS IN IT, AND WHO HAS ANSWERED, ARE ONE QUESTION. Moved off Overview.
-              
-              This list sat on a tab of its own while the tab named Sessions listed the sessions -
-              so finding out whether Ben had checked in meant reading one tab for the person and
-              another for the session. Nothing here changed; it is on the tab where the question
-              gets asked.
-              
-              Adding somebody and sharing the join link come with it, because they are the same
-              job: deciding who gives an account of this.
-            */}
-            <Stack gap={18}>
-              {(() => {
-                const bounced = ground.participants.filter((p: any) => p.inviteDeliveryStatus === 'BOUNCED')
-                if (bounced.length === 0) return null
-                return (
-                  <Callout tone="concern" title={bounced.length === 1 ? '1 invite never arrived, because it bounced.' : `${bounced.length} invites never arrived, because they bounced.`}>
-                    Fix the address below and resend it. Until then, {bounced.length === 1 ? 'that person has' : 'those people have'} no way in.
-                  </Callout>
-                )
-              })()}
-              <SubHeading>People</SubHeading>
-              <Stack gap={10}>
-                {participantsWhoCheckIn.map((p: any) => {
-                  const myCheckIn = ground.checkIns?.find(c => c.participantId === p.id)
-                  /**
-                   * EVERY SESSION THIS PERSON HAS, NOT THE FIRST ONE FOUND.
-                   *
-                   * The row's dot came from `.find()` - one check-in per person - so somebody two
-                   * sessions into six showed a single state and the row could not say which session
-                   * it was about. That is why the tab needed a separate flat list of cards underneath
-                   * repeating the same information a different way.
-                   */
-                  /* B-080: a set-up row (`isSetup`) is not a session, the same rule `sessionsDoneBy`
-                     already applies to "Your sessions" - without it, a lead who only manages and
-                     never checks in read "Some sessions done, some still open" from her one
-                     completed set-up row alone. */
-                  const theirSessions = [...(ground.checkIns ?? [])]
-                    .filter((c: any) => c.participantId === p.id && !c.isSetup)
-                    .sort((a: any, b: any) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))
-                  const status = myCheckIn?.status ?? 'NOT_STARTED'
-                  /**
-                   * THE ROW'S STATE IS ALL THEIR SESSIONS, NOT WHICHEVER ONE `.find()` REACHED FIRST.
-                   *
-                   * Seen the moment the cells went in: a row read "Completed" beside a session-2 cell
-                   * that had not started - same person, two statements, one of them false. The label
-                   * had been wrong on its own for as long as anybody had two sessions; it
-                   * only became visible once something true stood next to it.
-                   */
-                  /**
-                   * "EVERY SESSION DONE" MEANS NO SESSION IS STILL TO COME, NOT "EVERY ROW THAT
-                   * EXISTS SO FAR IS COMPLETE". FAULT 2.
-                   *
-                   * `theirSessions.every(...COMPLETED)` is true for somebody who has finished
-                   * session 1 of 6 and has no session-2 row yet, because a row that does not exist
-                   * cannot fail the check. Esther and Kwesi read "Every session done" in session 1
-                   * of 6 for exactly this reason, with a red "Begin the last check-in" sitting right
-                   * below. A person is done only when their completed count reaches the planned
-                   * total (`plannedSessions`, from the cadence and timeline - see sessionCount.ts),
-                   * or the check-in has already ended, in which case there is nothing left to plan
-                   * for anybody.
-                   */
-                  const theirCompletedSessionNumbers = new Set(
-                    theirSessions.filter((c: any) => c.status === 'COMPLETED').map((c: any) => c.sessionNumber),
-                  )
-                  const allDone = theirSessions.length > 0
-                    && theirSessions.every((c: any) => c.status === 'COMPLETED')
-                    && (!!ended || (plannedSessions != null && theirCompletedSessionNumbers.size >= plannedSessions))
-                  const anyGoing = theirSessions.some((c: any) => c.status === 'IN_PROGRESS')
-                  const statusDotClass = allDone ? 'ga-status-dot-done' : anyGoing ? 'ga-status-dot-going' : 'ga-status-dot-waiting'
-                  const statusLabel = allDone
-                    ? 'Every check-in done'
-                    : anyGoing
-                      ? 'A check-in in progress'
-                      : theirSessions.some((c: any) => c.status === 'COMPLETED')
-                        ? 'Some check-ins done, some still open'
-                        : 'Not started'
-                  const sharedReport = p.sharedSoloReport as Record<string, unknown> | null
-                  /* See `nameOnTheRoster` above (walkthrough pass 2, item 1): never a name guessed
-                     out of the address, so this agrees with People and setup and the board about
-                     the same person. Never the lead's note, which is shown below as theirs. */
-                  const name = nameOnTheRoster(p)
-                  /* GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 10: used below so the reader's own
-                     row says "Your expectation", not "They have seen it" about the reader herself. */
-                  const isSelfRow = p.userId === user?.id
-
-                  /*
-                   * WHAT THIS ROW NEEDS YOU TO KNOW BEFORE IT NEEDS YOU TO ACT (group 3, piece 5).
-                   *
-                   * Four states used to read as four differently-coloured pills squeezed between
-                   * the name and the row's own actions - "Email bounced - fix & resend" chief among
-                   * them, a label built by joining a dash onto a fragment. Each is now a plain
-                   * sentence in the same strip PersonRow's own rows use for "something to look at"
-                   * or "a problem": amber for something only an admin or time can fix, red for
-                   * something broken that needs fixing right now.
-                   */
-                  let statusTag: React.ReactNode = null
-                  let help: { tone: 'look' | 'concern'; text: React.ReactNode; action?: React.ReactNode } | undefined
-                  if (!p.userId && p.inviteDeliveryStatus === 'BOUNCED') {
-                    help = fixingEmailId === p.id ? {
-                      tone: 'concern',
-                      text: 'Type the corrected address and send it again.',
-                      action: (
-                        <div className="gwui-button-row">
-                          <TextField
-                            autoFocus
-                            type="email"
-                            value={fixingEmailValue}
-                            onChange={e => setFixingEmailValue(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter' && looksLikeAnAddress(fixingEmailValue)) fixEmail.mutate({ participantId: p.id, email: fixingEmailValue }) }}
-                            placeholder="corrected@email.com"
-                            aria-label={`${name}'s corrected email address`}
-                          />
-                          <Button
-                            kind="secondary"
-                            size="small"
-                            disabled={fixEmail.isPending || !looksLikeAnAddress(fixingEmailValue)}
-                            onClick={() => fixEmail.mutate({ participantId: p.id, email: fixingEmailValue })}
-                          >
-                            {fixEmail.isPending ? 'Sending...' : 'Send it'}
-                          </Button>
-                          <Button kind="quiet" size="small" onClick={() => { setFixingEmailId(null); setFixingEmailValue('') }}>Cancel</Button>
-                        </div>
-                      ),
-                    } : {
-                      tone: 'concern',
-                      text: 'This invitation bounced. Fix the address and send it again.',
-                      action: <Button kind="quiet" size="small" onClick={() => { setFixingEmailId(p.id); setFixingEmailValue(p.email) }}>Fix and resend</Button>,
-                    }
-                  } else if (!p.userId && p.inviteDeliveryStatus === 'COMPLAINED') {
-                    help = { tone: 'concern', text: 'They marked the invitation as spam.' }
-                  } else if (p.awaitingSeat) {
-                    /*
-                      ON THE CHECK-IN, NOT WRITTEN TO. Adding somebody when the account is full no
-                      longer refuses the lead - the person is added and the invitation is held
-                      until an admin makes room. Without a row saying so it reads as "Invite
-                      pending", which is a lie in the direction that matters: the lead waits for a
-                      reply to a mail that was never sent, and chases the person instead of the
-                      admin.
-
-                      PHONE WALK, SCREEN FAULT 1: SAID PLAINLY, WITH THEIR NAME - the same sentence
-                      WhosInItRoster.tsx (People and setup's own roster) now says about the same
-                      state, so the two cannot disagree. No Resend is offered here either (the
-                      Resend button below is already gated on `!p.awaitingSeat`).
-                    */
-                    help = {
-                      tone: 'look',
-                      action: <Button kind="quiet" size="small" onClick={() => navigate('/org/members')}>Go to People</Button>,
-                      text: `${name} is waiting for a seat on your plan. They will get their invitation as soon as there is one.`,
-                    }
-                  } else if (!p.userId) {
-                    statusTag = <Tag tone="plain">{p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered' : 'Invite pending'}</Tag>
-                  } else if (p.user?.awaitingOrgApproval) {
-                    /*
-                      WAITING ON YOUR ORGANISATION, NOT ON THEM. "You see pending org approval and
-                      not pending check-in." This row said "Invite pending" for somebody whose
-                      invitation had gone out and who is held by an admin in the lead's OWN
-                      organisation - so the lead reads it as the person ignoring their email, and
-                      chases the wrong thing. It goes where the approval is, because a lead can do
-                      nothing about it from here and an admin can do it in two clicks.
-
-                      GROUP 3'S REVIEW, CONTRADICTION 3: SAID AS IF NOBODY READING IT COULD BE THE
-                      ADMIN. Rukia is an admin of this organisation, so this exact wait is also
-                      what People and setup's own roster (WhosInItRoster.tsx) tells her, in words
-                      true of her: "You can let Faraji Odhiambo in on People." This row used to say
-                      "Waiting on your organisation. An admin there has to let them in." to her too
-                      - true of a lead who is not an admin, false of the admin reading it about
-                      herself. Same check as that roster (`isOrgAdmin`), same true sentence.
-                    */
-                    help = {
-                      tone: 'look',
-                      action: <Button kind="quiet" size="small" onClick={() => navigate('/org/members')}>Go to People</Button>,
-                      text: isOrgAdmin
-                        ? `You can let ${name} in on People.`
-                        : 'Waiting on your organisation. An admin there has to let them in.',
-                    }
-                  }
-
-                  return (
-                    <div key={p.id}>
-                      <div className="ga-participant-row">
-                        <div className="gwui-person-head">
-                        <div className={`ga-status-dot ${statusDotClass}`} title={statusLabel} />
-                        <Avatar initials={initialsOf(name)} />
-                        <div className="ga-name-cell">
-                          <div className="gwui-person-name">{name}</div>
-                          {/* `name` already IS the plain email where there is no real name to show
-                              (`nameOnTheRoster`), so the email line underneath would only repeat
-                              it; shown only when the heading reads something other than the address. */}
-                          {name !== p.email && (
-                            <div className="gwui-person-email">{p.email}</div>
-                          )}
-                          {/*
-                            A BARE NAME SAYS NOTHING ABOUT WHERE THEY ARE (U.8 re-review).
-                            WhoIsStillOut already says this as a full sentence ("Amani has not
-                            joined yet."); this roster printed the name on its own with nothing
-                            after it, so somebody who has never opened the invite looked identical
-                            to somebody mid-session. Same fact, same words, here too.
-                          */}
-                          {!p.userId && (
-                            <div className="gwui-note">{atTheStart(name)} has not joined yet.</div>
-                          )}
-                          {editingRoleId === p.id ? (
-                            <div className="gwui-button-row">
-                              <TextField
-                                autoFocus
-                                value={editingRoleValue}
-                                onChange={e => setEditingRoleValue(e.target.value)}
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter') updateRole.mutate({ participantId: p.id, role: editingRoleValue })
-                                  if (e.key === 'Escape') { setEditingRoleId(null); setEditingRoleValue('') }
-                                }}
-                                aria-label={`${name}'s role, as described`}
-                              />
-                              <Button kind="quiet" size="small" onClick={() => updateRole.mutate({ participantId: p.id, role: editingRoleValue })}>Save</Button>
-                              <Button kind="quiet" size="small" onClick={() => { setEditingRoleId(null); setEditingRoleValue('') }}>Cancel</Button>
-                            </div>
-                          ) : (
-                            <div className="gwui-button-row">
-                              {/* "Your note" to the lead who wrote it, never to an admin (U.7 review). */}
-                              {isInitiator && p.roleAsDescribed && <TheLeadsNote role={p.roleAsDescribed} className="gwui-note" />}
-                              {/* What someone is answerable for is the lead's to set, or their own.
-                                  Every party could edit every other party's remit, on a ground
-                                  that may be deciding whether they keep their job.
-                                  REVIEW ROUND 3, ITEM 5: THE BARE "✎" HAD NO WORDS - a title
-                                  attribute is not read until a mouse hovers it, so on a phone, or
-                                  for anyone not hovering, this was an unlabelled glyph. */}
-                              {(isInitiator || p.userId === user?.id) && (
-                                <Button kind="quiet" size="small" onClick={() => { setEditingRoleId(p.id); setEditingRoleValue(p.roleAsDescribed ?? '') }}>
-                                  <span aria-hidden>✎</span> Edit
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                          {/* Says the same thing as the dot, and now it is true of every session. */}
-                          <div className="gwui-note">{statusLabel}</div>
-                        </div>
-                        </div>
-                        <div className="gwui-button-row">
-                        {/* Chasing people is the lead's job. A peer nudging a peer
-                            on an evaluation ground is a different act entirely.
-                            REVIEW ROUND 3, ITEM 5: NOT FOR HERSELF. `p.userId !== user?.id` was
-                            missing, so a lead whose own session was still open saw "Remind" on
-                            her own row - there is nobody to remind there but her. */}
-                        {isInitiator && myCheckIn?.id && status !== 'COMPLETED' && p.userId && p.userId !== user?.id && (
-                          <Button kind="quiet" size="small" onClick={() => remind.mutate(myCheckIn.id)}>Remind</Button>
-                        )}
-                        {statusTag}
-                        {/* Available for anyone who has not joined yet, whatever
-                            the delivery status says - "delivered" only means the
-                            mail server accepted it, not that a person saw it.
-                            WALKTHROUGH PASS 2, ITEM 1: NOT FOR SOMEBODY WITH NO SEAT. Their
-                            invitation has never gone out (p.awaitingSeat, same rule the "Resend
-                            invite" button below already needs), so there is no invite link to copy
-                            yet - `help` already says what is actually true, that a seat has to be
-                            freed first. */}
-                        {isInitiator && !p.userId && !p.awaitingSeat && (
-                          <Button
-                            kind="quiet"
-                            size="small"
-                            disabled={copyInviteLink.isPending}
-                            onClick={() => copyInviteLink.mutate(p.id)}
-                          >
-                            {copyInviteLink.isPending && copyInviteLink.variables === p.id ? 'Copying...' : 'Copy invite link'}
-                          </Button>
-                        )}
-                        {/* Once they have accepted, every action above goes quiet - each one is
-                            gated on not having joined. This is the row's only action from that
-                            point, and it answers the same question: they cannot find it, send it
-                            to them. */}
-                        {isInitiator && p.userId && (
-                          <Button
-                            kind="quiet"
-                            size="small"
-                            disabled={copyCheckInLink.isPending}
-                            onClick={() => copyCheckInLink.mutate(p.id)}
-                          >
-                            {copyCheckInLink.isPending && copyCheckInLink.variables === p.id ? 'Copying...' : 'Copy check-in link'}
-                          </Button>
-                        )}
-                        {/*
-                          The plainer action, and the one a lead reaches for first: send it again.
-                          Sits before "Copy invite link" in importance but after it in the row, so
-                          the existing habit is not moved out from under anybody.
-                        */}
-                        {/* U.6 review: not for an invitation still waiting for its start day. */}
-                        {isInitiator && !p.userId && waitsForItsStart(p as any) && (
-                          <span className="gwui-note">Their invitation goes out on the morning the check-in starts.</span>
-                        )}
-                        {/*
-                          WALKTHROUGH PASS 2, ITEM 1: NOT "RESEND" FOR SOMETHING NEVER SENT. With no
-                          seat for them, there is no earlier invitation to send again - `help` above
-                          already says the true thing (a seat has to be freed first, with "Go to
-                          People" for an admin). `waitsForItsStart` already returns false for
-                          `p.awaitingSeat` (the-leads-note.ts), which is why this read as "Resend
-                          invite" rather than the held-invitation note just above; excluded here too,
-                          directly, so the two conditions stay a true pair however that helper changes.
-                        */}
-                        {isInitiator && !p.userId && !p.awaitingSeat && !waitsForItsStart(p as any) && (
-                          <Button
-                            kind="quiet"
-                            size="small"
-                            disabled={resendInvite.isPending}
-                            onClick={() => resendInvite.mutate(p.id)}
-                          >
-                            {resendInvite.isPending && resendInvite.variables === p.id ? 'Sending...' : 'Resend invite'}
-                          </Button>
-                        )}
-                        </div>
-                      </div>
-                      {help && (
-                        <div className={`gwui-person-help gwui-person-help-${help.tone} ga-row-indent`}>
-                          <span>{help.text}</span>
-                          {help.action}
-                        </div>
-                      )}
-                      {/*
-                        ONE ROW PER PERSON, A CELL PER SESSION. The grid this tab was meant to be.
-                        
-                        Who is in it and who has answered were two lists on one tab: a roster with a
-                        single status dot, and a flat run of session cards below it. Neither could
-                        answer "where has each person got to" - the roster because it showed one
-                        session, the cards because they were sorted by session and not by person.
-                        
-                        The cell is the answer: green done, amber in progress, hollow not started, and
-                        your own open session is the one you can click.
-                      */}
-                      {theirSessions.length > 0 && (
-                        <div className="gwui-button-row ga-row-indent">
-                          {/* Two bare numerals sat under a person's name with the meaning in a tooltip nobody hovers.
-   The row says what it is.
-   REVIEW ROUND 3, ITEM 5: NOT SHOUTED IN CAPITALS - CLAUDE.md's wording rule keeps labels
-   in plain sentence case everywhere a person reads them. */}
-                          <span className="gwui-note">Check-ins</span>
-                          {theirSessions.map((ci: any) => {
-                            const done = ci.status === 'COMPLETED'
-                            const going = ci.status === 'IN_PROGRESS'
-                            /*
-                             * YOUR OWN FINISHED SESSION IS WHERE YOUR REPORT IS, AND IT WAS THE ONE
-                             * CELL YOU COULD NOT CLICK.
-                             *
-                             * `&& !done` made a completed session of your own unclickable, so the
-                             * private report you read the moment you finished had no way back to it:
-                             * "I cannot find the report that popped up after I was done with my
-                             * first check-in, once it closes I have no idea where it went."
-                             *
-                             * It is not in the Report tab and never was - that tab holds the SHARED
-                             * report, which does not exist until everyone has checked in. The
-                             * private one lives on the session itself, and /checkin/:id renders it
-                             * for a completed check-in already. Nothing linked there.
-                             *
-                             * Somebody else's session stays unclickable, done or not. That is the
-                             * wall, and it is the reason this condition existed at all.
-                             */
-                            const isMine = p.userId === user?.id
-                            const tone = done ? 'proven' : going ? 'attention' : 'plain'
-                            return (
-                              <button
-                                key={ci.id}
-                                disabled={!isMine}
-                                onClick={isMine ? () => navigate(`/checkin/${ci.id}`, {
-                                  state: { sessionNumber: ci.sessionNumber, isFinal: ci.isFinal ?? false, groundLabel: ground.label, groundId: id, isInitiator: isInitiator },
-                                }) : undefined}
-                                title={`Check-in ${ci.sessionNumber}: ${done ? `completed${ci.completedAt ? ' ' + whenItWas(ci.completedAt, 'dayAndMonthLong') : ''}` : going ? 'in progress' : 'not started'}${isMine ? (done ? ' - yours, open it to read your report' : ' - yours, open it') : ` - only ${p.email} can open their own check-in`}`}
-                                aria-label={`Check-in ${ci.sessionNumber}: ${done ? 'completed' : going ? 'in progress' : 'not started'}${isMine ? ', yours' : `, only ${p.email} can open it`}`}
-                                className={`tag ${({ proven: 'rec', attention: 'att', plain: 'plain' } as const)[tone]} gwui-tag-control`}
-                              >
-                                {ci.sessionNumber}
-                              </button>
-                            )
-                          })}
-                          {/*
-                            WHAT IS EXPECTED OF THEM, AS A STATE. One line, three answers, and the
-                            words themselves live on Context where everyone reads them - a target is
-                            not set on any tab any more, it comes out of the lead's own conversation.
-
-                            "Seen" is the one that matters: being measured against something you have
-                            never laid eyes on is a different problem from disagreeing with it.
-                          */}
-                          {/*
-                            THE STATE HERE, THE WORDS ON CONTEXT. A row says whether anything is
-                            expected of this person and whether they have laid eyes on it; the
-                            expectation itself is published where everyone reads it, which is the
-                            point of publishing it at all. So the state is a link to the words rather
-                            than a summary of them.
-                          */}
-                          <Button kind="quiet" size="small" onClick={() => setTab('docs')}>
-                            {/* Read on the Sessions tab, directly under "Some sessions done, some still
-                                open": "nothing expected of them yet". Two facts about two different
-                                things, and the second did not say which thing. It is about the
-                                EXPECTATION, so it says so.
-                                REVIEW ROUND 3, ITEM 5: A SENTENCE, CAPITALISED, WITH A FULL STOP -
-                                it read as a lowercase fragment trailing off the row above it. */}
-                            {/*
-                              GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 10: ON THE READER'S OWN
-                              ROW, "THEY" IS HER. Rukia's own row on this roster (she is a
-                              participant in her own check-in, same as anybody else) read
-                              "Expectation set. They have seen it." about herself - a third person
-                              where the reader is the first. It now reads "Your expectation is set."
-                              on her own row, the same rule YourWork already uses for a reader's own
-                              line (batch A, fault 6).
-                            */}
-                            {!p.objective?.text?.trim()
-                              ? (isSelfRow ? 'No expectation set for you yet.' : 'No expectation set for them yet.')
-                              : p.objective.seenBySubject
-                                ? (isSelfRow ? 'Your expectation is set. You have seen it.' : 'Expectation set. They have seen it.')
-                                : (isSelfRow ? 'Your expectation is set. You have not seen it yet.' : 'Expectation set. Not seen yet.')}
-                          </Button>
-                        </div>
-                      )}
-                      {sharedReport && (
-                        <div className="ga-row-indent">
-                          <Panel className="gwui-panel-dark">
-                            <SubHeading tone="dark">{personLabel(p)}'s private report, shared by them</SubHeading>
-                            {/* The same walk the participant's own page does. One component now, so the
-                                report cannot read differently depending on who is looking at it. */}
-                            <SoloReportBody report={sharedReport as Record<string, unknown>} dense />
-                          </Panel>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </Stack>
-            </Stack>
-
-            {/*
-              WHAT THIS SAID WAS NOT TRUE, AND THE PAGE ALREADY SAID THE REST OF IT.
-              "We should have a forming report, why do you have this here, we address this a
-              million times." The line claimed the shared report generates once all accounts are
-              in. It does not: the synthesis runs as soon as ANYBODY checks in and the report
-              forms progressively - it is only RELEASED when everyone is through. So the product's
-              own best feature was being denied on the page where a lead waits. The count it
-              carried is in the header two lines up ("1 of 3 checked in for session 1").
-              What is left is the one thing this spot can usefully do: get to the report.
-            */}
-            {(() => {
-              /* B-100: a lead who only manages is never going to answer, so she is not "pending"
-                 one either - the same `participantsWhoCheckIn` the roster above now uses. */
-              const pending = participantsWhoCheckIn.filter((p: any) => {
-                const ci = ground.checkIns?.find((c: any) => c.participantId === p.id)
-                return !ci || ci.status !== 'COMPLETED'
-              })
-              if (pending.length === 0) return null
-              /*
-               * U.9 REVIEW FIX 9: SAY WHAT IS TRUE FROM THE DATA, NOT WHAT IS USUALLY TRUE.
-               * "It is only released to everybody once all N are in" is false the moment a report
-               * has been released early - the reader is looking at a released report while this
-               * notice still tells them nobody has read it yet. `ground.report.releasedAt` already
-               * carries that fact, so this reads it rather than assuming. The dash joining two
-               * clauses is also gone, in favour of a full sentence.
-               */
-              const releasedAt = (ground as any).report?.releasedAt as string | null | undefined
-              /*
-               * B-056: "ONCE ALL 1 ARE IN" IS NOT ENGLISH. With one person on the check-in, this
-               * read "once all 1 are in", a bare digit standing in for a number that was never
-               * plural in the first place. With one person it now says it plainly - "once you have
-               * checked in" when the reader is that one person, "once they are in" when she is not
-               * (the lead can view a check-in that is not her own) - and with more than one, the
-               * count is said in words, the way every other small number on this page already is.
-               */
-              const total = participantsWhoCheckIn.length
-              const theOnlyParticipant = total === 1 ? participantsWhoCheckIn[0] : null
-              const onceEverybodyIsIn = total === 1
-                ? (theOnlyParticipant?.userId === user?.id ? 'you have checked in' : 'they are in')
-                : `all ${numberUpToTenInWords(total)} people are in`
-              return (
-                <Callout tone="info">
-                  <span className="gwui-switch-row">
-                    <span>
-                      {releasedAt
-                        ? `This report was already shared, on ${whenItWas(releasedAt, 'day')}, before everybody had checked in.`
-                        : <>The picture builds as each person answers, and you can read what it has so far.
-                            It is only released to everybody once {onceEverybodyIsIn}.</>}
-                    </span>
-                    <Button kind="quiet" size="small" onClick={() => setTab('report')}>
-                      {releasedAt ? 'Read it' : 'Read it so far'}
-                    </Button>
-                  </span>
-                </Callout>
-              )
-            })()}
-
-            {pendingRequests.length > 0 && (
-              <Stack gap={10}>
-                <Callout tone="warning" role="status">
-                  {pendingRequests.length === 1
-                    ? 'One person has asked to join this check-in.'
-                    : `${pendingRequests.length} people have asked to join this check-in.`}
-                </Callout>
-                <Stack gap={10}>
-                  {pendingRequests.map(req => (
-                    <Panel key={req.id}>
-                      <p className="gwui-panel-text">
-                        <strong>{req.requestedName ? `${req.requestedName} (${req.requestedEmail})` : req.requestedEmail}</strong>
-                      </p>
-                      <p className="gwui-note">Requested by {req.requestedByEmail}</p>
-                      <p className="gwui-panel-text">{req.reason}</p>
-                      <div className="gwui-button-row">
-                        <Button
-                          kind="secondary"
-                          onClick={() => approveRequest.mutate(req)}
-                          disabled={approveRequest.isPending}
-                        >
-                          Add participant
-                        </Button>
-                        <Button
-                          kind="quiet"
-                          onClick={() => dismissRequest.mutate(req.id)}
-                          disabled={dismissRequest.isPending}
-                        >
-                          Dismiss
-                        </Button>
-                      </div>
-                    </Panel>
-                  ))}
-                </Stack>
-              </Stack>
-            )}
-
-
-            {/*
-              WHAT IS LEFT HERE IS THE CLOSING SESSION, WHICH IS ABOUT SESSIONS.
-
-              This was the "Add contributor" block: a seat-limit notice, an add-a-person button, the
-              add form, an "invite another" confirmation and the closing-session control, all in one
-              container on the tab about how the run is going. Adding people moved to Setup band 1,
-              beside the access code and the broadcast link, because all three answer one question -
-              how somebody gets into this check-in. The form went with the button rather than being
-              left behind: nothing here could open it any more, and an unreachable form is worse
-              than a missing one because it still has to be maintained.
-
-              The seat notice went with them. It is a fact about adding somebody, and it belongs
-              where somebody is added - which is also where it can be said BEFORE an address is
-              typed rather than after the button is pressed.
-
-              RESTORED (8 October, nothing-removed audit S1): live showed this at any time while
-              the check-in ran, including a check-in with no planned number of sessions, gating only
-              on status. Gating on `nearTheEnd` (fault 4, live re-walk) hid the button for five
-              sessions out of six and removed it entirely from an open-ended check-in - live had
-              neither restriction, and nothing else calls `beginClosingSession`, so there was no
-              other way to close early. No decision of Hafsah's covers taking that away, so it is
-              shown again in every case live did: gated on status alone.
-            */}
-            {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
-              confirmClosing ? (
-                <Stack gap={10}>
-                  {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "SESSION" IS INTERNAL JARGON HERE; THE
-                      PRODUCT CALLS THE THING A PERSON ANSWERS A "CHECK-IN" EVERYWHERE ELSE. */}
-                  {/* B-136: this ends the check-in early, at any session, not only near the planned
-                      last one - the old wording ("Begin the last check-in?") read like the normal,
-                      on-schedule final session, and at session 1 of 6 that read as plain wrong. The
-                      control itself is kept (restored on purpose, see the file above this one). */}
-                  <Callout tone="warning" title="End early with a last check-in?">
-                    Everyone's next check-in becomes their final one, ending this check-in earlier
-                    than planned. It is the same conversation, marked as closing. The final report
-                    reads the whole record, then you and the others agree the end state.
-                  </Callout>
-                  <div className="gwui-button-row">
-                    <Button kind="secondary" redText onClick={() => closingSession.mutate()} disabled={closingSession.isPending}>
-                      End early with a last check-in
-                    </Button>
-                    <Button kind="quiet" onClick={() => setConfirmClosing(false)}>Cancel</Button>
-                  </div>
-                </Stack>
-              ) : (
-                <Button kind="secondary" redText wide onClick={() => setConfirmClosing(true)}>
-                  End early with a last check-in
-                </Button>
-              )
-            )}
-
-            {/*
-              THE BROADCAST LINK AND ITS QR CODE MOVED TO SETUP, beside the access code and the
-              add-a-person control - all three answer one question, which is how somebody gets into
-              this check-in. On this tab they sat under the session grid, which is about how the run
-              is going. Both locks come with them: the server withholds the token from
-              non-initiators and the render is gated on `isInitiator`, so neither change alone can
-              put a shareable link to somebody's record on a participant's page.
-            */}
-
-            {/*
-              NO TAB SETS A TARGET. The four editing panels that stood here are gone.
-              
-              They were the old model: the lead PROPOSES a target, the person ACCEPTS it or writes
-              their own. That model is replaced - an expectation is stated in the lead's own check-in,
-              published to Context in plain view, and refined only through the chat where a change is
-              probed and lands on the record with its reason.
-              
-              Her decision, in her words: "Participants should not be able to rewrite their targets or
-              accept it. One person is doing this, we dont want chaos. But they can see it."
-              
-              What survives here is the STATE, on each person's row above: set, seen, or nothing yet -
-              and it opens Context, where the words are.
-            */}
-
-            {/*
-              THE GLANCE ROW, from the board's own components.
-              This tab is now the first thing anybody sees about a ground, and it
-              was a bare list of session rows - true, but it answered "what
-              happened" without answering "where does this stand". The board has
-              solved that problem already, so this uses the same Stat tile rather
-              than inventing a third way of showing a number.
-            */}
-            {/*
-              THE THREE TILES ARE GONE, AND NOTHING WAS LOST.
-              
-              "This round", "Checked in" and "Still to come" were three readings of one thing, and the
-              page header already says it in one line: Session n of m, x of y checked in. Four copies
-              of the same arithmetic on one screen is how "1 of 6" and "0 of 1" came to sit under a
-              header reading "Session 2 of 6" - every number correct, and together unreadable.
-              
-              The grid above answers the question the tiles were reaching for, per person.
-            */}
-            {/*
-              THE FLAT LIST OF CARDS IS GONE. It ran one card per check-in, sorted by session, so a
-              tab called Sessions answered "which sessions exist" and never "where has each person got
-              to" - and on two parties across twelve sessions it was twenty-four cards reading Session
-              1, Session 1, Session 2, Session 2. The cells on each person's row carry the same status,
-              the same date in their tooltip, and the same click into your own open session.
-            */}
-            {(ground.checkIns ?? []).length === 0 && (
-              <Panel>
-                <p className="gwui-panel-text">
-                  No check-ins yet. The first one opens once the people above have been invited and the
-                  check-in starts.
-                </p>
-              </Panel>
-            )}
-          </Stack>
-        )}
+        {/* WHO HAS ANSWERED is People and setup's one list of people now (page audit, 24 November 2026, row 8): `?tab=sessions` lands there. */}
 
         {/* DOCUMENTS */}
         {/*
@@ -2669,7 +1912,7 @@ export function GroundAdminPage() {
             {!(ground as any).atLeastTwoInThisRound && (
               <Callout tone="warning" role="status">
                 The shared report compares two accounts. Add somebody and this will build.{' '}
-                <button type="button" className="gwui-plain-link" onClick={() => setTab('checkins')}>Add a person</button>
+                <button type="button" className="gwui-plain-link" onClick={() => setTab('settings')}>Add a person</button>
               </Callout>
             )}
             {/* What success looks like is deliberately NOT here - see the note in
@@ -2756,7 +1999,10 @@ export function GroundAdminPage() {
             /* Each person's card, with the lead's note and "Change this in the chat", and what people are down as doing: moved here
                from My work, where a member's page repeated the whole team (Hafsah, 24 November 2026). Whoever runs the check-in reads them. */
             eachPerson={isInitiator || canRunThisGround
-              ? <ContextPage ground={ground} role={isInitiator ? 'lead' : 'admin'} viewerUserId={user?.id} only="each-person" />
+              ? (participantId: string) => <ContextPage ground={ground} role={isInitiator ? 'lead' : 'admin'} viewerUserId={user?.id} only="each-person" person={participantId} />
+              : undefined}
+            downAsDoing={isInitiator || canRunThisGround
+              ? <ContextPage ground={ground} role={isInitiator ? 'lead' : 'admin'} viewerUserId={user?.id} only="down-as-doing" />
               : undefined}
             id={id!}
             navigate={navigate}

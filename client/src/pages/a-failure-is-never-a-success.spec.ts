@@ -79,8 +79,9 @@ describe('every mutation says what happened when it failed', () => {
 
 describe('the five this batch fixed stay fixed', () => {
   it.each([
-    ['grounds/GroundAdminPage.tsx', 'dismissRequest'],
-    ['grounds/GroundAdminPage.tsx', 'remind'],
+    /* Moved with the roster from "Who has answered" to People and setup (page audit, 24 November 2026, row 8). */
+    ['grounds/PeopleAndSetupAsPictured.tsx', 'dismissRequest'],
+    ['grounds/PeopleAndSetupAsPictured.tsx', 'remind'],
     /* U.18: switching WhatsApp on or off, and disconnecting it, moved to their own pages. */
     ['connections/WhatsAppSetupPage.tsx', 'turn'],
     ['connections/ConnectionsPage.tsx', 'disconnect'],

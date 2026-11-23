@@ -64,10 +64,12 @@ describe('the same true sentence, for whoever is actually the admin', () => {
     expect(screen.queryByText(/Waiting on your organisation/)).toBeNull()
   })
 
-  it('a lead who is not an admin reads "Waiting on your organisation. An admin there has to let them in."', async () => {
+  /* The roster is People and setup's one list now (page audit, 24 November 2026, row 8), so the row's sentence is whereThisPersonIs's,
+     the one People and setup always used for the same wait. */
+  it('a lead who is not an admin reads that an admin has to let them in', async () => {
     currentUser = { id: 'u-rukia', role: 'MEMBER', email: 'rukia@x.test' }
     renderPage()
-    expect(await screen.findByText('Waiting on your organisation. An admin there has to let them in.')).toBeTruthy()
+    expect(await screen.findByText('Faraji Odhiambo is from outside your organisation, so an admin has to let them in before they can check in.')).toBeTruthy()
     expect(screen.queryByText(/You can let Faraji Odhiambo in on People/)).toBeNull()
   })
 })
