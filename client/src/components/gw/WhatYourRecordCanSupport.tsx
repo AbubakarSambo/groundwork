@@ -168,7 +168,7 @@ export function WhatYourRecordCanSupport({
                       }} />
                     )}
                   </div>
-                  <div style={{ fontSize: 10, color: 'var(--gw-muted)', fontVariantNumeric: 'tabular-nums' }}>{d.sessionNumber}</div>
+                  <div className="ds-text-meta ds-num">{d.sessionNumber}</div>
                 </div>
               )
             })}
@@ -195,9 +195,7 @@ export function WhatYourRecordCanSupport({
           renders one, and a private alignment check-in has none. */}
       {(alsoNoticed?.length ?? 0) > 0 && (
         <div style={{ marginTop: 13, paddingTop: 11, borderTop: '1px solid var(--gw-border)' }}>
-          <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 5 }}>
-            Also noticed
-          </div>
+          <p className="ds-text-secondary"><b>Also noticed</b></p>
           <div style={{ display: 'grid', gap: 5 }}>
             {alsoNoticed!.map((t, i) => (
               <div key={i} style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{t}</div>

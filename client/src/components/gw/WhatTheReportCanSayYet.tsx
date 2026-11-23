@@ -211,7 +211,7 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
               on render only, so it reads as a short caption under its bar rather than a piece of a
               sentence that got cut off.
             */}
-            <div style={{ fontSize: 9, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: '11px' }}>
+            <div className="ds-text-meta">
               {r.short.charAt(0).toUpperCase() + r.short.slice(1)}
             </div>
             {/*
@@ -222,7 +222,7 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
               longer depend on it.
             */}
             {!r.can && r.because && (
-              <div style={{ fontSize: 9, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: '11px' }}>
+              <div className="ds-text-meta">
                 {r.because}
               </div>
             )}

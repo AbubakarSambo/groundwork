@@ -1,3 +1,4 @@
+import { Panel } from '@/components/gw/ui'
 /**
  * SPECIFICITY, SHOWN AS THE FIVE THINGS IT IS ACTUALLY MADE OF.
  *
@@ -112,16 +113,14 @@ export function TheFiveThingsThatMakeItCheckable({
   }))
 
   return (
-    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '15px 17px' }}>
+    <Panel>
       {/*
         THE HEADING NAMES THE SESSION, because nobody knew this was about one.
         "What was in what you said" over a list of absences, with the session number buried in a
         sub-line, left a person reading a permanent judgement instead of a note about session 1.
       */}
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-sub-d)', marginBottom: 3 }}>
-        What would make your next check-in count for more
-      </div>
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 11 }}>
+      <h3 className="ds-text-card">What would make your next check-in count for more</h3>
+      <div className="ds-text-secondary">
         {/*
           "ACCOUNT" IS THE ROBOT WORD, and it was still in here after being banned once. It means
           somebody's account of what happened; in an app it reads as a login, and nobody stops to
@@ -141,7 +140,7 @@ export function TheFiveThingsThatMakeItCheckable({
         who is not looking closely, reads five identical lines. And a reader is also entitled to be
         told, in words, that this read can miss real things they said.
       */}
-      <p style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 11 }}>
+      <p className="ds-text-secondary">
         Groundwork looked for these five things. It may have missed some of what you said.
       </p>
 
@@ -153,7 +152,7 @@ export function TheFiveThingsThatMakeItCheckable({
               style={{
                 flex: '0 0 auto', marginTop: 1, width: 15, height: 15, borderRadius: '50%',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, fontWeight: 700,
+                fontSize: 12, fontWeight: 700,
                 background: r.there ? 'var(--gw-green-bg)' : 'var(--gw-paper-2)',
                 color: r.there ? 'var(--gw-green-t)' : 'var(--gw-sub-d)',
                 border: '1px solid ' + (r.there ? 'var(--gw-green-b)' : 'var(--gw-border)'),
@@ -200,7 +199,7 @@ export function TheFiveThingsThatMakeItCheckable({
         mark she asked for; this keeps only the half the badge cannot carry, which is the reason.
       */}
       {mostUseful && (
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginTop: 10, paddingTop: 9, borderTop: '1px solid var(--gw-border)' }}>
+        <div className="ds-text-secondary">
           {mostUseful.says.charAt(0).toUpperCase() + mostUseful.says.slice(1)}
         </div>
       )}
@@ -208,11 +207,11 @@ export function TheFiveThingsThatMakeItCheckable({
       {/* Their own best answer. What a checkable account looked like in their own words teaches what
           no description of specificity can. */}
       {strongest && (
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginTop: 9 }}>
-          <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>This one of yours was easy to check. </span>
+        <div className="ds-text-secondary">
+          <b>This one of yours was easy to check. </b>
           <span style={{ fontStyle: 'italic' }}>"{strongest}"</span>
         </div>
       )}
-    </div>
+    </Panel>
   )
 }
