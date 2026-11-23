@@ -89,9 +89,7 @@ export function whereThisIsHeading(a: {
   for (const f of (Array.isArray(b.forecast) ? b.forecast : []).slice(0, 2)) {
     if (f?.about && f?.says) signals.push({ says: `${String(f.about).trim()} ${String(f.says).trim()}`, from: String(f.restsOn ?? '').trim() || 'This comes from the counts stored when each check-in closed.' });
   }
-  for (const x of (Array.isArray(b.blockers) ? b.blockers : []).slice(0, 2)) {
-    if (x?.says) signals.push({ says: String(x.says).trim(), from: String(x.raised?.says ?? '').trim() || 'This comes from what people said in their check-ins.' });
-  }
+  /* Blockers are said once, under Blockers, and never again here (page audit, 24 November, row 11). */
   const differ = Array.isArray(b.divergence?.items) ? b.divergence.items.length : 0;
   if (differ) {
     signals.push({

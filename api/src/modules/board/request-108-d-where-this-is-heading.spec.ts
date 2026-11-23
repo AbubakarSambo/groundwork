@@ -43,8 +43,7 @@ describe('request 108 (d): where this is heading, as Bisi, who runs it, reads it
           says: 'The team is aiming for 40 approved facilities this quarter. If it keeps moving at the pace it has since check-in 1, it would be about 31 by check-in 6, against an aim of 40.',
           from: 'It was 6 in check-in 1 and 11 in check-in 2, and this check-in runs for 6 check-ins.',
         },
-        { says: 'Femi Okonkwo is waiting for the bank statements.', from: 'This was raised once, on 16 September.' },
-        { says: 'Ngozi Eze is waiting on Mr. Adebayo for a date for the credit decision.', from: 'This was raised once, on 16 September.' },
+        /* Changed 24 November (page audit, row 11): a blocker is said once, under Blockers, and is not a signal here too. */
       ],
       signalsSays: null,
       whatWouldSettleIt: ['Whether to take the credit committee delays to the Head of Credit.'],
