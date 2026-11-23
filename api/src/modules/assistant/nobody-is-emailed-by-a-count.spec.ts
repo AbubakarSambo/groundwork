@@ -5,7 +5,7 @@
  * corrected in the next sentence. An invitation is in somebody's inbox, and what
  * it invites them to is accounting for themselves.
  */
-import { askWhoIsInIt, saidBack, theNextStep } from './a-check-in-set-up-by-talking';
+import { readyToSayBack, saidBack, theModelsTurn, theTurnForTheModel, whatIsStillMissing } from './a-check-in-set-up-by-talking';
 import {
   askWhichSituation,
   saidAsAList,
@@ -68,10 +68,13 @@ describe('who would be asked', () => {
 });
 
 /* Batch S, S6 (19 November): askBeforeOpeningIt is replaced by the check-in setup by talking (a-check-in-set-up-by-talking.ts), which asks
-   for the people instead of only telling the lead to. The same four promises are checked on its say-back and its question about people. */
+   for the people instead of only telling the lead to. The same four promises are checked on its say-back and on what it gathers.
+   Changed 24 November 2026: the set-up is led by the model now, so the people who report to the lead are no longer offered in a fixed
+   sentence (askWhoIsInIt is gone). They are marked for the model as reporting to her, and taken only when the model names them by their
+   roster id, which is checked against the roster. "Who should be in it" is now one of the things still missing, not a fixed question. */
 describe('the confirmation', () => {
   const people = [{ name: 'Adam', email: 'adam@x.co' }, { name: 'Kemi', email: 'kemi@x.co' }];
-  const back = saidBack({ updatesOn: 'Adam joining', people, unreachable: [], offered: [], cadence: 'WEEKLY', asked: 'confirm' });
+  const back = saidBack({ updatesOn: 'Adam joining', people, cadence: 'WEEKLY', asked: 'confirm', said: [] });
 
   it('names every single person who will be emailed', () => {
     expect(back).toContain('Adam (adam@x.co) and Kemi (kemi@x.co)');
@@ -83,15 +86,20 @@ describe('the confirmation', () => {
     expect(back).toContain('Shall I open it?');
   });
 
-  it('and offers the people on the roster as a guess, never takes them', () => {
-    expect(askWhoIsInIt(people)).toContain('Adam and Kemi report to you, so say yes to ask all of them. Or give me');
+  it('and marks the people on the roster who report to her for the model, and takes them only by their roster id', () => {
+    const roster = [
+      { externalId: 'sam', displayName: 'Sam', email: 'sam@x.co', managerExternalId: null },
+      { externalId: 'adam', displayName: 'Adam Bello', email: 'adam@x.co', managerExternalId: 'sam' },
+    ];
+    expect(theTurnForTheModel({ people: [], asked: 'talking', said: [] }, roster, 'sam', 'my team')).toContain('- id adam: Adam Bello, reports to you, has an email address');
+    const taken = theModelsTurn({ reply: 'Right.', people: [{ id: 'adam', name: 'Adam' }] }, { people: [], asked: 'talking', said: [] }, roster, 'sam', 'my team');
+    expect(taken!.so.people).toEqual([{ name: 'Adam Bello', email: 'adam@x.co', id: 'adam' }]);
   });
 
   it('and asks who, rather than opening an empty one', () => {
-    const next = theNextStep({ updatesOn: 'x', people: [], unreachable: [], offered: [], cadence: 'WEEKLY', asked: 'people' });
-    expect(next.asked).toBe('people');
-    expect(next.says).toContain('Who should be in it');
-    expect(next.says).not.toContain('Shall I open it?');
+    const s = { updatesOn: 'x', people: [], cadence: 'WEEKLY' as const, asked: 'talking' as const, said: [] };
+    expect(readyToSayBack(s)).toBe(false);
+    expect(whatIsStillMissing(s)).toEqual(['who should be in it']);
   });
 
   it('and reads as a sentence however many there are', () => {
@@ -162,8 +170,8 @@ describe('between the offer and the yes', () => {
 });
 
 describe('a yes with nobody named', () => {
-  it('has nothing to say yes to: the say-back is never reached with nobody in it', () => {
-    expect(theNextStep({ updatesOn: 'x', people: [], unreachable: [], offered: [{ name: 'Adam', email: 'a@x.co' }], cadence: 'WEEKLY', asked: 'people' }).asked).toBe('people');
-    expect(theNextStep({ updatesOn: 'x', people: [], unreachable: ['Adam'], offered: [], cadence: 'WEEKLY', asked: 'people' }).asked).toBe('people');
+  it('has nothing to say yes to: the say-back is never reached with nobody in it, or with somebody who cannot be reached', () => {
+    expect(readyToSayBack({ updatesOn: 'x', people: [], cadence: 'WEEKLY', asked: 'talking', said: [] })).toBe(false);
+    expect(readyToSayBack({ updatesOn: 'x', people: [{ name: 'Adam' }], cadence: 'WEEKLY', asked: 'talking', said: [] })).toBe(false);
   });
 });

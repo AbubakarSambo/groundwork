@@ -204,7 +204,8 @@ describe('T2. who a message is for, decided once', () => {
     (a.s as any).truth = { forPerson: async () => ({ person: { externalId: 'u-1' }, sessions: { value: [] } }) };
     a.prisma.person.findMany = jest.fn(async () => []);
     const r: any = await a.s.answerAProposal('org-a', 'p1', older.id, 'yes');
-    expect(textOf(r)).toMatch(/^What do you want updates on\?/);
+    /* Changed 24 November 2026: the set-up is led by the model; this pretend model does not answer its prompt, so the set-up says what it still needs. */
+    expect(textOf(r)).toMatch(/^To open it, I still need to know what you want updates on/);
     expect(older.state).toBe('ACCEPTED');
   });
 

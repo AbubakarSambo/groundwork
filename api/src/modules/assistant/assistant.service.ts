@@ -159,7 +159,6 @@ import {
   type InterviewPayload, type ConfirmPayload, type TheFourAnswers,
 } from './the-role-interview';
 import {
-  whoWouldBeAsked,
   saidAsAList,
   ASKS_FOR_A_NEW_ONE_BY_SAYING_SO,
 } from './what-a-new-check-in-would-be';
@@ -190,7 +189,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConversationService } from '../conversation/conversation.service';
 import { readTheSituationAndTheKind, whatTheReadingSets } from '../entry/which-situation-this-is';
 import { keepWhatTheLeadTyped, readTheTargetsSheGaveAtSetUp } from '../grounds/what-the-lead-said-at-set-up';
-import { CHECK_IN_SETUP_KIND, SETUP_READING_PROMPT, SETUP_READING_SCHEMA, SETUP_STOPPED, oneAnswerLaidOver, theNameFor, theNextStep, theSituationFor, whatTheModelHeard, type TheSetupSoFar, type WhatTheModelHeard } from './a-check-in-set-up-by-talking';
+import { CHECK_IN_SETUP_KIND, CHECK_IN_SETUP_PROMPT, CHECK_IN_SETUP_PROMPT_KEY, CHECK_IN_SETUP_SCHEMA, SETUP_STOPPED, readyToSayBack, saidBack, theModelsTurn, theNameFor, theSituationFor, theTurnForTheModel, whatToSayWithNoModel, type OnTheRosterForSetUp, type TheSetupSoFar } from './a-check-in-set-up-by-talking';
 import { asALine, whatIsMissingAcrossThem } from './what-a-target-was-for';
 import {
   THINK_IT_THROUGH_PROMPT, THINK_IT_THROUGH_PROMPT_KEY, THINK_IT_THROUGH_SCHEMA, WHAT_TO_THINK_ABOUT, COULD_NOT_LAY_OUT, NOT_ENOUGH_TO_GO_ON,
@@ -2715,31 +2714,18 @@ export class AssistantService {
   }
 
   /**
-   * OPENING ONE THAT DOES NOT EXIST YET, BY TALKING (Batch S, S6; a-check-in-set-up-by-talking.ts).
+   * OPENING ONE THAT DOES NOT EXIST YET, BY TALKING (a-check-in-set-up-by-talking.ts; Hafsah, 24 November 2026).
    *
-   * What they want updates on, then who is in it and how to reach each person, then how often: only what is missing is asked, one
-   * question at a time. The people who report to them on the roster are offered, never taken without a yes. The whole of it is said
-   * back, naming everybody, and it is opened only on a yes. An invitation is in somebody's inbox, so nothing is sent before then.
+   * The model leads the conversation: on each turn it reads the whole of it, the organisation's people and what is gathered, and writes the
+   * next reply. A set-up already being talked through is carried on, never started again: "Can I setup a checkin from here" asked in the
+   * middle of one used to throw away everything she had said.
    */
   private async offerToOpenOne(organizationId: string, _personId: string, who: string, message: string): Promise<Reply> {
-    const roster = await this.prisma.person.findMany({
-      where: { organizationId, active: true },
-      select: { externalId: true, displayName: true, managerExternalId: true, active: true, email: true },
-    });
-    const offered = whoWouldBeAsked(roster as any, who)
-      .filter((p: any) => p.email)
-      .map((p: any) => ({ name: p.displayName ?? p.externalId, email: String(p.email).toLowerCase() }));
-    const start: TheSetupSoFar = { people: [], unreachable: [], offered, asked: 'start', said: [{ words: message, asked: null }] };
-    const heard = await this.whatTheSetupAnswerSays(message, null);
-    return this.theNextSetupStep(organizationId, who, oneAnswerLaidOver(start, message, heard, roster as any, false));
-  }
-
-  /** What the person said about the check-in they are setting up, read by the model; nothing when it is not there. */
-  private async whatTheSetupAnswerSays(message: string, asked: string | null): Promise<WhatTheModelHeard> {
-    if (!message.trim()) return {};
-    const content = asked ? `Groundwork had just asked them: "${asked.slice(0, 300)}"\nThey answered: ${message.slice(0, 2000)}` : message.slice(0, 2000);
-    const raw = await Promise.resolve((this.engine as any).extract?.(SETUP_READING_PROMPT, [{ role: 'user', content }], SETUP_READING_SCHEMA, { fast: true })).catch(() => null);
-    return whatTheModelHeard(raw);
+    const waiting: any = await Promise.resolve(this.prisma.assistantProposal.findFirst({ where: { organizationId, personExternalId: who, state: 'PARKED', kind: CHECK_IN_SETUP_KIND }, orderBy: { createdAt: 'desc' } })).catch(() => null);
+    const so: TheSetupSoFar = waiting?.payload ?? { people: [], asked: 'talking', said: [] };
+    const turn = await this.theNextSetUpTurn(organizationId, who, so, message, waiting?.summary ?? null, false);
+    if (waiting) await this.prisma.assistantProposal.update({ where: { id: waiting.id }, data: { state: typeof turn === 'string' ? 'DECLINED' : 'DROPPED', resolvedAt: new Date() } }).catch(() => undefined);
+    return typeof turn === 'string' ? rules('start_a_check_in', text(SETUP_STOPPED)) : turn;
   }
 
   /**
@@ -2754,47 +2740,57 @@ export class AssistantService {
     return { scenario: set?.scenario ?? theSituationFor(so.updatesOn ?? '').scenario, kindOfWork: set?.kind ?? undefined };
   }
 
-  /** The next question, or the say-back, kept waiting for the answer. */
-  private async theNextSetupStep(organizationId: string, who: string, said: TheSetupSoFar): Promise<Reply> {
-    /* At the say-back, the situation and the kind of work are read from her words, so what is said back is what is opened. */
-    const so = theNextStep(said).asked === 'confirm' ? { ...said, ...(await this.theSituationAndKindSheMeans(said)) } : said;
-    const next = theNextStep(so);
+  /**
+   * ONE TURN OF THE SET-UP. The model reads the whole conversation and writes the reply; its people are checked against the roster and her
+   * own words (theModelsTurn). Once nothing is missing, the whole check-in is said back in the product's words and waits for her yes.
+   * 'stops' when she asked to stop, 'something_else' when the message is about something else (only where that may be so).
+   */
+  private async theNextSetUpTurn(organizationId: string, who: string, kept: TheSetupSoFar, message: string, asked: string | null, mayBeSomethingElse: boolean): Promise<Reply | 'stops' | 'something_else'> {
+    const so: TheSetupSoFar = { ...kept, people: kept.people ?? [], said: kept.said ?? [] };
+    const roster = (await Promise.resolve(this.prisma.person.findMany({
+      where: { organizationId, active: true },
+      select: { externalId: true, displayName: true, email: true, phone: true, title: true, department: true, managerExternalId: true },
+    })).catch(() => [])) as OnTheRosterForSetUp[];
+    const version = await this.prompts?.getActive(CHECK_IN_SETUP_PROMPT_KEY).catch(() => null);
+    const raw = await Promise.resolve((this.engine as any).extract?.(version?.content ?? CHECK_IN_SETUP_PROMPT, [{ role: 'user', content: theTurnForTheModel(so, roster, who, message) }], CHECK_IN_SETUP_SCHEMA, { fast: true })).catch(() => null);
+    const read = theModelsTurn(raw, so, roster, who, message);
+    if (read?.stops) return 'stops';
+    if (read?.somethingElse && mayBeSomethingElse) return 'something_else';
+    const said = message.trim() ? [...so.said, { words: message, asked }] : so.said;
+    let next: TheSetupSoFar = { ...(read?.so ?? so), said, asked: 'talking' };
+    let says = read ? read.reply : whatToSayWithNoModel(next);
+    if (readyToSayBack(next)) {
+      /* At the say-back, the situation and the kind of work are read from her words, so what is said back is what is opened. */
+      next = { ...next, ...(await this.theSituationAndKindSheMeans(next)), asked: 'confirm' };
+      says = [read?.reply ?? '', saidBack(next)].filter(Boolean).join(' ');
+    }
+    if (!says) says = whatToSayWithNoModel(next);
     const proposal = await this.prisma.assistantProposal.create({
-      data: { organizationId, personExternalId: who, kind: CHECK_IN_SETUP_KIND, summary: next.says, payload: { ...so, asked: next.asked } as never },
+      data: { organizationId, personExternalId: who, kind: CHECK_IN_SETUP_KIND, summary: says, payload: next as never },
     });
-    return next.asked === 'confirm'
-      ? rules('start_a_check_in', text(next.says), { type: 'proposal', proposalId: proposal.id, summary: next.says })
-      : rules('start_a_check_in', text(next.says));
+    const reply: Reply = next.asked === 'confirm'
+      ? rules('start_a_check_in', text(says), { type: 'proposal', proposalId: proposal.id, summary: says })
+      : rules('start_a_check_in', text(says));
+    return read ? { ...reply, composedBy: 'model', promptVersionId: version?.id ?? null } : reply;
   }
 
   /**
-   * AN ANSWER IN THE CHECK-IN SETUP. A no stops it. At the say-back, a yes opens it, and a change said there ("make it every two
-   * weeks") is laid over and said back again. Anything that answers nothing that was asked lets the setup go, and is answered as itself.
+   * HER NEXT MESSAGE IN THE SET-UP. At the say-back, her plain yes opens it and her plain no stops it: something is opened and sent, so those
+   * two stay fixed. Everything else is the model's to read: a change, a question, a correction. A message about something else is answered
+   * as itself, and the set-up keeps waiting.
    */
   private async resolveParkedCheckInSetup(organizationId: string, personId: string, who: string, parked: any, message: string, where?: { groundId?: string; userId?: string | null }): Promise<Reply> {
     const so = parked.payload as TheSetupSoFar;
-    const decision = resolveConfirmation(message);
     const close = (state: 'ACCEPTED' | 'DECLINED' | 'DROPPED') => this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: state as never, resolvedAt: new Date() } });
-    if (so.asked === 'confirm' && decision === 'accept') {
+    const plain = so.asked === 'confirm' ? resolveConfirmation(message) : 'drop';
+    if (plain === 'accept') {
       await close('ACCEPTED');
       return this.openTheCheckInSetUpByTalking(organizationId, who, so);
     }
-    if (decision === 'decline' && !(so.asked === 'people' && so.offered.length && !so.people.length)) {
-      await close('DECLINED');
-      return rules('start_a_check_in', text(SETUP_STOPPED));
-    }
-    if (decision === 'decline') {
-      await close('DROPPED');
-      return this.theNextSetupStep(organizationId, who, { ...so, offered: [] });
-    }
-    const roster = await this.prisma.person.findMany({ where: { organizationId, active: true }, select: { displayName: true, email: true } }).catch(() => []);
-    const heard = so.asked === 'updates' ? {} : await this.whatTheSetupAnswerSays(message, parked.summary ?? null);
-    const laid = oneAnswerLaidOver(so, message, heard, roster as any, decision === 'accept');
-    await close('DROPPED');
-    if (JSON.stringify({ ...laid, asked: so.asked }) === JSON.stringify(so)) {
-      return this.answer(organizationId, personId, who, message, true, where?.groundId, where?.userId);
-    }
-    return this.theNextSetupStep(organizationId, who, { ...laid, said: [...(so.said ?? []), { words: message, asked: parked.summary ?? null }] });
+    const turn = plain === 'decline' ? 'stops' : await this.theNextSetUpTurn(organizationId, who, so, message, parked.summary ?? null, true);
+    if (turn === 'something_else') return this.answer(organizationId, personId, who, message, true, where?.groundId, where?.userId);
+    await close(turn === 'stops' ? 'DECLINED' : 'DROPPED');
+    return turn === 'stops' ? rules('start_a_check_in', text(SETUP_STOPPED)) : turn;
   }
 
   /**
@@ -3466,8 +3462,8 @@ export class AssistantService {
      * (who-a-message-is-for.ts). Something else lets the waiting step go, and the message is answered as itself.
      */
     /* A Yes or No button is pressed on the thing it answers, so it is never read by the model (spec pass, 20 November). */
-    /* A set-up asks this in its own reading (resolveParkedSuiteSetUp), where a reporting line said in passing keeps it waiting. */
-    if (!where?.pressed && parked.kind !== SUITE_SETUP_KIND && !(await this.itAnswersTheQuestion(message, parked.summary ?? null))) {
+    /* A set-up asks this in its own reading (resolveParkedSuiteSetUp, resolveParkedCheckInSetup), where a reporting line said in passing keeps it waiting. */
+    if (!where?.pressed && parked.kind !== SUITE_SETUP_KIND && parked.kind !== CHECK_IN_SETUP_KIND && !(await this.itAnswersTheQuestion(message, parked.summary ?? null))) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } }).catch(() => undefined);
       const reply = await this.answer(organizationId, personId, who, message, true, where?.groundId, where?.userId, where?.forceAddContext);
       /* A set-up left unfinished is said, so the admin knows nothing was set (spec pass, 20 November). */
