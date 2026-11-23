@@ -1,3 +1,4 @@
+import { useTheDesignSystem } from './the-design-system'
 /**
  * QUICK REPLIES, AS OUTLINED PILLS (B3, docs/prototype/source/app.css: `.chip`).
  *
@@ -19,7 +20,16 @@ export function QuickReplies({ items, onPick, disabled, label, stacked }: {
       into a row), rather than the default wrapping row. */
   stacked?: boolean
 }) {
+  const ds = useTheDesignSystem()
   if (items.length === 0) return null
+  /* On a rebuilt page the chips read only the tokens (blocks.css, .ds-chip): a tap tall, body text, a hairline. */
+  if (ds) {
+    return (
+      <div role="group" aria-label={label} className={stacked ? 'ds-chips ds-chips-stacked' : 'ds-chips'}>
+        {items.map(item => <button key={item} type="button" className="ds-chip" onClick={() => onPick(item)} disabled={disabled}>{item}</button>)}
+      </div>
+    )
+  }
   return (
     <div role="group" aria-label={label} style={{ display: 'flex', flexDirection: stacked ? 'column' : 'row', flexWrap: stacked ? 'nowrap' : 'wrap', alignItems: stacked ? 'flex-start' : 'stretch', gap: 8 }}>
       {items.map(item => (

@@ -1,4 +1,5 @@
 import { useTheDesignPass } from '@/lib/the-design-pass'
+import { useTheDesignSystem } from './the-design-system'
 import { useCallback, useEffect, useRef } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 
@@ -64,6 +65,7 @@ export function Composer({
   const plusWide = plusGlyph.length > 1
   /* The design pass: the box is one line tall until somebody writes more, so +, the box and send line up. */
   const designPass = useTheDesignPass()
+  const ds = useTheDesignSystem()
   const ask = variant === 'ask'
   /*
    * A BOX THAT SHOWS ITS WHOLE PLACEHOLDER (Fatima round 2, D3; the same fault as fault 7 above, fixed at its cause). The field is one row high, so a placeholder
@@ -98,6 +100,50 @@ export function Composer({
     window.addEventListener('resize', fit)
     return () => window.removeEventListener('resize', fit)
   }, [placeholder, value])
+  /* On a rebuilt page, the check-in's box (check-in-start.jpg): "+" as a second button, the field, and send as the main button,
+     each a tap tall, on one row; every value a token (blocks.css, .ds-composer). Ask's own box is unchanged. */
+  if (ds && !ask) {
+    return (
+      <div className="ds-composer">
+        {plusOpen && plusMenu && <div className="ds-composer-menu">{plusMenu}</div>}
+        {onPlus && (
+          <button
+            type="button"
+            onClick={onPlus}
+            disabled={plusDisabled ?? disabled}
+            aria-label={plusWide ? undefined : plusLabel}
+            aria-expanded={plusMenu ? plusOpen : undefined}
+            title={plusLabel}
+            className={plusWide ? 'ds-btn ds-btn-second' : 'ds-btn ds-btn-second ds-btn-square'}
+          >
+            {plusGlyph}
+          </button>
+        )}
+        <textarea
+          ref={setRef}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          disabled={disabled}
+          placeholder={placeholder}
+          aria-label={ariaLabel}
+          maxLength={maxLength}
+          autoFocus={autoFocus}
+          className="ds-composer-field"
+          rows={1}
+        />
+        <button
+          type="button"
+          onClick={onSend}
+          disabled={disabled || sendDisabled}
+          aria-label={sendLabel}
+          className={sendText ? 'ds-btn ds-btn-main' : 'ds-btn ds-btn-main ds-btn-square'}
+        >
+          {sendText ?? '↑'}
+        </button>
+      </div>
+    )
+  }
   /* The prototype's two composers: the check-in's (.ci-c: "+", the field, "↑") and Ask's (.asst-comp: the paperclip,
      the field, "Send"). The field is the prototype's .input, kept a textarea so a pasted plan keeps its line breaks. */
   return (
