@@ -26,8 +26,10 @@ describe('the board looks like the rest of the product, not a page of its own', 
   })
 
   it('uses the shared check-in header and tabs, not a dark navy card of its own', () => {
-    expect(CODE).toMatch(/<CheckInHeader/)
-    expect(CODE).toMatch(/active="board"/)
+    /* 23 November (journey 3): the header and tabs are the board's frame on the design system (TheBoardFrame.tsx), drawn round
+       every board this page draws; the shared Tabs inside it marks the Board tab as the one open. */
+    expect(CODE).toMatch(/<TheBoardFrame/)
+    expect(readFileSync(join(__dirname, 'TheBoardFrame.tsx'), 'utf8')).toMatch(/active="board"/)
     /* The header this replaced painted itself var(--gw-dark) directly; that literal must be gone
        from the board's own header markup (it may still appear elsewhere, e.g. inside a comment
        quoting the old defect, so this checks the tag shape rather than the bare string). */

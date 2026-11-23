@@ -24,7 +24,8 @@ const MARKERS: Record<string, RegExp> = {
   divergence: /\{shown\.divergence && b\.divergence && \(/,
   whatTheRoomIsAbout: /\{shown\.whatTheRoomIsAbout && \(/,
   quickRead: /\{shown\.quickRead && b\.quickRead && \(/,
-  dependencies: /\{shown\.dependencies && b\.dependencies && \(/,
+  /* 23 November (journey 3): drawn only where its waits are not already under Blockers, so its condition goes on past this. */
+  dependencies: /\{shown\.dependencies && b\.dependencies && /,
   patterns: /\{shown\.patterns && b\.patterns && \(/,
 }
 
