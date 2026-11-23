@@ -31,6 +31,7 @@ import { whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { toast } from 'sonner'
 import { useCheckInFocusStore } from '@/stores/check-in-focus'
 import '@/components/gw/ui/gw-ui.css'
+import { InTheDesignSystem } from '@/components/gw/ui/the-design-system'
 import { whatTheServerSaid } from '@/lib/what-the-server-said'
 
 /** ONE LIST. The OS dialog offered 23 extensions, the label's title a third list of 9, and the validator refused everything outside these 10 - so the dialog invited a refusal the product then issued. */
@@ -82,43 +83,36 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
   }
 
   return (
-    <div className="gwui-ci-assessment">
-      <div className="gwui-ci-assessment-title">📎 {docName}</div>
+    /* A card in the conversation (journey 2): the document's name, what it suggests, what I will do with it, and the two links. */
+    <div className="ds-card">
+      <h2 className="ds-text-card">{docName}</h2>
       {!editing ? (
         <>
-          <div className="gwui-ci-assessment-label">What this suggests</div>
-          <ul className="gwui-ci-assessment-list">
+          <p className="ds-text-secondary">What this suggests</p>
+          <ul className="ds-list ds-list-bullets ds-text-body">
             {assessment.suggests.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
-          <div className="gwui-ci-assessment-label">What I will do with it</div>
-          <ul className="gwui-ci-assessment-list gwui-ci-assessment-list-last">
+          <p className="ds-text-secondary">What I will do with it</p>
+          <ul className="ds-list ds-list-bullets ds-text-body">
             {assessment.willDo.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
           {/* The prototype's "That's right" beside "Not right" (references-upload-in-check-in.txt), restored 26 October 2026. */}
-          {agreed ? <div className="gwui-ci-assessment-label">Kept as it reads.</div> : (
-            <div className="gwui-ci-assessment-actions">
-              <button onClick={() => setAgreed(true)} className="gwui-ci-assessment-link">That’s right</button>
-              <button onClick={() => setEditing(true)} className="gwui-ci-assessment-link">
-                Not right? Correct this
-              </button>
+          {agreed ? <p className="ds-text-secondary">Kept as it reads.</p> : (
+            <div className="ds-actions">
+              <button type="button" onClick={() => setAgreed(true)} className="ds-btn ds-btn-link">That’s right</button>
+              <button type="button" onClick={() => setEditing(true)} className="ds-btn ds-btn-link">Not right? Correct this</button>
             </div>
           )}
         </>
       ) : (
         <>
-          <div className="gwui-ci-assessment-label">What this suggests (one per line)</div>
-          <textarea value={suggestsText} onChange={e => setSuggestsText(e.target.value)} rows={3}
-            className="gwui-ci-assessment-textarea" />
-          <div className="gwui-ci-assessment-label">What I will do with it (one per line)</div>
-          <textarea value={willDoText} onChange={e => setWillDoText(e.target.value)} rows={2}
-            className="gwui-ci-assessment-textarea" />
-          <div className="gwui-ci-assessment-actions">
-            <button onClick={save} disabled={saving} className="gwui-ci-assessment-save">
-              {saving ? 'Saving…' : 'Save correction'}
-            </button>
-            <button onClick={() => setEditing(false)} disabled={saving} className="gwui-ci-assessment-cancel">
-              Cancel
-            </button>
+          <label className="ds-text-secondary" htmlFor={`suggests-${docId}`}>What this suggests, one on each line</label>
+          <textarea id={`suggests-${docId}`} value={suggestsText} onChange={e => setSuggestsText(e.target.value)} rows={3} className="ds-composer-field ds-sheet-tall" />
+          <label className="ds-text-secondary" htmlFor={`will-do-${docId}`}>What I will do with it, one on each line</label>
+          <textarea id={`will-do-${docId}`} value={willDoText} onChange={e => setWillDoText(e.target.value)} rows={2} className="ds-composer-field" />
+          <div className="ds-actions">
+            <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save correction'}</Button>
+            <Button kind="quiet" onClick={() => setEditing(false)} disabled={saving}>Cancel</Button>
           </div>
         </>
       )}
@@ -484,6 +478,11 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
   /* The end card's parts that only the engine can write, sent with the reply that closes the
      conversation (request 7). Null until it does; the card shows what is there. */
   const [endCard, setEndCard] = useState<TheEndCardData | null>(null)
+  /* The end card arrives after the last message, so the conversation scrolls down to it too, and to "That’s right, finish" under it
+     (journey 2 run at 375px, 23 November 2026: the button sat half under the box to type in). */
+  useEffect(() => {
+    if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
+  }, [endCard, done])
   /* Whether the card is still being written. It takes ten to forty seconds after the goodbye, so the screen waits for it instead of showing a card with nothing in it (user journeys, F-10). */
   const [cardIsBeingWritten, setCardIsBeingWritten] = useState(false)
   useEffect(() => {
@@ -1167,6 +1166,8 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
       classes rather than an inline style.
     */
     <TheDirectMorning on={direct}>
+    {/* The conversation is a rebuilt screen (journey 2, Hafsah, 23 November 2026): every part inside draws from the tokens. */}
+    <InTheDesignSystem.Provider value={true}>
     <div className={bareFrame ? 'main' : 'gwui-ci-in-tab'}>
       <div className={bareFrame ? 'wrap' : 'gwui-ci-in-tab-frame'}>
       {/**
@@ -1181,13 +1182,13 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
           a ground page, and the only control on the screen should not lead out of the thing
           they came to do. See the-link-opens-on-the-question. */}
       <ConversationCard
+        back={onBack ? <button type="button" onClick={onBack} className="ds-btn ds-btn-link">← {backTitle || checkInName}</button> : undefined}
         header={(
                 <TheCheckInHeader
                   /* The check-in's own name, as the prototype has it, and End session, small and quiet, always on screen (Hafsah,
                      3 November evening). Before any answer has landed, ending it is saying no to this session, so it asks first. */
-                  title={checkInName || 'Your check-in'}
-                  onBack={onBack}
-                  backTitle={backTitle}
+                  title={bareFrame ? (checkInName || 'Your check-in') : 'Your check-in'}
+                  underTitle={done || completed ? 'That’s everything for today' : null}
                   /* Before any answer, leaving is skipping this check-in, so it asks first. After one, "Pause" brings up the end card, so
                      finishing early shows what was written down like any other finish (audit of the check-in pages, row 29). */
                   endLabel={anAnswerHasLanded ? 'Pause' : 'Skip this one'}
@@ -1200,19 +1201,20 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
           <>
                 {/* Clarification session banner */}
                 {isClarificationSession && (
-                  <div className="gwui-ci-banner-info">
-                    I worked part of your report out instead of quoting you. Tell me what really happened and I will fix it.
+                  <div className="ds-ci-banner">
+                    <p className="ds-text-secondary">I worked part of your report out instead of quoting you. Tell me what really happened and I will fix it.</p>
                   </div>
                 )}
 
                 {/* Session open failure - shown at top of chat area so it's always visible */}
                 {openFailed && (
-                  <div className="gwui-ci-banner-warn">
-                    <span className="gwui-ci-banner-warn-text">{openFailedMessage}</span>
+                  <div className="ds-ci-banner">
+                    <p className="ds-text-secondary">{openFailedMessage}</p>
                     <button
+                      type="button"
                       onClick={() => { setOpenFailed(false); openedRef.current = null; openSession.mutate() }}
                       disabled={openSession.isPending}
-                      className="gwui-ci-banner-warn-btn"
+                      className="ds-btn ds-btn-link"
                     >
                       {openSession.isPending ? 'Opening…' : 'Try again'}
                     </button>
@@ -1269,14 +1271,13 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
                             <label htmlFor="doc-upload"
                               title={`Accepted: ${ACCEPTED_UPLOADS.map(e => e.slice(1).toUpperCase()).join(', ')}`}
                               onClick={() => setAttachOpen(false)}
-                              className="gwui-ci-attach-item"
                             >
                               Add a photo or a document
                             </label>
                             <button
+                              type="button"
                               onClick={() => { setAttachOpen(false); if (groundId) setPasteMode(true) }}
                               disabled={completed || declined}
-                              className="gwui-ci-attach-item"
                             >
                               Paste text
                             </button>
@@ -1307,7 +1308,7 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
              * inside it (the-page-says-what-it-is-doing.spec.ts).
              */
             <Bubble mine={false}>
-              {openingLine && <p className="gwui-pre-line">{openingLine}</p>}
+              {openingLine && <p>{openingLine}</p>}
               <div role="status" aria-live="polite" className="gwui-writing">
                 Groundwork is writing…
                 <WritingDots />
@@ -1319,19 +1320,13 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
           )}
 
           {priorTurns.length > 0 && (
-            <div className="gwui-ci-prior">
-              <div className="gwui-ci-prior-label">
-                {/* REVIEW ROUND 3, ITEM 7: A SENTENCE, NOT A DOT-JOINED FRAGMENT. */}
-                What you said before.
-              </div>
-              <div className="gwui-ci-prior-list">
-                {priorTurns.map(m => (
-                  <div key={`prior-${m.id}`} className={`gwui-ci-prior-bubble ${m.role === 'PERSON' ? 'gwui-ci-prior-bubble-mine' : 'gwui-ci-prior-bubble-theirs'}`}>
-                    {nothingInternalReachesTheBubble(m.content)}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <>
+              {/* REVIEW ROUND 3, ITEM 7: A SENTENCE, NOT A DOT-JOINED FRAGMENT. */}
+              <p className="ds-text-meta">What you said before.</p>
+              {priorTurns.map(m => (
+                <Bubble key={`prior-${m.id}`} mine={m.role === 'PERSON'}>{nothingInternalReachesTheBubble(m.content)}</Bubble>
+              ))}
+            </>
           )}
           {/*
             THE WAITING TREATMENT EXISTED AND THE BUBBLE THAT NEEDED IT DID NOT QUALIFY FOR IT.
@@ -1373,7 +1368,9 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
                  */
                 <GroundworkIsWriting wrap={false} />
               ) : nothingInternalReachesTheBubble(m.content)}
-              {streamingId === m.id && (
+              {/* Only on the message still being typed, the last one: a new message cutting the typing short left the caret
+                  blinking in the old one for the rest of the conversation (journey 2 run, 23 November 2026). */}
+              {streamingId === m.id && m.id === displayedMsgs[displayedMsgs.length - 1]?.id && (
                 <span className="gwui-ci-caret" />
               )}
             </Bubble>
@@ -1460,11 +1457,13 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
           {justFinished && completed && !declined && bareFrame && groundId && (
             <Bubble mine={false}><TheReportIsComing groundId={groundId} /></Bubble>
           )}
-          {justFinished && completed && !declined && !bareFrame && groundId && (
+          {/* On every visit to a finished conversation, not only the moment it finished (journey 2, 23 November 2026): reopened later,
+              it otherwise ended on "Below is what I wrote down" with nothing below it and no way to the report. Thanks only once. */}
+          {completed && !declined && !bareFrame && groundId && (
             <Bubble mine={false}>
               <p>
-                Done.{user?.firstName ? ` Thanks, ${user.firstName}.` : ''} Your report is ready in{' '}
-                <Link to={whereYourReportLives(groundId, checkInId)} className="gwui-plain-link">My work</Link>.
+                Done.{justFinished && user?.firstName ? ` Thanks, ${user.firstName}.` : ''} Your report is ready in{' '}
+                <Link to={whereYourReportLives(groundId, checkInId)} className="ds-link">My work</Link>.
               </p>
             </Bubble>
           )}
@@ -1502,27 +1501,17 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
               way - that part of the fourth review's fix stands - but the offer itself now waits
               for the one floor everybody reads. */}
           {declined && (
-            <div className="gwui-stack-10">
-              <div className="gwui-ci-settled-box">
-                <div className="gwui-ci-settled-title">Skipped. The report will say so.</div>
-              </div>
-            </div>
+            <Bubble mine={false}><p>Skipped. The report will say so.</p></Bubble>
           )}
 
           {confirmingDecline && !declined && (
-            <div className="gwui-stack-10">
-              <div className="gwui-ci-confirm-box">
-                <div className="gwui-ci-confirm-title">
-                  Skip this check-in? The report will say you skipped it.
-                </div>
-                <div className="gwui-ci-confirm-actions">
-                  <Button kind="primary" onClick={() => decline.mutate()} disabled={decline.isPending}>
-                    {decline.isPending ? 'Recording…' : 'Yes, skip it'}
-                  </Button>
-                  <Button kind="secondary" onClick={() => setConfirmingDecline(false)}>
-                    Keep going
-                  </Button>
-                </div>
+            <div className="ds-card">
+              <p className="ds-text-card">Skip this check-in? The report will say you skipped it.</p>
+              <div className="ds-actions">
+                <Button kind="primary" onClick={() => decline.mutate()} disabled={decline.isPending}>
+                  {decline.isPending ? 'Recording…' : 'Yes, skip it'}
+                </Button>
+                <Button kind="quiet" onClick={() => setConfirmingDecline(false)}>Keep going</Button>
               </div>
             </div>
           )}
@@ -1541,10 +1530,9 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
           time any run drove the participant path at a phone width, which is what
           that was for. */}
       {pasteMode && (
-        <div className="gwui-ci-sheet-overlay">
-          <div className="gwui-ci-sheet">
-            <div className="gwui-ci-sheet-handle" />
-            <div className="gwui-ci-sheet-title">📋 Paste text</div>
+        <div className="ds-sheet-over">
+          <div className="ds-sheet" role="dialog" aria-label="Paste text">
+            <h2 className="ds-text-card">Paste text</h2>
             {/*
               U.8 REVIEW: "Slack thread" AND "THE TOOL" ARE WORK JARGON, AND THE PANEL NEVER SAID
               WHAT THE UPLOAD MODAL RIGHT NEXT TO IT ALREADY SAYS - that this starts private, the
@@ -1553,33 +1541,26 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
               (documentsApi.upload), so it already gets the same OWN-by-default privacy
               (who-can-see-a-document.ts); this only makes the panel say so.
             */}
-            <div className="gwui-ci-sheet-note">
-              Paste an email, a message or your notes. It starts private to you.
-            </div>
-            <label htmlFor="paste-label" className="gwui-ci-sheet-label">
-              What is it? You can skip this.
-            </label>
+            <p className="ds-text-secondary">Paste an email, a message or your notes. It starts private to you.</p>
+            <label htmlFor="paste-label" className="ds-text-secondary">What is it? You can skip this.</label>
             <input
               id="paste-label"
               value={pasteLabel}
               onChange={e => setPasteLabel(e.target.value)}
-              className="gwui-ci-sheet-field"
+              className="ds-composer-field"
             />
             <textarea autoFocus
+              aria-label="Your text"
               placeholder="Paste your text here…"
               value={pasteText}
               onChange={e => setPasteText(e.target.value)}
-              className="gwui-ci-sheet-textarea"
+              className="ds-composer-field ds-sheet-tall"
             />
-            <div className="gwui-ci-sheet-actions">
-              <button onClick={() => { setPasteMode(false); setPasteText(''); setPasteLabel('') }}
-                className="gwui-ci-sheet-cancel">
-                Cancel
-              </button>
-              <button onClick={submitPaste} disabled={!pasteText.trim() || uploadDoc.isPending}
-                className="gwui-ci-sheet-submit">
+            <div className="ds-actions">
+              <Button onClick={submitPaste} disabled={!pasteText.trim() || uploadDoc.isPending}>
                 {uploadDoc.isPending ? 'Adding…' : 'Add it'}
-              </button>
+              </Button>
+              <Button kind="quiet" onClick={() => { setPasteMode(false); setPasteText(''); setPasteLabel('') }}>Cancel</Button>
             </div>
           </div>
         </div>
@@ -1589,33 +1570,27 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
       {/* Same z-index correction as the paste sheet above: both were at 50,
           under the fixed help button at 8000. */}
       {docContextMode && pendingDoc && (
-        <div className="gwui-ci-sheet-overlay">
-          <div className="gwui-ci-sheet">
-            <div className="gwui-ci-sheet-handle" />
-            <div className="gwui-ci-sheet-title">📎 {pendingDoc.name}</div>
-            <div className="gwui-ci-sheet-note">
-              What does it show? One line is enough; you can skip it.
-            </div>
+        <div className="ds-sheet-over">
+          <div className="ds-sheet" role="dialog" aria-label={pendingDoc.name}>
+            <h2 className="ds-text-card">{pendingDoc.name}</h2>
+            <p className="ds-text-secondary">What does it show? One line is enough; you can skip it.</p>
             <textarea autoFocus
               aria-label="What does it show?"
               value={docContext} onChange={e => setDocContext(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitDocWithContext() } }}
-              className="gwui-ci-sheet-textarea gwui-ci-sheet-textarea-short"
+              className="ds-composer-field"
             />
-            <div className="gwui-ci-sheet-actions">
-              <button onClick={() => { setDocContextMode(false); setPendingDoc(null) }}
-                className="gwui-ci-sheet-cancel">
-                Cancel
-              </button>
-              <button onClick={submitDocWithContext} disabled={uploadDoc.isPending}
-                className="gwui-ci-sheet-submit">
+            <div className="ds-actions">
+              <Button onClick={submitDocWithContext} disabled={uploadDoc.isPending}>
                 {uploadDoc.isPending ? 'Adding…' : 'Add to check-in'}
-              </button>
+              </Button>
+              <Button kind="quiet" onClick={() => { setDocContextMode(false); setPendingDoc(null) }}>Cancel</Button>
             </div>
           </div>
         </div>
       )}
     </div>
+    </InTheDesignSystem.Provider>
     </TheDirectMorning>
   )
 }
