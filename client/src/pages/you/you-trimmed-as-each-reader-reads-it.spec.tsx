@@ -1,10 +1,11 @@
 /**
- * YOU, PORTED FROM THE PROTOTYPE'S MARKUP (C2-the-you-board), AS EACH READER READS IT (Hafsah, 21 November 2026).
+ * YOU, TRIMMED (page audit row 4, Hafsah, 24 November 2026), AS EACH READER READS IT.
  *
- * The You the local copy served Wairimu (who runs a check-in), Amani (who takes part) and Grace (an admin in none), saved as they came,
- * and the fuller one from the second night run (goals, what you said you'd do, coaching, everything asked of you). With the design
- * switch on, each reads the prototype's sections in its order, filled from their own record, with none of the prototype's privacy notes;
- * the parts the prototype has no place for (performance history, leave, requests, CV and emergency contact) come after. Off, none of it.
+ * Rewritten from the spec of the prototype port (it checked that every empty box was drawn, with its sentence saying it was empty, which
+ * row 4 removes). The You the local copy served Wairimu (who runs a check-in), Amani (who takes part) and Grace (an admin in none), and
+ * the fuller one from the second night run. Each reads only the parts the record has something for, no box saying there is nothing,
+ * one commitments list ("Send the update" once), one reports list, one coaching section, no privacy note; and with nothing at all,
+ * one line. The parts the prototype has no place for (leave, requests, CV and emergency contact) still come after.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -37,12 +38,6 @@ function open(served: any, designPass: boolean) {
   return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/you']}><YouPage /></MemoryRouter></QueryClientProvider>)
 }
 
-const at = (text: string, words: string) => {
-  const i = text.indexOf(words)
-  expect(i, `"${words}" is on the page`).toBeGreaterThanOrEqual(0)
-  return i
-}
-
 /** Each heading found after the one before it, so a heading that is the start of another ("Coaching") is found in its own place. */
 function inOrder(text: string, headings: string[]) {
   let from = 0
@@ -55,41 +50,52 @@ function inOrder(text: string, headings: string[]) {
 
 beforeEach(() => vi.clearAllMocks())
 
-describe('You ported from the prototype, as each reader reads it', () => {
-  it('with the switch off, none of the port is drawn', async () => {
+const EMPTY_BOXES = ['Nothing is worth knowing about your work right now.', 'Groundwork has not noticed anything about your work yet.',
+  'No coaching has been followed over time yet.', 'No goal has been set for you yet.', 'Nothing you contributed is on record yet.',
+  'There is no coaching for you this week yet.', 'Nobody has asked anything of you this week.', 'Nothing has come up about your part',
+  'Nothing is on your to-do list.', 'You have not made a commitment on record yet.', 'Nothing needs deciding about your work right now.']
+
+describe('You, trimmed, as each reader reads it', () => {
+  it('with the switch off, the trimmed page is not drawn', async () => {
     const { container } = open(wairimu, false)
     await screen.findAllByText(/Sales team, Q4/)
-    expect(container.querySelector('.gw-proto')).toBeNull()
+    expect(container.querySelector('.ds-page')).toBeNull()
   })
 
-  for (const [who, served] of [['Wairimu, who runs a check-in', wairimu], ['Amani, who takes part', amani], ['Grace, in no check-in', grace]] as const) {
-    it(`${who} reads the prototype's sections, no privacy note, and the parts it has no place for after them`, async () => {
+  for (const [who, served] of [['Wairimu, who runs a check-in', wairimu], ['Amani, who takes part', amani]] as const) {
+    it(`${who} reads only the parts with something in them, then the parts the prototype has no place for`, async () => {
       const { container } = open(served, true)
-      await screen.findByText('Your board')
-      /* The next check-in comes from Today's read, once it has come in. */
-      await screen.findByText(/Your next check-in opens on/)
+      await screen.findByText('Your work in each')
+      await screen.findByText(/Your next check-in opens on Friday 27 November/)
       const text = container.textContent ?? ''
-      expect(container.querySelector('.gw-proto')).not.toBeNull()
       for (const note of PRIVACY_NOTES) expect(text).not.toContain(note)
-      expect(at(text, 'You')).toBeLessThan(at(text, 'Your board'))
-      expect(at(text, 'Your to-dos')).toBeLessThan(at(text, 'Everything you’ve written, in every check-in, as one file.'))
-      expect(at(text, 'Everything you’ve written, in every check-in, as one file.')).toBeLessThan(at(text, 'Your CV and who to call'))
-      expect(text).toContain('Add a to-do')
-      expect(text).toContain('Your next check-in opens on Friday 27 November')
-      /* Every section the prototype draws, in its order, each with its own sentence where the record is empty. */
-      const every = ['Where you stand', 'Worth knowing now', 'Something Groundwork noticed about your work', 'Coaching, followed over time', 'Your goals',
-        'Your commitments', 'Your to-dos', 'What you contributed', 'Coaching', 'Everything asked of you this week', 'What you said you’d do',
-        'Something that keeps coming up', 'Your own reports', 'Your work in each']
-      inOrder(text, every)
+      for (const box of EMPTY_BOXES) expect(text, box).not.toContain(box)
+      expect(text).not.toContain('Your board')
+      expect(text).not.toContain('Your performance history')
+      inOrder(text, ['You', 'Your next check-in opens on', 'Your own reports', 'Your work in each', 'Everything you’ve written, in every check-in, as one file.', 'Your CV and who to call'])
     })
   }
 
-  it('the fuller You reads in the prototype\'s order: your board, what is asked of you, what you said you\'d do, your reports and work', async () => {
-    const { container } = open((nightRun as any).grace, true)
-    await screen.findByText('Your board')
+  it('Grace, with nothing about her own work on record, reads one line, then her data and details', async () => {
+    const { container } = open(grace, true)
+    await screen.findByText('Nothing needs you about your own work yet.')
     const text = container.textContent ?? ''
-    const order = ['Your board', 'Your goals', 'Your commitments', 'Your to-dos', 'Coaching', 'Everything asked of you this week', 'What you said you’d do', 'Your own reports', 'Your work in each']
-    inOrder(text, order)
+    for (const box of EMPTY_BOXES) expect(text, box).not.toContain(box)
+    inOrder(text, ['Nothing needs you about your own work yet.', 'Everything you’ve written, in every check-in, as one file.', 'Your CV and who to call'])
+  })
+
+  it('the fuller You: one commitments list, one reports list, one coaching section, in the prototype\'s order', async () => {
+    const served = (nightRun as any).grace
+    const { container } = open(served, true)
+    await screen.findByText('What you said you’d do')
+    const text = container.textContent ?? ''
+    inOrder(text, ['Your board', 'Your goals', 'Coaching', 'Everything asked of you this week', 'What you said you’d do', 'Your own reports', 'Your work in each'])
+    expect(text).not.toContain('Your commitments')
+    expect(text).not.toContain('Coaching, followed over time')
+    expect(screen.getAllByRole('heading', { name: 'Coaching' })).toHaveLength(1)
+    expect(screen.getAllByRole('heading', { name: 'Your own reports' })).toHaveLength(1)
+    /* Each thing said once: every commitment is one row of the one list. */
+    for (const s of served.saidYoudDo) expect(text.split(s.text).length - 1, s.text).toBe(1)
     for (const note of PRIVACY_NOTES) expect(text).not.toContain(note)
   })
 })

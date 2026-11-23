@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Section, Empty, RowList, Row } from '@/components/gw/ui'
+import { Section, EdgeList, EdgeRow } from '@/components/gw/ui'
 import { reviewsApi } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
@@ -9,8 +9,9 @@ import type { YourBoard } from '@/api/you'
 import { TenAPage } from './TenAPage'
 
 /**
- * YOUR PERFORMANCE HISTORY (Hafsah, 21 November 2026: "performance history"). Your reviews and your own report from each check-in,
- * newest first, each with where to read it in full. Every fact is read from where it already lives: your reviews from
+ * YOUR OWN REPORTS (Hafsah, 21 November 2026: "performance history"; 24 November, page audit row 4: "one reports list"). Your reviews
+ * and your own report from each check-in, newest first, each with where to read it in full: the one list of them on You, under the
+ * prototype's heading. Nothing is drawn until there is one. Every fact is read from where it already lives: your reviews from
  * GET /suites/reviews/mine (the same call, and the same cache, as your Suites page), your reports from `ownReports` on GET /you.
  *
  * NOT HERE, ON PURPOSE: how your answers were graded (specificity, coverage, the check-in grade). The You board has never served
@@ -41,27 +42,18 @@ export function YourPerformanceHistory({ b }: { b: YourBoard }) {
     })),
   ].sort((x, y) => y.at - x.at)
 
+  if (entries.length === 0) return null
   return (
-    <Section heading="Your performance history">
-      {entries.length === 0 ? (
-        <Empty>You have no reviews or reports yet. Your own report from each check-in is listed here once you finish one.</Empty>
-      ) : (
-        <TenAPage items={entries} label="your performance history">
-          {shown => (
-            <RowList label="Your performance history">
-              {shown.map(e => (
-                <Row key={e.key} columns="minmax(0, 1fr) auto">
-                  <div>
-                    <b>{e.title}</b>
-                    {e.line && <p className="gwui-panel-text">{e.line}</p>}
-                  </div>
-                  <Link className="gwui-plain-link gwui-tap-44" to={e.to}>{e.linkSays}</Link>
-                </Row>
-              ))}
-            </RowList>
-          )}
-        </TenAPage>
-      )}
+    <Section heading="Your own reports">
+      <TenAPage items={entries} label="your own reports">
+        {shown => (
+          <EdgeList label="Your own reports">
+            {shown.map(e => (
+              <EdgeRow key={e.key} title={e.title} detail={e.line || undefined} actions={<Link className="gwui-plain-link gwui-tap-44" to={e.to}>{e.linkSays}</Link>} />
+            ))}
+          </EdgeList>
+        )}
+      </TenAPage>
     </Section>
   )
 }

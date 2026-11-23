@@ -16,8 +16,7 @@ import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
 import { WhereYouStandFromSuggestions } from '@/components/gw/Suggestions'
 import { EdgeList, EdgeRow } from '@/components/gw/ui'
 import { EverythingThatIsYours } from './EverythingThatIsYours'
-import { TheYouBoardAsPictured } from './TheYouBoardAsPictured'
-import { YourPerformanceHistory } from './YourPerformanceHistory'
+import { TheYouBoard } from './TheYouBoard'
 import { YourLeave } from './YourLeave'
 import { YourRequests } from './YourRequests'
 
@@ -98,22 +97,20 @@ export function YouPage() {
      themselves (your leave, your requests), arrived one after another and pushed "Your details" down. The page is held under one
      placeholder until they are all in, then drawn together. Your details come last on the page, so nothing moves if they are later. */
   const waiting = isLoading || grounds.isLoading
-  /* With the design switch on, You is the prototype's own board (TheYouBoardAsPictured), with the parts it has no place for after it. */
+  /* With the design switch on, You is drawn on the design system (TheYouBoard), each part only when the record has something for it. */
   const designPass = useTheDesignPass()
   if (designPass && !isError) {
     return (
-      <Page>
+      <Page title="You" lede={data ? theYouSubtitle(data.checkIns ?? []) : 'What’s yours, across your check-ins.'}>
         <Held waiting={waiting} alsoFor={YOUR_REQUESTS} what="Getting your page" count={5}>
           {data && (
-            <TheYouBoardAsPictured
+            <TheYouBoard
               b={data}
-              yourData={<YourData asPictured />}
+              yourData={<YourData />}
               more={(
                 <>
-                  <YourPerformanceHistory b={data} />
                   <YourLeave />
                   <YourRequests />
-                  {(data as any).runningRecord && <YourRunningRecord r={(data as any).runningRecord} />}
                   {user?.id && <APersonsDetails userId={user.id} own />}
                 </>
               )}
@@ -316,7 +313,7 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
  * it" in your settings: what the product holds about you, read from the server as you, saved to
  * your computer. Nothing else is sent anywhere.
  */
-export function YourData({ asPictured = false }: { asPictured?: boolean } = {}) {
+export function YourData() {
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   async function download() {
@@ -337,14 +334,6 @@ export function YourData({ asPictured = false }: { asPictured?: boolean } = {}) 
       setBusy(false)
     }
   }
-  /* The ported You (TheYouBoardAsPictured): the prototype's own panel, the sentence and "Download it" on one line. */
-  if (asPictured) return (
-    <section className="panel pad dp-your-data" aria-label="Your data">
-      <p className="t-body">Everything you’ve written, in every check-in, as one file.</p>
-      <button type="button" className="btn sec" onClick={download} disabled={busy}>Download it</button>
-      {failed && <p role="alert" className="t-small mut">Your file did not download. Try again.</p>}
-    </section>
-  )
   return (
     <Panel as="section" aria-label="Your data">
       {/* THE PROTOTYPE'S OWN LINE (you-board-miriam.jpg): the sentence and "Download it" sit on one
