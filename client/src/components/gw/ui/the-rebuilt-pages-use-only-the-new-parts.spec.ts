@@ -406,6 +406,9 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/notfound/NotFoundPage.tsx',
       'components/gw/PageCrash.tsx',
       'components/gw/GroundGone.tsx',
+      /* Journey 2, a member's first check-in (23 November). See the comment on REBUILT_PAGES in rebuilt-pages.ts. */
+      'components/gw/BetweenCheckIns.tsx',
+      'pages/join/AnswerFirstPage.tsx',
     ])
   })
 

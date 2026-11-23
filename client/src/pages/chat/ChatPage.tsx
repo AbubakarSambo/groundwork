@@ -142,6 +142,8 @@ const AN_OPEN_MAY_TAKE = 150_000
 /** What somebody who types into a check-in that is already finished reads, in the chat. */
 export const THIS_CHECK_IN_IS_FINISHED = 'This check-in is finished, so I did not add what you typed. Anything new can go in your next check-in.'
 
+/* PRIMARY-BUTTONS-NEVER-TOGETHER: each main button belongs to one state that shows alone (correcting a line, confirming a skip,
+   the paste sheet, the document sheet), so a person never sees two at once. */
 export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, settled, onBack, backTitle }: {
   checkInId?: string
   groundId?: string
@@ -1187,8 +1189,10 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
                 <TheCheckInHeader
                   /* The check-in's own name, as the prototype has it, and End session, small and quiet, always on screen (Hafsah,
                      3 November evening). Before any answer has landed, ending it is saying no to this session, so it asks first. */
-                  title={bareFrame ? (checkInName || 'Your check-in') : 'Your check-in'}
-                  underTitle={done || completed ? 'That’s everything for today' : null}
+                  /* The check-in's name, said once: in the link above the card when there is one ("← Sales team, Q4", with "Your
+                     check-in" as the card's title, as check-in-start.jpg pairs them), otherwise as the card's title. Nothing under it
+                     (Hafsah, 3 November evening: no line under the name, so nothing there can disagree with the card). */
+                  title={onBack ? 'Your check-in' : (checkInName || 'Your check-in')}
                   /* Before any answer, leaving is skipping this check-in, so it asks first. After one, "Pause" brings up the end card, so
                      finishing early shows what was written down like any other finish (audit of the check-in pages, row 29). */
                   endLabel={anAnswerHasLanded ? 'Pause' : 'Skip this one'}

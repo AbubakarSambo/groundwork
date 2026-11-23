@@ -40,9 +40,10 @@ describe('the conversation, as check-in-start.jpg draws it', () => {
     expect(screen.getByRole('button', { name: 'Send message' })).toHaveClass('ds-btn-main')
   })
 
-  it('says "That’s everything for today" under the title once the conversation has closed', () => {
-    inTheDesignSystem(<TheCheckInHeader title="Your check-in" underTitle="That’s everything for today" />)
-    expect(screen.getByText('That’s everything for today')).toHaveClass('ds-text-meta')
+  /* Only the page between check-ins has a line under the name; a check-in in progress has none (Hafsah, 3 November evening). */
+  it('between check-ins, says "No check-in open right now" under the name as one meta line', () => {
+    inTheDesignSystem(<TheCheckInHeader title="Sales team, Q4" underTitle="No check-in open right now" />)
+    expect(screen.getByText('No check-in open right now')).toHaveClass('ds-text-meta')
   })
 })
 
