@@ -61,27 +61,18 @@ describe('B-056: the My work notice counts one person in words, not a bare digit
     ;(documentsApi.list as any).mockResolvedValue([])
   })
 
-  it('tells the reader, who is the one person on the check-in, to check in herself', async () => {
+  /*
+   * CHANGED (page audit, 24 November 2026, row 8): the notice sat on the "Who has answered" roster, which folded into People and
+   * setup's one list. It explained how the report forms rather than saying something about these people, so it went with the roster;
+   * what B-056 protected, no bare digit standing in for a number, is still checked on the page "Who has answered" now opens.
+   */
+  it('"Who has answered" opens the one list of people, with no bare digit in a count', async () => {
     (groundsApi.get as any).mockResolvedValue({ ...BASE_GROUND })
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Get a project back on track/i).length).toBeGreaterThan(0))
     fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
-    /* Batch 1, group 10: "My work" opens the B7 page for a lead too, from every tab row, so the roster is one press further,
-       behind "Who has answered" inside it (it was the lead's landing while Release 1B's switch was off). */
     fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
-    expect(await screen.findByText(/once you have checked in/)).toBeTruthy()
-    expect(screen.queryByText(/once all 1 are in/)).toBeNull()
-  })
-
-  it('says "they are in" when the reader is not the one person on the check-in', async () => {
-    (groundsApi.get as any).mockResolvedValue({
-      ...BASE_GROUND,
-      participants: [{ id: 'p1', email: 'amani@kijani.test', partyType: 'INITIATOR', userId: 'u-amani', accepted: true }],
-    })
-    renderPage()
-    await waitFor(() => expect(screen.getAllByText(/Get a project back on track/i).length).toBeGreaterThan(0))
-    fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
-    expect(await screen.findByText(/once they are in/)).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: "Who's in it" })).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/once all 1 are in|The picture builds as each person answers/)
   })
 })

@@ -81,13 +81,16 @@ function renderWith(over: Record<string, any> = {}) {
       <CheckInPeopleAndSetup {...(props as any)} />
     </QueryClientProvider>,
   )
+  /* Each setting is one line with "Change", and its editor opens from that (page audit, 24 November 2026, row 2). */
+  const opens = screen.queryByRole('button', { name: 'Change, How often' })
+  if (opens) fireEvent.click(opens)
   return props
 }
 
 describe('the day check-ins land on, from People and setup', () => {
   it('a weekly check-in offers the day-of-week picker under "How often"', async () => {
     renderWith()
-    await screen.findByText('When it runs')
+    await screen.findByText('How it runs')
     expect(screen.getByRole('combobox', { name: 'How often' })).toBeTruthy()
     expect(screen.getByText('Which day of the week should check-ins open? (optional)')).toBeTruthy()
   })
@@ -121,7 +124,7 @@ describe('the day check-ins land on, from People and setup', () => {
 
   it('is not offered to someone who may not change the setup', async () => {
     renderWith({ ground: ground({ mayChangeSetup: false }) })
-    await screen.findByText('When it runs')
+    await screen.findByText('How it runs')
     expect(screen.queryByText('Which day of the week should check-ins open? (optional)')).toBeNull()
     expect(screen.queryByRole('combobox', { name: 'How often' })).toBeNull()
   })

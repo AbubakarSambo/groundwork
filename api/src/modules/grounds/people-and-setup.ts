@@ -298,7 +298,7 @@ export async function readPeopleAndSetup(
     ? (OPEN_STATUSES.has(ground.status) ? 'Open now. The report comes when it closes, or when everyone has answered.' : 'It has closed. The report is made from the answers given.')
     : planned == null
       ? `${rounds} ${rounds === 1 ? 'session' : 'sessions'} so far. It runs until ${isLead ? 'you end' : `${ground.initiator?.firstName || 'the person who runs it'} ends`} it.`
-      : `${Math.min(rounds, planned)} of ${planned} sessions done. Sessions already done are never removed.`;
+      : `${Math.min(rounds, planned)} of ${planned} sessions done.`;
 
   const throughTheLink = rows.filter((p) => p.cameThroughTheLink).length;
   const joinedWithTheLink = throughTheLink === 0

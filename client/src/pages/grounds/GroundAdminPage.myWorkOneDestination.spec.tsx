@@ -93,9 +93,10 @@ describe('"My work" lands in the same place, whichever tab row sent it there', (
     await onHerMyWork()
   })
 
-  it('?tab=sessions still opens the roster, and "Who has answered" reaches it from My work', async () => {
+  /* The roster is People and setup's one list now (page audit, 24 November 2026, row 8): ?tab=sessions lands on it. */
+  it('?tab=sessions opens the one list of people', async () => {
     renderPageAt('/grounds/g1?tab=sessions')
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
-    expect(await screen.findByText('People')).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: "Who's in it" })).toBeTruthy()
   })
 })

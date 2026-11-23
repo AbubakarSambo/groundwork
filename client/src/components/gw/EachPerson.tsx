@@ -93,6 +93,7 @@ export function EachPerson({
   onChangeInChat,
   onUploadFor,
   onSetToDo,
+  bare = false,
 }: {
   groundId: string
   people: APersonOnTheCard[]
@@ -119,6 +120,8 @@ export function EachPerson({
   onUploadFor?: (participantId: string, ask?: AnAskOnTheCard) => void
   /** Their own to-do, moved by them. */
   onSetToDo?: (id: string, status: 'DONE' | 'NOT_DONE' | 'DROPPED') => void
+  /** The first person's card on its own, with no fold and no name: People and setup draws it under their row. */
+  bare?: boolean
 }) {
   /*
    * COLLAPSED BY DEFAULT, AND THAT IS ABOUT A HUNDRED PEOPLE RATHER THAN ABOUT TIDINESS.
@@ -168,12 +171,158 @@ export function EachPerson({
   const cards = inOrder.filter((p) => !nothingYet.includes(p))
   const names = nothingYet.map((p) => atTheStart(labelOf(p)))
 
+  /** Everything on record for one person: drawn in their fold here, or on its own under their row on People and setup (`bare`). */
+  const cardOf = (p: APersonOnTheCard) => {
+    const isMe = !!viewerUserId && p.userId === viewerUserId
+    const { theirs, theirTargets, theirToDos, theirFiles, theirAsks } = factsOf(p)
+    return (
+      <div className="ds-section">
+        {/* WHAT THEIR CHECK-IN IS ABOUT FOR THEM: the expectation, in the lead's words, and
+            whether the person has seen it. Never editable here - see the note at the top. */}
+        <Part title={isMe ? 'What is expected of you' : 'What is expected of them'}>
+          {/*
+            THE EXPECTATION ITSELF IS STILL RENDERED BY ExpectationsPanel, scoped to this one
+            person and drawn bare. It was kept rather than rewritten because of what it does
+            besides printing the sentence: whether this matches what they said doing well
+            looks like, whether the lead says they have been told, a tracked expectation's
+            link and how stale the state we last read is, and marking an expectation seen the
+            moment the person it is about looks at it.
+          */}
+          {theirs.length
+            ? <ExpectationsPanel groundId={groundId} parties={[p as any]} viewerUserId={viewerUserId} hasChat={false} viewerIsLead={isLead} bare />
+            : (
+              /*
+                "THE LEAD" SAID TO THE LEAD.
+
+                Hafsah, 23 September 2026, reading her own check-in: "why would you say it
+                comes from the lead's own check-in when I am actually the lead, why can't it
+                say your own check-in." `isLead` was already in scope one line below, used
+                to decide whether to offer the chat link.
+
+                "A MEMBER HAS NO CONVERSATION ON THIS PAGE" (Esther, live re-walk, fault 3a).
+                "...or from the conversation on this page." named a half this screen only
+                ever gives the check-in's own lead - a member reading her own context tab,
+                or an admin reading someone else's, has no conversation here to point at
+                (the chat link just below, `onChangeInChat`, is itself only ever passed for
+                `isTheLead`, never for an admin whom `isLead` alone would also cover), and
+                read a sentence naming something that was never true for her. Only the
+                check-in's own lead, who does have it, reads that second half now.
+              */
+              <Empty>
+                {isTheLead
+                  ? (oldChatIsOpen
+                    ? <>Nothing yet. It comes from your own check-in, or from the conversation on this page.</>
+                    : <>Nothing yet. It comes from your own check-in, or from telling {askName}.</>)
+                  : <>Nothing yet. It comes from {leadsOwn} own check-in.</>}
+              </Empty>
+            )}
+          {/* THIS ONLY GOES ELSEWHERE (Hafsah, 30 September, the button rules): it hands the
+              change to the conversation rather than doing anything itself, so it is a quiet
+              text link, `.gwui-plain-link`, not a button. B-082: once the old chat is gone,
+              the same link asks Ask the whole question instead of filling a box nobody can see. */}
+          {isLead && onChangeInChat && (
+            /*
+              B-116: ON HER OWN CARD, THE FILLED LINE MUST SPEAK AS HER. The lead can also be
+              a participant on her own check-in (isMe true here), and `labelOf(p)` always
+              gives her real name - there is no "you" form of it (see the "You" summary
+              above, handled as its own special case). Filling the chat with "Change what I
+              expect of Tendai Moyo to " read as if she were talking about somebody else.
+              Worded for the reader instead, same as every other "you"/"your" branch on this
+              card: "myself" in what she types, "me" in the sentence handed to Ask.
+            */
+            <QuietLink onClick={() => onChangeInChat(
+              isMe ? 'Change what I expect of myself to ' : `Change what I expect of ${labelOf(p)} to `,
+              isMe ? `I want to change what ${groundLabel} expects of me.` : `I want to change what ${groundLabel} expects of ${labelOf(p)}.`,
+            )}>Change this in the chat</QuietLink>
+          )}
+        </Part>
+
+        <Part title={isMe ? 'Your numbers' : 'Their numbers'}>
+          {theirTargets.length ? theirTargets.map((t) => (
+            <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4 }}>
+              <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)' }}>{t.name}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', fontVariantNumeric: 'tabular-nums' }}>
+                {t.target == null ? <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--gw-muted)' }}>no number</span> : t.target.toLocaleString('en-GB')}
+              </span>
+            </div>
+          )) : <Empty>{isMe
+            ? 'You have no number of your own. Your check-in asks against the team\u2019s.'
+            : `${atTheStart(labelOf(p))} has no number of their own, so their check-in asks against the team\u2019s.`}</Empty>}
+        </Part>
+
+        {/* THEIR TO-DOS, MOVED BY THEM. A lead cannot mark somebody else's work done. */}
+        <Part title={isMe ? 'Your to-dos' : 'What they are down as doing'}>
+          {theirToDos.length ? theirToDos.map((t) => (
+            <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 5, flexWrap: 'wrap' }}>
+              <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: '20px', minWidth: 180 }}>{t.text}</span>
+              {t.whenSaid && <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{t.whenSaid}</span>}
+              {/*
+                WHOSE WORDS, TO WHOEVER IS READING - and the commitments band two bands
+                below already said "your words, not theirs" about the same fact, so the page
+                named the lead in the third person and in the second within one scroll.
+              */}
+              {!t.explicit && (
+                <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
+                  {isTheLead ? 'These are your words, not theirs.' : isMe ? `These are ${leadsOwn} words, not yours.` : `These are ${leadsOwn} words, not theirs.`}
+                </span>
+              )}
+              {/* A PAIR OF CHOICES ON THE ROW (Hafsah, 30 September, the button rules): "Done"
+                  or "Not doing it" is a quiet text link pair, not two buttons - it marks the
+                  to-do's own state, which is a different action from the row's "Attach it"
+                  below (that sends something; this only says what already happened). */}
+              {isMe && onSetToDo && (
+                <span style={{ display: 'flex', gap: 8 }}>
+                  <QuietLink onClick={() => onSetToDo(t.id, 'DONE')}>Done</QuietLink>
+                  <QuietLink onClick={() => onSetToDo(t.id, 'DROPPED')}>Not doing it</QuietLink>
+                </span>
+              )}
+            </div>
+          )) : <Empty>Nothing on record. What somebody says they will do in a check-in lands here.</Empty>}
+        </Part>
+
+        {/*
+          WHAT THEY SAID THEY WOULD SHOW, WITH THE UPLOAD ON THE LINE.
+
+          Her words: "It is also a place for participants to upload docs they agreed they
+          would share in the chat... if they are asked for evidence or context." A dashed box
+          at the bottom of the page that says nothing about what was asked is not that.
+        */}
+        {(theirAsks.length > 0 || isMe) && (
+          <Part title={isMe ? 'What you said you would show' : 'What they said they would show'}>
+            {theirAsks.length ? theirAsks.map((a) => (
+              <div key={a.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 5, flexWrap: 'wrap' }}>
+                <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: '20px', minWidth: 180 }}>{a.what}</span>
+                {a.askedIn && <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{a.askedIn}</span>}
+                {isMe && onUploadFor && <Small onClick={() => onUploadFor(p.id, a)}>Attach it</Small>}
+              </div>
+            )) : <Empty>Nothing outstanding. When a check-in asks you for something in writing, it appears here.</Empty>}
+          </Part>
+        )}
+
+        <Part title={isMe ? 'Your files' : 'Their files'}>
+          {theirFiles.length ? theirFiles.map((f) => (
+            <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4, flexWrap: 'wrap' }}>
+              <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', minWidth: 160 }}>{f.fileName ?? f.name}</span>
+              <span style={{ fontSize: 12, color: f.visibility === 'OPEN' ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
+                {f.visibility === 'OPEN'
+                  ? 'Everyone in this check-in can read it.'
+                  : f.visibility === 'CLOSED' ? 'Whoever runs this check-in can read it.' : 'Only you can read it.'}
+              </span>
+            </div>
+          )) : <Empty>{isMe ? 'Nothing attached yet.' : 'Nothing attached.'}</Empty>}
+          {isMe && onUploadFor && <Small onClick={() => onUploadFor(p.id)}>Attach something</Small>}
+        </Part>
+      </div>
+    )
+  }
+  if (bare) return people[0] ? cardOf(people[0]) : null
+
   return (
     <div className="ds-section">
       <ShowAFew rows={cards} few={8} what="people">
       {(p) => {
         const isMe = !!viewerUserId && p.userId === viewerUserId
-        const { theirs, theirTargets, theirToDos, theirFiles, theirAsks, summary: counted } = factsOf(p)
+        const { summary: counted } = factsOf(p)
         const summary = counted || 'Nothing on record yet'
         const isOpen = !!open[p.id]
 
@@ -213,145 +362,7 @@ export function EachPerson({
               </div>
             )}
           >
-            {(
-              <div className="ds-section">
-                {/* WHAT THEIR CHECK-IN IS ABOUT FOR THEM: the expectation, in the lead's words, and
-                    whether the person has seen it. Never editable here - see the note at the top. */}
-                <Part title={isMe ? 'What is expected of you' : 'What is expected of them'}>
-                  {/*
-                    THE EXPECTATION ITSELF IS STILL RENDERED BY ExpectationsPanel, scoped to this one
-                    person and drawn bare. It was kept rather than rewritten because of what it does
-                    besides printing the sentence: whether this matches what they said doing well
-                    looks like, whether the lead says they have been told, a tracked expectation's
-                    link and how stale the state we last read is, and marking an expectation seen the
-                    moment the person it is about looks at it.
-                  */}
-                  {theirs.length
-                    ? <ExpectationsPanel groundId={groundId} parties={[p as any]} viewerUserId={viewerUserId} hasChat={false} viewerIsLead={isLead} bare />
-                    : (
-                      /*
-                        "THE LEAD" SAID TO THE LEAD.
-
-                        Hafsah, 23 September 2026, reading her own check-in: "why would you say it
-                        comes from the lead's own check-in when I am actually the lead, why can't it
-                        say your own check-in." `isLead` was already in scope one line below, used
-                        to decide whether to offer the chat link.
-
-                        "A MEMBER HAS NO CONVERSATION ON THIS PAGE" (Esther, live re-walk, fault 3a).
-                        "...or from the conversation on this page." named a half this screen only
-                        ever gives the check-in's own lead - a member reading her own context tab,
-                        or an admin reading someone else's, has no conversation here to point at
-                        (the chat link just below, `onChangeInChat`, is itself only ever passed for
-                        `isTheLead`, never for an admin whom `isLead` alone would also cover), and
-                        read a sentence naming something that was never true for her. Only the
-                        check-in's own lead, who does have it, reads that second half now.
-                      */
-                      <Empty>
-                        {isTheLead
-                          ? (oldChatIsOpen
-                            ? <>Nothing yet. It comes from your own check-in, or from the conversation on this page.</>
-                            : <>Nothing yet. It comes from your own check-in, or from telling {askName}.</>)
-                          : <>Nothing yet. It comes from {leadsOwn} own check-in.</>}
-                      </Empty>
-                    )}
-                  {/* THIS ONLY GOES ELSEWHERE (Hafsah, 30 September, the button rules): it hands the
-                      change to the conversation rather than doing anything itself, so it is a quiet
-                      text link, `.gwui-plain-link`, not a button. B-082: once the old chat is gone,
-                      the same link asks Ask the whole question instead of filling a box nobody can see. */}
-                  {isLead && onChangeInChat && (
-                    /*
-                      B-116: ON HER OWN CARD, THE FILLED LINE MUST SPEAK AS HER. The lead can also be
-                      a participant on her own check-in (isMe true here), and `labelOf(p)` always
-                      gives her real name - there is no "you" form of it (see the "You" summary
-                      above, handled as its own special case). Filling the chat with "Change what I
-                      expect of Tendai Moyo to " read as if she were talking about somebody else.
-                      Worded for the reader instead, same as every other "you"/"your" branch on this
-                      card: "myself" in what she types, "me" in the sentence handed to Ask.
-                    */
-                    <QuietLink onClick={() => onChangeInChat(
-                      isMe ? 'Change what I expect of myself to ' : `Change what I expect of ${labelOf(p)} to `,
-                      isMe ? `I want to change what ${groundLabel} expects of me.` : `I want to change what ${groundLabel} expects of ${labelOf(p)}.`,
-                    )}>Change this in the chat</QuietLink>
-                  )}
-                </Part>
-
-                <Part title={isMe ? 'Your numbers' : 'Their numbers'}>
-                  {theirTargets.length ? theirTargets.map((t) => (
-                    <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4 }}>
-                      <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)' }}>{t.name}</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', fontVariantNumeric: 'tabular-nums' }}>
-                        {t.target == null ? <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--gw-muted)' }}>no number</span> : t.target.toLocaleString('en-GB')}
-                      </span>
-                    </div>
-                  )) : <Empty>{isMe
-                    ? 'You have no number of your own. Your check-in asks against the team\u2019s.'
-                    : `${atTheStart(labelOf(p))} has no number of their own, so their check-in asks against the team\u2019s.`}</Empty>}
-                </Part>
-
-                {/* THEIR TO-DOS, MOVED BY THEM. A lead cannot mark somebody else's work done. */}
-                <Part title={isMe ? 'Your to-dos' : 'What they are down as doing'}>
-                  {theirToDos.length ? theirToDos.map((t) => (
-                    <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 5, flexWrap: 'wrap' }}>
-                      <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: '20px', minWidth: 180 }}>{t.text}</span>
-                      {t.whenSaid && <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{t.whenSaid}</span>}
-                      {/*
-                        WHOSE WORDS, TO WHOEVER IS READING - and the commitments band two bands
-                        below already said "your words, not theirs" about the same fact, so the page
-                        named the lead in the third person and in the second within one scroll.
-                      */}
-                      {!t.explicit && (
-                        <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
-                          {isTheLead ? 'These are your words, not theirs.' : isMe ? `These are ${leadsOwn} words, not yours.` : `These are ${leadsOwn} words, not theirs.`}
-                        </span>
-                      )}
-                      {/* A PAIR OF CHOICES ON THE ROW (Hafsah, 30 September, the button rules): "Done"
-                          or "Not doing it" is a quiet text link pair, not two buttons - it marks the
-                          to-do's own state, which is a different action from the row's "Attach it"
-                          below (that sends something; this only says what already happened). */}
-                      {isMe && onSetToDo && (
-                        <span style={{ display: 'flex', gap: 8 }}>
-                          <QuietLink onClick={() => onSetToDo(t.id, 'DONE')}>Done</QuietLink>
-                          <QuietLink onClick={() => onSetToDo(t.id, 'DROPPED')}>Not doing it</QuietLink>
-                        </span>
-                      )}
-                    </div>
-                  )) : <Empty>Nothing on record. What somebody says they will do in a check-in lands here.</Empty>}
-                </Part>
-
-                {/*
-                  WHAT THEY SAID THEY WOULD SHOW, WITH THE UPLOAD ON THE LINE.
-                  
-                  Her words: "It is also a place for participants to upload docs they agreed they
-                  would share in the chat... if they are asked for evidence or context." A dashed box
-                  at the bottom of the page that says nothing about what was asked is not that.
-                */}
-                {(theirAsks.length > 0 || isMe) && (
-                  <Part title={isMe ? 'What you said you would show' : 'What they said they would show'}>
-                    {theirAsks.length ? theirAsks.map((a) => (
-                      <div key={a.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 5, flexWrap: 'wrap' }}>
-                        <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: '20px', minWidth: 180 }}>{a.what}</span>
-                        {a.askedIn && <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{a.askedIn}</span>}
-                        {isMe && onUploadFor && <Small onClick={() => onUploadFor(p.id, a)}>Attach it</Small>}
-                      </div>
-                    )) : <Empty>Nothing outstanding. When a check-in asks you for something in writing, it appears here.</Empty>}
-                  </Part>
-                )}
-
-                <Part title={isMe ? 'Your files' : 'Their files'}>
-                  {theirFiles.length ? theirFiles.map((f) => (
-                    <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4, flexWrap: 'wrap' }}>
-                      <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', minWidth: 160 }}>{f.fileName ?? f.name}</span>
-                      <span style={{ fontSize: 12, color: f.visibility === 'OPEN' ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
-                        {f.visibility === 'OPEN'
-                          ? 'Everyone in this check-in can read it.'
-                          : f.visibility === 'CLOSED' ? 'Whoever runs this check-in can read it.' : 'Only you can read it.'}
-                      </span>
-                    </div>
-                  )) : <Empty>{isMe ? 'Nothing attached yet.' : 'Nothing attached.'}</Empty>}
-                  {isMe && onUploadFor && <Small onClick={() => onUploadFor(p.id)}>Attach something</Small>}
-                </Part>
-              </div>
-            )}
+            {cardOf(p)}
           </Folded>
         )
       }}

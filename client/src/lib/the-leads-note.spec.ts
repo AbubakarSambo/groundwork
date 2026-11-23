@@ -31,13 +31,13 @@ describe('an invitation waiting for its start day', () => {
     expect(waitsForItsStart({ invitedAt: null, startsAt: null })).toBe(false)
     expect(waitsForItsStart({ invitedAt: null, startsAt: later, awaitingSeat: true })).toBe(false)
   })
-  it('and the Sessions list says so instead', () => {
-    const src = readFileSync(join(__dirname, '..', 'pages', 'grounds', 'GroundAdminPage.tsx'), 'utf8')
-    expect(src).toContain('{isInitiator && !p.userId && waitsForItsStart(p as any) && (')
-    expect(src).toContain('Their invitation goes out on the morning the check-in starts.')
-    /* Walkthrough pass 2, item 1: "Resend invite" is also withheld from somebody with no seat at
-       all - their invitation has never gone out, so there is nothing to resend. */
-    expect(src).toContain('{isInitiator && !p.userId && !p.awaitingSeat && !waitsForItsStart(p as any) && (')
-    expect(src).toContain('<TheLeadsNote role={p.roleAsDescribed}')
+  /* Moved with the roster to People and setup's one list (page audit, 24 November 2026, row 8): the row's sentence comes from
+     whereThisPersonIs, and the lead's note is on the row as her own. */
+  it('and the list of people says so instead', () => {
+    const row = readFileSync(join(__dirname, '..', 'components', 'gw', 'WhosInItRoster.tsx'), 'utf8')
+    expect(row).toContain("waitsForItsStart(p) ? 'Their invitation goes out on the morning the check-in starts.'")
+    expect(row).toContain('action: !waitsForItsStart(p)')
+    const page = readFileSync(join(__dirname, '..', 'pages', 'grounds', 'PeopleAndSetupAsPictured.tsx'), 'utf8')
+    expect(page).toContain('theLeadsNote(p.roleAsDescribed)')
   })
 })

@@ -76,7 +76,8 @@ describe('the roster does not offer "Remind" for the lead herself', () => {
     /* Batch 1, group 10: "My work" opens the B7 page for a lead too, from every tab row, so the roster is one press further,
        behind "Who has answered" inside it (it was the lead's landing while Release 1B's switch was off). */
     fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
-    const reminds = await screen.findAllByRole('button', { name: 'Remind' })
+    /* On People and setup's one list now (page audit, 24 November 2026, row 8), in each row's "···". */
+    const reminds = await screen.findAllByRole('button', { name: 'Send them a reminder', hidden: true })
     expect(reminds).toHaveLength(1)
   })
 })

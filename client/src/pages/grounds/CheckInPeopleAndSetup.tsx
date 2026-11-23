@@ -170,10 +170,12 @@ export function peersVisibilitySentence(args: {
 export type PeopleAndSetupProps = {
   ground: any
   user: any
-  /** Each person's card and what people are down as doing, for whoever runs the check-in, drawn under Who's in it. */
-  eachPerson?: React.ReactNode
+  /** What is on record for one person (their card, with "Change this in the chat"), opened from their row's "···" for whoever runs it. */
+  eachPerson?: (participantId: string) => React.ReactNode
+  /** What people are down as doing with nobody on it, and "Add something agreed on a call", under the list of people. */
+  downAsDoing?: React.ReactNode
   id: string
-  navigate: (to: string) => void
+  navigate: (to: string, options?: { state?: unknown }) => void
   isInitiator: boolean
   isOrgAdmin: boolean
   viewerIsAParty: boolean

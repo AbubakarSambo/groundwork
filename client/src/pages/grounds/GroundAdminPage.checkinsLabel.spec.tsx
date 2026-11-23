@@ -99,7 +99,8 @@ describe('BUG7: admin check-ins list labels each row by participant', () => {
      * just the number, and say which session and what state in their title, so the count moves to the
      * titles. Two people, one session each, two cells.
      */
-    const cells = screen.getAllByTitle(/^Check-in 1:/)
+    /* On People and setup's one list now (page audit, 24 November 2026, row 8): each dot says which check-in it is in its name. */
+    const cells = screen.getAllByLabelText(/^Check-in 1:/)
     expect(cells.length).toBe(2)
   })
 })

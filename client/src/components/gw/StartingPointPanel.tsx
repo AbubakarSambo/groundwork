@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
-import { Section, Panel } from '@/components/gw/ui'
+import { FieldRow, Stack, Button, FlexRow } from '@/components/gw/ui'
 import { toast } from 'sonner'
 
 /**
@@ -22,8 +22,11 @@ import { toast } from 'sonner'
  * NOTHING IS CAPTURED SILENTLY. The candidates are the lead's own words from session one, already
  * typed by the engine as it heard them, and the lead ticks which of those describe the starting point.
  * No second extraction and no model call - so nothing can invent a starting point nobody stated.
+ *
+ * ONE LINE (page audit, 24 November 2026, row 2): "Starting point", what was recorded or "Nothing recorded yet.", and "Record it" for
+ * the lead, which opens the lead's own words from her first check-in to tick. It is a row of People and setup's "How it runs".
  */
-export function StartingPointPanel({ groundId, canRecord }: { groundId: string; canRecord: boolean }) {
+export function TheStartingPoint({ groundId, canRecord }: { groundId: string; canRecord: boolean }) {
   const qc = useQueryClient()
   const [picking, setPicking] = useState(false)
   const [chosen, setChosen] = useState<Set<string>>(new Set())
@@ -34,15 +37,12 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
     enabled: !!groundId,
     retry: false,
   })
-
   const { data: candidateData } = useQuery({
     queryKey: ['baseline-candidates', groundId],
     queryFn: () => groundsApi.baselineEntryCandidates(groundId),
-    /** Only fetched when the lead opens the picker: it is their whole first session. */
     enabled: !!groundId && canRecord && picking,
     retry: false,
   })
-
   const record = useMutation({
     mutationFn: () => groundsApi.recordBaselineEntries(groundId, [...chosen]),
     onSuccess: () => {
@@ -56,121 +56,48 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
 
   const entries = data?.entries ?? []
   const candidates = candidateData?.candidates ?? []
-
-  const toggle = (t: string) => setChosen(prev => {
+  const toggle = (t: string) => setChosen((prev) => {
     const next = new Set(prev)
-    next.has(t) ? next.delete(t) : next.add(t)
+    if (next.has(t)) next.delete(t)
+    else next.add(t)
     return next
   })
 
   return (
-    <div style={{ marginTop: 14 }}>
-      <Section heading="Where this stood at the start">
-      <Panel>
-        {entries.length > 0 ? (
-          <>
-            <ul style={{ margin: 0, paddingLeft: 17, display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {entries.map((e, i) => (
-                <li key={i} style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px' }}>
-                  {e.text}
-                  {/**
-                    * The session it was captured in, shown only when it is not the first. A line added
-                    * in session four is a fact about session four, and the distance between it and the
-                    * day-one lines is the finding.
-                    */}
-                  {e.capturedAtSession > 1 && (
-                    <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}> · added at check-in {e.capturedAtSession}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', marginTop: 9 }}>
-              {data?.frozenReason}
-            </div>
-            {!data?.canShowMovement && (
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginTop: 6 }}>
-                {/**
-                  * `canShowMovement` is the module's own gate. One session is a position, not a
-                  * movement, and saying what has changed off a single session would be inventing an arc.
-                  */}
-                The report will compare this against where things end up once a second check-in is done.
-              </div>
-            )}
-          </>
-        ) : (
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>
-            Nothing recorded yet. Without it the report can say where things stand, but not what has
-            moved since the beginning.
-          </div>
-        )}
-      </Panel>
-      </Section>
-
-      {canRecord && !picking && (
-        <button type="button" className="gw-link t-small"
-          onClick={() => setPicking(true)}
-          style={{ marginTop: 10 }}
-        >
-          {entries.length ? 'Add to the starting point →' : 'Record where this stood →'}
-        </button>
-      )}
-
-      {canRecord && picking && (
-        <div style={{ marginTop: 10 }}>
-          <Panel>
-            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
-              From your first check-in, in your own words
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginBottom: 10 }}>
-              Tick the ones that describe where things actually stood. Nothing here is rewritten, and once
-              recorded it stays as written.
-            </div>
-
-            {candidates.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px' }}>
-                {/**
-                  * Two different empties, and they need different sentences: a ground whose first
-                  * session has not happened, and one where everything said has already been recorded.
-                  */}
-                {(candidateData?.alreadyRecorded?.length ?? 0) > 0
-                  ? 'Everything from your first check-in is already on the record here.'
-                  : 'Nothing to choose from yet.'}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                {candidates.map((c, i) => (
-                  <label
-                    key={i}
-                    style={{ display: 'flex', gap: 9, alignItems: 'flex-start', cursor: 'pointer', padding: '7px 9px', borderRadius: 7, background: chosen.has(c.text) ? 'var(--gw-blue-bg)' : 'transparent' }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={chosen.has(c.text)}
-                      onChange={() => toggle(c.text)}
-                      style={{ marginTop: 3, flexShrink: 0 }}
-                    />
-                    <span style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '20px' }}>{c.text}</span>
+    <FieldRow
+      label="Starting point"
+      value={(
+        <Stack gap={8}>
+          {entries.length > 0
+            ? <ul className="ds-list ds-list-bullets">{entries.map((e, i) => <li key={i}>{e.text}</li>)}</ul>
+            : <span>Nothing recorded yet.</span>}
+          {entries.length > 0 && data?.frozenReason && <p className="ds-text-meta">{data.frozenReason}</p>}
+          {canRecord && picking && (
+            <Stack gap={8}>
+              <p className="ds-text-secondary">From your first check-in, in your own words. Tick the ones that describe where things stood.</p>
+              {candidates.length === 0
+                ? <p className="ds-text-secondary">{(candidateData?.alreadyRecorded?.length ?? 0) > 0 ? 'Everything from your first check-in is already on the record here.' : 'Nothing to choose from yet.'}</p>
+                : candidates.map((c, i) => (
+                  <label key={i} className="ds-spread">
+                    <input type="checkbox" checked={chosen.has(c.text)} onChange={() => toggle(c.text)} />
+                    <span>{c.text}</span>
                   </label>
                 ))}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button className="btn pri sm"
-                onClick={() => record.mutate()}
-                disabled={!chosen.size || record.isPending}
-              >
-                {record.isPending ? 'Recording…' : `Record ${chosen.size || ''} as the starting point`.trim()}
-              </button>
-              <button className="btn sec sm"
-                onClick={() => { setPicking(false); setChosen(new Set()) }}
-              >
-                Cancel
-              </button>
-            </div>
-          </Panel>
-        </div>
+              <FlexRow gap={8}>
+                <Button kind="secondary" size="small" onClick={() => record.mutate()} disabled={!chosen.size || record.isPending}>
+                  {record.isPending ? 'Recording…' : `Record ${chosen.size || ''} as the starting point`.replace('  ', ' ')}
+                </Button>
+                <Button kind="quiet" size="small" onClick={() => { setPicking(false); setChosen(new Set()) }}>Cancel</Button>
+              </FlexRow>
+            </Stack>
+          )}
+        </Stack>
       )}
-    </div>
+      action={canRecord ? (
+        <button type="button" className="gwui-plain-link" aria-expanded={picking} onClick={() => setPicking((v) => !v)}>
+          {picking ? 'Close' : entries.length ? 'Add to it' : 'Record it'}
+        </button>
+      ) : undefined}
+    />
   )
 }

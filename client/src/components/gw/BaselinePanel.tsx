@@ -70,6 +70,78 @@ export function BaselinePanel({ groundId, canState, groundStartedAt, asFold }: {
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not record that. Try again.'),
   })
 
+  const theForm = (
+    <div style={{ marginTop: 10 }}>
+      <Panel>
+        {/**
+          * NOT PRE-FILLED WITH THE CURRENT TEXT. An editable copy of what is there invites a
+          * correction, and a corrected baseline stops being a record of what was believed at the
+          * start. The old statement is above, to be read rather than overwritten.
+          */}
+        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>What would doing well look like?</div>
+        <textarea className="gwui-input"
+          value={success}
+          onChange={e => setSuccess(e.target.value)}
+          rows={3}
+          placeholder="In your own words. Not a target for one person - what would make you say, at the end, that this went the way it should have."
+          style={{ width: '100%' }}
+        />
+        <div style={{ fontSize: 12, fontWeight: 700, margin: '12px 0 4px' }}>What has to be true for it? One per line.</div>
+        <textarea className="gwui-input"
+          value={conditions}
+          onChange={e => setConditions(e.target.value)}
+          rows={3}
+          placeholder={'Things that are not in their hands.\nA decision from somebody else, a tool, another team’s work.'}
+          style={{ width: '100%' }}
+        />
+        {current && (
+          <>
+            <div style={{ fontSize: 12, fontWeight: 700, margin: '12px 0 4px' }}>Why is this changing?</div>
+            <input className="gwui-input"
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="The priorities moved, the role changed, we got it wrong the first time"
+              style={{ width: '100%' }}
+            />
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', marginTop: 6 }}>
+              The version above stays on the record either way. A yardstick that moved with no reason
+              given reads worse than either version does on its own.
+            </div>
+          </>
+        )}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <button className="btn pri sm"
+            onClick={() => state.mutate()}
+            disabled={state.isPending || (!success.trim() && !conditions.trim())}
+          >
+            {state.isPending ? 'Recording…' : current ? 'Record as a new version' : 'Record it'}
+          </button>
+          <button className="btn sec sm"
+            onClick={() => setOpen(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      </Panel>
+    </div>
+  )
+
+  /*
+   * ONE LINE WHILE NOTHING IS STATED (page audit, 24 November 2026, row 7): on References and resources, "What doing well looks like
+   * is not stated yet." and the lead's "Say what doing well looks like", in place of a fold holding a paragraph about the report.
+   */
+  if (asFold && !current) {
+    return (
+      <div>
+        <p className="ds-text-secondary">
+          What doing well looks like is not stated yet.
+          {canState && !open && <>{' '}<button type="button" className="gwui-plain-link" onClick={() => setOpen(true)}>Say what doing well looks like</button></>}
+        </p>
+        {canState && open && theForm}
+      </div>
+    )
+  }
+
   return (
     <Outer asFold={asFold} fact={current?.successLooksLike ? withSentenceCase(current.successLooksLike) : 'Not stated yet.'}>
       <Inner asFold={asFold}>
@@ -160,61 +232,7 @@ export function BaselinePanel({ groundId, canState, groundStartedAt, asFold }: {
         </button>
       )}
 
-      {canState && open && (
-        <div style={{ marginTop: 10 }}>
-          <Panel>
-            {/**
-              * NOT PRE-FILLED WITH THE CURRENT TEXT. An editable copy of what is there invites a
-              * correction, and a corrected baseline stops being a record of what was believed at the
-              * start. The old statement is above, to be read rather than overwritten.
-              */}
-            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>What would doing well look like?</div>
-            <textarea className="gwui-input"
-              value={success}
-              onChange={e => setSuccess(e.target.value)}
-              rows={3}
-              placeholder="In your own words. Not a target for one person - what would make you say, at the end, that this went the way it should have."
-              style={{ width: '100%' }}
-            />
-            <div style={{ fontSize: 12, fontWeight: 700, margin: '12px 0 4px' }}>What has to be true for it? One per line.</div>
-            <textarea className="gwui-input"
-              value={conditions}
-              onChange={e => setConditions(e.target.value)}
-              rows={3}
-              placeholder={'Things that are not in their hands.\nA decision from somebody else, a tool, another team’s work.'}
-              style={{ width: '100%' }}
-            />
-            {current && (
-              <>
-                <div style={{ fontSize: 12, fontWeight: 700, margin: '12px 0 4px' }}>Why is this changing?</div>
-                <input className="gwui-input"
-                  value={reason}
-                  onChange={e => setReason(e.target.value)}
-                  placeholder="The priorities moved, the role changed, we got it wrong the first time"
-                  style={{ width: '100%' }}
-                />
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', marginTop: 6 }}>
-                  The version above stays on the record either way. A yardstick that moved with no reason
-                  given reads worse than either version does on its own.
-                </div>
-              </>
-            )}
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button className="btn pri sm"
-                onClick={() => state.mutate()}
-                disabled={state.isPending || (!success.trim() && !conditions.trim())}
-              >
-                {state.isPending ? 'Recording…' : current ? 'Record as a new version' : 'Record it'}
-              </button>
-              <button className="btn sec sm"
-                onClick={() => setOpen(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </Panel>
-        </div>
-      )}
+      {canState && open && theForm}
     </Outer>
   )
 }

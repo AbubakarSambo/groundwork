@@ -258,7 +258,8 @@ describe('the same solo report reads the same to everybody', () => {
    * copy is edited and the other is not.
    */
   const PARTICIPANT = strip(readFileSync(join(SRC, 'pages/grounds/GroundParticipantPage.tsx'), 'utf8'))
-  const LEAD = strip(readFileSync(join(SRC, 'pages/grounds/GroundAdminPage.tsx'), 'utf8'))
+  /* The report a person shared with the lead is opened under their row on People and setup now (page audit, 24 November 2026, row 8). */
+  const LEAD = strip(readFileSync(join(SRC, 'pages/grounds/PeopleAndSetupAsPictured.tsx'), 'utf8'))
   const CARRY_FORWARD = strip(readFileSync(join(SRC, 'components/gw/WhatYouAreCarryingForward.tsx'), 'utf8'))
 
   it('both pages render it through one component', () => {
@@ -296,7 +297,7 @@ describe('the same solo report reads the same to everybody', () => {
   it('the lead\'s copy is a size down, and says so rather than hard-coding it again', () => {
     // It sits nested inside a participant row, so the size difference is real - it just belongs to
     // the component now, as a named case.
-    expect(LEAD).toMatch(/<SoloReportBody report=\{sharedReport as Record<string, unknown>\} dense \/>/)
+    expect(LEAD).toMatch(/<SoloReportBody report=\{p\.sharedSoloReport as Record<string, unknown>\} dense on="light" \/>/)
   })
 })
 

@@ -97,10 +97,11 @@ describe('the two views of a check-in are a pair', () => {
        went. The lead's role is in her own row of "Who's in it", first in the list, under "Their role here"; her status and
        sessions are still "Your status" and "Your sessions" in "When it runs". */
     const PEOPLE_AND_SETUP = readFileSync(join(__dirname, 'PeopleAndSetupAsPictured.tsx'), 'utf8')
-    expect(PEOPLE_AND_SETUP).toMatch(/'Their role here'/)
+    /* 24 November 2026 (page audit, row 2): her status is said once, on her own row, so "Your status" and "Your check-ins" in "How
+       it runs" went; her count is that row's sentence, and her role here is on the row, changed from its "···". */
+    expect(PEOPLE_AND_SETUP).toMatch(/Their role here, for/)
     expect(PEOPLE_AND_SETUP).toMatch(/a\.userId === g\?\.initiatorId \? -1/)
-    expect(PEOPLE_AND_SETUP).toMatch(/Your status/)
-    expect(PEOPLE_AND_SETUP).toMatch(/Your check-ins/)
+    expect(PEOPLE_AND_SETUP).toMatch(/yourSessionsSentence\(mySessionsDone, plannedSessions\)/)
   })
 
   it('but the way BACK still exists, for anybody who lands on the party view and can run it', () => {

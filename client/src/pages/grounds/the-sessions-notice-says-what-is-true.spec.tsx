@@ -60,25 +60,18 @@ describe('the sessions tab notice says what is true about the report', () => {
     ;(documentsApi.list as any).mockResolvedValue([])
   })
 
-  it('while nobody has released it, says the picture builds as people answer', async () => {
+  /*
+   * CHANGED (page audit, 24 November 2026, row 8): the notice was on the "Who has answered" roster, which folded into People and setup's
+   * one list. It explained how the report forms, so it went with the roster; the Report tab is where the report is read. What this
+   * protected, that the page never claims the report waits for everybody, still holds on the page "Who has answered" opens.
+   */
+  it('"Who has answered" opens the one list, which claims nothing about the report', async () => {
     (groundsApi.get as any).mockResolvedValue({ ...BASE_GROUND, report: null })
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Sales team/i).length).toBeGreaterThan(0))
     fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
-    expect(await screen.findByText(/The picture builds as each person answers/)).toBeTruthy()
-    expect(screen.getByText('Read it so far')).toBeTruthy()
-    expect(document.body.textContent).not.toMatch(/answers - you/)
-  })
-
-  it('once it has already been shared early, says so, and does not still claim nobody has read it', async () => {
-    (groundsApi.get as any).mockResolvedValue({ ...BASE_GROUND, report: { releasedAt: '2026-09-20T10:00:00.000Z' } })
-    renderPage()
-    await waitFor(() => expect(screen.getAllByText(/Sales team/i).length).toBeGreaterThan(0))
-    fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
-    expect(await screen.findByText('This report was already shared, on 20 Sept 2026, before everybody had checked in.')).toBeTruthy()
-    expect(screen.getByText('Read it')).toBeTruthy()
-    expect(document.body.textContent).not.toContain('The picture builds as each person answers')
+    expect(await screen.findByRole('heading', { name: "Who's in it" })).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/once all accounts are in|answers - you/)
   })
 })

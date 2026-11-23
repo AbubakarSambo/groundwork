@@ -69,7 +69,10 @@ describe('the participants roster says who has not joined yet', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
     await waitFor(() => expect(screen.getAllByText(/Amani Wekesa/i).length).toBeGreaterThan(0))
-    expect(screen.getByText('Amani Wekesa has not joined yet.')).toBeTruthy()
+    /* On People and setup's one list now (page audit, 24 November 2026, row 8): her row is named, and says it once, in the row's own
+       sentence from whereThisPersonIs. */
+    const row = screen.getAllByText('Amani Wekesa').map((e) => e.closest('li')).find(Boolean) as HTMLElement
+    expect(row.textContent).toContain('They have not joined yet.')
   })
 
   it('says nothing extra for somebody who has already joined', async () => {
@@ -78,6 +81,7 @@ describe('the participants roster says who has not joined yet', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
     await waitFor(() => expect(screen.getAllByText(/Zawadi Njoroge/i).length).toBeGreaterThan(0))
-    expect(screen.queryByText(/Zawadi Njoroge has not joined yet\./)).toBeNull()
+    const row = screen.getAllByText('Zawadi Njoroge').map((e) => e.closest('li')).find(Boolean) as HTMLElement
+    expect(row.textContent).not.toContain('not joined yet')
   })
 })

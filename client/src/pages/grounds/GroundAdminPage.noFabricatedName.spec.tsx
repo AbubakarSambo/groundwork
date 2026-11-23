@@ -16,6 +16,8 @@ const src = readFileSync(
   'utf8',
 )
 
+const PEOPLE = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'PeopleAndSetupAsPictured.tsx'), 'utf8')
+
 describe('GroundAdminPage: roster and shared-report label use participantLabel, not a raw email', () => {
   it('imports a labelling helper rather than hand-rolling one', () => {
     /**
@@ -41,11 +43,13 @@ describe('GroundAdminPage: roster and shared-report label use participantLabel, 
      * `personLabel` - the same family of helper, address as an explicit last resort - is the one
      * that belongs here. See the note above `personLabel` in lib/utils.ts.
      */
-    expect(src).toMatch(/\{personLabel\(p\)\}/)
+    /* The roster moved to People and setup's one list (page audit, 24 November 2026, row 8): each row is named by whereThisPersonIs
+       (WhosInItRoster.tsx), which never guesses a name from an address and says "Somebody invited by email" where it has neither. */
+    expect(PEOPLE).toMatch(/const row = whereThisPersonIs\(p,/)
+    expect(PEOPLE).toMatch(/\{row\.name\}/)
   })
 
   it('and neither surface builds a name out of an address', () => {
-    expect(src).toMatch(/\{personLabel\(p\)\}'s private report/)
-    expect(src).not.toMatch(/p\.email\.split\('@'\)\[0\]/)
+    for (const s of [src, PEOPLE]) expect(s).not.toMatch(/p\.email\.split\('@'\)\[0\]/)
   })
 })

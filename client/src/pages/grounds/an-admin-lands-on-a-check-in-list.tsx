@@ -83,33 +83,6 @@ export function getItGoing(f: RolloutFacts): Step[] {
   ]
 }
 
-/**
- * THE WELCOME CARD'S DOORS, AS PLAIN SENTENCES (group 2's review, fault C). Each line used to be a
- * fragment ("Invite people, set roles and teams, let guests in"); each is now one full sentence that
- * says what is true, with no piece joined on by a comma standing in for a missing word.
- */
-export function doorsFor(f: Pick<RolloutFacts, 'whatsappOn'>): { title: string; line: string; to: string }[] {
-  return [
-    { title: 'People', line: 'Invite people, set their roles and teams, and let guests in.', to: '/org/members' },
-    {
-      title: 'Connections',
-      /* SCREEN FAULT 3: "and use your own address" named a feature Connections does not offer -
-         `ConnectionsPage.tsx` leaves "Your own address" out entirely (Hafsah, 29 September, item
-         11), on purpose, because nothing behind it is built. This names what the page actually
-         offers instead: WhatsApp, your numbers, and the people/goals/roles/handbook/API
-         connections under "More you can connect".
-         DECISION 112: "Connect WhatsApp" used to promise setting up an organisation's own number.
-         Groundwork's own number already works for everyone once an admin turns WhatsApp on, so
-         this says "Turn on WhatsApp" instead - true whether or not the organisation ever connects
-         a number of its own. */
-      line: f.whatsappOn ? 'Turn on WhatsApp, bring in your numbers, and connect your other tools.' : 'Bring in your numbers, and connect your other tools.',
-      to: '/settings/connections',
-    },
-    { title: 'Suites', line: 'Switch on leave, spending and onboarding when you need them.', to: '/settings/suites' },
-    { title: 'Plan and billing', line: 'Your seats, your card and your invoices.', to: '/billing' },
-  ]
-}
-
 export function AdminFirstRun() {
   const qc = useQueryClient()
   const { user } = useAuthStore()
@@ -135,30 +108,13 @@ export function AdminFirstRun() {
 
   return (
     <div className="gwui-first-run">
+      {/* ONE LINE, NOT A GUIDE (page audit, 24 November 2026, row 10): the four doors are under the organisation's name in the side
+          rail, and People is where an admin starts. Pressing it is also "Got it", kept on the server, so it does not come back. */}
       {showWelcome && (
-        <section className="gwui-welcome-card" aria-label="Welcome">
-          {/*
-            SCREEN FAULT 7: "GOT IT" SAT BETWEEN THE TITLE AND THE BODY, so a new admin's card
-            invited them to dismiss it before they had read it. Moved to its own row after the
-            doors, below everything the card actually says.
-          */}
-          <div className="gwui-welcome-card-head">
-            <h2>You’re an admin at {orgName}</h2>
-          </div>
-          <ul className="gwui-welcome-doors">
-            {doorsFor(data).map(d => (
-              <li key={d.to}>
-                <Link to={d.to} className="gwui-welcome-door">
-                  <b>{d.title}</b>
-                  <span>{d.line}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button kind="quiet" size="small" onClick={() => gotIt.mutate()} disabled={gotIt.isPending}>Got it</Button>
-          </div>
-        </section>
+        <p className="ds-text-secondary" aria-label="Welcome">
+          You’re an admin.{' '}
+          <Link to="/org/members" className="gwui-plain-link" onClick={() => gotIt.mutate()}>Set things up</Link>
+        </p>
       )}
       {!finished && (
         <section className="gwui-get-going">

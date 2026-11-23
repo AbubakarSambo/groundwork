@@ -78,19 +78,18 @@ const groundWithAManagingLead = {
 }
 
 describe('a lead who only manages: the rest of My work leaves her out, same as "Your sessions"', () => {
-  it('is not a row in the Check-ins tab\'s "People" list', async () => {
+  /* CHANGED (page audit, 24 November 2026, row 8): the Check-ins tab's "People" list folded into People and setup's one list, where
+     she is the one who runs it, as the prototype draws her. She is still not counted among those who check in, and her row offers no
+     check-in of hers: no check-in dots and no "Copy check-in link". The notice "once all N people are in" went with that tab. */
+  it('is on the one list as the one who runs it, with no check-in of her own, and is not counted', async () => {
     ;(groundsApi.get as any).mockResolvedValue(groundWithAManagingLead)
     renderPage('checkins')
     await screen.findByText('Halima Yusuf')
-    expect(screen.queryByText('Baraka Mutua')).toBeNull()
-    expect(screen.queryByText('baraka@msingi.test')).toBeNull()
-  })
-
-  it('is not counted in "once all N people are in" under that list', async () => {
-    ;(groundsApi.get as any).mockResolvedValue(groundWithAManagingLead)
-    renderPage('checkins')
-    expect(await screen.findByText(/once all two people are in/)).toBeTruthy()
-    expect(screen.queryByText(/once all three people are in/)).toBeNull()
+    const row = screen.getAllByText('Baraka Mutua').map((e) => e.closest('li')).find(Boolean) as HTMLElement
+    expect(row.textContent).toContain('You check in when you choose. Use Check in yourself any time.')
+    expect(row.textContent).not.toContain('Copy check-in link')
+    expect(row.querySelectorAll('.gwui-tag-control').length).toBe(0)
+    expect(document.body.textContent).not.toMatch(/^3 people|3 people\. /)
   })
 
   it('reads the server\'s "Your reports", never a report built from her setup row, on her own My work', async () => {

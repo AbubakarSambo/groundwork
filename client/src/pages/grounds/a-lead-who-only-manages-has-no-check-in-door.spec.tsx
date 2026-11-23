@@ -33,7 +33,8 @@ function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/grounds/g1?tab=sessions']}>
+      {/* ?tab=sessions opens People and setup now (page audit, 24 November 2026, row 8), which has no header button; My work does. */}
+      <MemoryRouter initialEntries={['/grounds/g1?tab=record']}>
         <Routes><Route path="/grounds/:id" element={<GroundAdminPage />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
