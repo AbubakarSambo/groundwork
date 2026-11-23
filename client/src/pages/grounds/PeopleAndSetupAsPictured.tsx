@@ -367,14 +367,16 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
     const onWhatsApp = ((numbers ?? []) as any[]).find((x) => x.participantId === p.id)
     const phone = onWhatsApp?.phone ?? null
     const problem = row.statusText !== 'Checking in' && row.statusText !== 'Runs it'
-    /* Their status, said once: the problem that stops them, else whether they have answered the check-in that is open (the question
-       "Who has answered" was for), else your own count on your own row, else where they are in getting started. */
+    /* Their status, said once: the problem that stops them; on your own row, your own count; for anybody else, whether they have
+       answered the check-in that is open (the question "Who has answered" was for), else where they are in getting started. */
     const status = problem
       ? (row.help?.text ?? `${row.statusText}.`)
       : isSelf && p.managingOnly
         ? 'You check in when you choose. Use Check in yourself any time.'
-        : row.sessionLine
-        ?? (isSelf && viewerIsAParty && !p.managingOnly ? yourSessionsSentence(mySessionsDone, plannedSessions) : stage?.says ?? `${row.statusText}.`)
+        : isSelf && viewerIsAParty
+          /* Your own row says your own count, as served, clamped (B-012): one sentence, never a second one about this check-in beside it. */
+          ? yourSessionsSentence(mySessionsDone, plannedSessions)
+          : row.sessionLine ?? stage?.says ?? `${row.statusText}.`
     const theirSessions = [...(g?.checkIns ?? [])]
       .filter((c: any) => c.participantId === p.id && !c.isSetup)
       .sort((a: any, b: any) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))
