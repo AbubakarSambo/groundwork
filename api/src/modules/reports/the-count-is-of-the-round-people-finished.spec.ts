@@ -36,7 +36,8 @@ function harness(leadFinishesWhileItIsWritten = false, nobodyAnswered = false) {
     personObjective: { findMany: jest.fn(async () => []) },
     ground: { findUnique: jest.fn(async () => ({ id: 'g1', initiatorId: 'uid-1', organizationId: 'o1', scenario: 'DRIFT', label: 'Renewals', brief: 'The renewals.', peopleWorkTogether: true, participants: PARTICIPANTS })), update: jest.fn(async () => ({})) },
     user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'o1' })) },
-    groundParticipant: { findMany: jest.fn(async (a: any) => (a?.select?.checkIns ? PARTICIPANTS.map((p) => ({ ...p, checkIns: [] })) : PARTICIPANTS)), findFirst: jest.fn(async () => null) },
+    /* Each person's own check-ins, as the relation reads them: the report counts the round through the one count (howManyHaveAnswered). */
+    groundParticipant: { findMany: jest.fn(async (a: any) => (a?.select?.checkIns ? PARTICIPANTS.map((p) => ({ ...p, checkIns: ROWS.filter((r) => r.participantId === p.id && matches(r, a.select.checkIns.where)) })) : PARTICIPANTS)), findFirst: jest.fn(async () => null) },
     recordEntry: { findMany: jest.fn(async () => RECORD), count: jest.fn(async () => RECORD.length) },
     checkIn: {
       count: jest.fn(async () => 3),
