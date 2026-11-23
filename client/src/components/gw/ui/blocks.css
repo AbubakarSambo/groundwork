@@ -17,7 +17,13 @@
 .ds-page-words { min-width: 0; flex: 1 1 auto; }
 .ds-page-head + * { margin-top: var(--ds-space-32); }
 .ds-page-body, .ds-page-side { min-width: 0; }
-.ds-page .ds-page-body > * + *, .ds-page .ds-page-side > * + * { margin-top: var(--ds-space-32); }
+/* A gap, not a margin, so a part that only groups others (Held, while the page loads, draws its children with display: contents)
+   still leaves 32px between the sections inside it. */
+.ds-page-body, .ds-page-side { display: flex; flex-direction: column; gap: var(--ds-space-32); }
+/* A part that only groups sections draws no box of its own, so they keep the 32px between them. */
+.ds-flow { display: contents; }
+/* A button or link standing on its own in a column sits at the left, at its own width (rule 4). */
+.ds-page-body > .ds-btn, .ds-page-side > .ds-btn, .ds-section-body > .ds-btn { align-self: flex-start; }
 .ds-page-split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--ds-space-32); align-items: start; }
 
 /* ── TEXT (rule 5): six sizes, two weights, and the big size for a greeting or a big number ──── */
@@ -32,6 +38,9 @@
 .ds-text-meta { font-size: var(--ds-text-meta); line-height: var(--ds-lh-meta); font-weight: var(--ds-weight-body); color: var(--ds-muted); }
 /* The page's one line under its title, 8px below it. */
 .ds-page-words > .ds-page-lede { margin-top: var(--ds-space-8); }
+/* Where the page sits, above its title, 8px apart. */
+.ds-page-crumbs { margin-bottom: var(--ds-space-8); }
+.ds-page-crumbs a { color: var(--ds-navy); }
 /* Numbers in a stat or a table line up (rule 4). */
 .ds-num { font-variant-numeric: tabular-nums; }
 
@@ -116,6 +125,8 @@
 
 /* ── ACTIONS: a page's or a card's actions in one row, the main button first, then links ────── */
 .ds-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ds-space-16); }
+/* A few short figures or words on one line that wraps, 16px apart ("21 sold   2 likely   4 possible"). */
+.ds-spread { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ds-space-8) var(--ds-space-16); }
 
 /* ── LIST: a few short lines with a bullet, lined up with the text above them ───────────────── */
 .ds-list { margin: 0; padding-left: var(--ds-space-16); }
@@ -179,6 +190,39 @@
 .ds-ci-foot-alone { border: var(--ds-line) solid var(--ds-rule); border-radius: var(--ds-corner); }
 /* Something that went wrong, said in the one red (rule: red only for a real problem). */
 .ds-ink-con { color: var(--ds-con); }
+/* ── BAR: a figure against its whole, drawn in SVG units so it needs no size of its own (rule 7) ─ */
+.ds-bar { display: block; width: 100%; height: var(--ds-space-16); }
+.ds-bar .whole { fill: var(--ds-rule); }
+.ds-bar .rec { fill: var(--ds-rec); }
+.ds-bar .act { fill: var(--ds-act); }
+.ds-bar .att { fill: var(--ds-att-b); }
+.ds-bar .said { fill: none; stroke: var(--ds-ink); stroke-width: 2; vector-effect: non-scaling-stroke; }
+
+/* ── SQUARES: one for each of the last ten check-ins, filled when the person checked in ───────── */
+.ds-squares { display: block; height: var(--ds-lh-secondary); width: auto; }
+.ds-squares .on { fill: var(--ds-navy); }
+.ds-squares .off { fill: none; stroke: var(--ds-rule2); stroke-width: 1.5; }
+
+/* ── FOLD: a part of the page the reader opens, its title as a section title ──────────────────── */
+.ds-fold > summary { cursor: pointer; min-height: var(--ds-tap); display: flex; align-items: center; gap: var(--ds-space-8); }
+.ds-fold-body { display: flex; flex-direction: column; gap: var(--ds-space-32); padding-top: var(--ds-space-16); }
+
+/* ── TABS ROW: the tabs, and "Views" beside them on the same rule ─────────────────────────────── */
+.ds-tabs-row { display: flex; align-items: flex-end; gap: var(--ds-space-16); border-bottom: var(--ds-line) solid var(--ds-rule); }
+.ds-tabs-row > .ds-tabs { flex: 1 1 auto; min-width: 0; border-bottom: 0; }
+
+/* ── NOTE (rule 5): one line in secondary text; a colour only where something needs seeing ───── */
+.ds-note-con { color: var(--ds-con); }
+.ds-note-att { color: var(--ds-att); }
+.ds-note-rec { color: var(--ds-rec); }
+.ds-note-act { color: var(--ds-act); }
+/* A link inside a sentence keeps the sentence's own line, so the line does not jump (rule 2). */
+.ds-text-body .ds-btn-link, .ds-text-secondary .ds-btn-link { display: inline; min-height: 0; font-size: inherit; line-height: inherit; white-space: normal; }
+
+/* ── WHEN ROW: the day, then what happens, on a thin rule (C1, "Coming up") ─────────────────── */
+.ds-when { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--ds-space-16); padding: var(--ds-space-8) 0; border-top: var(--ds-line) solid var(--ds-rule); }
+.ds-when a { color: var(--ds-ink); text-decoration: none; }
+.ds-when a:hover { text-decoration: underline; }
 
 /* ── ON A PHONE (rules 1 and 11): one column, 16px at the sides, nothing scrolls sideways ───── */
 @media (max-width: 860px) {
@@ -187,7 +231,8 @@
   .ds-row-dotted { grid-template-columns: var(--ds-space-8) minmax(0, 1fr); column-gap: var(--ds-space-16); }
   .ds-row-dotted > .ds-row-actions { grid-column: 2; }
   .ds-row-actions { justify-content: flex-start; }
-  .ds-tab { flex: 1 1 auto; justify-content: center; text-align: center; padding: 0 var(--ds-space-8); font-size: var(--ds-text-secondary); line-height: var(--ds-lh-secondary); }
+  /* A tab is never narrower than its longest word, so two tabs never run into each other ("BoardCheck-in" at 375px). */
+  .ds-tab { flex: 1 1 auto; min-width: auto; justify-content: center; text-align: center; padding: 0 var(--ds-space-8); font-size: var(--ds-text-secondary); line-height: var(--ds-lh-secondary); }
   .ds-btn { white-space: normal; text-align: center; }
   .ds-table-stack thead { display: none; }
   .ds-table-stack, .ds-table-stack tbody, .ds-table-stack tfoot, .ds-table-stack tr, .ds-table-stack td, .ds-table-stack th { display: block; }

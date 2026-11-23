@@ -58,7 +58,8 @@ describe('"Where each target stands" with no headline', () => {
     renderBoard()
     await screen.findByRole('heading', { name: 'The partnerships work has gone quiet' })
     const heading = screen.getByText('Where each target stands')
-    const panel = heading.closest('.panel') as HTMLElement
+    /* 23 November (journey 3): on the rebuilt board the card is the design system's (.ds-card). */
+    const panel = heading.closest('.ds-card, .panel') as HTMLElement
     expect(within(panel).getByText('We want to expand our market reach through strategic alliances.')).toBeTruthy()
     expect(within(panel).getByText('Nothing has been counted for it yet.')).toBeTruthy()
   })

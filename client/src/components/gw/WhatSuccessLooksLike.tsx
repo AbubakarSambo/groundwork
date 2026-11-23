@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
-import { Note } from '@/components/gw/ui'
+import { Note, Section, Panel } from '@/components/gw/ui'
 import { withSentenceCase } from '@/lib/an-aim-reads-as-a-sentence'
 
 /**
@@ -251,11 +251,28 @@ export function WhatSuccessLooksLike({
 }
 
 /** The same band, fetching for itself, for pages that do not already hold a report. */
-export function WhatSuccessLooksLikeFor({ groundId, yourName, dense, headingIsTheCallers }: { groundId: string; yourName?: string | null; dense?: boolean; headingIsTheCallers?: boolean }) {
+export function WhatSuccessLooksLikeFor({ groundId, yourName, dense, headingIsTheCallers, asASection }: {
+  groundId: string; yourName?: string | null; dense?: boolean; headingIsTheCallers?: boolean
+  /**
+   * AS A SECTION OF THE BOARD (journey 3, 23 November 2026): its own heading and card, drawn only once somebody has said what success
+   * looks like. Before, the board drew a heading over a box saying nobody had said it: an empty section in a box (design guide, rule 10).
+   */
+  asASection?: boolean
+}) {
   const { data } = useQuery({
     queryKey: ['against-success', groundId],
     queryFn: () => reportsApi.againstSuccess(groundId),
     enabled: !!groundId,
   })
+  if (asASection) {
+    const d = data as AgainstSuccess | undefined
+    if (!d || d.sides === 'nobody') return null
+    return (
+      <Section heading="What success looks like">
+        <Panel><WhatSuccessLooksLike data={d} yourName={yourName} headingIsTheCallers /></Panel>
+      </Section>
+    )
+  }
   return <WhatSuccessLooksLike data={data as AgainstSuccess | undefined} yourName={yourName} dense={dense} headingIsTheCallers={headingIsTheCallers} />
 }
+

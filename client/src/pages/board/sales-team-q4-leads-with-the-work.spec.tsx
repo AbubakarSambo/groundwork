@@ -117,7 +117,7 @@ describe('Sales team, Q4, as each reader reads it', { timeout: 60000 }, () => {
 
   it('the sales board, switch on: board-as-lead.txt\'s order, and what it has no place for after "Where this is heading"', async () => {
     const { container } = renderAs('wairimu-sales', true)
-    await screen.findByText('The team today', undefined, { timeout: 30000 })
+    await screen.findByRole('heading', { name: 'The team today' }, { timeout: 30000 })
     const text = container.textContent ?? ''
     expect(at(text, 'What needs you in this check-in')).toBeLessThan(at(text, 'The team today'))
     expect(at(text, 'The team today')).toBeLessThan(at(text, 'Who checked in'))
@@ -125,8 +125,10 @@ describe('Sales team, Q4, as each reader reads it', { timeout: 60000 }, () => {
     /* The board ported from the prototype (prototype/TheSalesBoardAsPictured.tsx) draws "Open issues" only with an issue in it, as the
        prototype does; this check-in has none, so it reads Reports, then Where this is heading. */
     expect(at(text, 'Reports')).toBeLessThan(at(text, 'Where this is heading'))
-    expect(text).toContain('Nothing has come up in three check-ins in a row yet.')
-    expect(text).toContain('These are about the work. Open anyone to see what they said and what the proof shows.')
+    /* Changed 23 November (journey 3): "What keeps coming up" with nothing in it is not drawn (rule 10), and the note that explains
+       The team today is gone, as on every board since 15 November (rule 6). */
+    expect(text).not.toContain('Nothing has come up in three check-ins in a row yet.')
+    expect(text).not.toContain('These are about the work. Open anyone to see what they said and what the proof shows.')
     expect(text).not.toContain('Your team, person by person')
   })
 });

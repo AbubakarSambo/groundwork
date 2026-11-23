@@ -1,4 +1,5 @@
-import { Section, Panel, Tag, Note, Stack, Callout, SubHeading, ShowAll, FlexRow, Table } from '@/components/gw/ui'
+import { WhereThisIsHeadingBody } from './WhereThisIsHeadingBody'
+import { Section, Panel, Tag, Note, Stack, Callout, SubHeading, ShowAll, FlexRow, Table, useTheDesignSystem } from '@/components/gw/ui'
 import type { BoardPresent } from '@/api/board'
 import { TheMetricsTable } from './pictured/TheMetricsBoard'
 import { HowItIsGoing, type Glance } from '@/components/gw/how-it-is-going'
@@ -460,7 +461,9 @@ const BY_AREA_HEADING: Partial<Record<string, string>> = {
  * words, so nothing is claimed Groundwork cannot back.
  */
 export function ByAreaSection({ data, kindOfWork }: { data: BoardPresent['byArea']; kindOfWork?: string | null }) {
-  if (!data) return null
+  /* On a rebuilt page, nothing to group is not a section (rule 10, journey 3). */
+  const ds = useTheDesignSystem()
+  if (!data || (ds && data.state === 'not-known')) return null
   const heading = (kindOfWork && BY_AREA_HEADING[kindOfWork]) ?? (data.state === 'not-known' ? 'By area' : data.heading)
   if (data.state === 'not-known') {
     return (
@@ -910,7 +913,9 @@ const REPORTED_AGAINST_CRITERIA_HEADING: Partial<Record<string, string>> = {
 }
 
 export function ReportedAgainstCriteriaSection({ data, kindOfWork }: { data: BoardPresent['reportedAgainstCriteria']; kindOfWork?: string | null }) {
-  if (!data) return null
+  /* On a rebuilt page, a stage list with no stage in it is not a section (rule 10, journey 3). */
+  const ds = useTheDesignSystem()
+  if (!data || (ds && !(data.stages ?? []).length)) return null
   const heading = (kindOfWork && REPORTED_AGAINST_CRITERIA_HEADING[kindOfWork]) ?? 'Reported, stage by stage'
   return (
     <Section heading={heading} note={data.why}>
@@ -935,68 +940,6 @@ export function WhereThisIsHeadingSection({ data, onRecordTheDecision }: {
   onRecordTheDecision?: () => void
 }) {
   if (!data) return null
-  return (
-    <Section heading={data.heading} note={data.about}>
-      <Stack gap={12}>
-        {/* Board review, sales piece C, item 7: the prototype labels this list "The possible
-            outcomes" (board-as-lead.txt), the same way the two lists under it are each labelled -
-            this had neither, so three outcomes read as an unheaded list above two headed ones. */}
-        {(data.outcomes ?? []).length > 0 ? (
-          <Stack gap={6}>
-            <Note tone="muted">The possible outcomes</Note>
-            {/*
-              REQUEST, MVNEXT REVIEW: THE SECOND LINE, TOO (mvnext.txt: "Kano maize first" /
-              "For processors, with a named-buyer feed."). Every outcome the engine sends already
-              carries `more`, its own second sentence - this used to read only `says`, leaving the
-              detail behind each outcome unread wherever this draws, not only on this one board.
-            */}
-            <SentenceRows rows={(data.outcomes ?? []).map((o) => ({ id: o.value, says: o.says, because: o.more }))} />
-          </Stack>
-        ) : (
-          data.outcomesSays && <Note tone="muted">{data.outcomesSays}</Note>
-        )}
-        <Panel pad={false}>
-          <div className="gwui-panel-row">
-            <Stack gap={6}>
-              <Note tone="muted">The signals behind them</Note>
-              {(data.signals ?? []).length > 0 ? (
-                (data.signals ?? []).map((s, i) => (
-                  <Stack gap={2} key={i}>
-                    <p className="gwui-panel-text">{s.says}</p>
-                    <Note tone="muted">{s.from}</Note>
-                  </Stack>
-                ))
-              ) : (
-                <Note tone="muted">{data.signalsSays}</Note>
-              )}
-            </Stack>
-          </div>
-          <div className="gwui-panel-row">
-            <Stack gap={6}>
-              <Note tone="muted">What would settle it</Note>
-              {(data.whatWouldSettleIt ?? []).length > 0 ? (
-                (data.whatWouldSettleIt ?? []).map((w, i) => <p className="gwui-panel-text" key={i}>{w}</p>)
-              ) : (
-                <Note tone="muted">{data.whatWouldSettleItSays}</Note>
-              )}
-            </Stack>
-          </div>
-          <div className="gwui-panel-row">
-            <Stack gap={4}>
-              <p className="gwui-panel-text">{data.whoDecides}</p>
-            </Stack>
-          </div>
-        </Panel>
-        {data.decided ? (
-          <p className="gwui-panel-text">{data.decided}</p>
-        ) : (
-          data.recordTheDecision && (
-            <button type="button" onClick={onRecordTheDecision} className="btn sec sm">
-              {data.recordTheDecision}
-            </button>
-          )
-        )}
-      </Stack>
-    </Section>
-  )
+  /* One drawing for every board (WhereThisIsHeadingBody.tsx, journey 3). "Record the decision" only where the server offers it. */
+  return <WhereThisIsHeadingBody d={data} onRecordTheDecision={data.recordTheDecision ? onRecordTheDecision : undefined} />
 }

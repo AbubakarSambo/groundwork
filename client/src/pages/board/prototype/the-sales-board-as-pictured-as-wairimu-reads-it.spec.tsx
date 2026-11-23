@@ -66,21 +66,28 @@ describe('the sales board ported from the prototype, as Wairimu reads it', { tim
 
   it('with the switch off, none of the port is drawn', async () => {
     const { container } = renderIt(false)
-    await screen.findByText('The team today', undefined, { timeout: 30000 })
+    await screen.findByRole('heading', { name: 'The team today' }, { timeout: 30000 })
     expect(container.querySelector('.gw-proto')).toBeNull()
   })
 
   it('with it on, she reads board-as-lead.txt\'s parts in its order, in its words', async () => {
     const { container } = renderIt(true)
-    await screen.findByText('The team today', undefined, { timeout: 30000 })
-    expect(container.querySelector('.gw-proto [data-board]')).not.toBeNull()
+    await screen.findByRole('heading', { name: 'The team today' }, { timeout: 30000 })
+    /* 23 November (journey 3): only the deal grid keeps the prototype's own markup; the rest is the design system's blocks. */
+    expect(container.querySelector('.gw-proto .dealrow')).not.toBeNull()
     const text = container.textContent ?? ''
-    /* The header: the prototype's word "Session", from the one clock. */
-    expect(text).toContain('Every Friday. Session 2 of 12. Runs until 28 January.')
-    expect(text).toContain('The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.')
+    /* The header, from the one clock, in the board's frame that every board shares (journey 3): the same word, "Check-in", as every
+       other board and page says it (design guide, section 3: the same word for the same thing everywhere). */
+    expect(text).toContain('Every Friday. Check-in 2 of 12. Runs until 28 January.')
+    /* "Last updated on …" alone (journey 3): the sentence after it explains how the board works (design guide, rule 6; issue 40). */
+    expect(text).not.toContain('The board only changes when something new comes in')
     const order = ['Will we reach 40 new shops a week by 28 January 2027?', 'What needs you in this check-in', 'Every deal, day by day', 'The team today', 'Blockers',
-      'What keeps coming up', 'Reported vs criteria met, stage by stage', 'Who checked in', 'Over time', 'Reports', 'Every session', 'Help nobody mentioned',
+      'Reported vs criteria met, stage by stage', 'Who checked in', 'Over time', 'Reports', 'Every session',
       'Open issues', 'Where this is heading']
+    /* "Help nobody mentioned" with nothing found is not drawn (journey 3, rule 10: an empty section is one line and an action, or nothing). */
+    expect(text).not.toContain('Help nobody mentioned')
+    /* The same for "What keeps coming up" while nothing has come up three check-ins running (this fixture has no pattern). */
+    expect(screen.queryByRole('heading', { name: 'What keeps coming up' })).toBeNull()
     for (let i = 1; i < order.length; i++) expect(at(text, order[i - 1]), `${order[i - 1]} before ${order[i]}`).toBeLessThan(at(text, order[i]))
     /* Nothing linked to another check-in: the part is not drawn, and never says nothing is waiting while people wait on other teams under
        Blockers (release test, 21 November 2026, bug 30). It is drawn, after "Help nobody mentioned", when a link holds something (below). */
@@ -88,24 +95,27 @@ describe('the sales board ported from the prototype, as Wairimu reads it', { tim
     expect(text).not.toContain('Nothing in this check-in is waiting on another team.')
     /* No word "ground" anywhere she reads (bug 41). */
     expect(text).not.toMatch(/\bground\b/i)
-    expect(container.querySelector('.askdock input[aria-label="Ask about this board"]')).not.toBeNull()
+    /* One Ask, in the header (the approved journey, stage 11, F5): the board has no ask bar of its own (journey 3, 23 November). */
+    expect(container.querySelector('.askdock')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Ask' })).toBeTruthy()
     expect(text).toContain('No chance-to-close percentages yet. They need a quarter of this team’s own results.')
-    expect(text).toContain('These are about the work. Open anyone to see what they said and what the proof shows.')
+    /* Notes that explain the screen are gone, as on every board since 15 November (the-board-said-directly-as-grace-and-kevin-read-it). */
+    expect(text).not.toContain('These are about the work. Open anyone to see what they said and what the proof shows.')
   })
 
-  it('what a link to another check-in holds is drawn under Waiting on other teams, after Help nobody mentioned', async () => {
+  it('what a link to another check-in holds is drawn under Waiting on other teams, after Reports', async () => {
     ;(checkInLinksApi.get as any).mockResolvedValue({ waitingOnOtherTeams: [{ id: 'w1', team: 'Operations', what: 'the delivery slots for Kilimani', asked: '2026-11-20T09:00:00.000Z', open: null }] })
     const { container } = renderIt(true)
     await screen.findByText('Waiting on other teams', undefined, { timeout: 30000 })
     const text = container.textContent ?? ''
-    expect(at(text, 'Help nobody mentioned')).toBeLessThan(at(text, 'Waiting on other teams'))
+    expect(at(text, 'Reports')).toBeLessThan(at(text, 'Waiting on other teams'))
     expect(text).toContain('Operations: the delivery slots for Kilimani')
     ;(checkInLinksApi.get as any).mockResolvedValue({ waitingOnOtherTeams: [] })
   })
 
   it('the deals are grouped as the prototype groups them, each group with its reason', async () => {
     const { container } = renderIt(true)
-    await screen.findByText('The team today', undefined, { timeout: 30000 })
+    await screen.findByRole('heading', { name: 'The team today' }, { timeout: 30000 })
     const deals = section(container, 'Every deal, day by day').textContent ?? ''
     expect(at(deals, 'Possible')).toBeLessThan(at(deals, 'quickmart'))
     expect(deals).toContain('Moving, but missing a criterion or recent contact')
@@ -118,9 +128,10 @@ describe('the sales board ported from the prototype, as Wairimu reads it', { tim
 
   it('the team and who checked in name the same people, the lead in neither, and each tag is about the work', async () => {
     const { container } = renderIt(true)
-    await screen.findByText('The team today', undefined, { timeout: 30000 })
-    const team = [...section(container, 'The team today').querySelectorAll('b.t-body')].map((x) => x.textContent)
-    const checkedIn = [...section(container, 'Who checked in').querySelectorAll('.scroll-x span.t-small')].map((x) => x.textContent)
+    await screen.findByRole('heading', { name: 'The team today' }, { timeout: 30000 })
+    /* 23 November (journey 3): both are the design system's tables, one row each, the person's name as the row's own heading. */
+    const team = [...section(container, 'The team today').querySelectorAll('th.ds-table-rowhead')].map((x) => x.textContent)
+    const checkedIn = [...section(container, 'Who checked in').querySelectorAll('th.ds-table-rowhead')].map((x) => x.textContent)
     expect(team.length).toBe(5)
     expect([...checkedIn].sort()).toEqual([...team].sort())
     expect(team).not.toContain('You')
@@ -132,12 +143,12 @@ describe('the sales board ported from the prototype, as Wairimu reads it', { tim
      "4 of 5" (release test, bug 42). Each row now reads the count the server serves for its session, as every other page does. */
   it('every report row reads the served count for its session, and two sessions on one day are told apart', async () => {
     const { container } = renderIt(true)
-    await screen.findByText('The team today', undefined, { timeout: 30000 })
+    await screen.findByRole('heading', { name: 'The team today' }, { timeout: 30000 })
     const reports = section(container, 'Reports').textContent ?? ''
     const served = (n: number) => (board as any).theCount.bySession[String(n)]
     for (const n of [3, 4]) expect(reports).toContain(`${served(n).answered.length} of ${served(n).onTheCheckIn.length} checked in.`)
-    /* "All N sessions" is the one clock's session, the header's own number. */
-    expect(reports).toContain(`All ${(board as any).theCount.session} sessions`)
+    /* One way to every session, "Every session", the section's action (journey 3: "All N sessions" beside it went to the same place). */
+    expect(reports).toContain('Every session')
     expect(reports).toMatch(/session 4/)
     expect(reports).toMatch(/session 3/)
     expect(reports).not.toContain('check-ins')

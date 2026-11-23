@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { boardApi, type ANudgeServed } from '@/api/board'
+import { Button } from '@/components/gw/ui'
 
 /**
  * "NUDGE PETER" (api engagement/the-leads-own-nudge.ts). Drawn only where the server served `nudge` to the lead who runs the check-in,
@@ -21,8 +22,9 @@ export function TheNudgeButton({ groundId, nudge }: { groundId: string; nudge: A
   if (nudge.nudgedAt) return <span className="pb-nudged" data-nudged={nudge.participantId}>{nudge.says}</span>
   if (said) return <span className="pb-nudged" role="status" data-nudged={nudge.participantId}>{said}</span>
   return (
-    <button type="button" className="btn pb-nudge" disabled={go.isPending} onClick={() => go.mutate()} data-nudge={nudge.participantId}>
+    /* A link on the right of the person's row, never a boxed button on every row (rule 9, 23 November 2026). */
+    <Button kind="quiet" disabled={go.isPending} onClick={() => go.mutate()}>
       {go.isPending ? `Nudging ${nudge.firstName}` : nudge.says}
-    </button>
+    </Button>
   )
 }

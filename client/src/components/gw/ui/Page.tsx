@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import { InTheDesignSystem } from './the-design-system'
 import './gw-ui.css'
 
@@ -15,12 +16,14 @@ import './gw-ui.css'
  * phone under 860px), content up to 1150px wide, left-aligned. `narrow` is for the invitation and
  * sign-in pages: one column 360px wide, centred. This branch goes when the last journey is rebuilt.
  */
-export function Page({ narrow, title, lede, action, side, children }: {
+export function Page({ narrow, title, crumbs, lede, action, side, children }: {
   narrow?: boolean
   /** The page's name. Giving it makes this a rebuilt page. */
   title?: string
-  /** At most one line under the title. */
-  lede?: string
+  /** Where this page sits, as a line of links above the title: "Check-ins / Sales team, Q3" (board-as-lead.txt). */
+  crumbs?: { label: string; to?: string }[]
+  /** At most one line under the title. It may hold a link inside the sentence. */
+  lede?: React.ReactNode
   /** The page's one main action, at the top right. */
   action?: React.ReactNode
   /** A side column, a third of the width, under the main column on a phone. */
@@ -36,6 +39,11 @@ export function Page({ narrow, title, lede, action, side, children }: {
           <div className="ds-page-in">
             <header className="ds-page-head">
               <div className="ds-page-words">
+                {crumbs && crumbs.length > 0 && (
+                  <nav aria-label="Where you are" className="ds-text-meta ds-page-crumbs">
+                    {crumbs.map((c, i) => <React.Fragment key={c.label + i}>{i > 0 && ' / '}{c.to ? <Link to={c.to}>{c.label}</Link> : c.label}</React.Fragment>)}
+                  </nav>
+                )}
                 <h1 className="ds-text-title">{title}</h1>
                 {lede && <p className="ds-text-body ds-page-lede">{lede}</p>}
               </div>

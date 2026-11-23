@@ -31,9 +31,12 @@ describe('where this is heading, the signals', () => {
   ] } }
   it('fills a dot only for the signal a document shows, not for the first one', () => {
     const { container } = draw(<WhereThisIsHeading b={b} onRecordTheDecision={() => undefined} />)
-    const rows = [...container.querySelectorAll('.pb-signal')]
-    expect(rows[0].querySelector('.pb-dot-proof')).toBeNull()
-    expect(rows[1].querySelector('.pb-dot-proof')).not.toBeNull()
+    /* 23 November (journey 3): one drawing of this section for every board (WhereThisIsHeadingBody.tsx); each signal is a row of
+       "The signals behind them", its dot green (rec) only where a document shows it. */
+    const rows = [...container.querySelectorAll('[aria-label="The signals behind them"] [role="listitem"]')]
+    const proof = '.sp.rec, .ds-row-dot.rec'
+    expect(rows[0].querySelector(proof)).toBeNull()
+    expect(rows[1].querySelector(proof)).not.toBeNull()
   })
 })
 

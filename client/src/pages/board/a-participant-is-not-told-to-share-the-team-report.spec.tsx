@@ -92,12 +92,14 @@ function renderBoard(payload: any) {
   )
 }
 
+/* 23 November (journey 3): a report row's action is a link on the right of the row (design guide, rule 9), so these read it as a
+   link to where it goes. Who is offered "Share it", and where it leads, are unchanged. */
 describe('the Reports section, as the lead and as a participant', () => {
   it('gives the lead "Not shared" and a "Share it" button', async () => {
     me = { id: 'u-lead', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(AS_THE_LEAD)
     expect(await screen.findByText('Not shared')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Share it' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Share it' })).toBeInTheDocument()
     expect(screen.queryByText(/Rukia shares it/)).not.toBeInTheDocument()
   })
 
@@ -119,13 +121,13 @@ describe('the Reports section, as the lead and as a participant', () => {
     expect(await screen.findByText('Shared')).toBeInTheDocument()
     expect(screen.queryByText('Not shared')).not.toBeInTheDocument()
     /* Already shared, so there is nothing left for the lead to press to share it. */
-    expect(screen.queryByRole('button', { name: 'Share it' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Share it' })).not.toBeInTheDocument()
   })
 
   it('sends the lead to the report tab, which actually has a way to share it, never to a page with no share button', async () => {
     me = { id: 'u-lead', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(AS_THE_LEAD)
-    const shareIt = await screen.findByRole('button', { name: 'Share it' })
+    const shareIt = await screen.findByRole('link', { name: 'Share it' })
     shareIt.click()
     /* Not /grounds/g1/session/1 - RoundReportPage.tsx has no share or send control. */
     expect(await screen.findByTestId('landed')).toHaveTextContent('/grounds/g1?tab=report')
@@ -135,8 +137,8 @@ describe('the Reports section, as the lead and as a participant', () => {
     me = { id: 'u-aisha', firstName: 'Aisha', role: 'MEMBER' }
     renderBoard(AS_AISHA)
     expect(await screen.findByText('Not shared yet. Rukia shares it.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Share it' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Share it' })).not.toBeInTheDocument()
     /* Aisha has her own report on this session (c-aisha-1), so she can still open it. */
-    expect(screen.getByRole('button', { name: 'Open' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open' })).toBeInTheDocument()
   })
 })

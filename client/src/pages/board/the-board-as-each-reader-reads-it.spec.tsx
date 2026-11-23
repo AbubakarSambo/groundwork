@@ -277,7 +277,8 @@ describe('the switchboard sections sit directly in the page rhythm', () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     const { container } = renderBoard(AS_THE_LEAD)
     await screen.findByRole('heading', { name: 'The team today' })
-    const wrap = container.querySelector('.wrap')
+    /* 23 November (journey 3): the board is a rebuilt page, so its page wrap is the design system's body (.ds-page-body). */
+    const wrap = container.querySelector('.ds-page-body')
     expect(wrap).toBeTruthy()
     const sections = wrap!.querySelectorAll(':scope > section')
     const headings = Array.from(sections).map((s) => s.querySelector('h2')?.textContent)

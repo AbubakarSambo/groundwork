@@ -93,8 +93,9 @@ describe('fix 11, on a project board', () => {
     expect(whoCheckedIn).toBeGreaterThanOrEqual(0)
     expect(blockers).toBeGreaterThan(whoCheckedIn)
 
-    // "Open issues" is still on the board. The fold called "Everything else from this check-in" is gone (it opened by default, so it was a heading that hid nothing).
-    expect(screen.getByText('Open issues')).toBeTruthy()
+    // Changed 23 November (journey 3): "Open issues" with nothing open, only the sentence that nothing is, is not drawn on the rebuilt
+    // board (design guide, rule 10). The fold called "Everything else from this check-in" is gone (it opened by default, so it was a heading that hid nothing).
+    expect(screen.queryByText('Open issues')).toBeNull()
     expect(screen.queryByText('Everything else from this check-in')).toBeNull()
   })
 
