@@ -1711,6 +1711,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const onTheDesignSystem = !groundId
   /* The waits Blockers draws, by their handoff's id: one source for whether a wait is already on this board. */
   const blockerIds = new Set<string>(((b as any).blockers ?? []).map((x: { id: string }) => x.id))
+  /* "Waiting on"'s own waits: the handoffs Blockers does not already draw. */
+  const waitsNotInBlockers = (b.dependencies ?? []).filter((d) => !blockerIds.has(d.id))
   /**
    * THE ANCHOR'S REMAINING SECTIONS, NAMED BY THE SWITCHBOARD (decision 114;
    * docs/answers-from-engine.md, "8 October (later): the anchor through the ordinary routes, route
@@ -4545,8 +4547,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </Section>
         )}
 
-        {/* "Waiting on" draws the same handoffs as Blockers, so it is drawn only where none of its waits is already there. */}
-        {shown.dependencies && b.dependencies && !b.dependencies.some((d) => blockerIds.has(d.id)) && !(onTheDesignSystem && b.dependencies.length === 0) && (
+        {/* "Waiting on" draws only the waits Blockers does not already draw, so each handoff is said once on the board. */}
+        {shown.dependencies && b.dependencies && (waitsNotInBlockers.length > 0 || (!onTheDesignSystem && b.dependencies.length === 0)) && (
           <Section heading="Waiting on">
             {/*
               U.10: ONE CARD PER BLOCKER, THE PROTOTYPE'S LAYOUT (board-as-lead.jpg, "Blockers").
@@ -4568,7 +4570,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               <Panel><Text size="15" ink="sub" lineHeight={1.6}>Nothing here yet.</Text></Panel>
             ) : (
               <Stack gap={10}>
-                {b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d) => {
+                {waitsNotInBlockers.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d) => {
                   const onWhom = d.on ?? 'someone outside this check-in'
                   const statusSaid = d.status === 'BLOCKING' ? 'This is blocking work.' : d.status === 'CLEARED' ? 'This is cleared.' : 'This is waiting.'
                   const title = d.what ? d.what.charAt(0).toUpperCase() + d.what.slice(1) : 'Waiting on something'
@@ -4589,15 +4591,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                    * not a sentence. Said instead the same way `readerIsOnWhom`'s own line already
                    * is, just with the name instead of "you".
                    *
-                   * AND `blockers[].holdingUp`, NOT `dependencies[].then`. The engine already
-                   * writes a full sentence for what happens once this clears (board.blockers,
-                   * matched to this same handoff by id) - "Aisha Wanjiku said that once it is
-                   * cleared, "I can finish the ledger export."" - where the old "When this
-                   * arrives, {name} says: "{then}."" built a second, cruder version of the same
-                   * sentence from the bare quote alone.
+                   * What happens once a wait clears is the engine's own `blockers[].holdingUp`, drawn in
+                   * Blockers with the rest of that handoff; a wait drawn here is never in Blockers, so it
+                   * has none, and no cruder "When this arrives" is built from `then` in its place.
                    */
-                  const matchingBlocker = (b as any).blockers?.find((bl: { id: string }) => bl.id === d.id)
-                  const holdingUp = matchingBlocker?.holdingUp as string | null | undefined
                   return (
                     <Panel key={d.id}>
                       <FlexRow gap={10} align="flex-start" justify="space-between">
@@ -4615,11 +4612,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             leading word is wrong (real-user walk, Kijani Foods, fault 1). */}
                         <b>{fromWord}</b> {needsWord} {midSentence(d.what)} from <b>{onWhomInSentence}</b>. {statusSaid}
                       </div>
-                      {holdingUp && (
-                        <div className="gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8 gwui-fs-15 gwui-ink-text" style={{background: 'var(--gw-blue-bg)', borderRadius: 8, lineHeight: '23px'}}>
-                          {holdingUp}
-                        </div>
-                      )}
                     </Panel>
                   )
                 })}
@@ -4651,7 +4643,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </div>
         )}
 
-        {/* On the rebuilt board, contribution is drawn once somebody's role is said: before that it is a box saying nobody's is (rule 10). */}
+        {/* On the rebuilt board, before anybody's role is said, contribution is the server's one sentence saying so and what to do, drawn once
+            as sent, never a box for each person (rule 10). */}
+        {shown.contribution && b.contribution && onTheDesignSystem && b.contribution.every((c) => !c.remitDefined) && b.contributionSaysOnce && (
+          <Section heading="Contribution against role"><Note>{b.contributionSaysOnce}</Note></Section>
+        )}
         {shown.contribution && b.contribution && !(onTheDesignSystem && b.contribution.every((c) => !c.remitDefined)) && (
           <Section heading="Contribution against role">
             <Panel>

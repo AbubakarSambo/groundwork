@@ -64,14 +64,41 @@ function renderBoard() {
 }
 
 describe('"Waiting on" is one sentence, and draws blockers[].holdingUp', () => {
+  /* UPDATED 23 NOVEMBER (the board rebuilt on the design system): a handoff that is a blocker is drawn once, in Blockers, which already
+     says who is waiting on whom and the engine's own holdingUp sentence; "Waiting on" drew the same handoff a second time. The reader
+     still reads the waiting-on sentence and the holdingUp sentence, each once, and a wait that is not a blocker is still in "Waiting on". */
   it('reads "This is waiting on the pipeline." and the engine\'s own holdingUp sentence', async () => {
     renderBoard()
     await screen.findByRole('heading', { name: 'Engineering release, test' })
+    const blockers = screen.getByRole('heading', { name: 'Blockers' }).closest('section') as HTMLElement
+    expect(within(blockers).getByText('Aisha Wanjiku is waiting on the pipeline for a fix for the pipeline.')).toBeTruthy()
+    expect(screen.getAllByText('Aisha Wanjiku said that once it is cleared, "I will deploy the refund endpoint to staging on Thursday 1 October."')).toHaveLength(1)
+    expect(screen.queryByText(/Waiting on:/)).toBeNull()
+    expect(screen.queryByText(/When this arrives/)).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Waiting on' })).toBeNull()
+  })
+
+  it('still draws a wait that is not a blocker in "Waiting on", as one sentence', async () => {
+    ;(boardApi.get as any).mockResolvedValue({
+      ...BOARD,
+      dependencies: [...BOARD.dependencies, {
+        id: 'w-2', from: 'Aisha Wanjiku', fromParticipantId: 'p-aisha', what: 'the test data', on: 'the data team', onParticipantId: null,
+        status: 'WAITING' as const, then: null,
+      }],
+    })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/grounds/g1/board']}>
+          <Routes><Route path="/grounds/:id/board" element={<BoardPage />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await screen.findByRole('heading', { name: 'Engineering release, test' })
     const section = screen.getByRole('heading', { name: 'Waiting on' }).closest('section') as HTMLElement
     expect(within(section).getByText(/This is waiting on/)).toBeTruthy()
-    expect(within(section).getAllByText('the pipeline').length).toBeGreaterThan(0)
+    expect(within(section).getAllByText('the data team').length).toBeGreaterThan(0)
+    expect(within(section).queryByText(/a fix for the pipeline/i)).toBeNull()
     expect(within(section).queryByText(/Waiting on:/)).toBeNull()
-    expect(within(section).getByText('Aisha Wanjiku said that once it is cleared, "I will deploy the refund endpoint to staging on Thursday 1 October."')).toBeTruthy()
-    expect(within(section).queryByText(/When this arrives/)).toBeNull()
   })
 })
