@@ -78,6 +78,13 @@
   /* ACTIONS (rules 8 and 11): every button and every tap target is 44px tall, with 8px corners. */
   --ds-tap: 44px;
   --ds-corner: 8px;
+
+  /* THE CHAT (rule 12's chat bar; app.css .asst, .bub and .chip): Ask's panel beside a page, how wide a
+     bubble may grow, the round ends of a suggested question, and the panel's shadow over the page. */
+  --ds-panel: 400px;
+  --ds-bubble: 82%;
+  --ds-pill: 999px;
+  --ds-shadow-panel: -12px 0 40px rgba(26, 25, 22, 0.10);
 }
 
 /* ON A PHONE (rule 2 and rule 5): 20px above and 16px at the sides, a 24px page title, and room
@@ -88,5 +95,6 @@
     --ds-page-top: 20px;
     --ds-page-side: 16px;
     --ds-page-bottom: 100px;
+    --ds-bubble: 92%;
   }
 }
