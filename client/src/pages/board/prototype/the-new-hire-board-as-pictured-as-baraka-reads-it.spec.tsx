@@ -61,12 +61,16 @@ describe('a new hire\'s first ninety days ported from the prototype, as Baraka r
     const { container } = renderIt(true)
     await screen.findByText('What was agreed at the start', undefined, { timeout: 30000 })
     const text = container.textContent ?? ''
-    expect(text).toContain('Imani and Baraka. Every other Friday. Session 2 of 6. Runs until 21 January.')
+    /* Changed 24 November 2026: the line is the board frame's, as on every board since journey 3: the lead is "you", and "Check-in", not "Session". */
+    expect(text).toContain('Imani Hassan and you. Every other Friday. Check-in 2 of 6. Runs until 21 January.')
     const order = ['What was agreed at the start', 'Change since last check-in', 'The 90 days, in three steps', 'After 30 days: is Imani Hassan settled in?',
       'Imani’s history', 'Where you both see it differently', 'Every session', 'Where this is heading', 'Keep on', 'Extend settling-in', 'Change the role', 'Part ways']
     for (let i = 1; i < order.length; i++) expect(at(text, order[i - 1]), `${order[i - 1]} before ${order[i]}`).toBeLessThan(at(text, order[i]))
     expect(text).toContain('Nothing was agreed at the start yet.')
     expect(text).toContain('You and Imani have not seen anything differently yet.')
-    expect(container.querySelector('.askdock input[aria-label="Ask about this board"]')).not.toBeNull()
+    /* Changed 24 November 2026: the board is rebuilt on the design system inside the board's frame, so its one Ask is the header's
+       (rule 8), not a second Ask bar at the foot. */
+    expect(container.querySelector('.askdock')).toBeNull()
+    expect(screen.getAllByRole('button', { name: /Ask/ }).length).toBeGreaterThan(0)
   })
 })

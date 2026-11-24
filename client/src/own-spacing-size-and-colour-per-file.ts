@@ -101,7 +101,6 @@ export const OWN_SPACING_SIZE_AND_COLOUR_PER_FILE: Record<string, number> = {
   'pages/board/pictured/TheSituationsSections.tsx': 2,
   'pages/board/prototype/the-prototype-boards.css': 201,
   'pages/board/prototype/the-prototype-markup.tsx': 7,
-  'pages/board/prototype/the-prototype-parts.tsx': 27,
   'pages/board/prototype/TheGoalsBoardAsPictured.tsx': 103,
   'pages/board/prototype/TheNewHireBoardAsPictured.tsx': 17,
   'pages/board/prototype/TheNewProjectBoardAsPictured.tsx': 78,

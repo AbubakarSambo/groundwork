@@ -13,34 +13,24 @@
  * who may read what.
  */
 import { Fragment, useMemo, useState, type ReactNode } from 'react'
-import { namesToCallAmong } from '@/lib/names-that-tell-people-apart'
 import { Section, Panel, EdgeList, EdgeRow, Button, Tag, Table, Empty } from '@/components/gw/ui'
-import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { checkInLinksApi } from '@/api/check-in-links'
 import { reportsApi } from '@/api/reports'
-import { TheNudgeButton } from '../pictured/TheNudgeButton'
+import { WhatNeedsYou, TheTeamToday, Blockers, WhatKeepsComingUp, ReportedAgainstTheCriteria, WhoCheckedIn, firstName, calledOn, inWords } from './the-board-sections'
 import { CORRECT_IT_HERE } from '../pictured/TheBar'
 import {
-  dealsByGroup, aShortDay, isoDay, lastContactIn, lastTen, aTagForTheWork, useWhatNeedsYou, soldAndProven, TheGoalAsItStands,
+  dealsByGroup, aShortDay, isoDay, lastContactIn, useWhatNeedsYou, soldAndProven, TheGoalAsItStands,
   theLastSessionThisWeek, weekNumberOf, ISSUE_STEPS, NOTHING_BOOKED, WhereThisIsHeading,
 } from '../pictured/ThePicturedSalesBoard'
 import { css, DOT, DOT_FILL } from './the-prototype-markup'
 import './the-prototype-boards.css'
-
-/** Each person's own page on this check-in, where The team today links their name. */
-const theirPage = (groundId: string, participantId: string) => `/grounds/${groundId}/person/${participantId}`
 
 type Any = any
 
 /** board-as-lead.txt, under the tab bar: one sentence, owned by the board's frame. */
 export { THE_BOARD_ONLY_CHANGES } from '../TheBoardFrame'
 
-const firstName = (n: string | null | undefined) => (n ?? '').trim().split(/\s+/)[0] || ''
-/* Each person by first name, and by the whole name where somebody else on the check-in has the same first name (page audit, 24 November, row 11). */
-const callThemOn = (b: Any) => namesToCallAmong(((b?.participants ?? []) as Any[]).map((p) => p?.name))
-const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
-const inWords = (n: number) => (n >= 0 && n < NUMBER_WORDS.length ? NUMBER_WORDS[n] : String(n))
 const DAY = 86_400_000
 
 /** The prototype's speech mark, for "Ask" in the header and the Ask bar at the foot. */
@@ -175,17 +165,6 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
   const open = (openId && byId.get(openId)) || inOrder[0] || null
   const anyProof = inOrder.some((r) => aMarkFor(r) === 'mk rec')
 
-  /* ---------------------------------------------------------------- the team: the people who check in, never the lead herself */
-  const leadId = (b.participants ?? []).find((x: Any) => x.partyType === 'INITIATOR')?.id ?? null
-  const team: Any[] = (b.eachPersonToday ?? []).filter((r: Any) => r.participantId !== leadId)
-  const reasonOf = new Map<string, string>((b.eachPerson ?? []).map((x: Any) => [x.participantId, x.reason]))
-  const keepsOf = (pid: string): string | null => {
-    const row = team.find((r) => r.participantId === pid)
-    const pat = (b.patterns ?? []).find((x: Any) => x.participantId === pid && x.about !== 'what is said against what happened' && x.whatHappened)
-    return row?.keepsComingUp ?? (pat ? String(pat.whatHappened).replace(/\.$/, '') : null)
-  }
-  const gridRows: Any[] = (b.checkInGrid?.rows ?? []).filter((r: Any) => !r.managingOnly && r.participantId !== leadId)
-
   const sameDayAs = (a: string, d: Date) => isoDay(new Date(a)) === isoDay(d)
   const reportTitle = (r: Any) => {
     if (!r.opened) return `Session ${r.sessionNumber}`
@@ -208,18 +187,6 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
   const waiting: Any[] = (links as Any)?.waitingOnOtherTeams ?? []
   const elsewhere = new Set(waiting.map((w) => w.id))
   const blockers: Any[] = (b.blockers ?? []).filter((x: Any) => x.state !== 'cleared' && !elsewhere.has(x.id))
-
-  /* ---------------------------------------------------------------- what keeps coming up */
-  const carried: Any[] = (b.keepsComingUp ?? []).map((x: Any, i: number) => ({ id: `carried-${i}`, participantId: x.participantId, yours: x.yours, about: 'the work', whatHappened: x.says }))
-  const patterns: Any[] = [...(b.patterns ?? []), ...carried]
-  const nameOf = new Map<string, string>((b.participants ?? []).map((x: Any) => [x.id, firstName(x.name)]))
-  const aboutTheWork = patterns.filter((x) => x.about !== 'what is said against what happened')
-  const aboutWhatIsSaid = new Map<string, Any[]>()
-  for (const x of patterns.filter((y) => y.about === 'what is said against what happened')) aboutWhatIsSaid.set(x.heading, [...(aboutWhatIsSaid.get(x.heading) ?? []), x])
-
-  /* ---------------------------------------------------------------- reported against the criteria */
-  const stages: Any[] = b.reportedAgainstCriteria?.stages ?? []
-  const most = Math.max(1, ...stages.map((s) => s.reported ?? 0), ...stages.map((s) => s.met ?? 0))
 
   /* ---------------------------------------------------------------- over time, from the record */
   const workPlan: Any[] = b.workPlan ?? []
@@ -293,15 +260,7 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
           <p className="ds-text-secondary">If one of these stops being true, the target needs a second look.</p>
         </Panel>
       )}
-      {needs.length > 0 && (
-        <Section heading="What needs you in this check-in">
-          <EdgeList label="What needs you in this check-in">
-            {needs.map((n) => (
-              <EdgeRow key={n.key} kind={n.kind} title={n.title} detail={n.detail} actions={lead && (n.node || n.action) ? (n.node ?? p.renderActions(n.action)) : undefined} />
-            ))}
-          </EdgeList>
-        </Section>
-      )}
+      <WhatNeedsYou needs={needs} lead={lead} renderActions={p.renderActions} />
       {deals && (
         <Section heading="Every deal, day by day" note="Grouped by what the proof says about closing this quarter." foot={inOrder.length ? CORRECT_IT_HERE : undefined}>
           {inOrder.length === 0 ? <Empty>No deals have come up yet.</Empty> : (
@@ -392,122 +351,11 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
           )}
         </Section>
       )}
-      {team.length > 0 && (
-        <Section heading="The team today" note="Each person’s line, their last 10 check-ins, and what keeps coming up.">
-          <Table
-            caption="The team today"
-            hideHeader
-            phone="stack"
-            onPanel={false}
-            limit={50}
-            columns={[
-              { key: 'who', header: 'Who', rowHeader: true, width: '15%' },
-              { key: 'line', header: 'Their line' },
-              { key: 'tag', header: 'The work' },
-              { key: 'squares', header: 'Last 10 check-ins' },
-              { key: 'keeps', header: 'Comes up again' },
-            ]}
-            rows={team.map((r) => {
-              /* The row's own reason, as served: the board says whether they have answered with the same rule as everywhere else. */
-              const reason = String(reasonOf.get(r.participantId) ?? '')
-              /* What their work shows, never the day they were last in: that is what the squares beside it say. */
-              const tag = aTagForTheWork(reason, dealRows.filter((d) => d.ownerParticipantId === r.participantId), today, r.workTag)
-              return {
-                who: <Link to={theirPage(groundId, r.participantId)}>{callThemOn(b)(r.who)}</Link>,
-                line: r.line,
-                tag: tag ? { tag: tag.word, tone: tag.tone === 'proven' ? 'proven' : tag.tone === 'attention' ? 'attention' : 'plain' } : '',
-                squares: <TenSquares squares={lastTen(b, r.participantId)} />,
-                keeps: keepsOf(r.participantId) || (lead && r.nudge) ? <>{keepsOf(r.participantId)}{lead && r.nudge && <> <TheNudgeButton groundId={groundId} nudge={r.nudge} /></>}</> : null,
-              }
-            })}
-          />
-        </Section>
-      )}
-      <Section heading="Blockers" note="Each with its history and the one thing that would clear it.">
-        {blockers.length ? blockers.map((x) => {
-          const isADecision = !!b.myParticipantId && x.onParticipantId === b.myParticipantId
-          const tag = isADecision ? { tone: 'action' as const, word: 'Decision' } : x.state === 'blocking' ? { tone: 'concern' as const, word: 'Blocking' } : { tone: 'attention' as const, word: 'Waiting' }
-          const on = isADecision ? 'You' : (x.on ?? x.onLabel ?? null)
-          return (
-            <Panel as="section" key={x.id} aria-label={x.name ?? x.says}>
-              <p className="ds-spread"><span className="ds-text-card">{x.name ? x.name.charAt(0).toUpperCase() + x.name.slice(1) : x.says}</span><Tag tone={tag.tone}>{tag.word}</Tag></p>
-              {on && <p className="ds-text-secondary">Waiting on: {on}</p>}
-              {x.raised?.says && <p className="ds-text-secondary">Raised: {x.raised.says}</p>}
-              {x.holdingUp && <p className="ds-text-secondary">Affects: {x.holdingUp}</p>}
-              {x.timeGiven && !/^No time has been given/.test(x.timeGiven) && <p className="ds-text-secondary">Promised: {x.timeGiven}</p>}
-              {x.proof?.says && <p className="ds-text-secondary">What the proof shows: {x.proof.says}</p>}
-              {(x.wouldClearIt ?? x.wouldClearItSays) && <p className="ds-text-secondary ds-note-act"><b>Would clear it:</b> {x.wouldClearIt ?? x.wouldClearItSays}</p>}
-            </Panel>
-          )
-        }) : (
-          <p className="ds-text-body">{(() => {
-            const waits = dealRows.filter((r) => (r.waitingOnTheCustomer ?? []).length > 0).length
-            return `Nobody has raised anything that blocks the team.${waits ? ` ${waits === 1 ? 'The one wait on a customer is on its deal' : `The ${inWords(waits)} waits on customers are on their deals`}, above.` : ''}`
-          })()}</p>
-        )}
-      </Section>
-      {patterns.length > 0 && (
-        <Section heading="What keeps coming up">
-          <div className="ds-grid ds-grid-2">
-            {aboutTheWork.length > 0 && (
-              <Panel as="section" heading="About each person’s work">
-                <div role="list" aria-label="About each person’s work">
-                  {aboutTheWork.map((x) => (
-                    <div key={x.id} className="ds-when" role="listitem">
-                      <span className="ds-text-secondary"><b>{x.yours ? 'You' : nameOf.get(x.participantId) ?? ''}</b></span>
-                      <span className="ds-text-secondary">{x.whatHappened ?? x.heading}</span>
-                    </div>
-                  ))}
-                </div>
-              </Panel>
-            )}
-            {aboutWhatIsSaid.size > 0 && (
-              <Panel as="section" heading="How what people say can run ahead of what happened">
-                <EdgeList label="How what people say can run ahead of what happened">
-                  {[...aboutWhatIsSaid.entries()].map(([h, xs]) => (
-                    <EdgeRow key={h} title={h} detail={`${xs[0]?.whatHappened ?? ''} ${xs.map((x) => (x.yours ? 'You' : nameOf.get(x.participantId) ?? '')).filter(Boolean).join(', ')}`.trim()} />
-                  ))}
-                </EdgeList>
-              </Panel>
-            )}
-          </div>
-        </Section>
-      )}
-      {stages.length > 0 && (
-        <Section heading="Reported vs criteria met, stage by stage" note="The shape of the work." foot="Outlined: what people reported. Filled: what meets the criteria.">
-          <Table
-            caption="Reported vs criteria met, stage by stage"
-            onPanel={false}
-            columns={[
-              { key: 'stage', header: 'Stage', rowHeader: true, width: '20%' },
-              { key: 'bar', header: 'Reported and met' },
-              { key: 'figures', header: 'Said and met', numeric: true, width: '20%' },
-            ]}
-            rows={stages.map((s) => ({
-              stage: s.stage,
-              bar: (
-                <svg className="ds-bar" viewBox="0 0 100 16" preserveAspectRatio="none" role="img" aria-label={s.says}>
-                  {s.reported != null && <rect className="said" x="0.5" y="0.5" width={Math.max(0, (s.reported / most) * 100 - 1)} height="15" />}
-                  {(s.met ?? 0) > 0 && <rect className="rec" x="0" y="4" width={(s.met / most) * 100} height="8" />}
-                </svg>
-              ),
-              figures: s.reported == null ? `${s.met} met` : `${s.reported} said, ${s.met ?? 0} met`,
-            }))}
-          />
-        </Section>
-      )}
-      {gridRows.length > 0 && (
-        <Section heading="Who checked in" note="The last 10 sessions, one row each.">
-          <Table
-            caption="Who checked in"
-            hideHeader
-            onPanel={false}
-            limit={50}
-            columns={[{ key: 'who', header: 'Who', rowHeader: true, width: '20%' }, { key: 'squares', header: 'The last 10 sessions' }]}
-            rows={gridRows.map((r) => ({ who: callThemOn(b)(r.name), squares: <TenSquares squares={lastTen(b, r.participantId)} /> }))}
-          />
-        </Section>
-      )}
+      <TheTeamToday b={b} groundId={groundId} lead={lead} records={dealRows} today={today} />
+      <Blockers b={b} blockers={blockers} records={dealRows} />
+      <WhatKeepsComingUp b={b} />
+      <ReportedAgainstTheCriteria b={b} />
+      <WhoCheckedIn b={b} />
       {(moved.length > 0 || workPlan.length > 0 || coaching.length > 0 || commitments.length > 0 || risks.length > 0 || lost.length > 0) && (
         <details className="ds-fold">
           <summary><span className="ds-text-section">Over time</span><span className="ds-btn ds-btn-link">Show</span></summary>
@@ -535,7 +383,7 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
               <Section heading="Coaching, and whether it changed anything" note="Judged by what changed in the weeks after.">
                 <div className="ds-grid ds-grid-3">
                   {coaching.map((c) => (
-                    <Panel as="section" key={c.participantId} heading={callThemOn(b)(c.who)}>
+                    <Panel as="section" key={c.participantId} heading={calledOn(b)(c.participantId, c.who)}>
                       {[...(c.probe ?? []), ...(c.encourage ?? [])].map((l: string) => <p key={l} className="ds-text-secondary">{l}</p>)}
                     </Panel>
                   ))}
@@ -645,16 +493,6 @@ export function TheSalesBoardAsPictured(p: TheSalesBoardAsPicturedProps) {
       )}
       <WhereThisIsHeading b={b} onRecordTheDecision={p.onRecordTheDecision} readOnly={!lead} />
     </>
-  )
-}
-
-/** The last ten check-ins as ten small squares, filled where the person checked in (the design system's squares). */
-function TenSquares({ squares }: { squares: string[] }) {
-  return (
-    <svg className="ds-squares" viewBox={`0 0 ${squares.length * 13} 18`} role="img"
-      aria-label={`Checked in ${squares.filter((s) => s === 'done').length} of the last ${squares.length}.`}>
-      {squares.map((s, i) => <rect key={i} className={s === 'done' ? 'on' : 'off'} x={i * 13 + 0.75} y="0.75" width="9.5" height="16.5" rx="2.5" />)}
-    </svg>
   )
 }
 

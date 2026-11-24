@@ -270,4 +270,9 @@ export const REBUILT_PAGES: string[] = [
   'components/gw/AskGroundwork.tsx',
   'components/gw/ui/ChatBar.tsx',
   'pages/ask/AskPage.tsx',
+  /* The new-hire, new-project and goals boards on the design system (24 November 2026), and the sections they share with the sales board. */
+  'pages/board/prototype/TheNewHireBoardAsPictured.tsx',
+  'pages/board/prototype/TheNewProjectBoardAsPictured.tsx',
+  'pages/board/prototype/TheGoalsBoardAsPictured.tsx',
+  'pages/board/prototype/the-board-sections.tsx',
 ]
