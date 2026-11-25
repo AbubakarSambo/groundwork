@@ -6,8 +6,10 @@ import './gw-ui.css'
  * "More ways to add"). The actions inside are the caller's own buttons and links, unchanged; the
  * menu only groups them. It closes when something outside it is pressed, or on Escape.
  */
-export function SmallMenu({ label, children, main, align = 'right' }: {
+export function SmallMenu({ label, ariaLabel, children, main, align = 'right' }: {
   label: string
+  /** What a screen reader hears where the label is only a sign, such as "···". */
+  ariaLabel?: string
   children: ReactNode
   main?: boolean
   align?: 'left' | 'right'
@@ -25,7 +27,7 @@ export function SmallMenu({ label, children, main, align = 'right' }: {
   }, [])
   return (
     <details ref={ref} className="gwui-menu">
-      <summary className={main ? 'gwui-menu-btn gwui-menu-btn-main' : 'gwui-menu-btn'}>{label}</summary>
+      <summary aria-label={ariaLabel} className={main ? 'gwui-menu-btn gwui-menu-btn-main' : 'gwui-menu-btn'}>{label}</summary>
       <div className={align === 'left' ? 'gwui-menu-pop gwui-menu-pop-left' : 'gwui-menu-pop'}>{children}</div>
     </details>
   )

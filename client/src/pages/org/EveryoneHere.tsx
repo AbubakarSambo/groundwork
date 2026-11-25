@@ -18,6 +18,7 @@ import {
 import { TheirNumberInTheRow } from './their-number'
 import { RemoveFromTheOrganisation } from './ask-first-in-the-page'
 import { useAuthStore } from '@/stores/auth'
+import { namesToCallAmong } from '@/lib/names-that-tell-people-apart'
 
 /**
  * "EVERYONE AT BARIDI" AND "WHO REPORTS TO WHOM" (A4 people.txt), the People page's list.
@@ -96,10 +97,12 @@ export function howManyHere(
    * too long to name individually; a mix of named and unnamed people is still a mix nobody can read
    * apart from the sentence alone, so the number is the only thing that stays true either way.
    */
-  const sentence = (names: string[], few: string, many: string): string | null => {
+  /* `few` is said after "is" or "are"; a pair [one, more] where the rest of the sentence changes with the count too. */
+  const sentence = (names: string[], few: string | [string, string], many: string): string | null => {
     if (names.length === 0) return null
-    if (names.some(isNamePlaceholder)) return `${peopleCount(names.length)} ${names.length === 1 ? 'is' : 'are'} ${few}.`
-    if (names.length <= 3) return `${namesAnd(names)} ${names.length === 1 ? 'is' : 'are'} ${few}.`
+    const said = typeof few === 'string' ? few : names.length === 1 ? few[0] : few[1]
+    if (names.some(isNamePlaceholder)) return `${peopleCount(names.length)} ${names.length === 1 ? 'is' : 'are'} ${said}.`
+    if (names.length <= 3) return `${namesAnd(names)} ${names.length === 1 ? 'is' : 'are'} ${said}.`
     return `${names.length} ${many}.`
   }
   /*
@@ -117,7 +120,8 @@ export function howManyHere(
   const extra = [
     sentence(waitingToBeLetIn, 'waiting to be let in', 'more are waiting to be let in'),
     wasNotSentence(notLetIn),
-    sentence(invitedWithNoAccount, 'invited, with no account yet', 'people are invited, with no account yet'),
+    /* Never "account" (page audit, 24 November 2026, row 15): said as whether they have joined. */
+    sentence(invitedWithNoAccount, ['invited and hasn’t joined yet', 'invited and haven’t joined yet'], 'people are invited and haven’t joined yet'),
     sentence(heldForASeat, 'on a check-in with no seat for them', 'people are on a check-in with no seat for them'),
     overThePlanSays?.trim() || sentence(waitingWithNoCheckIn, 'waiting for a seat on your plan', 'people are waiting for a seat on your plan'),
   ].filter((s): s is string => !!s)
@@ -275,11 +279,15 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
 
   /* Who the head count leaves out, and why (U.4 people-group review, item 1): named, so "N people"
      and the number of rows below it never quietly disagree. */
-  const waitingToBeLetIn = everybody.filter((m) => m.awaitingOrgApproval && !m.notLetIn).map(firstNameOf)
-  const heldForASeat = everybody.filter((m) => m.heldForASeat && (m.checkInsOn ?? 0) > 0).map(firstNameOf)
-  const waitingWithNoCheckIn = everybody.filter((m) => m.heldForASeat && (m.checkInsOn ?? 0) === 0).map(firstNameOf)
-  const notLetIn = everybody.filter((m) => m.notLetIn).map(firstNameOf)
-  const invitedWithNoAccount = everybody.filter((m) => m.noAccountYet && !m.heldForASeat && !m.notLetIn && !m.awaitingOrgApproval).map(firstNameOf)
+  /* By first name, and by the whole name where somebody else here has the same first name ("Neema and Neema are invited", page audit,
+     24 November, row 15). A person with no name keeps the placeholder sentence the count reads as a number. */
+  const callThem = namesToCallAmong(everybody.map(nameOf))
+  const called = (m: OrgMember) => (isNamePlaceholder(firstNameOf(m)) ? firstNameOf(m) : callThem(nameOf(m)) || firstNameOf(m))
+  const waitingToBeLetIn = everybody.filter((m) => m.awaitingOrgApproval && !m.notLetIn).map(called)
+  const heldForASeat = everybody.filter((m) => m.heldForASeat && (m.checkInsOn ?? 0) > 0).map(called)
+  const waitingWithNoCheckIn = everybody.filter((m) => m.heldForASeat && (m.checkInsOn ?? 0) === 0).map(called)
+  const notLetIn = everybody.filter((m) => m.notLetIn).map(called)
+  const invitedWithNoAccount = everybody.filter((m) => m.noAccountYet && !m.heldForASeat && !m.notLetIn && !m.awaitingOrgApproval).map(called)
 
   const headCount = howManyHere(
     status.data?.people?.count ?? everybody.length,

@@ -45,7 +45,8 @@ describe('the quick read names the thing', () => {
   /* And where there is nothing to name, every word it said before is still what it says. */
   it('falls back to what it always said when nothing is named', () => {
     const tiles = atAGlanceTiles({ ...base, stillOpen: 1, blocked: 1 });
-    expect(tile(tiles, 'Differences').sub).toBe('The written report reads this as still open.');
+    /* Changed 24 November (page audit): said plainly, without "the written report". */
+    expect(tile(tiles, 'Differences').sub).toBe('It has not been settled yet.');
     expect(tile(tiles, 'Blockers').sub).toBe('Something is named as holding work up.');
   });
 

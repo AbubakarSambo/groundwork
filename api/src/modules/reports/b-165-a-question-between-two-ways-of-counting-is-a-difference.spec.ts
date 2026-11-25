@@ -18,10 +18,12 @@ describe('B-165: the Differences read and the question the report asks', () => {
   it('leaves the read alone where the question is not between two ways', () => {
     expect(diff(theSessionReport({ ...base, centralQuestion: 'What should the team do next?' })).value).toBe('None');
   });
-  it('leaves a listed difference as it was', () => {
+  /* Changed 24 November (page audit, row 6): the difference is named once, where things stand, so its tile counts it and does not
+     name it again. */
+  it('leaves a listed difference as it was, counted and not named again', () => {
     const t = diff(theSessionReport({ ...base, divergences: [{ topic: 'The price list' }], centralQuestion: 'Does a shop count when it signs, or when it orders again?' }));
     expect(t.value).toBe('1');
-    expect(t.sub).toMatch(/price list/);
+    expect(t.sub).not.toMatch(/price list/);
   });
   it('the function leaves other tiles alone', () => {
     const tiles = [{ label: 'Blockers', value: 'None', sub: 'x' }];

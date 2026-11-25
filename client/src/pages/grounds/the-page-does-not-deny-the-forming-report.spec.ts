@@ -24,9 +24,10 @@ describe('waiting for the others', () => {
     expect(ADMIN).not.toContain('generates once all accounts are in')
   })
 
-  it('says what is actually true, and offers the way to it', () => {
-    expect(ADMIN).toContain('The picture builds as each person answers')
-    expect(ADMIN).toContain('Read it so far')
+  /* Changed (page audit, 24 November 2026, row 8): the notice sat on the "Who has answered" roster, which folded into People and setup;
+     it explained the report rather than saying a fact, so it went with the roster. The report tab is one tab away. */
+  it('and says nothing untrue in its place', () => {
+    expect(ADMIN).not.toContain('once all accounts are in')
   })
 
   it('and the lead can see who is still out from the end of their own session', () => {
@@ -80,7 +81,9 @@ describe('the things that were said too often, or too loudly', () => {
   it('and a roster does not call three different people "a teammate"', () => {
     /* `participantLabel` withholds the address on purpose - between parties. This is the lead's
        own roster, and they invited these people by typing those addresses. */
-    const roster = ADMIN.slice(ADMIN.indexOf('ga-participant-row'), ADMIN.indexOf('ONE ROW PER PERSON') + 1 || undefined)
-    expect(roster).toContain('{personLabel(p)}')
+    /* The roster is People and setup's one list now (page audit, 24 November 2026, row 8); each row is named by whereThisPersonIs. */
+    const roster = read('PeopleAndSetupAsPictured.tsx')
+    expect(roster).toContain('{row.name}')
+    expect(roster).not.toMatch(/a teammate/)
   })
 })

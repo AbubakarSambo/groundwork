@@ -101,10 +101,17 @@ export async function withTheSalesReadings<T>(prisma: Prisma, groundId: string, 
     /* A session the clock closed with nothing said is not a check-in made, as the board and the count read it (staging S20: "Last updated
        ... when Associate checked in" beside a board that said nobody had). */
     where: { groundId, sessionNumber, status: 'COMPLETED', isSetup: false, AND: [NOT_A_QUIET_CLOSE] },
-    select: { id: true, participantId: true, completedAt: true },
+    select: { id: true, participantId: true, completedAt: true, optional: true },
   }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[];
   const done = checkIns.filter((c) => c.completedAt).sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
+  /*
+   * THE SESSION'S OWN DAY: the first check-in the team made in it, as the board and the list of check-ins date a session (the lead's own
+   * optional check-in never dates it). The title said the day of the latest one, so check-in 4 was "The team's report, Saturday 28
+   * November" beside "Mon, 23 Nov" for the same check-in on the board and the Reports tab (page audit, 24 November, row 9).
+   */
   if (!done.length) return out;
+  const theTeams = done.filter((c) => !c.optional);
+  const theSessionsDay = aDayKey(new Date((theTeams.length ? theTeams : done).slice(-1)[0].completedAt), zone);
 
   const deals: ADealOnRecord[] = await theDealsOnRecord(prisma, groundId, { paymentRecord: true }).catch(() => [] as ADealOnRecord[]);
   const stages = theSalesStages(ground.workStages);
@@ -230,9 +237,9 @@ export async function withTheSalesReadings<T>(prisma: Prisma, groundId: string, 
 
     out.theTeamsDay = {
       day,
-      title: `The team’s report, ${aDayWithItsWeekday(day)}`,
+      title: `The team’s report, ${aDayWithItsWeekday(theSessionsDay)}`,
       /* The same day as the title, in the organisation's own day (the kit: "Last updated on Wednesday 23 September at 6pm, when Miriam checked in."). */
-      lastUpdated: `Last updated on ${aDayWithItsWeekday(aDayKey(lastIn, zone))} at ${time}${lastInName ? `, when ${lastInName} checked in` : ''}. It only changes when something new comes in, such as a check-in, a document or a number from another system.`,
+      lastUpdated: `Last updated on ${aDayWithItsWeekday(aDayKey(lastIn, zone))} at ${time}${lastInName ? `, when ${lastInName} checked in` : ''}.`,
       inShort: [...inShortFromTheMoves(moves, dayWord, day, theFirstMoveOnRecord(deals, zone)), ...news],
       /* What moved: the stage each deal reached, said in the third person from what the deal holds, else its owner's own line (T-4, T-5). */
       moved: moves.map((m) => {

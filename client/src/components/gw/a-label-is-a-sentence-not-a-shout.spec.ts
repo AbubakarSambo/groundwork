@@ -121,7 +121,10 @@ describe('a label on these surfaces is a sentence, not a shout', () => {
   it('never sits a one-word rating beside its heading instead of saying it as one sentence', () => {
     const confidence = read('HowMuchThereIsToGoOn.tsx')
     expect(confidence).not.toContain('{BAND_LABEL[read.band]}')
-    expect(confidence).toContain('BAND_SENTENCE[read.band]')
+    /* Changed 24 November (page audit, row 6): the band's own sentence ("There is a partial amount to go on.") sat beside the
+       server's "There is enough here to talk about.", so it is gone; the one reading is the server's sentence. */
+    expect(confidence).not.toContain('BAND_SENTENCE')
+    expect(confidence).toContain('{read.saying}')
 
     const stands = read('TheReportYouSawAtTheEnd.tsx')
     expect(stands).not.toContain('<b>Settled.</b>')

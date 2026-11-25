@@ -93,6 +93,9 @@ function renderWith(over: Record<string, any> = {}) {
       <CheckInPeopleAndSetup {...(props as any)} />
     </QueryClientProvider>,
   )
+  /* Each setting is one line with "Change", and its editor opens from that (page audit, 24 November 2026, row 2). */
+  const opens = screen.queryByRole('button', { name: 'Change, Simpler words' })
+  if (opens) fireEvent.click(opens)
   return props
 }
 
@@ -121,6 +124,8 @@ describe('"Use simpler words", on the check-in\'s own setup', () => {
         <CheckInPeopleAndSetup {...(onProps as any)} />
       </QueryClientProvider>,
     )
+    expect(screen.getByText('On. Short sentences and everyday words, in the check-in and everything sent afterwards.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Change, Simpler words' }))
     expect((await screen.findByRole('switch', { name: 'Use simpler words' })).getAttribute('aria-checked')).toBe('true')
   })
 

@@ -42,10 +42,13 @@ export function WhichDaysTheyWork({
   value,
   onChange,
   label = 'On which days',
+  explained = true,
 }: {
   value: number[]
   onChange: (days: number[]) => void
   label?: string
+  /** People and setup's own line already says the rhythm, so the sentence under the days is left off there (page audit, 24 November). */
+  explained?: boolean
 }) {
   const days = workingDaysOf(value)
   const weekdaysOnly = isWeekdaysOnly(days)
@@ -73,7 +76,7 @@ export function WhichDaysTheyWork({
           <button type="button" className="gw-link" aria-pressed={days.length === 0} onClick={() => onChange([])}>Any day is fine</button>
         </p>
         {/* Said in plain words, because seven small buttons do not tell anybody what will happen. */}
-        <Text size="14-5" ink="sub" as="p">{whatTheDaysMean(value)}</Text>
+        {explained && <Text size="14-5" ink="sub" as="p">{whatTheDaysMean(value)}</Text>}
       </Stack>
     </section>
   )

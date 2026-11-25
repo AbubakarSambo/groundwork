@@ -102,13 +102,13 @@ describe('Miriam reads her own You board', () => {
 
   it('links to her own reports and her work in each check-in, and offers her data as one file', async () => {
     open(MIRIAM, MIRIAMS)
-    /* 21 November 2026: her own reports are now part of "Your performance history" (Hafsah: "performance history"), with the same link. */
-    await screen.findByRole('heading', { name: 'Your performance history' })
-    expect(hrefOf(section('Your performance history'), 'Read it')).toBe('/checkin/c38/report')
+    /* 21 November 2026: her own reports are part of the performance history; 24 November (page audit row 4): that is the one list, "Your own reports". */
+    await screen.findByRole('heading', { name: 'Your own reports' })
+    expect(hrefOf(section('Your own reports'), 'Read it')).toBe('/checkin/c38/report')
     /* SCREEN FAULT 10: 30px tall on a phone before the shared 40px tap class was added. */
-    expect(within(section('Your performance history')).getByRole('link', { name: 'Read it' }).className).toContain('gwui-tap-44')
+    expect(within(section('Your own reports')).getByRole('link', { name: 'Read it' }).className).toContain('gwui-tap-44')
     /* Walkthrough pass 2, item 4: dates read in full ("23 September", not "23 Sept"). */
-    expect(within(section('Your performance history')).getByText('It was written from your answers on 23 September.')).toBeInTheDocument()
+    expect(within(section('Your own reports')).getByText('It was written from your answers on 23 September.')).toBeInTheDocument()
     const each = section('Your work in each')
     expect(within(each).getByText('Sales team, Q3')).toBeInTheDocument()
     expect(within(each).getByText('You have finished 38 check-ins.')).toBeInTheDocument()

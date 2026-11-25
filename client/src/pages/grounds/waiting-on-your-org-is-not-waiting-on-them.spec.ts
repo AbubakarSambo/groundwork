@@ -22,34 +22,25 @@ import { join } from 'path'
  * this box into a way to test whether somebody is a Groundwork user.
  */
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
-const PAGE = strip(readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8'))
+const ROSTER = strip(readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'WhosInItRoster.tsx'), 'utf8'))
 
+/* The roster is People and setup's one list now (page audit, 24 November 2026, row 8): each row's sentence is whereThisPersonIs's,
+   in WhosInItRoster.tsx, so these read it there. */
 describe('a person the organisation has not let in yet', () => {
   it('says so on their row, instead of reading as an unopened invitation', () => {
-    expect(PAGE).toContain('Waiting on your organisation')
-    expect(PAGE).toContain('p.user?.awaitingOrgApproval')
+    expect(ROSTER).toContain('is from outside your organisation, so an admin has to let them in before they can check in.')
+    expect(ROSTER).toContain('p.user?.awaitingOrgApproval')
   })
 
-  it('and goes where the approval is, because the lead cannot do it from here', () => {
-    const at = PAGE.indexOf('Waiting on your organisation')
-    expect(PAGE.slice(Math.max(0, at - 500), at)).toContain("navigate('/org/members')")
+  it('and an admin is sent where the approval is', () => {
+    expect(ROSTER).toContain('<Link className="gwui-open-link" to="/org/members">Go to People</Link>')
   })
 
   it('is checked only after they have an account, so it cannot mask a real unopened invite', () => {
-    /* The order of the branches is the rule: no account at all is still "Invite pending". */
-    const noAccount = PAGE.indexOf('Invite pending')
-    const awaiting = PAGE.indexOf('p.user?.awaitingOrgApproval')
-    expect(noAccount).toBeLessThan(awaiting)
+    expect(ROSTER).toContain("if (p.userId && p.user?.awaitingOrgApproval) return 'admin'")
   })
 })
 
-/*
- * REPOINTED (People and setup rebuild, 29 Sept): the add-a-person form and its approval-rule
- * sentence moved to WhosInItRoster.tsx, which CheckInPeopleAndSetup.tsx renders inside "Who's in
- * it" - the roster row logic this file's first describe block checks stayed on GroundAdminPage.tsx
- * (the Sessions tab's own roster is untouched).
- */
-const ROSTER = strip(readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'WhosInItRoster.tsx'), 'utf8'))
 
 describe('before anybody is added', () => {
   it('the rule is on the control that adds them', () => {

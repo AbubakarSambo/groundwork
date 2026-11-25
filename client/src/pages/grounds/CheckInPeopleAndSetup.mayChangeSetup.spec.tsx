@@ -86,37 +86,30 @@ function renderWith(over: Record<string, any> = {}) {
 beforeEach(() => vi.clearAllMocks())
 
 /** Every setup control the served `mayChangeSetup` gates, as the B8 page draws it. */
+/* Each setting is one line with "Change" now (page audit, 24 November 2026, row 2): whether a reader may change it is whether its
+   "Change" is there, and its editor opens only from that. */
+const change = (label: string) => screen.queryByRole('button', { name: `Change, ${label}` })
 function theControls() {
   return {
-    name: screen.queryByRole('textbox', { name: 'Name' }),
-    howOften: screen.queryByRole('combobox', { name: 'How often' }),
-    targets: screen.queryByRole('combobox', { name: 'Targets' }),
-    confirming: screen.queryByRole('combobox', { name: 'Confirming each other’s work' }),
-    simplerWords: screen.queryByRole('switch', { name: 'Use simpler words' }),
-    blocked: screen.getByRole('switch', { name: 'When someone is blocked' }),
+    name: change('Name'),
+    howOften: change('How often'),
+    targets: change('Targets'),
+    confirming: change('Confirming each other’s work'),
+    simplerWords: change('Simpler words'),
+    blocked: change('When someone is blocked'),
   }
 }
 function offeredEveryOne() {
   const c = theControls()
-  expect(c.name).toBeTruthy()
-  expect(c.howOften).toBeTruthy()
-  expect(c.targets).toBeTruthy()
-  expect(c.confirming).toBeTruthy()
-  expect(c.simplerWords).toBeTruthy()
-  expect(c.blocked).not.toBeDisabled()
+  for (const k of Object.keys(c) as (keyof typeof c)[]) expect(c[k], k).toBeTruthy()
 }
 function offeredNone() {
   const c = theControls()
-  expect(c.name).toBeNull()
-  expect(c.howOften).toBeNull()
-  expect(c.targets).toBeNull()
-  expect(c.confirming).toBeNull()
-  expect(c.simplerWords).toBeNull()
-  expect(c.blocked).toBeDisabled()
-  /* The name is still read, as a sentence. */
+  for (const k of Object.keys(c) as (keyof typeof c)[]) expect(c[k], k).toBeNull()
+  expect(screen.queryByRole('combobox')).toBeNull()
   expect(screen.getByText("Tendai's check-in")).toBeTruthy()
 }
-const drawn = () => screen.findByText('When it runs')
+const drawn = () => screen.findByText('How it runs')
 
 describe('Naomi, an admin on Tendai\'s check-in, is not offered setup changes the server refuses her', () => {
   it('offers no setup control at all when the server sends mayChangeSetup: false', async () => {

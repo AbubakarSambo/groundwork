@@ -97,7 +97,7 @@ function ThePage({ groundId, served, ground, isTheLead }: { groundId: string; se
       <Documents served={served} />
       <Evidence groundId={groundId} served={served} />
       <QuestionsAndAnswers served={served} />
-      {served.people && <People groundId={groundId} people={served.people} onDone={refresh} />}
+      {served.people && <People groundId={groundId} people={served.people} onDone={refresh} onAddOne={served.mayAdd ? () => { setAdding('PERSON_NOTE'); document.querySelector('[data-gw-references-top]')?.scrollIntoView() } : undefined} />}
     </Stack>
     </div>
   )
@@ -406,9 +406,12 @@ function QuestionsAndAnswers({ served }: { served: Served }) {
 
 /* ------------------------------------------------------------------------------------------------------- People */
 
-function People({ groundId, people, onDone }: { groundId: string; people: NonNullable<Served['people']>; onDone: () => void }) {
+function People({ groundId, people, onDone, onAddOne }: { groundId: string; people: NonNullable<Served['people']>; onDone: () => void; onAddOne?: () => void }) {
   const [q, setQ] = useState('')
   const [showAllPeople, setShowAllPeople] = useState(false)
+  /* Only the people with a note are listed; everybody else is one line (page audit, 24 November 2026, row 7). */
+  const [showTheRest, setShowTheRest] = useState(false)
+  const hasANote = (p: (typeof people)[number]) => !!p.note || !!p.helpWith || p.earlier.length > 0
   const [editing, setEditing] = useState<{ pid: string; kind: 'PERSON_NOTE' | 'HELP_WITH'; lineId: string | null; text: string } | null>(null)
   const save = useMutation({
     mutationFn: (e: NonNullable<typeof editing>) => (e.lineId
@@ -418,6 +421,10 @@ function People({ groundId, people, onDone }: { groundId: string; people: NonNul
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
   const shown = people.filter((p) => !q.trim() || [p.name, p.role, p.note?.text, p.helpWith?.text].some((x) => String(x ?? '').toLowerCase().includes(q.trim().toLowerCase())))
+  /* A search, or "and N more without a note", lists everybody it matches; otherwise only the people with a note, three at first. */
+  const everyone = !!q.trim() || showTheRest
+  const noted = shown.filter(hasANote)
+  const listed = everyone ? shown : showAllPeople ? noted : noted.slice(0, 3)
   const editor = (p: (typeof people)[number], kind: 'PERSON_NOTE' | 'HELP_WITH', line: AReferenceLine | null) => (
     editing?.pid === p.participantId && editing.kind === kind ? (
       <Stack gap={6}>
@@ -440,12 +447,12 @@ function People({ groundId, people, onDone }: { groundId: string; people: NonNul
         {people.length > 5 && (
           <FlexRow gap={8} align="center" wrap>
             <TextField value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people" aria-label="Search people" />
-            <Note tone="muted">{`Showing ${shown.length} of ${plural(people.length, 'person', 'people')}.`}</Note>
+            {q.trim() && <Note tone="muted">{`Showing ${shown.length} of ${plural(people.length, 'person', 'people')}.`}</Note>}
           </FlexRow>
         )}
         {people.length === 0 && <Note tone="muted">Nobody else is in this check-in yet.</Note>}
-        {/* Three, then "and N more" (lists stop at three); a search shows every match. */}
-        {(q.trim() || showAllPeople ? shown : shown.slice(0, 3)).map((p) => (
+        {/* Three, then "and N more" (lists stop at three); a search shows every match, with a note or not. */}
+        {listed.map((p) => (
           <Panel key={p.participantId}>
             <div data-gw-person-note={p.participantId}>
               <Stack gap={6}>
@@ -463,7 +470,13 @@ function People({ groundId, people, onDone }: { groundId: string; people: NonNul
             </div>
           </Panel>
         ))}
-        {!q.trim() && !showAllPeople && shown.length > 3 && <button type="button" className="gw-link t-small gw-start" onClick={() => setShowAllPeople(true)}>{`and ${shown.length - 3} more`}</button>}
+        {!everyone && noted.length === 0 && shown.length > 0 && (
+          <p className="ds-text-secondary">No notes on people yet.{onAddOne && <>{' '}<button type="button" className="gwui-plain-link" onClick={onAddOne}>Add one</button></>}</p>
+        )}
+        {!everyone && !showAllPeople && noted.length > 3 && <button type="button" className="gw-link t-small gw-start" onClick={() => setShowAllPeople(true)}>{`and ${noted.length - 3} more with a note`}</button>}
+        {!everyone && noted.length > 0 && shown.length > noted.length && (
+          <button type="button" className="gw-link t-small gw-start" onClick={() => setShowTheRest(true)}>{`and ${shown.length - noted.length} more without a note`}</button>
+        )}
       </Stack>
     </Section>
   )

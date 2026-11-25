@@ -1,4 +1,5 @@
 import { A_SESSION_OF_THEIRS } from '../grounds/the-sessions-done';
+import { namesToCallAmong } from '../../common/names-that-tell-people-apart';
 import { withoutTheOldEnding } from '../reports/what-people-said-differently-about';
 import { howManyReadsAreStillToCome } from '../conversation/the-read-is-owed';
 import { workingDaysOf } from '../grounds/which-days-this-team-works';
@@ -146,16 +147,10 @@ export function theWorkingDayBefore(today: string, workingDays: number[] | null 
   return k;
 }
 
-/** First names, with the surname added only where two people share a first name. */
+/** First names, with the surname added only where two people share a first name: the one rule (common/names-that-tell-people-apart). */
 export function theNamesToCall(people: { id: string; name: string }[]): Map<string, string> {
-  const firsts = people.map((p) => String(p.name ?? '').trim().split(/\s+/)[0] ?? '');
-  const out = new Map<string, string>();
-  people.forEach((p, i) => {
-    const first = firsts[i];
-    const twice = firsts.filter((f) => f && f === first).length > 1;
-    out.set(p.id, twice ? String(p.name).trim() : first || String(p.name ?? '').trim());
-  });
-  return out;
+  const callThem = namesToCallAmong(people.map((p) => p.name));
+  return new Map(people.map((p) => [p.id, callThem(p.name) || String(p.name ?? '').trim()]));
 }
 
 /* ------------------------------------------------------------------------------------------------------------------------- */

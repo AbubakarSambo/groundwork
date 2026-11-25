@@ -13,7 +13,8 @@ import { dirname, join } from 'node:path'
  * live: without the fix, approving a request sends 2 emails; with it, 1.
  */
 const src = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), 'GroundAdminPage.tsx'),
+  /* Approving a request moved with the roster to People and setup (page audit, 24 November 2026, row 8). */
+  join(dirname(fileURLToPath(import.meta.url)), 'PeopleAndSetupAsPictured.tsx'),
   'utf8',
 )
 

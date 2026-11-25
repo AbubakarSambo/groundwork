@@ -56,7 +56,8 @@ export function theSessionReportAtAGlance(r: any): ASessionReportAtAGlance {
     const said = firstSentence(r.againstSuccess.saying);
     if (said) out.goodLooksLike = said;
   }
-  if (r.cascade) out.sitsUnder = r.cascade.parentNamed ? String(r.cascade.parentNamed) : 'Nothing above this has been named yet';
+  /* Where nothing above it is named, the part itself says so, once (page audit, 24 November, row 6). */
+  if (r.cascade?.parentNamed) out.sitsUnder = String(r.cascade.parentNamed);
   return out;
 }
 

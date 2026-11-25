@@ -90,7 +90,8 @@ describe('Your data', () => {
    */
   it('"Remove your name and email" is reachable straight away, with no download needed first', async () => {
     open({ id: 'u1', role: 'MEMBER', organizationName: 'Baridi Appliances', firstName: 'Grace', lastName: 'Achieng', email: 'grace@baridi.co.ke' })
-    expect(screen.getByText('Your answers stay in the check-ins, without your name.')).toBeTruthy()
+    /* UPDATED 24 November 2026 (page audit row 13): the sentence beside the link is cut (not in the prototype); the confirmation says it. */
+    expect(screen.queryByText('Your answers stay in the check-ins, without your name.')).toBeNull()
     const eraseLink = screen.getByText('Remove your name and email')
     expect(eraseLink.tagName).toBe('BUTTON')
     expect(eraseLink.className).toContain('gwui-plain-link')

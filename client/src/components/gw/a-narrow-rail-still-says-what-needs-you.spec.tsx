@@ -49,8 +49,11 @@ describe('a phone can sign out', () => {
     expect(SETTINGS).toMatch(/logout\(\); navigate\('\/auth'\)/)
   })
 
-  it('says what it does and what it does not touch', () => {
-    expect(SETTINGS).toMatch(/Signs you out of Groundwork on this device\. Nothing you have written is affected\./)
+  /* UPDATED 24 November 2026 (page audit row 13, approved by Hafsah): the sentence under "Sign out" is not in the prototype and only
+     explained the screen, so it is cut. Signing out still is one plain link to the page that does it. */
+  it('is one plain link to the page that signs you out, with no sentence explaining it', () => {
+    expect(SETTINGS).toMatch(/to="\/signout"/)
+    expect(SETTINGS).not.toMatch(/Signs you out of Groundwork on this device/)
   })
 
   it('and settings is a route everybody has, so the mobile bar carries it', () => {

@@ -133,24 +133,33 @@ describe('Grace, who runs the sales check-in, reads the whole page in the pictur
     renderPage(props({ ground: theSalesCheckIn({ settingsChanges: [{ changedAt: '2026-10-14T09:00:00Z', by: 'you', weeks: { from: 2, to: 3 }, cadence: null }] }) }))
     await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
     const headings = screen.getAllByRole('heading').map((h) => h.textContent)
-    const order = ['How this check-in runs', 'What it is', "Who's in it", 'When it runs', 'How people answer', 'Starting point', 'Who sees what', 'Recent changes']
+    /* The prototype's order (page audit, 24 November 2026, row 2): who is in it, how it runs, who sees what, then what it is and the ending. */
+    const order = ["Who's in it", 'How it runs', 'Who sees what', 'What it is', 'Recent changes', 'Ending it']
     expect(order.map((h) => headings.indexOf(h)).every((i, n, all) => i >= 0 && (n === 0 || i > all[n - 1]))).toBe(true)
     expect(screen.getByText("Peter Ouma can't start, because the invitation to Peter bounced.")).toBeTruthy()
     expect(screen.getByText('Mercy Wanjiru has no WhatsApp number, so Mercy answers here.')).toBeTruthy()
-    expect(screen.getByText("Nobody has described Joseph Mutua's role here, so Joseph gets the general questions.")).toBeTruthy()
-    /* Once under how it runs, and once on Peter's own row, as in the picture. */
-    expect(screen.getAllByRole('button', { name: 'Fix the address' }).length).toBe(2)
+    /* The missing roles are one line for the whole list, not a banner each (page audit, 24 November 2026, row 2). */
+    expect(screen.getByText('One person has no role described yet.')).toBeTruthy()
+    expect(screen.queryByText(/Nobody has described Joseph Mutua's role here/)).toBeNull()
+    /* Under how it runs, on Peter's own row, and in his row's "···". */
+    expect(screen.getAllByRole('button', { name: 'Fix the address', hidden: true }).length).toBeGreaterThanOrEqual(2)
     expect(screen.getAllByRole('button', { name: 'Add a number' }).length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Add their role' })).toBeTruthy()
-    expect(screen.getByText('The scenario and kind of work decide the board, the reports, and what each check-in asks about.')).toBeTruthy()
+    /* No sentence explains the page (page audit, 24 November 2026, row 2). */
+    expect(screen.queryByText('The scenario and kind of work decide the board, the reports, and what each check-in asks about.')).toBeNull()
+    expect(screen.queryByText(/Getting started goes from Invited/)).toBeNull()
     /* Says what Peter needs, read from the same reason his row reads (Hafsah, 30 October 2026:
        plain language for an impatient first-time lead; "1 needs something" said nothing). */
     expect(screen.getByText('5 people. 4 are checking in. 1 did not get the invitation, because the email bounced.')).toBeTruthy()
     expect(screen.getByText('5 of 15 check-ins done. Check-ins already done are never removed.')).toBeTruthy()
-    expect(screen.getByText('Never more than one reminder a day. Quiet hours end at 7am. At the last check-in, everyone is asked how this should close.')).toBeTruthy()
-    expect(screen.getByText('Coming back')).toBeTruthy()
-    expect(screen.getByText('First check-in done')).toBeTruthy()
-    expect(screen.getByText('+254 7·· ··· 410')).toBeTruthy()
+    /* Each setting is one line with "Change" (the prototype's How it runs). */
+    expect(screen.getByText('To anyone who has not answered, 1 day after it opens. Never more than one a day. You are told who never started.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Change, Reminders' })).toBeTruthy()
+    expect(screen.queryByRole('combobox', { name: 'Remind people after' })).toBeNull()
+    /* Each person's status said once: where they are in getting started, as served. */
+    expect(screen.getByText('Kevin checks in on their own, most recently on Friday.')).toBeTruthy()
+    expect(screen.getByText('Mercy checked in once, on Monday, and has not come back since.')).toBeTruthy()
+    expect(screen.getByText(/Their phone number is \+254 7·· ··· 410\./)).toBeTruthy()
     expect(screen.getByText('You changed how long it runs from 2 weeks to 3 weeks on 14 October.')).toBeTruthy()
     /* 22 November 2026, bug N6: this used to read "Nobody else has answered yet" beside "5 of 15 check-ins done", because the page
        counted only this session. The server's answer says others have answered, so Grace reads the true sentence and the delete that
@@ -162,6 +171,10 @@ describe('Grace, who runs the sales check-in, reads the whole page in the pictur
     expect(screen.getByRole('button', { name: 'Delete this check-in' })).toBeTruthy()
     expect(screen.getByText('Decide how it ends')).toBeTruthy()
     expect(screen.queryByText("You can't end a check-in you don't run. Ask us and we'll end it, usually the same day.")).toBeNull()
+    /* Her note is on Kevin's row, and his role field opens from the row's "···". */
+    expect(screen.getByText('Your note. Rep, Nairobi hardware shops.')).toBeTruthy()
+    expect(screen.queryByLabelText('Their role here, for Kevin Otieno')).toBeNull()
+    fireEvent.click(within(document.getElementById('person-p-kevin')!).getByRole('button', { name: 'Change their role here', hidden: true }))
     expect((screen.getByLabelText('Their role here, for Kevin Otieno') as HTMLInputElement).value).toBe('Rep, Nairobi hardware shops')
   })
 
@@ -171,6 +184,7 @@ describe('Grace, who runs the sales check-in, reads the whole page in the pictur
     renderPage(p)
     await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
     expect(screen.queryByText('You have changes. They apply from the next check-in. Check-ins already done keep their dates.')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Change, Targets' }))
     fireEvent.change(screen.getByLabelText('Targets'), { target: { value: 'own' } })
     expect(p.setWhoSeesTargets.mutate).not.toHaveBeenCalled()
     expect(screen.getByText('You have changes. They apply from the next check-in. Check-ins already done keep their dates.')).toBeTruthy()
@@ -217,11 +231,12 @@ describe('Naomi, an admin who does not run it, reads the whole page with no endi
     expect(screen.queryByText('Delete this test')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Fix the address' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Add their role' })).toBeNull()
-    expect(screen.getAllByText('Grace has described it.').length).toBe(4)
-    expect(screen.getByText('Nobody has described it yet.')).toBeTruthy()
-    expect(screen.queryByText('Rep, Nairobi hardware shops')).toBeNull()
+    /* Whether a role is described, as the server serves it, never the lead's words; nothing said where none is. */
+    expect(screen.getAllByText('Grace has described their role here.').length).toBe(4)
+    expect(screen.queryByText(/Rep, Nairobi hardware shops/)).toBeNull()
     expect(screen.queryByLabelText('Targets')).toBeNull()
-    expect(screen.getByText('Each person sees their own share and the team’s total')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Change, Targets' })).toBeNull()
+    expect(screen.getByText('Each person sees their own share and the team’s total.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Add people' })).toBeNull()
   })
 })
@@ -271,11 +286,13 @@ describe('Grace’s People and setup, with the direct morning on', () => {
     expect(screen.getByText('5 of 15 check-ins done. Check-ins already done are never removed.')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Who sees what' })).toBeTruthy()
   })
-  it('off, the two lines read as they did', async () => {
+  /* Changed (page audit, 24 November 2026, row 2): no sentence explains the page any more, with the direct morning on or off. */
+  it('off, the page carries no explanation either', async () => {
     ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_GRACE)
     renderPage(props({ ground: { ...theSalesCheckIn(), directMorningOn: false } }))
     await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
-    expect(screen.getByText('The scenario and kind of work decide the board, the reports, and what each check-in asks about.')).toBeTruthy()
+    expect(screen.queryByText('The scenario and kind of work decide the board, the reports, and what each check-in asks about.')).toBeNull()
+    expect(document.body.textContent).not.toMatch(/the report shows where (the team|you) agree/)
   })
 })
 
@@ -300,7 +317,7 @@ describe('who may see whom, as each reader reads the roster', () => {
       expect(values).not.toContain(note)
     }
     expect(screen.queryByLabelText('Their role here, for Kevin Otieno')).toBeNull()
-    expect(screen.getAllByText('Grace has described it.').length).toBe(4)
+    expect(screen.getAllByText('Grace has described their role here.').length).toBe(4)
   })
 
   it('a team member reads her own short page, which names the lead and carries nobody else, on a check-in that hides people from each other', async () => {
@@ -351,19 +368,21 @@ describe('who may see whom, as each reader reads the roster', () => {
     expect(document.body.textContent).not.toMatch(/checked in for this check-in|late/i)
   })
 
-  /* Issue 65 (7 November 2026): Grace runs a check-in that hides people from each other, and was never told so. */
-  it('Grace, who runs a check-in that hides people from each other, reads that they answer without seeing each other', async () => {
+  /* Issue 65 (7 November 2026): Grace runs a check-in that hides people from each other, and was never told so. Changed (page audit,
+     24 November 2026, row 2): the explaining note under the list went with every other explaining sentence; the setting itself says it,
+     on the "Each other’s check-ins" line, to whoever runs it. */
+  it('Grace, who runs a check-in that hides people from each other, reads it on the line for that setting', async () => {
     ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_GRACE)
-    renderPage(props({ whoIsInThisPeersHidden: true }))
+    renderPage(props({ whoIsInThisPeersHidden: true, peersVisible: false }))
     await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
-    expect(screen.getByText('People on this check-in answer without seeing each other. You can see who is here.')).toBeTruthy()
+    expect(screen.getByText('Seen once the team’s report is shared, without names.')).toBeTruthy()
   })
 
-  it('Naomi, on a check-in that hides people from each other, reads that she can see who is here, never the sentence meant for a team member', async () => {
+  it('Naomi, on a check-in that hides people from each other, reads the same line, never the sentence meant for a team member', async () => {
     ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_NAOMI)
-    renderPage(props({ ground: theSalesCheckIn({ mayChangeSetup: false }), user: { id: 'u-naomi' }, isInitiator: false, isOrgAdmin: true, viewerIsAParty: false, whoIsInThisPeersHidden: true }))
+    renderPage(props({ ground: theSalesCheckIn({ mayChangeSetup: false }), user: { id: 'u-naomi' }, isInitiator: false, isOrgAdmin: true, viewerIsAParty: false, whoIsInThisPeersHidden: true, peersVisible: false }))
     await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
-    expect(screen.getByText('People on this check-in answer without seeing each other. You can see who is here.')).toBeTruthy()
+    expect(screen.getByText('Seen once the team’s report is shared, without names.')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/knows who is here|Your lead|will not see the others/)
   })
 
@@ -394,7 +413,7 @@ describe('who may be seen is decided by the server, not by the page', () => {
 
   it('the roster on People and setup draws every person it is served, with no peer rule of its own', () => {
     const page = raw('./PeopleAndSetupAsPictured.tsx')
-    const roster = page.slice(page.indexOf("{/* 3. WHO'S IN IT */}"), page.indexOf('{/* 4. WHEN IT RUNS */}'))
+    const roster = page.slice(page.indexOf('const inOrder = '), page.indexOf('{/* HOW IT RUNS: one line per setting'))
       .replace(/\/\*[\s\S]*?\*\//g, '')
     expect(roster.length).toBeGreaterThan(0)
     expect(roster).not.toMatch(/peersVisible|restrictExternalVisibility|hidePeers|participants\.filter\(/)
@@ -432,6 +451,8 @@ describe('the kind of work is the one the board draws (release test, 21 November
     ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_GRACE)
     renderPage(props({ ground: theSalesCheckIn({ kindOfWork: null }) }))
     await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
+    expect(await screen.findByText('One sales team and its deals')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Change, Kind of work' }))
     const field = await screen.findByRole('combobox', { name: 'Kind of work' }) as HTMLSelectElement
     await waitFor(() => expect(field.value).toBe('sales team'))
     expect(field.selectedOptions[0].textContent).not.toBe('Not known yet')

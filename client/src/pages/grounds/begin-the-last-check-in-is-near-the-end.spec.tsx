@@ -91,7 +91,8 @@ describe('"End early with a last check-in" is offered throughout the run, as liv
     (groundsApi.get as any).mockResolvedValue(ground(0, { status: 'CLOSED' }))
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
-    await screen.findByText('People')
+    /* ?tab=sessions opens People and setup's one list now (page audit, 24 November 2026, row 8), where this control moved. */
+    await screen.findByRole('heading', { name: "Who's in it" })
     expect(screen.queryByText('End early with a last check-in')).toBeNull()
   })
 })

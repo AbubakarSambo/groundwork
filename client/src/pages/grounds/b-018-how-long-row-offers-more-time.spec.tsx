@@ -82,25 +82,27 @@ function renderWith(over: Record<string, any> = {}) {
   return props
 }
 
-describe('"When it runs" offers "Give it more time"', () => {
-  it('shows the button beside the end date, early, not only once a warning appears', async () => {
+/* "How long" is one line now, with "Give it more time" as its "Change" (page audit, 24 November 2026, row 2; the prototype's own
+   words for that line). Pressing it opens the start and end dates, with the end ready to change. */
+describe('"How long" offers "Give it more time"', () => {
+  it('shows the button on the line, early, not only once a warning appears', async () => {
     renderWith()
-    await screen.findByText('When it runs')
-    expect(screen.getByRole('button', { name: 'Give it more time' })).toBeTruthy()
-    expect(screen.getByLabelText('Ends')).toBeTruthy()
+    await screen.findByText('How it runs')
+    expect(screen.getByRole('button', { name: 'Give it more time, How long' })).toBeTruthy()
+    expect(screen.queryByLabelText('Ends')).toBeNull()
   })
 
   it('pressing it takes her to the "Ends" field', async () => {
     renderWith()
-    await screen.findByText('When it runs')
-    fireEvent.click(screen.getByRole('button', { name: 'Give it more time' }))
+    await screen.findByText('How it runs')
+    fireEvent.click(screen.getByRole('button', { name: 'Give it more time, How long' }))
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Ends')))
   })
 
   it('is not offered to someone who may not change the setup', async () => {
     renderWith({ ground: ground({ mayChangeSetup: false }) })
-    await screen.findByText('When it runs')
-    expect(screen.queryByRole('button', { name: 'Give it more time' })).toBeNull()
+    await screen.findByText('How it runs')
+    expect(screen.queryByRole('button', { name: 'Give it more time, How long' })).toBeNull()
     expect(screen.queryByLabelText('Ends')).toBeNull()
   })
 })

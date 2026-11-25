@@ -9,6 +9,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { useAskStore } from '@/stores/ask'
 import { useTheDesignPass } from '@/lib/the-design-pass'
+import { mayOpenPeople } from '@/lib/who-may-open-people'
 import { ChooseAFile } from '@/components/gw/ChooseAFile'
 import {
   Page as PageFrame, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row, SubHeading, Skeleton, FieldLabel, TextField, TextArea,
@@ -55,7 +56,9 @@ export function CompanyPage() {
   const policyOn = useQuery({ queryKey: ['policy'], queryFn: policyApi.board, retry: false, staleTime: 60_000, enabled: !!page }).data?.on === true
 
   /* With the design switch on, the Desk is the prototype's own board, ported from its markup (TheDeskAsPictured), with the Desk's
-     documents and who works here after it, so nothing is removed. */
+     documents after it. Who works here is on People for everyone who may open People (page audit row 3, Hafsah, 24 November 2026), so
+     the Desk links there instead of listing everyone a second time; whoever cannot open People still reads the list here. */
+  const toPeople = mayOpenPeople(user)
   if (designPass && page) {
     return (
       <PageFrame>
@@ -64,6 +67,8 @@ export function CompanyPage() {
           name={name}
           showAsk={showAsk}
           askWith={(q) => useAskStore.getState().showWith(q)}
+          teams={toPeople ? '/org/members' : '#who-works-here'}
+          goals={<TheGoalsYouCanChange />}
           links={(directionOn || policyOn) ? (
             <>
               {directionOn && <Link className="btn sec" to="/direction">The company’s direction</Link>}
@@ -72,10 +77,10 @@ export function CompanyPage() {
           ) : null}
           theDesksOwnParts={(
             <>
-              {/* The goals editor (wip/you-and-desk): the Desk's own, after the prototype's sections, since the prototype has no place for it. */}
-              <div id="goals"><TheGoalsYouCanChange /></div>
               <div id="documents"><TheDocuments name={name} documents={page.desk?.documents ?? []} mayAdd={page.desk?.mayAdd === true} /></div>
-              <div id="who-works-here"><TheDirectory people={page.desk?.directory ?? []} /></div>
+              {toPeople
+                ? <p className="t-body">Everyone who works here, with their phone numbers, is on <Link to="/org/members">People</Link>.</p>
+                : <div id="who-works-here"><TheDirectory people={page.desk?.directory ?? []} /></div>}
             </>
           )}
         />
@@ -99,7 +104,7 @@ export function CompanyPage() {
 
       {page && (
         <>
-          <p className="gwui-panel-text">This is where {name} keeps its policies, handbook, procedures and documents, and a list of everyone who works here.</p>
+          <p className="gwui-panel-text">This is where {name} keeps its policies, handbook, procedures and documents.</p>
           <div className="gwui-sentence-row">
             <Button kind="primary" onClick={showAsk}>Ask about the whole organisation</Button>
             {/* Release 6 and release 9: each only where it is switched on (the server says). */}
@@ -109,7 +114,9 @@ export function CompanyPage() {
           {page.line && <Note>{page.line}</Note>}
 
           <TheDocuments name={name} documents={page.desk?.documents ?? []} mayAdd={page.desk?.mayAdd === true} />
-          <TheDirectory people={page.desk?.directory ?? []} />
+          {toPeople
+            ? <p className="gwui-panel-text">Everyone who works here, with their phone numbers, is on <Link to="/org/members">People</Link>.</p>
+            : <TheDirectory people={page.desk?.directory ?? []} />}
           <TheStrategy p={page} />
           <TheGoalsYouCanChange />
         </>
@@ -122,18 +129,22 @@ export function CompanyPage() {
 
 function TheDocuments({ name, documents, mayAdd }: { name: string; documents: DeskDocument[]; mayAdd: boolean }) {
   const designPass = useTheDesignPass()
+  const [adding, setAdding] = useState(false)
   if (designPass) {
-    /* Each document is one quiet row: its title, its summary and when it was added, and "Read it in full". */
+    /* Each document is one quiet row: its title, its summary and when it was added, and "Read it in full". Adding one is one link,
+       "Add a document", that opens the form (page audit row 3, Hafsah, 24 November 2026). */
     return (
       <Section heading="Policies, handbook and documents">
-        {mayAdd && <AddADocument />}
         {documents.length === 0 ? (
-          <Empty>Nothing has been added to the Desk yet.</Empty>
+          <p className="gwui-panel-text">Nothing has been added to the Desk yet.</p>
         ) : (
           <ul className="dp-rows" aria-label={`${name} documents`}>
             <ShowAll items={documents} render={(d) => <ADocumentRow key={d.key} d={d} />} />
           </ul>
         )}
+        {mayAdd && (adding
+          ? <AddADocument onClose={() => setAdding(false)} />
+          : <button type="button" className="gwui-plain-link gwui-tap-44" onClick={() => setAdding(true)}>Add a document</button>)}
       </Section>
     )
   }
@@ -196,7 +207,7 @@ function ADocumentRow({ d }: { d: DeskDocument }) {
   )
 }
 
-function AddADocument() {
+function AddADocument({ onClose }: { onClose?: () => void } = {}) {
   const qc = useQueryClient()
   const designPass = useTheDesignPass()
   const [file, setFile] = useState<File | null>(null)
@@ -220,7 +231,6 @@ function AddADocument() {
       <Panel as="section" aria-label="Add a document">
         <div className="dp-form">
           <SubHeading as="h3">Add a document</SubHeading>
-          <p className="gwui-panel-text">Choose a file, or give it a title and paste the text. It is read, a short summary is written, and both are kept on the Desk.</p>
           <div className="dp-field">
             <FieldLabel htmlFor="desk-file">A file (PDF, Word or text)</FieldLabel>
             <ChooseAFile id="desk-file" inputKey={inputKey} accept=".pdf,.doc,.docx,.txt,.md,.rtf,application/pdf,text/plain" file={file} onChoose={setFile} />
@@ -239,6 +249,7 @@ function AddADocument() {
             <Button kind="primary" onClick={() => add.mutate()} disabled={!ready || add.isPending}>
               {add.isPending ? 'Reading it' : 'Add it to the Desk'}
             </Button>
+            {onClose && <Button kind="quiet" onClick={onClose}>Cancel</Button>}
           </div>
           {add.isError && <Note tone="error">{Array.isArray(said) ? said.join(' ') : said || 'That document was not added. Try again in a moment.'}</Note>}
           {add.isSuccess && <Note tone="green" role="status">{add.data.title} is on the Desk now.</Note>}

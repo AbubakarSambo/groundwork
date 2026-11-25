@@ -5,8 +5,12 @@
  * (docs/boards-21-nov/prototype-dom/the-desk-as-chief-executive.html): the same tags, nesting, class names and inline styles, with
  * the prototype's app.css scoped to html.design-pass .gw-proto (pages/board/prototype/the-prototype-boards.css).
  *
- * Every slot is filled from GET /company, as the server served it to this reader. Nothing is removed from the Desk: the documents,
- * adding a document and "Who works here" with each phone number come after the prototype's sections, as the Desk's own parts.
+ * Every slot is filled from GET /company, as the server served it to this reader. The documents, and adding one, come after the
+ * prototype's sections, as the Desk's own parts; who works here is on People (or listed here for whoever cannot open People).
+ *
+ * TRIMMED (page audit row 3, Hafsah, 24 November 2026): a section is drawn only when the record has something for it, so "Named by
+ * more than one team", "What you say, and where the time goes" and "History" wait for their first entry, with no privacy note.
+ * "What new people keep asking" is not drawn: nothing serves it yet, so it could only ever say it was empty.
  */
 import { useEffect, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
@@ -25,6 +29,10 @@ export interface TheDeskAsPicturedProps {
   theDesksOwnParts: ReactNode
   /** Links to the direction and policy boards, where the organisation has them switched on. */
   links?: ReactNode
+  /** Where the "Teams" tab goes: People, for whoever may open it, or the list of who works here on this page. */
+  teams: string
+  /** The one "Add or change a goal", under the priorities (drawn only for whoever may change a goal). */
+  goals: ReactNode
 }
 
 function APriority({ pr }: { pr: CompanyPriority }) {
@@ -36,7 +44,7 @@ function APriority({ pr }: { pr: CompanyPriority }) {
         <span className="t-small mut">{`Priority ${pr.number}`}</span>
         {tag && <span className="tag att">{tag}</span>}
       </div>
-      <h3 className="t-h3" style={css('font-size:20px')}>{pr.title}</h3>
+      <h3 className="t-h3">{pr.title}</h3>
       {pr.reading?.says && <p className="t-small">{pr.reading.says}</p>}
       {pr.owner && <p className="t-small">{`${pr.owner} is responsible for this.`}</p>}
       {success && <p className="t-small">{success}</p>}
@@ -62,11 +70,12 @@ function APriority({ pr }: { pr: CompanyPriority }) {
   )
 }
 
-export function TheDeskAsPictured({ page, name, showAsk, askWith, theDesksOwnParts, links }: TheDeskAsPicturedProps) {
+export function TheDeskAsPictured({ page, name, showAsk, askWith, theDesksOwnParts, links, teams, goals }: TheDeskAsPicturedProps) {
   const priorities = page.priorities ?? []
   /* The strategy's own line ("Strategy v2, since 1 September.") where the server serves one, then its count of people and check-ins. */
   const strategy = (page as any).strategy as { says: string; history?: { number: number; says: string; whatChanged: string | null }[] } | null | undefined
   const headerLine = [strategy?.says, page.line].filter(Boolean).join(' ')
+  const history = strategy?.history ?? []
   /* Arriving at #goals (from "Company context" or "Add or change a goal"), the page opens at the goals. */
   const { hash } = useLocation()
   useEffect(() => {
@@ -97,8 +106,8 @@ export function TheDeskAsPictured({ page, name, showAsk, askWith, theDesksOwnPar
             </div>
             <nav className="tabs" aria-label="The Desk">
               <a className="tab on" href="#strategy" aria-current="page">Is the strategy moving?</a>
-              <a className="tab" href="#who-works-here">Teams</a>
-              <a className="tab" href="#history">History</a>
+              {teams.startsWith('#') ? <a className="tab" href={teams}>Teams</a> : <Link className="tab" to={teams}>Teams</Link>}
+              {history.length > 0 && <a className="tab" href="#history">History</a>}
             </nav>
             <div id="strategy" style={css('display:flex;flex-direction:column;gap:44px;margin-top:28px')}>
               {priorities.length > 0 ? (
@@ -108,10 +117,10 @@ export function TheDeskAsPictured({ page, name, showAsk, askWith, theDesksOwnPar
                   {priorities.map((pr) => <APriority key={pr.id} pr={pr} />)}
                 </section>
               ) : (
-                <section className="panel pad"><p className="t-small">No priorities yet.</p></section>
+                <p className="t-small">No priorities yet.</p>
               )}
-              {/* Where the strategy is set, from the strategy itself (Hafsah, 21 November): a quiet link to the goals. */}
-              <p className="t-small"><a href="#goals" onClick={(e) => { e.preventDefault(); document.getElementById('goals')?.scrollIntoView({ block: 'start' }) }}>Add or change a goal</a></p>
+              {/* Where the strategy is set, from the strategy itself (Hafsah, 21 November): the one "Add or change a goal". */}
+              {goals}
               {(page.notReaching ?? []).length > 0 && (
                 <section className="sec">
                   <div className="sec-h"><h2 className="t-h2">Where the strategy isn’t reaching the work</h2><span className="t-small mut">Questions for the person who can answer each one</span></div>
@@ -130,18 +139,12 @@ export function TheDeskAsPictured({ page, name, showAsk, askWith, theDesksOwnPar
                   </div>
                 </section>
               )}
-              {(page.namedByTeams ?? []).length === 0 && (
-                <section className="sec">
-                  <div className="sec-h"><h2 className="t-h2">Named by more than one team</h2><span className="t-small mut">Nobody on a single team would see this</span></div>
-                  <div className="panel pad"><p className="t-small">Nothing has been named by more than one team yet.</p></div>
-                </section>
-              )}
               {(page.namedByTeams ?? []).map((n) => (
                 <section key={n.id} className="sec">
                   <div className="sec-h"><h2 className="t-h2">Named by more than one team</h2><span className="t-small mut">Nobody on a single team would see this</span></div>
                   <div className="panel pad" style={css('display:flex;flex-direction:column;gap:16px')}>
                     <div style={css('display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap')}>
-                      <h3 className="t-title" style={css('font-size:26px')}>{n.title}</h3>
+                      <h3 className="t-h3">{n.title}</h3>
                       {n.touches && <span className="t-small mut">{n.touches}</span>}
                     </div>
                     <div style={css('display:grid;grid-template-columns:repeat(3,1fr);gap:24px')}>
@@ -155,11 +158,9 @@ export function TheDeskAsPictured({ page, name, showAsk, askWith, theDesksOwnPar
                   </div>
                 </section>
               ))}
-              <section className="sec">
+              {(page.saidAndShown ?? []).length > 0 && (
+                <section className="sec">
                   <h2 className="t-h2">What you say, and where the time goes</h2>
-                  {(page.saidAndShown ?? []).length === 0 ? (
-                    <div className="panel pad"><p className="t-small">Nothing the leadership has said about the strategy is on record yet, so there is nothing to set beside what the check-ins show.</p></div>
-                  ) : (
                   <div>
                     <div style={css('display:grid;grid-template-columns:220px minmax(0,1fr) minmax(0,1fr);gap:24px;padding:14px 0;border-top:1px solid var(--rule)')}>
                       <span className="t-small mut" />
@@ -169,14 +170,13 @@ export function TheDeskAsPictured({ page, name, showAsk, askWith, theDesksOwnPar
                     {page.saidAndShown!.map((s) => (
                       <div key={s.id} style={css('display:grid;grid-template-columns:220px minmax(0,1fr) minmax(0,1fr);gap:24px;padding:14px 0;border-top:1px solid var(--rule)')}>
                         <b className="t-body">{s.area}</b>
-                        <p style={css('font-family:var(--name);font-size:17px')}>{`“${s.youSaid}”`}</p>
+                        <p className="quote">{`“${s.youSaid}”`}</p>
                         <p className="t-body">{s.checkInsShow}</p>
                       </div>
                     ))}
                   </div>
-                  )}
-                  <p className="t-small mut">People appear here as counts. What each person said stays with them and their own lead.</p>
                 </section>
+              )}
               {(page.whatWeKeep?.items ?? []).length > 0 && (
                 <section className="sec">
                   <div className="sec-h"><h2 className="t-h2">Kept from check-ins</h2></div>
@@ -195,25 +195,18 @@ export function TheDeskAsPictured({ page, name, showAsk, askWith, theDesksOwnPar
             </div>
           </div>
         </div>
-        <div style={css('margin-top:30px')} />
-        <section className="sec" id="newq" style={css('margin-top: 36px;')}>
-          <div className="sec-h"><h2 className="t-h2">What new people keep asking</h2><span className="t-small mut">A company problem, not theirs</span></div>
-          <p className="t-small" style={css('max-width:760px')}>When several new people ask the same thing, it usually means the company never wrote it down, or never showed people where it is.</p>
-          <div className="panel pad">
-            <p className="t-small">No question has been asked by more than one new person yet.</p>
-            <p className="t-tiny mut" style={css('margin-top:10px')}>Only the question is shown. Nothing else from anyone’s private chats with Groundwork, and never who asked.</p>
-          </div>
-        </section>
-        <section className="sec" id="history" style={css('margin-top: 36px;')}>
-          <div className="sec-h"><h2 className="t-h2">History</h2></div>
-          <div className="panel pad">
-            {(strategy?.history ?? []).length ? strategy!.history!.map((h) => (
-              <div key={h.number} className="row" style={css('grid-template-columns:minmax(0,1fr);padding:12px 0')}>
-                <div><b className="t-small">{h.says}</b>{h.whatChanged && <div className="t-tiny mut">{h.whatChanged}</div>}</div>
-              </div>
-            )) : <p className="t-small">No earlier version of the strategy is on record yet.</p>}
-          </div>
-        </section>
+        {history.length > 0 && (
+          <section className="sec" id="history" style={css('margin-top: 36px;')}>
+            <div className="sec-h"><h2 className="t-h2">History</h2></div>
+            <div className="panel pad">
+              {history.map((h) => (
+                <div key={h.number} className="row" style={css('grid-template-columns:minmax(0,1fr);padding:12px 0')}>
+                  <div><b className="t-small">{h.says}</b>{h.whatChanged && <div className="t-tiny mut">{h.whatChanged}</div>}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
         {/* The Desk's own parts, each a section 36px apart, as the prototype spaces "What new people keep asking" (margin-top: 36px). */}
         <div className="stack" style={css('gap:36px;margin-top:36px')}>{theDesksOwnParts}</div>
       </div>

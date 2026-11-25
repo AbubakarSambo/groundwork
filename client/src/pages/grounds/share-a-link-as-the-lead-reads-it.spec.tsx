@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { render, screen, within, cleanup } from '@testing-library/react'
+import { render, screen, within, cleanup, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
@@ -62,14 +62,16 @@ describe('where people answer, on the same Setup', () => {
     const admin = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
     expect(admin).toContain('const whatsAppIsOn = useWhatsAppIsOn()')
 
+    /* One line with "Change" now (page audit, 24 November 2026, row 2): the choice opens from it. */
     drawIt(true, true)
+    fireEvent.click(screen.getByRole('button', { name: 'Change, Where people answer' }))
     expect(screen.getByRole('combobox', { name: 'Where people answer' })).toBeTruthy()
     cleanup()
 
     for (const [on, connected] of [[false, true], [true, false], [false, false]] as const) {
       drawIt(on, connected)
-      expect(screen.queryByRole('combobox', { name: 'Where people answer' }), `switched on ${on}, connected ${connected}`).toBeNull()
-      expect(screen.getByText('In Groundwork only')).toBeTruthy()
+      expect(screen.queryByRole('button', { name: 'Change, Where people answer' }), `switched on ${on}, connected ${connected}`).toBeNull()
+      expect(screen.getByText('Here, in Groundwork only.')).toBeTruthy()
       cleanup()
     }
   })

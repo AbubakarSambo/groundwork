@@ -57,14 +57,20 @@ describe('a person can tell us their own name', () => {
 describe('a lost invite can be sent again', () => {
   const ADMIN = read('grounds/GroundAdminPage.tsx')
 
+  /* The roster is People and setup's one list now (page audit, 24 November 2026, row 8): the button is on the row's own sentence,
+     drawn by whereThisPersonIs in WhosInItRoster.tsx, and the call is still the page's. */
+  const ROW = read('../components/gw/WhosInItRoster.tsx')
   it('the endpoint is called from the roster', () => {
     expect(ADMIN).toContain('groundsApi.resendParticipantInvite(id!, participantId)')
-    expect(ADMIN).toContain('Resend invite')
+    expect(ROW).toContain('Resend invite')
   })
 
   it('offered only by the lead, and only while they have not joined', () => {
     /** The server refuses after acceptance; the button must not offer what the server will reject. */
-    const at = ADMIN.indexOf('Resend invite')
-    expect(ADMIN.slice(at - 700, at)).toContain('isInitiator && !p.userId')
+    const gate = ROW.indexOf('} else if (!p.userId && isInitiator) {')
+    const at = ROW.indexOf("'Resend invite'", gate)
+    expect(gate).toBeGreaterThan(-1)
+    expect(gate).toBeLessThan(at)
+    expect(ROW.slice(gate + 1, at)).not.toContain('} else')
   })
 })

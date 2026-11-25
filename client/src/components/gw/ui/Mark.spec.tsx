@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
+import { withTheSizes } from '@/styles/read-with-the-sizes'
 import { join } from 'path'
 import { render, screen } from '@testing-library/react'
 import { Mark } from './Mark'
@@ -20,7 +21,7 @@ import { SubHeading } from './SubHeading'
  * the smaller, ~15px heading inside the invitation's white panel ("What it asks", "Who sees your
  * answers"), which is not `Section`'s 21px page-heading size.
  */
-const CSS = readFileSync(join(__dirname, 'gw-ui.css'), 'utf8')
+const CSS = withTheSizes(readFileSync(join(__dirname, 'gw-ui.css'), 'utf8'))
 
 describe('Mark', () => {
   it('renders only the wordmark, linking home - no caption', () => {

@@ -311,7 +311,6 @@
 
 /* The team's report, quality pass of 18 October: each person's summary carries its mark (T-7), and the kit's closing line (T-12). */
 .pb-dot-inline { margin-right: 8px; vertical-align: -1px; }
-.pb-how-sure { margin: var(--gw-space-block) 0 0; color: var(--gw-text); line-height: 1.5; }
 
 /* Release 2, pull request 3 of 3: the lead's answer under What needs you, and the matter board (matter-board.jpg). */
 .pb-choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }

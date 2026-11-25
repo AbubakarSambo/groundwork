@@ -1,4 +1,5 @@
 import { TICKET_KINDS, isATicketsKind, theTicketGrid } from './TheTicketsBoard'
+import { namesToCallAmong } from '@/lib/names-that-tell-people-apart'
 import { WhereThisIsHeadingBody } from '../WhereThisIsHeadingBody'
 import { theShapeOfTheRecords } from './the-shape-of-a-list'
 import { theZoneDatesAreIn } from '@/lib/a-date-reads-the-same-everywhere'
@@ -89,6 +90,8 @@ export function aShortDay(at: string | Date): string {
 }
 
 const firstName = (n: string | null | undefined) => (n ?? '').trim().split(/\s+/)[0] || ''
+/* Each person by first name, and by the whole name where somebody else on the check-in has the same first name (page audit, 24 November, row 11). */
+const callThemOn = (b: Any) => namesToCallAmong(((b?.participants ?? []) as Any[]).map((p) => p?.name))
 /* Only a detail kept as the deal's value (the server's theValueOf), never another detail standing in for one ("Kevin, Paul"). */
 const A_VALUE_KEY = /^(?:deal\s+)?(?:value|amount|worth|size)$/i
 function aValueKeptWithIt(fields: Record<string, string> | null | undefined): string | null {
@@ -782,18 +785,18 @@ export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: An
           /* Each sentence once: the person's line already is what the board says of them, so it is not said again under it (round 3: every row read its line twice). */
           const more = [...new Set([theirTarget(r.participantId, firstName(r.who)), says, ...morning.filter((l) => l.participantId === r.participantId).map((l) => l.text)].filter(Boolean) as string[])].filter((x) => x !== r.line)
           return {
-            who: <Link className="pb-name-link" to={`/grounds/${groundId}/person/${r.participantId}`}>{firstName(r.who)}</Link>,
+            who: <Link className="pb-name-link" to={`/grounds/${groundId}/person/${r.participantId}`}>{callThemOn(b)(r.who)}</Link>,
             line: designPass ? <>{r.line}</> : <>{r.line}{more.map((x) => <span className="pb-row-more" key={x}>{x}</span>)}{/* "Nudge Peter": served to the lead alone, with the direct morning on (TheNudgeButton.tsx). */}{r.nudge && <span className="pb-row-more"><TheNudgeButton groundId={groundId} nudge={r.nudge} /></span>}</>,
             ...(theWork ? { work: (() => {
               const mine = workOf(r.participantId)
               const proven = mine.filter((w) => w.mark === 'proven').length
               if (!mine.length) return <span className="pb-sub">None on record yet</span>
-              return <><b>{mine.length}</b>{` ${mine.length === 1 ? theWork.one : theWork.many}`}<TheBar of={mine.length} shown={proven} said={mine.length - proven} label={`${firstName(r.who)} has ${mine.length} ${mine.length === 1 ? theWork.one : theWork.many}, ${proven} shown by a document`} /></>
+              return <><b>{mine.length}</b>{` ${mine.length === 1 ? theWork.one : theWork.many}`}<TheBar of={mine.length} shown={proven} said={mine.length - proven} label={`${callThemOn(b)(r.who)} has ${mine.length} ${mine.length === 1 ? theWork.one : theWork.many}, ${proven} shown by a document`} /></>
             })() } : {}),
             tag: tag ? { tag: tag.word, tone: tag.tone } : null,
             /* A person with no check-in yet has no squares to draw: the cell says so in words, never an empty cell (boards pass 4, defect 9). */
             squares: lastTen(b, r.participantId).length === 0 ? <span className="pb-sub">No check-in yet.</span> : (
-              <span className="pb-squares" aria-label={`${firstName(r.who)}, the last 10 check-ins`}>
+              <span className="pb-squares" aria-label={`${callThemOn(b)(r.who)}, the last 10 check-ins`}>
                 {lastTen(b, r.participantId).map((s, i) => <span key={i} className={`pb-sq${s === 'miss' ? ' pb-sq-miss' : s === 'up' ? ' pb-sq-up' : ''}`} />)}
               </span>
             ),
@@ -953,7 +956,7 @@ export function WhoCheckedIn({ b }: { b: Any }) {
       <div className="pb-who-grid">
         {rows.map((r) => (
           <FragmentRow key={r.participantId}>
-            <span>{r.participantId === b.myParticipantId ? 'You' : firstName(r.name)}</span>
+            <span>{r.participantId === b.myParticipantId ? 'You' : callThemOn(b)(r.name)}</span>
             <span className="pb-squares">
               {lastTen(b, r.participantId).map((s, i) => <span key={i} className={`pb-sq2${s === 'done' ? '' : ' pb-sq-miss'}`} aria-label={s === 'done' ? 'Checked in' : s === 'up' ? 'Not open yet' : 'Missed'} />)}
             </span>

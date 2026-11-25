@@ -274,9 +274,19 @@ export function sessionAndWhoCheckedIn(n: number, planned: number | null, answer
   return `${session} ${answered} of ${of} ${of === 1 ? 'person' : 'people'} checked in.`
 }
 
-export function hasCheckedIn(c: { who: string; isYou: boolean; answered: boolean }): string {
-  if (c.isYou) return c.answered ? 'You have checked in.' : 'You have not checked in yet.'
-  return c.answered ? `${c.who} has checked in.` : `${c.who} has not checked in yet.`
+/*
+ * WHO HAS NOT CHECKED IN, NAMED ONCE (page audit, 24 November, row 6, approved by Hafsah). Under "7 of 13 people checked in." the
+ * report listed every person's state, one line each, so the people who had answered were said twice and one name twice over. Only
+ * who is missing is named now, in one sentence, and the reader is "you".
+ */
+export function whoHasNotCheckedIn(counting: { who: string; isYou: boolean; answered: boolean }[]): string | null {
+  const missing = counting.filter((c) => !c.answered)
+  if (!missing.length) return null
+  const names = [...missing.filter((c) => c.isYou).map(() => 'You'), ...missing.filter((c) => !c.isYou).map((c) => c.who)]
+  const last = names.pop()
+  const said = names.length ? `${names.join(', ')} and ${last}` : last
+  const one = !names.length && last !== 'You'
+  return `${said} ${one ? 'has' : 'have'} not checked in yet.`
 }
 
 /** "6pm", "6:30pm": the time as the prototype writes it. */
@@ -301,7 +311,8 @@ export function lastUpdated(at: Date | string): string | null {
   const weekday = whenItWas(at, 'weekdayAndDay')
   const time = atTime(at)
   if (!weekday || !time) return null
-  return `Last updated on ${weekday} at ${time}. It only changes when something new comes in, such as a check-in, a document or a number from another system.`
+  /* No sentence explaining when it changes (page audit, 24 November, row 9). */
+  return `Last updated on ${weekday} at ${time}.`
 }
 
 /**
@@ -665,7 +676,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
    * finding itself is the one line that says what the room named, not the eight lists in a paragraph.
    */
   const direction = d.direction ?? null
-  const rawFinding: { key: string; text: string; basis: string | null; wouldHaveSurfaced?: string | null } | null = d.finding ?? null
+  const rawFinding: { key: string; text: string; wouldHaveSurfaced?: string | null } | null = d.finding ?? null
   const finding = rawFinding && direction && rawFinding.key === 'direction'
     ? { ...rawFinding, text: rawFinding.text.split(/(?<=[.!?])\s+/)[0] }
     : rawFinding
@@ -685,9 +696,6 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
         <div className="gwui-sr-finding">
           <div className="gwui-sr-finding-label">The finding</div>
           <p className="gwui-find">{finding.text}</p>
-          {finding.basis && (
-            <small className="gwui-find-why gwui-find-why-basis">{finding.basis}</small>
-          )}
           {/* When it would have come up on its own. Under the finding and nowhere else: alone it is a
               remark about a calendar; here it is why the finding matters now rather than later. */}
           {finding.wouldHaveSurfaced && (
@@ -711,6 +719,9 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
 
     </>
   )
+  /* How much was said with a document behind it is drawn once, with how much the report can rely on, where the report has that
+     reading (page audit, 24 November, row 6: "It is all from memory" and "Everything here is from memory" on one page). */
+  const tiles: any[] = (d.atAGlance ?? []).filter((t: any) => !(d.confidence && t.label === 'How much was said'))
   const tilesJSX = (
     <>
       {/*
@@ -723,9 +734,9 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
         `sub` the server sends. The label stays for anybody using a screen reader, without being
         shown as a heading of its own.
       */}
-      {(d.atAGlance ?? []).length > 0 && (
+      {tiles.length > 0 && (
         <div className="gwui-tile-grid">
-          {d.atAGlance.map((r: any, i: number) => (
+          {tiles.map((r: any, i: number) => (
             <div key={r.label} className={i > 0 ? 'gwui-tile gwui-tile-n' : 'gwui-tile'}>
               <span className="gwui-sr-only">{r.label}</span>
               <div className={`gwui-tile-txt ${r.tone === 'good' ? 'gwui-tile-good' : r.tone === 'watch' ? 'gwui-tile-watch' : ''}`}>
@@ -1047,13 +1058,9 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
         is, and never counts somebody who was never going to answer - all three are the rule this
         row exists for, and I dropped the whole row in the rebuild before a spec caught it.
       */}
-      {(d.counting ?? []).length > 0 && (
+      {whoHasNotCheckedIn(d.counting ?? []) && (
         <div className="gwui-sr-counted">
-          {d.counting.map((c: any, i: number) => (
-            <span key={i} className={`gwui-sr-counted-item${c.answered ? '' : ' gwui-sr-muted'}`}>
-              {hasCheckedIn(c)}
-            </span>
-          ))}
+          <span className="gwui-sr-counted-item gwui-sr-muted">{whoHasNotCheckedIn(d.counting ?? [])}</span>
         </div>
       )}
 
@@ -1096,15 +1103,13 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
           )}
           {/* More in this report (s60): every other part folds to one line, its fact from the server. */}
           <section className="gwui-sr-row gwui-light-report-part" aria-labelledby="gwui-sr-more">
-            <div className="gwui-light-report-more-h">
-              <h2 id="gwui-sr-more" className="gwui-light-report-h">More in this report</h2>
-              <span className="gwui-light-report-note">Tap any line to see more</span>
-            </div>
+            <h2 id="gwui-sr-more" className="gwui-light-report-h">More in this report</h2>
             <RowLabelsHidden.Provider value={true}>
               <div className="gwui-folds">
                 <FoldedLine name="How much this report can rely on" fact={glance.reliesOn ?? null}>
                   <div className="gwui-sr-built-from">
-                    {d.confidence && <HowMuchThereIsToGoOn read={d.confidence} />}
+                    {/* The fold's own line already says how much it can rely on, so inside are only the reasons (page audit, 24 November, row 6). */}
+                    {d.confidence && <HowMuchThereIsToGoOn read={d.confidence} saidAbove={!!glance.reliesOn} />}
                     {restsOn.map((sec: any) => (
                       <div key={sec.title} className="gwui-sr-rests-on-item">
                         {sec.items.length > 0
@@ -1132,27 +1137,15 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
         </>
       )}
       {/* ── The promise, and what state this is in. */}
-      <div className="gwui-sr-row gwui-sr-footer">
+      {(final || (!light && !!lastChangedLine)) && <div className="gwui-sr-row gwui-sr-footer">
         {!final && lastChangedLine && !light && (
           <span className="gwui-sr-footer-line">{lastChangedLine}</span>
         )}
-        {direct
-          ? (!final
-            ? 'People are still answering.'
-            : amended
-              ? `Closed ${d.takenAt ? whenItWas(d.takenAt, 'day') : ''} and updated since, when somebody corrected their own check-in.`
-              : `Closed ${d.takenAt ? whenItWas(d.takenAt, 'day') : ''}.`)
-          : <>
-        {!final
-          ? 'People are still answering, so this moves. '
-          : amended
-            ? `Closed ${d.takenAt ? whenItWas(d.takenAt, 'day') : ''} and updated since, when somebody corrected their own check-in. `
-            : `Closed ${d.takenAt ? whenItWas(d.takenAt, 'day') : ''}. This does not change. `}
-        {d.showsEverybody
-          ? 'Everybody in this check-in reads this same report. Nothing here decides who is right.'
-          : 'Until the shared report is out, the words above are your own. The counts are from everybody’s answers. Nobody else’s wording reaches you and yours does not reach them.'}
-          </>}
-      </div>
+        {/* What state it is in, and nothing explaining the report (page audit, 24 November, row 6). */}
+        {final && (amended
+          ? `Closed ${d.takenAt ? whenItWas(d.takenAt, 'day') : ''} and updated since, when somebody corrected their own check-in.`
+          : `Closed ${d.takenAt ? whenItWas(d.takenAt, 'day') : ''}.`)}
+      </div>}
     </Panel>
   )
 }

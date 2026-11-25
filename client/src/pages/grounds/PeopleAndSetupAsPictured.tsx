@@ -1,79 +1,53 @@
-import { isTheDirectMorningOn } from '@/lib/the-direct-morning'
-import React, { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { groundsApi, type GroundCadence, type PeopleAndSetup, type ASetupProblem } from '@/api/grounds'
+import { conversationApi } from '@/api/conversation'
+import { participantRequestsApi, type ParticipantRequest } from '@/api/participantRequests'
 import {
-  Section, Panel, FieldRows, FieldRow, SwitchRow, FieldLabel, TextField, Select, Button, Note, Stack, FlexRow,
-  PeopleTable, PeopleTableHead, PersonRow, Tag, Text, Folded,
+  Section, Panel, FieldRows, FieldRow, SwitchRow, FieldLabel, TextField, Select, Button, Note, Stack, FlexRow, Text, Folded, SmallMenu,
 } from '@/components/gw/ui'
 import { AddPeopleForm, whereThisPersonIs, whosInItSays } from '@/components/gw/WhosInItRoster'
 import { useTheNextSeat } from '@/components/gw/this-adds-a-seat'
-import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
+import { TheStartingPoint } from '@/components/gw/StartingPointPanel'
 import { WhichDaysTheyWork, WEEKDAYS } from '@/components/gw/WhichDaysTheyWork'
 import { AnchorDayPicker } from '@/components/gw/AnchorDayPicker'
 import { workingDaysOf } from '@/components/gw/when-the-check-ins-land'
-import { statusSentence } from '@/components/gw/MyParticipation'
-import { whatThisStatusMeans } from '@/components/gw/what-a-status-means-to-the-person-in-it'
+import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { copy } from '@/components/gw/copying-can-fail'
-import { initialsOf } from '@/pages/org/people-here'
+import { theLeadsNote } from '@/lib/the-leads-note'
 import { scenarioLabel } from '@/lib/scenario-catalog'
 import { scrollToId } from '@/lib/scroll-to'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { sessionsFor, SELECTABLE_CADENCES } from '@/lib/cadence'
+import { numberUpToTenInWords } from '@/lib/a-number-up-to-ten-in-words'
+import { sessionsFor, SELECTABLE_CADENCES, cadenceLabel } from '@/lib/cadence'
+import { theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
 import { KIND_OF_WORK_OPTION_LABEL } from '@/pages/board/WorkRecords'
 import { SHARE_A_LINK } from './ShareSection'
 import {
   type PeopleAndSetupProps, chasingSentence, settingsChangeSentence, theEndOnTheField, theTimeframeToSave, sessionsUpToTheEnd,
-  peersVisibilitySentence, yourSessionsSentence,
+  anchorDaySentence, yourSessionsSentence,
 } from './CheckInPeopleAndSetup'
 import '@/pages/board/pictured/pictured-board.css'
-import { useTheDesignPass } from '@/lib/the-design-pass'
-import { ShowAll } from '@/components/gw/ui/ShowAll'
 import { Paged } from '@/components/gw/ui/Paged'
 
 /**
- * THE DESIGN PASS (21 November 2026): a card round a section is a box in a box once the page is in its tab, so with the pass on a
- * section's content stands on the page with hairlines, and nothing explains the page. Everything stays visible.
- */
-function Card({ children, ...rest }: { children: ReactNode } & React.HTMLAttributes<HTMLElement>) {
-  const designPass = useTheDesignPass()
-  if (designPass) return <div {...rest}>{children}</div>
-  return <Panel {...rest}>{children}</Panel>
-}
-
-/** A note that explains the page: drawn only with the design pass off. */
-function Explains({ children }: { children: ReactNode }) {
-  return useTheDesignPass() ? null : <Note>{children}</Note>
-}
-
-/**
- * PEOPLE AND SETUP, AS THE B8 PICTURES DRAW IT (Release 1B, pull request 1 of 3; Hafsah's people-and-setup.md of 17 October
- * 2026, the wording from docs/prototype/screens/B8-people-and-setup/*.txt). Drawn only where the organisation's Release 1B
- * switch is on; off, CheckInPeopleAndSetup.tsx draws today's page exactly as it was.
+ * PEOPLE AND SETUP, AS THE PROTOTYPE DRAWS IT (docs/prototype/screens/A4-people-roles-and-access/check-in-people-and-setup.txt;
+ * the page audit of 24 November 2026, rows 2 and 8, approved by Hafsah).
  *
- * ONE TEMPLATE FOR EVERY SCENARIO. Only the words and the data change, and both come from the server: the sentence at the
- * top, the setup problems, the sessions line and who else can see it are served per reader by GET
- * /grounds/:id/people-and-setup; everything else is the check-in's own read. The lead reads the whole page; an admin who does
- * not run it reads the whole page with no ending; a team member never reaches this page (GroundParticipantPage draws their
- * short page, YourPeopleAndSetup.tsx).
+ * ONE LIST OF PEOPLE. "Who's in it" is the check-in's one roster: each person is one row with their name, their address, when they
+ * joined, one status, their phone number (always shown, always editable), their check-in dots and "Copy check-in link", and "···"
+ * for everything else (their role here, what is on record for them with "Change this in the chat", a reminder, the invitation, the
+ * report they shared). "Who has answered" (`?tab=sessions`) was a second copy of the same fourteen people; it lands here now.
  *
- * NOTHING APPLIES UNTIL IT IS SAVED. Every change waits in this page until "Save changes", and is then written through the
- * route that already writes it (the name and the timeframe through PATCH /grounds/:id, the kind of work through PATCH
- * kind-of-work, each "Who sees what" row through its own route). Opening the page writes nothing, so an existing check-in
- * keeps its cadence and every setting until the lead changes one. The server still decides who may change what: a control
- * the reader may not use is drawn as a sentence, never a dead control.
+ * ONE LINE PER SETTING. Every setting is a summary line with "Change", and "Change" opens that one setting's editor, so nothing that
+ * could be changed before is lost and nothing is drawn as an open form until it is asked for. The server still decides who may change
+ * what: a setting the reader may not change is its line with no "Change".
  *
- * ONE NAVY BUTTON, "ADD PEOPLE" (Hafsah, 30 September, the-rebuilt-pages-use-only-the-new-parts.spec.ts): "Copy link" and
- * "Save changes", navy in the picture, are secondary here.
- *
- * WHERE THE PRODUCT IS KEPT OVER THE PICTURE (listed for Hafsah in docs/pull-request.md):
- *  - the link is the check-in's own open link (/answer?t=...), which anyone can answer without an account; there is no short
- *    code typed in at /join for a check-in, so today's "Or share an access code instead" stays in its place;
- *  - "Who gets in", "Their role here" and "Works until" each have the one answer the product holds, said as a sentence;
- *  - "Make a new link and code", "Turn it off", "Choose another scenario", "Give someone access" and "Remind the admin" have no
- *    route, so they are not drawn.
+ * NOTHING APPLIES UNTIL IT IS SAVED. Every change waits in this page until "Save changes", and is then written through the route that
+ * already writes it. Opening the page writes nothing. The lead or an admin reads the whole page; a team member never reaches it
+ * (YourPeopleAndSetup.tsx). One navy button, "Add people".
  */
 type Served = Extract<PeopleAndSetup, { view: 'lead' | 'admin' }>
 
@@ -95,8 +69,6 @@ export function aNumberAsShown(phone: string): string {
   return `${digits.slice(0, 4)} ${digits.charAt(4)}·· ··· ${digits.slice(-3)}`
 }
 
-const STAGE_SAID = ['Not invited yet', 'Invited', 'Reached', 'Verified', 'First check-in done', 'Coming back']
-
 const REMIND_CHOICES = [
   { key: '1', label: '1 day' },
   { key: '2', label: '2 days' },
@@ -105,16 +77,21 @@ const REMIND_CHOICES = [
 ]
 const remindKeyOf = (stopped: boolean, days: number[]) => stopped ? 'never' : days.length === 1 && ['1', '2', '3', '7'].includes(String(days[0])) ? String(days[0]) : 'other'
 
+/** "Six people have no role described yet.": the missing roles said once, for the whole list. */
+export function noRoleYetSentence(n: number): string {
+  const count = numberUpToTenInWords(n)
+  return `${count.charAt(0).toUpperCase()}${count.slice(1)} ${n === 1 ? 'person has' : 'people have'} no role described yet.`
+}
+
+/** What a person's row is opened to show under it. */
+type ARowPart = 'role' | 'number' | 'card' | 'report' | null
+
 export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const { ground, user, id, isInitiator, isOrgAdmin, viewerIsAParty, mySessionsDone, plannedSessions } = props
   const g: any = ground
-  /* The direct morning (lib/the-direct-morning.tsx), from the check-in this page holds: no explanation of how Groundwork uses the setup. */
-  const direct = isTheDirectMorningOn(g)
-  const designPass = useTheDesignPass()
   const qc = useQueryClient()
   const canEditRunOrAdmin = typeof g?.mayChangeSetup === 'boolean' ? g.mayChangeSetup === true : (isInitiator || isOrgAdmin)
   const canEditLeadOnly = isInitiator
-  const viewerIsInIt = isInitiator || viewerIsAParty
   const leadFirst = (props.whoIsInThisLeadName ?? '').split(/\s+/)[0] || 'the person who runs it'
 
   const { data: served, isError: servedFailed } = useQuery({
@@ -126,6 +103,8 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const page = served && served.on && (served.view === 'lead' || served.view === 'admin') ? (served as Served) : null
   const { data: started } = useQuery({ queryKey: ['getting-started', id], queryFn: () => groundsApi.whereEachPersonIsGettingStarted(id), enabled: !!id, retry: false })
   const { data: numbers } = useQuery({ queryKey: ['whatsapp-roster', id], queryFn: () => groundsApi.whereEachPersonIsOnWhatsApp(id), enabled: !!id, retry: false })
+  /* Who asked to join, for the lead (moved here with the roster from "Who has answered"). */
+  const { data: requests = [] } = useQuery({ queryKey: ['participant-requests', id], queryFn: () => participantRequestsApi.list(id), enabled: !!id && isInitiator, retry: false })
 
   /* ---------- the drafts: nothing applies until "Save changes" ---------- */
   const recordReminderDays: number[] = (g?.chaseAfterDays ?? [1]) as number[]
@@ -150,22 +129,24 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const [roles, setRoles] = useState<Record<string, string>>({})
   const set = <K extends keyof typeof onRecord>(k: K, v: (typeof onRecord)[K]) => setDraft((d) => ({ ...d, [k]: v }))
 
+  /* Which setting's editor is open: "Change" opens one, and pressing it again closes it. */
+  const [editing, setEditing] = useState<Record<string, boolean>>({})
+  const toggle = (k: string) => setEditing((e) => ({ ...e, [k]: !e[k] }))
+  useEffect(() => { if (props.forceOpenTimeframe) setEditing((e) => ({ ...e, long: true })) }, [props.forceOpenTimeframe])
+
   const changedKeys = (Object.keys(onRecord) as (keyof typeof onRecord)[]).filter((k) => draft[k] !== onRecord[k] && !(k === 'remindOther' && draft.remind !== 'other'))
   const rolesChanged = Object.entries(roles).filter(([pid, v]) => v.trim() !== ((g?.participants ?? []).find((p: any) => p.id === pid)?.roleAsDescribed ?? '').trim())
   const startChanged = props.canOfferStartDate && props.startsAtDraft !== props.startsAtOnRecord
   /*
-   * RELEASE 2: THE TYPE, CONFIRMED BY THE LEAD (the switchboard foundation). Served only where the organisation's Release 2 switch
-   * is on and the scenario has types of its own; then the Kind of work row offers those types, as the B8 fee notes picture draws
-   * them, with the one Groundwork read already chosen. Nothing is stored until the lead saves; saving stores her choice as
-   * confirmed. Where it is not served, the row is today's kind of work, exactly as before.
+   * RELEASE 2: THE TYPE, CONFIRMED BY THE LEAD. Served only where the scenario has types of its own; then the Kind of work line offers
+   * those types with the one Groundwork read already chosen. Nothing is stored until the lead saves; saving stores her choice as
+   * confirmed. Where it is not served, the line is today's kind of work.
    */
   const typeServed = page?.checkInType ?? null
-  /* Release 4: the thirteen templates, offered to whoever may change the setup, only where the organisation has Release 4 on. */
   const templatesQ = useQuery({ queryKey: ['templates'], queryFn: groundsApi.templates, enabled: !!id, staleTime: 5 * 60_000, retry: false })
-  const qcForTemplate = useQueryClient()
   const attachTemplate = useMutation({
     mutationFn: (template: string | null) => groundsApi.setTemplate(id, template),
-    onSuccess: () => { qcForTemplate.invalidateQueries({ queryKey: ['ground', id] }); qcForTemplate.invalidateQueries({ queryKey: ['board', id] }); toast.success('Saved. The board and the check-ins follow the template now.') },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); qc.invalidateQueries({ queryKey: ['board', id] }); toast.success('Saved. The board and the check-ins follow the template now.') },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Try again.'),
   })
   const [typeDraft, setTypeDraft] = useState<string>(typeServed?.type ?? '')
@@ -187,6 +168,48 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
     mutationFn: (time: string | null) => groundsApi.setReportSharesAt(id, time),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change. The report is still shared the same way. Try again in a moment.'),
+  })
+
+  /* ---------- what each row can do, moved here with the roster from "Who has answered" ---------- */
+  const remind = useMutation({
+    mutationFn: (checkInId: string) => conversationApi.remind(checkInId),
+    onSuccess: () => toast.success('Reminder sent'),
+    onError: () => toast.error('The reminder did not go out, and nobody has been emailed. Try again.'),
+  })
+  const copyInviteLink = useMutation({
+    mutationFn: async (participantId: string) => {
+      const { inviteUrl } = await groundsApi.getParticipantInviteUrl(id, participantId)
+      if (!(await copy(inviteUrl))) throw new Error('Copying is not available here. Select the link and copy it yourself.')
+      return inviteUrl
+    },
+    onSuccess: () => toast.success('Invite link copied. It is the same link as their email, so send it however you like.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? e?.message ?? 'Could not get the invite link.'),
+  })
+  /* Once they have accepted, the link to the check-in that is open now. It mints nothing. */
+  const copyCheckInLink = useMutation({
+    mutationFn: async (participantId: string) => {
+      const { checkInUrl } = await groundsApi.getParticipantCheckInUrl(id, participantId)
+      if (!(await copy(checkInUrl))) throw new Error('Copying is not available here. Select the link and copy it yourself.')
+      return checkInUrl
+    },
+    onSuccess: () => toast.success('Check-in link copied. Send it however you like.'),
+    /* The server's sentence: it knows whether they have no open check-in or have not accepted yet. */
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? e?.message ?? 'Could not get the check-in link.'),
+  })
+  const approveRequest = useMutation({
+    /* The server invites the person as part of approving the request; nothing else is called. */
+    mutationFn: (req: ParticipantRequest) => participantRequestsApi.update(id, req.id, 'APPROVED'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['participant-requests', id] })
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+      toast.success('They have been added to the check-in.')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add them.'),
+  })
+  const dismissRequest = useMutation({
+    mutationFn: (reqId: string) => participantRequestsApi.update(id, reqId, 'DISMISSED'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['participant-requests', id] }),
+    onError: () => toast.error('That request was not dismissed, and it is still in the list. Try again.'),
   })
 
   const discard = () => {
@@ -232,6 +255,8 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
     if (changedKeys.includes('sharesAt')) setSharesAt.mutate(draft.sharesAt === 'self' ? '18:30' : null)
     for (const [participantId, role] of rolesChanged) props.updateRole.mutate({ participantId, role: role.trim() })
     setRoles({})
+    setEditing({})
+    setRolesOpen(false)
     qc.invalidateQueries({ queryKey: ['people-and-setup', id] })
   }
 
@@ -245,18 +270,22 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const seatsFull = !nextSeat.data?.addsASeat && seats?.cap != null && seats?.count != null && seats.count >= seats.cap
   const [showAdd, setShowAdd] = useState(false)
   const [showLink, setShowLink] = useState(false)
-  const [numberFor, setNumberFor] = useState<string | null>(null)
-  const roleRefs = useRef<Record<string, HTMLInputElement | null>>({})
-  const endsRef = useRef<HTMLInputElement | null>(null)
+  /* What each person's row is opened to show under it: their role field, their number, their card, or the report they shared. */
+  const [rowPart, setRowPart] = useState<Record<string, ARowPart>>({})
+  const openPart = (pid: string, part: ARowPart) => setRowPart((r) => ({ ...r, [pid]: r[pid] === part ? null : part }))
+  /* "Add their roles": every row with no role opens its role field at once. */
+  const [rolesOpen, setRolesOpen] = useState(false)
   const scrollToRow = (pid: string) => scrollToId(`person-${pid}`)
 
+  const problems = page?.problems ?? []
+  const noRole = problems.filter((pr) => pr.fix === 'add-their-role')
+  const otherProblems = problems.filter((pr) => pr.fix !== 'add-their-role')
   const fixIt = (pr: ASetupProblem) => {
     const p = participants.find((x) => x.id === pr.participantId)
     if (pr.fix === 'fix-the-address' && p) { props.setFixingEmailId(p.id); props.setFixingEmailValue(p.email ?? ''); scrollToRow(p.id) }
-    if (pr.fix === 'add-a-number') { setNumberFor(pr.participantId); scrollToRow(pr.participantId) }
-    if (pr.fix === 'add-their-role') { scrollToRow(pr.participantId); roleRefs.current[pr.participantId]?.focus() }
+    if (pr.fix === 'add-a-number') { setRowPart((r) => ({ ...r, [pr.participantId]: 'number' })); scrollToRow(pr.participantId) }
   }
-  const FIX_SAID: Record<string, string> = { 'fix-the-address': 'Fix the address', 'add-a-number': 'Add a number', 'add-their-role': 'Add their role' }
+  const FIX_SAID: Record<string, string> = { 'fix-the-address': 'Fix the address', 'add-a-number': 'Add a number' }
 
   const cadenceKey = howOftenKey(props.cadenceDraft, props.workingDaysDraft)
   const chooseHowOften = (key: string) => {
@@ -269,135 +298,216 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const orgName = page?.organisationName ?? g?.organization?.name ?? 'your organisation'
   const whatsAppHere = props.whatsAppIsOn && !!g?.orgHasWhatsApp
   const WHERE = [
-    { key: 'whatever', label: `Whatever ${orgName} does (WhatsApp if they have a number)`, says: 'The default. People who have a number on their profile get it on WhatsApp; everybody else answers here.' },
-    { key: 'on', label: 'On WhatsApp', says: 'The check-in, the reminders and the report go to their phone. They reply to the message and that reply is their answer.' },
-    { key: 'in', label: 'In Groundwork only', says: 'This one stays here even though your organisation has a number. For a conversation you would rather was not on somebody’s phone.' },
+    { key: 'whatever', label: `Whatever ${orgName} does, which is WhatsApp for anyone with a number`, says: `Here, or on WhatsApp through ${orgName}’s number for anyone with a number on their profile.` },
+    { key: 'on', label: 'On WhatsApp', says: 'On WhatsApp. The check-in, the reminders and the report go to their phone, and their reply is their answer.' },
+    { key: 'in', label: 'In Groundwork only', says: 'Here, in Groundwork only.' },
   ]
-  /* The server's one answer (people-and-setup.ts, whoElseHasAnswered, the rule the delete itself asks), never this session's count:
-     somebody who answered session 1 has answered, whatever session it is now (release test 22 November, bug N6). Until it is served,
-     the page offers only what keeps the record. */
+  /* The server's one answer (people-and-setup.ts, whoElseHasAnswered), never this session's count (release test 22 November, bug N6). */
   const nobodyElseAnswered = page?.stillATest === true
   const n = sessionsUpToTheEnd(props) ?? sessionsFor(props.timelineDaysDraft, props.cadenceDraft) ?? 1
+  const weeklyOrMonthly = props.cadenceDraft === 'WEEKLY' || props.cadenceDraft === 'FORTNIGHTLY' || props.cadenceDraft === 'MONTHLY'
 
-  /* What it is: before who is in it with the switch off, after it with the design pass on (the people are the main thing). */
-  const whatItIs = (
-    <>
-        <Section heading="What it is">
-          <Card>
-            {/* B8: the three fields side by side, each label above its field. */}
-            <div className="gwui-three-fields">
-              <AFieldWithItsLabel
-                label="Name"
-                value={canEditRunOrAdmin
-                  ? <TextField aria-label="Name" value={draft.label} onChange={(e) => set('label', e.target.value)} />
-                  : g?.label}
-              />
-              <AFieldWithItsLabel label="Scenario" value={g?.scenario ? scenarioLabel(g.scenario, g.brief) : 'Not set.'} />
-              {typeServed ? (
-              <AFieldWithItsLabel
-                label="Kind of work"
-                value={typeServed.mayConfirm
-                  ? (
-                    <Select aria-label="Kind of work" value={typeDraft} onChange={(e) => setTypeDraft(e.target.value)}>
-                      {!typeDraft && <option value="">Not known yet</option>}
-                      {typeServed.offered.map((t) => <option key={t.type} value={t.type}>{t.label}</option>)}
-                    </Select>
-                  )
-                  : (typeServed.offered.find((t) => t.type === typeServed.type)?.label ?? 'Nobody has said yet.')}
-              />
-              ) : (
-              <AFieldWithItsLabel
-                label="Kind of work"
-                value={canEditRunOrAdmin && page
-                  ? (
-                    <Select aria-label="Kind of work" value={draft.kindOfWork} onChange={(e) => set('kindOfWork', e.target.value)}>
-                      <option value="">Not known yet</option>
-                      {page.kindsOffered.map((k) => <option key={k} value={k}>{(KIND_OF_WORK_OPTION_LABEL as Record<string, string>)[k] ?? k}</option>)}
-                    </Select>
-                  )
-                  : (page?.kindOfWork ? ((KIND_OF_WORK_OPTION_LABEL as Record<string, string>)[page.kindOfWork] ?? page.kindOfWork) : 'Nobody has said yet.')}
-              />
-              )}
-            </div>
-            {templatesQ.data?.on && (
-              <div className="gw-mt-4">
-                <AFieldWithItsLabel
-                  label="Template"
-                  value={canEditRunOrAdmin
-                    ? (
-                      <Select aria-label="Template" value={(g as any)?.templateId ?? ''} disabled={attachTemplate.isPending} onChange={(e) => attachTemplate.mutate(e.target.value || null)}>
-                        <option value="">None</option>
-                        {templatesQ.data.templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                      </Select>
-                    )
-                    : (templatesQ.data.templates.find((t) => t.id === (g as any)?.templateId)?.name ?? 'None')}
-                />
-                <Link to="/templates" className="t-small">See every template, and what each tracks</Link>
-              </div>
-            )}
-            {typeServed && <Note>{typeServed.says}</Note>}
-            {!direct && <Explains>The scenario and kind of work decide the board, the reports, and what each check-in asks about.</Explains>}
-          </Card>
-        </Section>
-    </>
+  /* ---------- the summary line each setting reads, from the record ---------- */
+  const often = theRhythmInFull(g, { stop: false }) ?? cadenceLabel(g?.cadence, g?.cadenceDays)
+  const howOftenSays = `${often}.${anchorDaySentence(g?.cadence, g?.cadenceAnchorDay, g?.cadenceDays)}`
+  const from = whenItWas((g?.startsAt ?? g?.createdAt) as string, 'dayAndMonthLong')
+  const howLongSays = [
+    g?.runsUntilItIsEnded ? `From ${from}, until you end it.` : g?.endsOn ? `${from} to ${whenItWas(g.endsOn, 'dayAndMonthLong')}.` : null,
+    page?.sessions ?? null,
+    typeof g?.daysLeft === 'number' && g?.endsOn ? `${g.daysLeft} day${g.daysLeft === 1 ? '' : 's'} left.` : null,
+  ].filter(Boolean).join(' ')
+  const remindersSays = g?.chasingStopped
+    ? 'Off. Nobody is reminded.'
+    : `${chasingSentence(recordReminderDays)} Never more than one a day.${g?.tellTheLead && isInitiator ? ' You are told who never started.' : ''}`
+  const kindLabel = (k: string | null | undefined) => (k ? ((KIND_OF_WORK_OPTION_LABEL as Record<string, string>)[k] ?? k) : 'Not known yet.')
+  const templateName = templatesQ.data?.templates.find((t) => t.id === g?.templateId)?.name ?? 'None.'
+  const peersOptions = [{ key: 'named', label: 'Seen once the team’s report is shared, with names.' }, { key: 'unnamed', label: 'Seen once the team’s report is shared, without names.' }]
+  const contactOptions = [{ key: 'hidden', label: 'Hidden from each other.' }, { key: 'visible', label: 'Visible, so people can contact each other.' }]
+  const togetherOptions = [
+    ...(draft.workTogether === '' ? [{ key: '', label: 'Not said yet, so it is assumed from the kind of check-in.' }] : []),
+    { key: 'yes', label: 'They see each other’s work day to day, so they can confirm it.' },
+    { key: 'no', label: 'They don’t see each other’s work.' },
+  ]
+  const targetOptions = [{ key: 'shared', label: 'Each person sees their own share and the team’s total.' }, { key: 'own', label: 'Each person sees only their own number.' }]
+  const reportOptions = [{ key: 'you', label: 'You share it when it’s ready.' }, { key: 'self', label: `It shares itself at ${g?.reportSharesAt ? clock(g.reportSharesAt) : '6:30pm'}.` }]
+  const reportNow = g?.report?.releasedAt
+    ? `Shared on ${whenItWas(g.report.releasedAt, 'dayAndMonthLong')}.`
+    : g?.status === 'REPORT_READY' ? 'It is ready, and has not been shared yet.' : 'Not shared yet.'
+
+  /** A setting as one line: its label, what it is now, and "Change" for whoever may change it, which opens its editor under it. */
+  const aSetting = (key: string, label: string, says: ReactNode, canChange: boolean, editor?: ReactNode, change = 'Change') => (
+    <FieldRow
+      key={key}
+      label={label}
+      value={(
+        <Stack gap={8}>
+          {typeof says === 'string' ? <span>{says}</span> : says}
+          {canChange && editing[key] && editor}
+        </Stack>
+      )}
+      action={canChange && editor ? <button type="button" className="gwui-plain-link" aria-expanded={!!editing[key]} aria-label={`${editing[key] ? 'Close' : change}, ${label}`} onClick={() => toggle(key)}>{editing[key] ? 'Close' : change}</button> : undefined}
+    />
   )
+  /** One choice, as a select, for a setting with a few answers. */
+  const choose = (label: string, value: string, options: { key: string; label: string }[], onChange: (k: string) => void) => (
+    <Select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>{options.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}</Select>
+  )
+  const said = (options: { key: string; label: string }[], key: string) => options.find((o) => o.key === key)?.label ?? ''
+
+  /* ---------- one person's row ---------- */
+  const inOrder = [...participants].sort((a, b) => (a.userId === g?.initiatorId ? -1 : b.userId === g?.initiatorId ? 1 : 0))
+  const aPerson = (p: any) => {
+    const row = whereThisPersonIs(p, {
+      ground: g, isInitiator, isOrgAdmin, isNotCounted, sessionParties: props.whoIsInThisParties, notOpenYet: props.whoIsInThisNotOpenYet,
+      fixingEmailId: props.fixingEmailId, setFixingEmailId: props.setFixingEmailId, fixingEmailValue: props.fixingEmailValue,
+      setFixingEmailValue: props.setFixingEmailValue, fixEmail: props.fixEmail, resendInvite: props.resendInvite,
+    })
+    const isSelf = !!user?.id && p.userId === user.id
+    const stage = ((started?.people ?? []) as { participantId: string; reached: number; says: string }[]).find((x) => x.participantId === p.id)
+    const onWhatsApp = ((numbers ?? []) as any[]).find((x) => x.participantId === p.id)
+    const phone = onWhatsApp?.phone ?? null
+    const problem = row.statusText !== 'Checking in' && row.statusText !== 'Runs it'
+    /* Their status, said once: the problem that stops them; on your own row, your own count; for anybody else, whether they have
+       answered the check-in that is open (the question "Who has answered" was for), else where they are in getting started. */
+    const status = problem
+      ? (row.help?.text ?? `${row.statusText}.`)
+      : isSelf && p.managingOnly
+        ? 'You check in when you choose. Use Check in yourself any time.'
+        : isSelf && viewerIsAParty
+          /* Your own row says your own count, as served, clamped (B-012): one sentence, never a second one about this check-in beside it. */
+          ? yourSessionsSentence(mySessionsDone, plannedSessions)
+          : row.sessionLine ?? stage?.says ?? `${row.statusText}.`
+    const theirSessions = [...(g?.checkIns ?? [])]
+      .filter((c: any) => c.participantId === p.id && !c.isSetup)
+      .sort((a: any, b: any) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))
+    const latest = theirSessions[theirSessions.length - 1]
+    const expectation = p.objective?.text?.trim()
+      ? (p.objective.seenBySubject
+        ? (isSelf ? 'Your expectation is set. You have seen it.' : 'Their expectation is set. They have seen it.')
+        : (isSelf ? 'Your expectation is set. You have not seen it yet.' : 'Their expectation is set. They have not seen it yet.'))
+      : null
+    const part: ARowPart = rowPart[p.id] ?? null
+    const roleOpen = isInitiator && (part === 'role' || (rolesOpen && !p.roleAsDescribed?.trim()))
+    const bounced = !p.userId && p.inviteDeliveryStatus === 'BOUNCED'
+    const menu: { label: string; act: () => void }[] = [
+      ...(isInitiator ? [{ label: p.roleAsDescribed?.trim() ? 'Change their role here' : 'Add their role here', act: () => openPart(p.id, 'role') }] : []),
+      ...(props.eachPerson && !p.managingOnly ? [{ label: isSelf ? 'What is on record for you' : 'What is on record for them', act: () => openPart(p.id, 'card') }] : []),
+      ...(isInitiator && latest?.id && latest.status !== 'COMPLETED' && p.userId && !isSelf ? [{ label: 'Send them a reminder', act: () => remind.mutate(latest.id) }] : []),
+      ...(isInitiator && !p.userId && !p.awaitingSeat ? [{ label: 'Copy their invite link', act: () => copyInviteLink.mutate(p.id) }] : []),
+      ...(isInitiator && bounced ? [{ label: 'Fix the address', act: () => { props.setFixingEmailId(p.id); props.setFixingEmailValue(p.email ?? '') } }] : []),
+      ...(p.sharedSoloReport ? [{ label: 'Read the report they shared with you', act: () => openPart(p.id, 'report') }] : []),
+    ]
+    return (
+      <li id={`person-${p.id}`} key={p.id} className="ds-row">
+        <div className="ds-row-main">
+          <Stack gap={4}>
+            <p className="ds-text-card">{row.name}</p>
+            {p.userId && p.email && <p className="ds-text-secondary">{p.email}</p>}
+            {/* The lead reads her own note; anybody else reads only that there is one, as the server serves it, never its words. */}
+            {isInitiator
+              ? p.roleAsDescribed?.trim() && <p className="ds-text-secondary" data-leads-note>{theLeadsNote(p.roleAsDescribed)}</p>
+              : page?.roleDescribed?.[p.id] && <p className="ds-text-secondary">{`${leadFirst.charAt(0).toUpperCase()}${leadFirst.slice(1)} has described their role here.`}</p>}
+            <p className="ds-text-secondary">{status}{problem && row.help?.action ? <>{' '}{row.help.action}</> : null}</p>
+            <p className="ds-text-secondary">
+              {phone
+                ? <>{`${isSelf ? 'Your' : 'Their'} phone number is ${aNumberAsShown(phone)}.`}{props.whatsAppIsOn && onWhatsApp?.says && !isSelf ? ` ${onWhatsApp.says}` : null}{' '}<button type="button" className="gwui-plain-link" onClick={() => openPart(p.id, 'number')}>Change</button></>
+                : <>No phone number yet.{' '}<button type="button" className="gwui-plain-link" onClick={() => openPart(p.id, 'number')}>Add a number</button></>}
+            </p>
+            <div className="gwui-button-row">
+              <span className="ds-text-meta">{`${row.when}.`}</span>
+              {theirSessions.length > 0 && <span className="ds-text-meta">Check-ins</span>}
+                {theirSessions.map((ci: any) => {
+                  const done = ci.status === 'COMPLETED'
+                  const going = ci.status === 'IN_PROGRESS'
+                  return (
+                    <button
+                      key={ci.id}
+                      type="button"
+                      disabled={!isSelf}
+                      onClick={isSelf ? () => props.navigate(`/checkin/${ci.id}`, { state: { sessionNumber: ci.sessionNumber, isFinal: ci.isFinal ?? false, groundLabel: g?.label, groundId: id, isInitiator } }) : undefined}
+                      aria-label={`Check-in ${ci.sessionNumber}: ${done ? 'completed' : going ? 'in progress' : 'not started'}${isSelf ? ', yours' : ''}`}
+                      className={`tag ${done ? 'rec' : going ? 'att' : 'plain'} gwui-tag-control`}
+                    >
+                      {ci.sessionNumber}
+                    </button>
+                  )
+                })}
+            </div>
+            {expectation && <p className="ds-text-meta">{expectation}</p>}
+            {roleOpen && (
+              <TextField
+                aria-label={`Their role here, for ${row.name}`}
+                placeholder="Their role here, in a few words"
+                value={roles[p.id] ?? p.roleAsDescribed ?? ''}
+                onChange={(e) => setRoles((r) => ({ ...r, [p.id]: e.target.value }))}
+              />
+            )}
+            {part === 'number' && <TheirNumber groundId={id} participantId={p.id} name={row.name} phone={phone} onDone={() => openPart(p.id, null)} />}
+            {part === 'card' && props.eachPerson?.(p.id)}
+            {part === 'report' && p.sharedSoloReport && <SoloReportBody report={p.sharedSoloReport as Record<string, unknown>} dense on="light" />}
+          </Stack>
+        </div>
+        <div className="ds-row-actions">
+          {isInitiator && p.userId && !(isSelf && p.managingOnly) && (
+            <button type="button" className="gwui-plain-link" disabled={copyCheckInLink.isPending} onClick={() => copyCheckInLink.mutate(p.id)}>Copy check-in link</button>
+          )}
+          {menu.length > 0 && (
+            <SmallMenu label="···" ariaLabel={`More for ${row.name}`}>
+              {menu.map((m) => <button key={m.label} type="button" className="gwui-menu-item" onClick={(e) => { e.currentTarget.closest('details')?.removeAttribute('open'); m.act() }}>{m.label}</button>)}
+            </SmallMenu>
+          )}
+        </div>
+      </li>
+    )
+  }
 
   return (
     <div className="wrap gw-stack gwui-b-tab">
-      {/* 1. HOW THIS CHECK-IN RUNS */}
-      {/* B8: a small uppercase label, then the one line in Literata. */}
-      {/* THE DESIGN PASS: the one line on how it runs, then what to put right as hairline rows, three and "And N more". */}
-      {designPass && (
-        <section aria-label="How this check-in runs">
+      {/* HOW THIS CHECK-IN RUNS, in one line, then what to put right: each problem once, and the missing roles as one line. */}
+      <section aria-label="How this check-in runs">
+        <Stack gap={8}>
           {page ? <p className="gwui-b8-line">{page.howItRuns}</p> : servedFailed ? <Note>This part of the page could not be loaded. Try again in a moment.</Note> : null}
-          {(page?.problems ?? []).length > 0 && (
-            <ul className="dp-rows" aria-label="What to put right">
-              <ShowAll items={page!.problems} render={(pr) => (
-                <li key={`${pr.participantId}-${pr.fix}-${pr.says}`} className="dp-row">
-                  <span className="dp-row-main"><span className="dp-row-line">{pr.says}</span></span>
-                  <span className="dp-row-acts">
+          {(otherProblems.length > 0 || noRole.length > 0) && (
+            <ul className="ds-rows" aria-label="What to put right">
+              {otherProblems.map((pr) => (
+                <li key={`${pr.participantId}-${pr.fix}-${pr.says}`} className="ds-row">
+                  <p className="ds-row-main ds-text-secondary">{pr.says}</p>
+                  <div className="ds-row-actions">
                     {pr.fix && FIX_SAID[pr.fix] && <button type="button" className="gwui-plain-link" onClick={() => fixIt(pr)}>{FIX_SAID[pr.fix]}</button>}
                     {pr.fix === 'let-them-in' && <Link className="gwui-plain-link" to="/org/members">Let them in on People</Link>}
                     {pr.fix === 'view-plans' && <Link className="gwui-plain-link" to="/billing">View plans</Link>}
-                  </span>
+                  </div>
                 </li>
-              )} />
+              ))}
+              {noRole.length > 0 && (
+                <li className="ds-row">
+                  <p className="ds-row-main ds-text-secondary">{noRoleYetSentence(noRole.length)}</p>
+                  {isInitiator && noRole.some((pr) => pr.fix) && (
+                    <div className="ds-row-actions">
+                      <button type="button" className="gwui-plain-link" onClick={() => { setRolesOpen(true); scrollToRow(noRole[0].participantId) }}>
+                        {noRole.length === 1 ? 'Add their role' : 'Add their roles'}
+                      </button>
+                    </div>
+                  )}
+                </li>
+              )}
             </ul>
           )}
-        </section>
-      )}
-      {!designPass && <Panel as="section" aria-label="How this check-in runs">
-        <Stack gap={8}>
-          <h2 className="gwui-ci-prior-label gwui-m-0">How this check-in runs</h2>
-          {page ? <p className="gwui-b8-line">{page.howItRuns}</p> : servedFailed ? <Note>This part of the page could not be loaded. Try again in a moment.</Note> : null}
-          {(page?.problems ?? []).map((pr) => (
-            <div key={`${pr.participantId}-${pr.fix}-${pr.says}`} className="gwui-setup-problem">
-              <FlexRow gap={12} justify="space-between" align="center" wrap>
-                <span>{pr.says}</span>
-                {pr.fix && FIX_SAID[pr.fix] && <button type="button" className="gw-link t-small gw-bold" onClick={() => fixIt(pr)}>{FIX_SAID[pr.fix]}</button>}
-                {pr.fix === 'let-them-in' && <Link className="gwui-open-link" to="/org/members">Let them in on People</Link>}
-                {pr.fix === 'view-plans' && <Link className="gwui-open-link" to="/billing">View plans</Link>}
-              </FlexRow>
-            </div>
-          ))}
         </Stack>
-      </Panel>}
+      </section>
 
-      {/* 2. WHAT IT IS */}
-      {!designPass && whatItIs}
-
-      {/* 3. WHO'S IN IT */}
+      {/* WHO'S IN IT: the one list of people. */}
       <Section
         heading="Who's in it"
         note={whosInItSays(counted)}
         action={isInitiator ? (
           <FlexRow gap={8} wrap>
-            {g?.joinToken && <Button kind={designPass ? 'quiet' : 'secondary'} size="small" onClick={() => setShowLink((v) => !v)}>Join link and QR code</Button>}
+            {g?.joinToken && <Button kind="quiet" size="small" onClick={() => setShowLink((v) => !v)}>Join link and QR code</Button>}
             <Button size="small" onClick={() => setShowAdd((v) => !v)}>Add people</Button>
           </FlexRow>
         ) : undefined}
       >
-        <Stack gap={12}>
+        <div className="ds-section-body">
           {isInitiator && showLink && g?.joinToken && (
             <TheJoinLink joinToken={g.joinToken} label={g.label} joined={page?.joinedWithTheLink ?? null} onShareCode={props.onShareCode} />
           )}
@@ -407,383 +517,232 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
               addManyParticipants={props.addManyParticipants} onShareCode={props.onShareCode}
             />
           )}
-          {/* THE DESIGN PASS: each person one quiet row. Their name and whether they run it or check in,
-              then where they are in getting started, their phone number with Change, and their role here in a full-width field. */}
-          {designPass && (
-            <ul className="dp-rows" aria-label="Who's in it">
-              {/* Ten a page, every page reachable, the one shared list part. */}
-              <Paged label="who's in it" items={[...participants].sort((a, b) => (a.userId === g?.initiatorId ? -1 : b.userId === g?.initiatorId ? 1 : 0))} render={(p: any) => {
-                const row = whereThisPersonIs(p, {
-                  ground: g, isInitiator, isOrgAdmin, isNotCounted, sessionParties: props.whoIsInThisParties, notOpenYet: props.whoIsInThisNotOpenYet,
-                  fixingEmailId: props.fixingEmailId, setFixingEmailId: props.setFixingEmailId, fixingEmailValue: props.fixingEmailValue,
-                  setFixingEmailValue: props.setFixingEmailValue, fixEmail: props.fixEmail, resendInvite: props.resendInvite,
-                })
-                const isLead = p.userId === g?.initiatorId
-                const stage = ((started?.people ?? []) as { participantId: string; reached: number; says: string }[]).find((x) => x.participantId === p.id)
-                const onWhatsApp = ((numbers ?? []) as any[]).find((x) => x.participantId === p.id)
-                const phone = onWhatsApp?.phone ?? null
-                const problem = row.statusText !== 'Checking in' && row.statusText !== 'Runs it'
-                const where = [stage?.says, row.sessionLine, row.when].filter(Boolean).join(' ')
-                return (
-                  <li id={`person-${p.id}`} key={p.id} className="dp-row">
-                    <span className="dp-row-main">
-                      <span className="dp-row-title">{row.name}</span>
-                      <span className="dp-row-line">{`${isLead ? 'Runs it.' : 'Checks in.'}${p.userId && p.email ? ` ${p.email}.` : ''}${!problem ? ` ${stage ? STAGE_SAID[stage.reached] : row.statusText}.` : ''}${where ? ` ${where}` : ''}`}</span>
-                      <span className="dp-row-line">
-                        {numberFor === p.id
-                          ? <TheirNumber groundId={id} participantId={p.id} name={row.name} phone={phone} onDone={() => setNumberFor(null)} />
-                          : phone
-                            ? <>{`Their phone number is ${aNumberAsShown(phone)}.`}{props.whatsAppIsOn && onWhatsApp?.says ? ` ${onWhatsApp.says}` : null}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button></>
-                            : <>No phone number yet.{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Add a number</button></>}
-                      </span>
-                      {row.help && <span className="dp-row-line">{row.help.text}{row.help.action ? <>{' '}{row.help.action}</> : null}</span>}
-                    </span>
-                    {problem && <span className="dp-row-acts"><Tag tone={row.tone}>{row.statusText}</Tag></span>}
-                    <span className="dp-row-body">
-                      {isInitiator
-                        ? <TextField
-                            ref={(el: HTMLInputElement | null) => { roleRefs.current[p.id] = el }}
-                            aria-label={`Their role here, for ${row.name}`}
-                            placeholder="Their role here, in a few words"
-                            value={roles[p.id] ?? p.roleAsDescribed ?? ''}
-                            onChange={(e) => setRoles((r) => ({ ...r, [p.id]: e.target.value }))}
-                          />
-                        : <span className="dp-row-line">{page?.roleDescribed?.[p.id] ? `${leadFirst.charAt(0).toUpperCase()}${leadFirst.slice(1)} has described their role here.` : 'Nobody has described their role here yet.'}</span>}
-                    </span>
-                  </li>
-                )
-              }} />
+          {isInitiator && (requests as ParticipantRequest[]).length > 0 && (
+            <ul className="ds-rows" aria-label="Asked to join">
+              {(requests as ParticipantRequest[]).map((req) => (
+                <li key={req.id} className="ds-row">
+                  <div className="ds-row-main">
+                    <p className="ds-text-card">{req.requestedName ? `${req.requestedName} asked to join` : `${req.requestedEmail} asked to join`}</p>
+                    <p className="ds-text-secondary">{req.reason}</p>
+                    <p className="ds-text-meta">{`${req.requestedName ? `${req.requestedEmail}. ` : ''}Asked by ${req.requestedByEmail}.`}</p>
+                  </div>
+                  <div className="ds-row-actions">
+                    <button type="button" className="gwui-plain-link" disabled={approveRequest.isPending} onClick={() => approveRequest.mutate(req)}>Add them</button>
+                    <button type="button" className="gwui-plain-link" disabled={dismissRequest.isPending} onClick={() => dismissRequest.mutate(req.id)}>Dismiss</button>
+                  </div>
+                </li>
+              ))}
             </ul>
           )}
-          {!designPass && (
-            <PeopleTable>
-              <PeopleTableHead extraColumns="minmax(170px, 1fr) 190px 210px" labels={['Person', 'Their role here', 'Phone number', 'Getting started']} />
-              {[...participants].sort((a, b) => (a.userId === g?.initiatorId ? -1 : b.userId === g?.initiatorId ? 1 : 0)).map((p: any) => {
-                const row = whereThisPersonIs(p, {
-                  ground: g, isInitiator, isOrgAdmin, isNotCounted, sessionParties: props.whoIsInThisParties, notOpenYet: props.whoIsInThisNotOpenYet,
-                  fixingEmailId: props.fixingEmailId, setFixingEmailId: props.setFixingEmailId, fixingEmailValue: props.fixingEmailValue,
-                  setFixingEmailValue: props.setFixingEmailValue, fixEmail: props.fixEmail, resendInvite: props.resendInvite,
-                })
-                const isLead = p.userId === g?.initiatorId
-                const stage = ((started?.people ?? []) as { participantId: string; reached: number; says: string }[]).find((s) => s.participantId === p.id)
-                const onWhatsApp = ((numbers ?? []) as any[]).find((x) => x.participantId === p.id)
-                const phone = onWhatsApp?.phone ?? null
-                const problem = row.statusText !== 'Checking in' && row.statusText !== 'Runs it'
-                return (
-                  <div id={`person-${p.id}`} key={p.id}>
-                    <PersonRow
-                      extraColumns="minmax(170px, 1fr) 190px 210px"
-                      /* The name, "Runs it" or "Checks in", and the address the invitation went to, as A4 draws it under every name
-                         (restored, 30 October 2026: on hover only, nobody on a phone could read it). */
-                      person={{ initials: initialsOf(row.name), name: row.name, level: isLead ? 'Runs it' : 'Checks in', email: p.userId ? p.email : undefined }}
-                      help={row.help}
-                    >
-                      <span>
-                        {isInitiator
-                          ? <TextField
-                              ref={(el: HTMLInputElement | null) => { roleRefs.current[p.id] = el }}
-                              aria-label={`Their role here, for ${row.name}`}
-                              placeholder="Nobody has described it yet"
-                              value={roles[p.id] ?? p.roleAsDescribed ?? ''}
-                              onChange={(e) => setRoles((r) => ({ ...r, [p.id]: e.target.value }))}
-                            />
-                          : (page?.roleDescribed?.[p.id] ? `${leadFirst.charAt(0).toUpperCase()}${leadFirst.slice(1)} has described it.` : 'Nobody has described it yet.')}
-                      </span>
-                      <span>
-                        {numberFor === p.id
-                          ? <TheirNumber groundId={id} participantId={p.id} name={row.name} phone={phone} onDone={() => setNumberFor(null)} />
-                          : phone
-                            ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button>{props.whatsAppIsOn && onWhatsApp?.says ? <span className="gwui-note">{onWhatsApp.says}</span> : null}</>
-                            : <>None yet{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Add a number</button></>}
-                      </span>
-                      <Stack gap={4}>
-                        {stage && (
-                          <span className="pb-rely-bars" aria-hidden="true">
-                            {[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= stage.reached ? 'on' : undefined} />)}
-                          </span>
-                        )}
-                        <Tag tone={problem ? row.tone : 'proven'}>{problem || !stage ? row.statusText : STAGE_SAID[stage.reached]}</Tag>
-                        {/* Where they are, their session and when they last did something, as one quiet line anyone can read, on a phone
-                            too (restored, 30 October 2026: it was for screen readers and hover only). */}
-                        {[stage?.says, row.sessionLine, row.when].some(Boolean) && <Text size="13" ink="sub" as="p">{[stage?.says, row.sessionLine, row.when].filter(Boolean).join(' ')}</Text>}
-                      </Stack>
-                    </PersonRow>
-                  </div>
-                )
-              })}
-            </PeopleTable>
-          )}
-          <Note>
-            Getting started goes from Invited, to Reached, to Verified, to First check-in, to Coming back. Their role here shapes
-            the questions their check-in asks. Their role in your organisation is set in People.
-          </Note>
-          {props.whatsAppIsOn && <Explains>Groundwork writes to each person on WhatsApp once their number is here, and they can answer there.</Explains>}
-          {!direct && (
-          <Explains>
-            {props.whoIsInThisPeersHidden
-              ? 'People on this check-in answer without seeing each other. You can see who is here.'
-              : viewerIsAParty === false
-                ? 'When everyone has checked in, the report shows where the team agrees, where it differs, and what to do next.'
-                : 'When everyone has checked in, the report shows where you agree, where you differ, and what to do next.'}
-          </Explains>
-          )}
-        </Stack>
+          {/* Ten a page, every page reachable, the one shared list part. */}
+          <ul className="ds-rows" aria-label="Who's in it">
+            <Paged label="who's in it" items={inOrder} render={aPerson} />
+          </ul>
+          {props.downAsDoing}
+        </div>
       </Section>
-      {props.eachPerson}
-      {designPass && whatItIs}
 
-      {/* 4. WHEN IT RUNS */}
+      {/* HOW IT RUNS: one line per setting, each with its own "Change". */}
       <div id="how-long-this-runs" />
-      <Section heading="When it runs">
-        <Card>
-          <Stack gap={12}>
-            {canEditRunOrAdmin ? (
-              <>
-                <FlexRow gap={12} wrap align="flex-start">
-                  <Stack gap={4}>
-                    <FieldLabel htmlFor="how-often">How often</FieldLabel>
-                    <Select id="how-often" value={cadenceKey} onChange={(e) => chooseHowOften(e.target.value)}>
-                      {HOW_OFTEN.map((h) => <option key={h.key} value={h.key}>{h.label}</option>)}
-                    </Select>
-                  </Stack>
-                  <Stack gap={4}>
-                    <FieldLabel htmlFor="starts">Starts</FieldLabel>
-                    {props.canOfferStartDate
-                      ? <TextField id="starts" type="date" value={props.startsAtDraft} onChange={(e) => props.setStartsAtDraft(e.target.value)} />
-                      : <Text size="15" as="p">{whenItWas((g?.startsAt ?? g?.createdAt) as string, 'dayAndMonthLong')}</Text>}
-                  </Stack>
-                  <Stack gap={4}>
-                    <FieldLabel htmlFor="ends">Ends</FieldLabel>
-                    <TextField
-                      id="ends" type="date" ref={endsRef}
-                      value={theEndOnTheField(props.startsAtOnRecord, props.createdAtOnRecord, props.timelineDaysDraft)}
-                      onChange={(e) => {
-                        const from = props.startsAtOnRecord ? new Date(props.startsAtOnRecord) : props.createdAtOnRecord ? new Date(props.createdAtOnRecord) : new Date()
-                        const days = Math.round((new Date(e.target.value).getTime() - from.getTime()) / 86_400_000)
-                        if (Number.isFinite(days) && days >= 1) props.setTimelineDaysDraft(days)
-                      }}
-                    />
-                  </Stack>
-                  <Button kind="secondary" size="small" onClick={() => { endsRef.current?.focus(); endsRef.current?.showPicker?.() }}>Give it more time</Button>
-                </FlexRow>
-                {props.canOfferStartDate && (
-                  <Explains>Check-in 1 opens on the start day, and anybody you add before it is invited on it. Leave it empty to open the check-in as soon as people are added.</Explains>
-                )}
-                {(cadenceKey === 'weekday' || cadenceKey === 'day') && (
-                  <WhichDaysTheyWork value={props.workingDaysDraft} onChange={props.setWorkingDaysDraft} />
-                )}
-                {(props.cadenceDraft === 'WEEKLY' || props.cadenceDraft === 'FORTNIGHTLY' || props.cadenceDraft === 'MONTHLY') && (
-                  <>
-                    <AnchorDayPicker cadence={props.cadenceDraft} anchorDay={props.anchorDayDraft} onAnchorDay={props.setAnchorDayDraft} idPrefix="people-and-setup" />
-                    <Folded summary="The days this team works">
-                      <WhichDaysTheyWork value={props.workingDaysDraft} onChange={props.setWorkingDaysDraft} />
-                    </Folded>
-                  </>
-                )}
-              </>
-            ) : (
-              <FieldRows>
-                <FieldRow label="How often" value={HOW_OFTEN.find((h) => h.key === howOftenKey(g?.cadence, g?.workingDays ?? []))?.label ?? ''} />
-              </FieldRows>
-            )}
-            {page && <Text size="15" as="p">{page.sessions}{typeof g?.daysLeft === 'number' && g?.endsOn ? ` ${g.daysLeft} day${g.daysLeft === 1 ? '' : 's'} left.` : ''}</Text>}
-            {props.theTimeframeChanged && (
-              <Note>
-                {`${props.timelineDaysDraft} days, ${n} check-in${n === 1 ? '' : 's'}.`}
-                {(props.cadenceDraft === 'WEEKLY' || props.cadenceDraft === 'FORTNIGHTLY' || props.cadenceDraft === 'MONTHLY') && ' The day you choose applies from the next check-in on. A check-in already made keeps its own date.'}
-              </Note>
-            )}
-            {viewerIsAParty && (
-              <FieldRows>
-                <FieldRow label="Your status" value={statusSentence(whatThisStatusMeans(g?.status))} />
-                <FieldRow
-                  label="Your check-ins"
-                  value={(participants.find((p) => p.userId === user?.id)?.managingOnly) ? 'You check in when you choose. Use Check in yourself any time.' : [
-                    yourSessionsSentence(mySessionsDone, plannedSessions),
-                    /* Beside "1 of 12 sessions done" above, her own count read as the team's; the team's, as served, says which is which. */
-                    page && typeof page.teamSessionsDone === 'number' ? `The team has finished ${page.teamSessionsDone}.` : null,
-                  ].filter(Boolean).join(' ')}
+      <Section heading="How it runs">
+        <FieldRows>
+          {aSetting('often', 'How often', howOftenSays, canEditRunOrAdmin, (
+            <Stack gap={8}>
+              <FieldLabel htmlFor="how-often">How often</FieldLabel>
+              <Select id="how-often" value={cadenceKey} onChange={(e) => chooseHowOften(e.target.value)}>
+                {HOW_OFTEN.map((h) => <option key={h.key} value={h.key}>{h.label}</option>)}
+              </Select>
+              {(cadenceKey === 'weekday' || cadenceKey === 'day') && (
+                <WhichDaysTheyWork value={props.workingDaysDraft} onChange={props.setWorkingDaysDraft} explained={false} />
+              )}
+              {weeklyOrMonthly && (
+                <>
+                  <AnchorDayPicker cadence={props.cadenceDraft} anchorDay={props.anchorDayDraft} onAnchorDay={props.setAnchorDayDraft} idPrefix="people-and-setup" />
+                  <Folded summary="The days this team works">
+                    <WhichDaysTheyWork value={props.workingDaysDraft} onChange={props.setWorkingDaysDraft} explained={false} />
+                  </Folded>
+                </>
+              )}
+              {props.theTimeframeChanged && <Note>{`${props.timelineDaysDraft} days, ${n} check-in${n === 1 ? '' : 's'}.`}</Note>}
+            </Stack>
+          ))}
+          {aSetting('long', 'How long', howLongSays, canEditRunOrAdmin, (
+            <FlexRow gap={16} wrap align="flex-start">
+              <Stack gap={8}>
+                <FieldLabel htmlFor="starts">Starts</FieldLabel>
+                {props.canOfferStartDate
+                  ? <TextField id="starts" type="date" value={props.startsAtDraft} onChange={(e) => props.setStartsAtDraft(e.target.value)} />
+                  : <Text size="15" as="p">{from}</Text>}
+              </Stack>
+              <Stack gap={8}>
+                <FieldLabel htmlFor="ends">Ends</FieldLabel>
+                <TextField
+                  id="ends" type="date" autoFocus
+                  value={theEndOnTheField(props.startsAtOnRecord, props.createdAtOnRecord, props.timelineDaysDraft)}
+                  onChange={(e) => {
+                    const start = props.startsAtOnRecord ? new Date(props.startsAtOnRecord) : props.createdAtOnRecord ? new Date(props.createdAtOnRecord) : new Date()
+                    const days = Math.round((new Date(e.target.value).getTime() - start.getTime()) / 86_400_000)
+                    if (Number.isFinite(days) && days >= 1) props.setTimelineDaysDraft(days)
+                  }}
                 />
-              </FieldRows>
-            )}
-            {canEditLeadOnly ? (
-              <>
-                <FlexRow gap={8} wrap align="center">
-                  <Text size="15" as="span">Remind people after</Text>
-                  <Select aria-label="Remind people after" value={draft.remind} onChange={(e) => set('remind', e.target.value)}>
-                    {REMIND_CHOICES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-                    <option value="other">Other days</option>
-                    <option value="never">Never</option>
-                  </Select>
-                  <Text size="15" as="span">with no answer</Text>
-                </FlexRow>
-                {draft.remind === 'other' && (
-                  <Stack gap={4}>
-                    <FieldLabel htmlFor="chase-days">Remind after how many days of no answer</FieldLabel>
-                    <TextField id="chase-days" value={draft.remindOther} onChange={(e) => set('remindOther', e.target.value)} placeholder="1, 3, 7" />
-                    {!g?.chasingStopped && <Note>{chasingSentence(recordReminderDays)}</Note>}
-                  </Stack>
-                )}
-                <SwitchRow look="checkbox" title="Tell me who never started" detail="A separate note to you when somebody has not opened it at all." on={draft.tellTheLead} onChange={(on) => set('tellTheLead', on)} />
-              </>
-            ) : (
-              <FieldRows>
-                <FieldRow label="Reminders" value={g?.chasingStopped ? 'Off. Nobody is reminded.' : chasingSentence(recordReminderDays)} />
-              </FieldRows>
-            )}
-            <Explains>Never more than one reminder a day. Quiet hours end at 7am. At the last check-in, everyone is asked how this should close.</Explains>
-          </Stack>
-        </Card>
-      </Section>
-
-      {/* 5. HOW PEOPLE ANSWER */}
-      <Section heading="How people answer">
-        <Card>
-          <FieldRows>
-            <FieldRow
-              label="Where"
-              value={whatsAppHere && canEditRunOrAdmin
-                ? (
-                  <Stack gap={4}>
-                    <Select aria-label="Where people answer" value={draft.where} onChange={(e) => set('where', e.target.value)}>
-                      {WHERE.map((w) => <option key={w.key} value={w.key}>{w.label}</option>)}
-                    </Select>
-                    <Note>{WHERE.find((w) => w.key === draft.where)?.says}</Note>
-                  </Stack>
-                )
-                : whatsAppHere ? WHERE.find((w) => w.key === draft.where)?.label : 'In Groundwork only'}
-            />
-          </FieldRows>
-          {canEditRunOrAdmin && (
+              </Stack>
+            </FlexRow>
+          ), 'Give it more time')}
+          {aSetting('where', 'Where people answer', whatsAppHere ? said(WHERE.map((w) => ({ key: w.key, label: w.says })), draft.where) : 'Here, in Groundwork only.', whatsAppHere && canEditRunOrAdmin, (
+            choose('Where people answer', draft.where, WHERE, (v) => set('where', v))
+          ))}
+          {aSetting('words', 'Simpler words', draft.simplerWords ? 'On. Short sentences and everyday words, in the check-in and everything sent afterwards.' : 'Off.', canEditRunOrAdmin, (
             <SwitchRow look="checkbox" title="Use simpler words" detail="Short sentences and everyday words, in the check-in and everything sent afterwards" on={draft.simplerWords} onChange={(on) => set('simplerWords', on)} />
-          )}
-          <SwitchRow look="checkbox"
-            title="When someone is blocked"
-            detail="Ask what they’ve already tried, and offer ways through on their own report"
-            on={draft.expectsUnblocking}
-            onChange={(on) => set('expectsUnblocking', on)}
-            disabled={!canEditRunOrAdmin}
-          />
-          <Explains>
-            {draft.expectsUnblocking
-              ? `A blocker is recorded with what has already been done about it, and the person is offered ways through on their own report. ${isInitiator ? 'You see it too, as one thing to ask for.' : 'Their lead sees the same thing as one thing to ask for.'}`
-              : 'What is in their way is recorded, and nothing is asked about what they tried. For people with no standing to chase anybody, or a check-in that is there to hear what happened.'}
-          </Explains>
-        </Card>
+          ))}
+          {aSetting('remind', 'Reminders', remindersSays, canEditLeadOnly, (
+            <Stack gap={8}>
+              <FlexRow gap={8} wrap align="center">
+                <Text size="15" as="span">Remind people after</Text>
+                <Select aria-label="Remind people after" value={draft.remind} onChange={(e) => set('remind', e.target.value)}>
+                  {REMIND_CHOICES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                  <option value="other">Other days</option>
+                  <option value="never">Never</option>
+                </Select>
+                <Text size="15" as="span">with no answer</Text>
+              </FlexRow>
+              {draft.remind === 'other' && (
+                <Stack gap={4}>
+                  <FieldLabel htmlFor="chase-days">Remind after how many days of no answer</FieldLabel>
+                  <TextField id="chase-days" value={draft.remindOther} onChange={(e) => set('remindOther', e.target.value)} placeholder="1, 3, 7" />
+                </Stack>
+              )}
+              <SwitchRow look="checkbox" title="Tell me who never started" detail="A separate note to you when somebody has not opened it at all." on={draft.tellTheLead} onChange={(on) => set('tellTheLead', on)} />
+            </Stack>
+          ))}
+          {aSetting('blocked', 'When someone is blocked', draft.expectsUnblocking
+            ? 'They are asked what they have already tried, and offered ways through on their own report.'
+            : 'What is in their way is recorded, and nothing is asked about what they tried.', canEditRunOrAdmin, (
+            <SwitchRow look="checkbox" title="Ask what they’ve already tried" detail="And offer ways through on their own report" on={draft.expectsUnblocking} onChange={(on) => set('expectsUnblocking', on)} />
+          ))}
+          <TheStartingPoint groundId={id} canRecord={isInitiator} />
+        </FieldRows>
       </Section>
 
-      {/* 6. STARTING POINT */}
-      <Section heading="Starting point">
-        <Stack gap={10}>
-          <StartingPointPanel groundId={id} canRecord={isInitiator} />
-          <Explains>Recorded once, from your first check-in. It stays as written, and the board measures progress from it.</Explains>
-          {/* "What doing well looks like" is under About this work on References and resources now (Release 1B, pull request 2
-              of 3), with its versions and wording; this page is drawn only where that tab is too. */}
-        </Stack>
-      </Section>
-
-      {/* 7. WHO SEES WHAT */}
+      {/* WHO SEES WHAT */}
       <Section heading="Who sees what">
-        <Card>
-          <FieldRows>
-            <OneChoice
-              label="Each other’s check-ins" canChange={canEditRunOrAdmin} value={draft.peersVisible ? 'named' : 'unnamed'}
-              onChange={(v) => set('peersVisible', v === 'named')}
-              options={[{ key: 'named', label: 'Seen once the team’s report is shared, with names' }, { key: 'unnamed', label: 'Seen once shared, without names' }]}
-            />
-            {g?.peersVisibleToEachOther == null && (
-              <Note>{peersVisibilitySentence({ peersVisible: props.peersVisible, peersVisibleToEachOther: null, peersDefaultHidden: props.peersDefaultHidden, isInitiator, viewerIsInIt })}</Note>
-            )}
-            <OneChoice
-              label="Email addresses" canChange={canEditLeadOnly} value={draft.contactHidden ? 'hidden' : 'visible'}
-              onChange={(v) => set('contactHidden', v === 'hidden')}
-              options={[{ key: 'hidden', label: 'Hidden from each other' }, { key: 'visible', label: 'Visible, so people can contact each other' }]}
-            />
-            <OneChoice
-              label="Confirming each other’s work" canChange={canEditRunOrAdmin} value={draft.workTogether}
-              onChange={(v) => set('workTogether', v)}
-              options={[
-                ...(draft.workTogether === '' ? [{ key: '', label: 'Not said yet, so it is assumed from the kind of check-in' }] : []),
-                { key: 'yes', label: 'They see each other’s work day to day, so they can confirm it' },
-                { key: 'no', label: 'They don’t see each other’s work' },
-              ]}
-            />
-            <OneChoice
-              label="Targets" canChange={canEditRunOrAdmin} value={draft.numbersShared ? 'shared' : 'own'}
-              onChange={(v) => set('numbersShared', v === 'shared')}
-              options={[{ key: 'shared', label: 'Each person sees their own share and the team’s total' }, { key: 'own', label: 'Each person sees only their own number' }]}
-            />
-            {g?.cadence !== 'ONE_TIME' && (
-              <OneChoice
-                label="The team’s report" canChange={canEditRunOrAdmin} value={draft.sharesAt}
-                onChange={(v) => set('sharesAt', v)}
-                options={[{ key: 'you', label: 'You share it when it’s ready' }, { key: 'self', label: `It shares itself at ${g?.reportSharesAt ? clock(g.reportSharesAt) : '6:30pm'}` }]}
-              />
-            )}
-            <FieldRow
-              label="The team’s report now"
-              value={g?.report?.releasedAt
-                ? `Shared on ${whenItWas(g.report.releasedAt, 'dayAndMonthLong')}.`
-                : g?.status === 'REPORT_READY' ? 'The report is ready. It has not been shared yet.' : 'Not shared yet. Share it from the report when it is ready.'}
-            />
-            <FieldRow label="Others with access" value={page?.othersWithAccess ?? ''} />
-          </FieldRows>
-        </Card>
+        <FieldRows>
+          {aSetting('peers', 'Each other’s check-ins', `${said(peersOptions, draft.peersVisible ? 'named' : 'unnamed')}${g?.peersVisibleToEachOther == null ? ' This is the default for this kind of check-in.' : ''}`, canEditRunOrAdmin, (
+            choose('Each other’s check-ins', draft.peersVisible ? 'named' : 'unnamed', peersOptions, (v) => set('peersVisible', v === 'named'))
+          ))}
+          {aSetting('targets', 'Targets', said(targetOptions, draft.numbersShared ? 'shared' : 'own'), canEditRunOrAdmin, (
+            choose('Targets', draft.numbersShared ? 'shared' : 'own', targetOptions, (v) => set('numbersShared', v === 'shared'))
+          ))}
+          {g?.cadence !== 'ONE_TIME'
+            ? aSetting('report', 'The team’s report', `${said(reportOptions, draft.sharesAt)} ${reportNow}`, canEditRunOrAdmin, (
+              choose('The team’s report', draft.sharesAt, reportOptions, (v) => set('sharesAt', v))
+            ))
+            : <FieldRow label="The team’s report" value={reportNow} />}
+          {aSetting('contact', 'Email addresses', said(contactOptions, draft.contactHidden ? 'hidden' : 'visible'), canEditLeadOnly, (
+            choose('Email addresses', draft.contactHidden ? 'hidden' : 'visible', contactOptions, (v) => set('contactHidden', v === 'hidden'))
+          ))}
+          {aSetting('together', 'Confirming each other’s work', said(togetherOptions, draft.workTogether), canEditRunOrAdmin, (
+            choose('Confirming each other’s work', draft.workTogether, togetherOptions, (v) => set('workTogether', v))
+          ))}
+          {page?.othersWithAccess && <FieldRow label="Who else can see it" value={page.othersWithAccess} />}
+        </FieldRows>
       </Section>
 
-      {/* 8. RECENT CHANGES */}
-      <Section heading="Recent changes">
-        <Stack gap={4}>
-          {props.settingsChangeCount > 0
-            ? [...(g?.settingsChanges ?? [])].reverse().map((c: any, i: number) => <Note key={i}>{settingsChangeSentence(c)}</Note>)
-            : designPass ? <Note>No changes yet.</Note> : <Note>Changes to how long it runs and how often are noted with who made them and the date.</Note>}
-        </Stack>
+      {/* WHAT IT IS: the name, the scenario, the kind of work and the template, each one line. */}
+      <Section heading="What it is">
+        <FieldRows>
+          {aSetting('name', 'Name', g?.label ?? '', canEditRunOrAdmin, (
+            <TextField aria-label="Name" value={draft.label} onChange={(e) => set('label', e.target.value)} />
+          ))}
+          <FieldRow label="Scenario" value={g?.scenario ? scenarioLabel(g.scenario, g.brief) : 'Not set.'} />
+          {typeServed
+            ? aSetting('kind', 'Kind of work', (
+              <>
+                <span>{typeServed.offered.find((t) => t.type === typeServed.type)?.label ?? 'Nobody has said yet.'}</span>
+                {typeServed.says && <span className="ds-text-secondary">{typeServed.says}</span>}
+              </>
+            ), typeServed.mayConfirm, (
+              <Select aria-label="Kind of work" value={typeDraft} onChange={(e) => setTypeDraft(e.target.value)}>
+                {!typeDraft && <option value="">Not known yet</option>}
+                {typeServed.offered.map((t) => <option key={t.type} value={t.type}>{t.label}</option>)}
+              </Select>
+            ))
+            : aSetting('kind', 'Kind of work', page?.kindOfWork ? kindLabel(page.kindOfWork) : 'Nobody has said yet.', canEditRunOrAdmin && !!page, page ? (
+              <Select aria-label="Kind of work" value={draft.kindOfWork} onChange={(e) => set('kindOfWork', e.target.value)}>
+                <option value="">Not known yet</option>
+                {page.kindsOffered.map((k) => <option key={k} value={k}>{kindLabel(k)}</option>)}
+              </Select>
+            ) : undefined)}
+          {templatesQ.data?.on && aSetting('template', 'Template', templateName, canEditRunOrAdmin, (
+            <Stack gap={8}>
+              <Select aria-label="Template" value={g?.templateId ?? ''} disabled={attachTemplate.isPending} onChange={(e) => attachTemplate.mutate(e.target.value || null)}>
+                <option value="">None</option>
+                {templatesQ.data.templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </Select>
+              <Link to="/templates" className="gwui-plain-link">See every template, and what each tracks</Link>
+            </Stack>
+          ))}
+        </FieldRows>
       </Section>
 
-      {/* PAUSING (release test 22 November, bug 35): its lead or an admin puts it on hold and lifts the hold, here above ending it. */}
-      {(isInitiator || isOrgAdmin) && <PauseOrResume groundId={id} status={g?.status} />}
+      {/* RECENT CHANGES, only once there are some. */}
+      {props.settingsChangeCount > 0 && (
+        <Section heading="Recent changes">
+          <Stack gap={4}>
+            {[...(g?.settingsChanges ?? [])].reverse().map((c: any, i: number) => <Note key={i}>{settingsChangeSentence(c)}</Note>)}
+          </Stack>
+        </Section>
+      )}
 
-      {/* DELETING ONE PEOPLE HAVE ANSWERED (Hafsah, 22 November 2026): the record stays, so it comes off everyone's lists instead. */}
-      {(isInitiator || isOrgAdmin) && !nobodyElseAnswered && <TakeItOffEveryList groundId={id} label={g?.label} />}
-
-      {/* 9. ENDING */}
-      <Card aria-label="Ending it">
-        {isInitiator ? (
-          <Stack gap={10}>
-            <FlexRow gap={12} justify="space-between" align="center" wrap>
-              <Text size="15" as="p">
-                {nobodyElseAnswered
-                  ? 'Nobody else has answered yet, so this can still be deleted as a test. Otherwise, ending it stops new check-ins, everything stays as it is, and each person keeps their own history.'
-                  : 'Ending it stops new check-ins. Everything stays as it is, and each person keeps their own history. This can’t be undone.'}
-              </Text>
-              <FlexRow gap={8} wrap>
+      {/* ENDING IT, as one section of rows: pausing, ending early, deleting, and ending. */}
+      <Section heading="Ending it">
+        <ul className="ds-rows" aria-label="Ending it">
+          {/* PAUSING (release test 22 November, bug 35): its lead or an admin puts it on hold and lifts the hold. */}
+          {(isInitiator || isOrgAdmin) && <PauseOrResume groundId={id} status={g?.status} />}
+          {/* ENDING EARLY WITH A LAST CHECK-IN, moved here with the roster from "Who has answered": the only way to close early. */}
+          {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(g?.status) && <EndEarly groundId={id} />}
+          {/* DELETING ONE PEOPLE HAVE ANSWERED (Hafsah, 22 November 2026): the record stays, so it comes off everyone's lists instead. */}
+          {(isInitiator || isOrgAdmin) && !nobodyElseAnswered && <TakeItOffEveryList groundId={id} label={g?.label} />}
+          {isInitiator ? (
+            <li className="ds-row">
+              <div className="ds-row-main">
+                <Stack gap={8}>
+                  <p className="ds-text-secondary">
+                    {nobodyElseAnswered
+                      ? 'Nobody else has answered yet, so this can still be deleted as a test. Otherwise, ending it stops new check-ins, everything stays as it is, and each person keeps their own history.'
+                      : 'Ending it stops new check-ins. Everything stays as it is, and each person keeps their own history. This can’t be undone.'}
+                  </p>
+                  {props.deleteError && <Note tone="error">{props.deleteError}</Note>}
+                  {nobodyElseAnswered && props.confirmDelete && (
+                    <FlexRow gap={8} wrap align="center">
+                      <span>Delete "{g?.label}" for good? Everything goes, including the conversation, the check-ins and anything uploaded. This cannot be undone.</span>
+                      <Button kind="danger" disabled={props.removeGround.isPending} onClick={() => props.removeGround.mutate()}>
+                        {props.removeGround.isPending ? 'Deleting…' : 'Yes, delete it'}
+                      </Button>
+                      <Button kind="secondary" onClick={() => { props.setConfirmDelete(false); props.setDeleteError(null) }}>Keep it</Button>
+                    </FlexRow>
+                  )}
+                </Stack>
+              </div>
+              <div className="ds-row-actions">
                 {nobodyElseAnswered && !props.confirmDelete && (
                   <Button kind="secondary" redText onClick={() => { props.setDeleteError(null); props.setConfirmDelete(true) }}>Delete this test</Button>
                 )}
                 <a className="btn sec red" href={`/grounds/${id}/end`}>Decide how it ends</a>
-              </FlexRow>
-            </FlexRow>
-            {props.deleteError && <Note tone="error">{props.deleteError}</Note>}
-            {nobodyElseAnswered && props.confirmDelete && (
-              <FlexRow gap={8} wrap align="center">
-                <span>Delete "{g?.label}" for good? Everything goes, including the conversation, the check-ins and anything uploaded. This cannot be undone.</span>
-                <Button kind="danger" disabled={props.removeGround.isPending} onClick={() => props.removeGround.mutate()}>
-                  {props.removeGround.isPending ? 'Deleting…' : 'Yes, delete it'}
-                </Button>
-                <Button kind="secondary" onClick={() => { props.setConfirmDelete(false); props.setDeleteError(null) }}>Keep it</Button>
-              </FlexRow>
-            )}
-          </Stack>
-        ) : (
-          <FlexRow gap={12} justify="space-between" align="center" wrap>
-            <Text size="15" as="p">
-              {`You can't end a check-in you don't run. Ask us and we'll end it, usually the same day.`}
-              {isOrgAdmin && (props.whoIsInThisLeadName ? ` ${props.whoIsInThisLeadName} runs it, so ending it ends something they are running.` : ' Somebody else runs it, so ending it ends something they are running.')}
-            </Text>
-            <a className="btn sec red" href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(g?.label ?? '')}`}>Ask us to end this check-in</a>
-          </FlexRow>
-        )}
-      </Card>
+              </div>
+            </li>
+          ) : (
+            <li className="ds-row">
+              <p className="ds-row-main ds-text-secondary">
+                {`You can't end a check-in you don't run. Ask us and we'll end it, usually the same day.`}
+                {isOrgAdmin && (props.whoIsInThisLeadName ? ` ${props.whoIsInThisLeadName} runs it, so ending it ends something they are running.` : ' Somebody else runs it, so ending it ends something they are running.')}
+              </p>
+              <div className="ds-row-actions">
+                <a className="btn sec red" href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(g?.label ?? '')}`}>Ask us to end this check-in</a>
+              </div>
+            </li>
+          )}
+        </ul>
+      </Section>
 
       {/* THE SAVE BAR: nothing applies until it is saved. */}
       {anyChange && (
@@ -803,28 +762,47 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   )
 }
 
+/**
+ * END EARLY WITH A LAST CHECK-IN (moved here from "Who has answered" with the roster, 24 November 2026). Everyone's next check-in
+ * becomes their final one; nothing else calls beginClosingSession, so this is the only way to close early.
+ */
+function EndEarly({ groundId }: { groundId: string }) {
+  const qc = useQueryClient()
+  const [asking, setAsking] = useState(false)
+  const closing = useMutation({
+    mutationFn: () => groundsApi.beginClosingSession(groundId),
+    onSuccess: (r) => {
+      toast.success(`The last check-in has begun. ${r.participantsFlagged} ${r.participantsFlagged === 1 ? 'person' : 'people'} will do their last one.`)
+      setAsking(false)
+      qc.invalidateQueries({ queryKey: ['ground', groundId] })
+    },
+    onError: () => toast.error('The last check-in did not open. Nothing has changed for anyone. Try again.'),
+  })
+  return (
+    <li className="ds-row" aria-label="Ending early">
+      <div className="ds-row-main">
+        <Stack gap={8}>
+          <p className="ds-text-secondary">Ending early makes everyone’s next check-in their last one. The final report reads the whole record.</p>
+          {asking && (
+            <FlexRow gap={8} wrap align="center">
+              <span>End early? Everyone’s next check-in becomes their final one.</span>
+              <Button kind="danger" disabled={closing.isPending} onClick={() => closing.mutate()}>{closing.isPending ? 'Starting it…' : 'Yes, end early'}</Button>
+              <Button kind="secondary" onClick={() => setAsking(false)}>Cancel</Button>
+            </FlexRow>
+          )}
+        </Stack>
+      </div>
+      <div className="ds-row-actions">
+        {!asking && <Button kind="secondary" redText onClick={() => setAsking(true)}>End early with a last check-in</Button>}
+      </div>
+    </li>
+  )
+}
+
 function clock(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number)
   const h12 = h % 12 === 0 ? 12 : h % 12
   return `${h12}${m ? `:${String(m).padStart(2, '0')}` : ''}${h >= 12 ? 'pm' : 'am'}`
-}
-
-/** One "Who sees what" row: a choice for whoever may change it, the chosen answer as a sentence for anyone else. */
-function OneChoice({ label, value, options, onChange, canChange }: {
-  label: string
-  value: string
-  options: { key: string; label: string }[]
-  onChange: (key: string) => void
-  canChange: boolean
-}) {
-  return (
-    <FieldRow
-      label={label}
-      value={canChange
-        ? <Select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>{options.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}</Select>
-        : (options.find((o) => o.key === value)?.label ?? '')}
-    />
-  )
 }
 
 /** A person's phone number, added or changed in their row, whether WhatsApp is on or off (Hafsah, 30 October 2026). Saved at once, as today: where WhatsApp is on, adding one can send the opening there. */
@@ -907,16 +885,6 @@ function TheJoinLink({ joinToken, label, joined, onShareCode }: { joinToken: str
   )
 }
 
-/** One field of B8's "What it is" row: its label above it, small and quiet, then the field or the plain value. */
-function AFieldWithItsLabel({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="gwui-field-with-label">
-      <span className="gwui-b8-field-label">{label}</span>
-      {typeof value === 'string' ? <Text size="15" as="p">{value}</Text> : value}
-    </div>
-  )
-}
-
 /**
  * PAUSE AND RESUME A CHECK-IN (release test 22 November, bug 35: Wairimu found "Give it more time" and "Decide how it ends" and
  * nothing to hold it). The server had both doors (POST /grounds/:id/pause and /resume) but only for admins; its lead or an admin may
@@ -937,18 +905,18 @@ export function PauseOrResume({ groundId, status }: { groundId: string | undefin
   })
   if (!groundId || (!held && !live)) return null
   return (
-    <Panel as="section" aria-label="Pausing it">
-      <FlexRow gap={12} justify="space-between" align="center" wrap>
-        <Text size="15" as="p">
-          {held
-            ? 'This check-in is paused. Nobody is asked to check in and no reminders go out until you resume it. Everything already written stays as it is.'
-            : 'Pausing it stops the check-ins and reminders until you resume it. Everything already written stays as it is.'}
-        </Text>
+    <li className="ds-row" aria-label="Pausing it">
+      <p className="ds-row-main ds-text-secondary">
+        {held
+          ? 'This check-in is paused. Nobody is asked to check in and no reminders go out until you resume it. Everything already written stays as it is.'
+          : 'Pausing it stops the check-ins and reminders until you resume it. Everything already written stays as it is.'}
+      </p>
+      <div className="ds-row-actions">
         <Button kind="secondary" disabled={change.isPending} onClick={() => change.mutate()}>
           {change.isPending ? (held ? 'Resuming…' : 'Pausing…') : held ? 'Resume this check-in' : 'Pause this check-in'}
         </Button>
-      </FlexRow>
-    </Panel>
+      </div>
+    </li>
   )
 }
 
@@ -971,24 +939,26 @@ export function TakeItOffEveryList({ groundId, label }: { groundId: string | und
   })
   if (!groundId) return null
   return (
-    <Panel as="section" aria-label="Deleting it">
-      <Stack gap={10}>
-        <FlexRow gap={12} justify="space-between" align="center" wrap>
-          <Text size="15" as="p">
+    <li className="ds-row" aria-label="Deleting it">
+      <div className="ds-row-main">
+        <Stack gap={8}>
+          <p className="ds-text-secondary">
             People have already answered this check-in, so what they said is kept. You can still delete the check-in, and it will be gone from everyone's lists.
-          </Text>
-          {!asking && <Button kind="secondary" redText onClick={() => setAsking(true)}>Delete this check-in</Button>}
-        </FlexRow>
-        {asking && (
-          <FlexRow gap={8} wrap align="center">
-            <span>Delete "{label}"? It will be gone from everyone's lists, and nobody will be asked to check in again. The words people said are kept.</span>
-            <Button kind="danger" disabled={hide.isPending} onClick={() => hide.mutate()}>
-              {hide.isPending ? 'Deleting…' : 'Yes, delete it'}
-            </Button>
-            <Button kind="secondary" onClick={() => setAsking(false)}>Keep it</Button>
-          </FlexRow>
-        )}
-      </Stack>
-    </Panel>
+          </p>
+          {asking && (
+            <FlexRow gap={8} wrap align="center">
+              <span>Delete "{label}"? It will be gone from everyone's lists, and nobody will be asked to check in again. The words people said are kept.</span>
+              <Button kind="danger" disabled={hide.isPending} onClick={() => hide.mutate()}>
+                {hide.isPending ? 'Deleting…' : 'Yes, delete it'}
+              </Button>
+              <Button kind="secondary" onClick={() => setAsking(false)}>Keep it</Button>
+            </FlexRow>
+          )}
+        </Stack>
+      </div>
+      <div className="ds-row-actions">
+        {!asking && <Button kind="secondary" redText onClick={() => setAsking(true)}>Delete this check-in</Button>}
+      </div>
+    </li>
   )
 }

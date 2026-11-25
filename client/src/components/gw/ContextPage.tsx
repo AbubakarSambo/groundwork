@@ -82,6 +82,7 @@ export function ContextPage({
   role,
   viewerUserId,
   only,
+  person,
 }: {
   ground: any
   /** 'lead' is whoever runs this check-in, including an org admin reading with their eyes. */
@@ -112,7 +113,13 @@ export function ContextPage({
    * them for whoever runs the check-in ('each-person'); a member's own page no longer repeats the team (Hafsah, 24 November 2026:
    * the board already shows the team). Left out, the page is exactly as before.
    */
-  only?: 'what-moved-to-my-work' | 'each-person'
+  only?: 'what-moved-to-my-work' | 'each-person' | 'down-as-doing'
+  /**
+   * PEOPLE AND SETUP'S ONE LIST (page audit, 24 November 2026, row 2): with `only="each-person"`, one person's card on its own,
+   * opened under their row. `only="down-as-doing"` is what nobody is on yet, under the list; what a person is down as doing is on
+   * their own card.
+   */
+  person?: string
 }) {
   const id: string = ground.id
   const qc = useQueryClient()
@@ -1479,7 +1486,60 @@ export function ContextPage({
 
   /* Each part is a section of the page it is drawn on, so they sit in its column, 32px apart like every other section there. */
   if (only === 'what-moved-to-my-work') return <>{partD}{partPlan}</>
+  if (only === 'each-person' && person) {
+    const them = (ground.participants ?? []).filter((p: any) => p.id === person)
+    return (
+      <EachPerson
+        bare
+        groundId={id}
+        people={them}
+        targets={((ground as any).objectives ?? []) as any[]}
+        toDos={commitments as any[]}
+        files={(docs ?? []) as any[]}
+        asks={((ground as any).asks ?? {}) as any}
+        viewerUserId={viewerUserId}
+        isLead={isLead}
+        isTheLead={isTheLead}
+        leadFirstName={theLeadMidSentence}
+        groundLabel={groundLabel}
+        oldChatIsOpen={oldChatIsOpen}
+        askName={askName}
+        onChangeInChat={isTheLead && contextEnabled ? changeThisInTheChat : undefined}
+        onUploadFor={(_pid, ask) => {
+          setAttachingFor(ask?.what ?? null)
+          document.getElementById('ga-doc-upload')?.click()
+        }}
+        onSetToDo={(itemId, status) => setMyToDo.mutate({ itemId, status })}
+      />
+    )
+  }
   if (only === 'each-person') return <>{partF}{partH}</>
+  if (only === 'down-as-doing') {
+    const nobodysYet = commitments.filter((c: any) => !c.participantId)
+    return (
+      <>
+        {nobodysYet.length > 0 && (
+          <ul className="ds-rows" aria-label="Down as doing, with nobody on it">
+            {nobodysYet.map((c: any) => (
+              <li key={c.id} className="ds-row">
+                <div className="ds-row-main">
+                  <p className="ds-text-body">{c.text}</p>
+                  <p className="ds-text-meta">{['Nobody is on this yet.', c.whenSaid, !c.explicit ? (isTheLead ? 'These are your words.' : `These are ${theLeadMidSentence}’s words.`) : null].filter(Boolean).join(' ')}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {isTheLead && contextEnabled && (
+          <p className="ds-text-secondary">
+            <button type="button" className="gwui-plain-link" onClick={() => changeThisInTheChat('On the call today, ', `Something was agreed on a call today for ${groundLabel}. I want to add it to this check-in.`)}>
+              Add something agreed on a call
+            </button>
+          </p>
+        )}
+      </>
+    )
+  }
 
   return (
     <div>

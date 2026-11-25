@@ -62,7 +62,9 @@ describe('request 101 (a) and (b): the shared picture carries no reading about a
 
   it('Amani reads the picture of session 1 as plain sentences', async () => {
     const read = await bothSessionsAs('sales', 'u-amani');
-    expect(read.one.pictureLines[0]).toBe('4 of 4 people have answered this session. There is enough here to talk about.');
+    /* Changed 24 November (page audit, row 6): the count and how much it can rely on are said once each, in their own places, not
+       as the picture's first line. */
+    expect(read.one.pictureLines.join(' ')).not.toMatch(/people have answered this session|There is enough here to talk about/);
     for (const line of read.one.pictureLines) expect(line).toMatch(/^[A-Z0-9].*[.?]$/);
   });
 
@@ -79,7 +81,9 @@ describe('request 101 (a) and (b): the shared picture carries no reading about a
 describe('request 101 (d): the reader is "you" about themselves', () => {
   it('Rukia reads "You make a decision on the discount." and never her own name doing it', async () => {
     const read = await bothSessionsAs('sales', 'u-rukia');
-    expect(read.one.theConversationWorthHaving).toBe('You make a decision on the discount. That is what settles who decides the discount.');
+    /* Changed 24 November (page audit, row 6): a difference is said once, where things stand, never again as the question. */
+    expect(read.one.theConversationWorthHaving).toBeNull()
+    expect(read.strings.join(' ')).toMatch(/You make a decision on the discount/);
     expect(read.strings.filter((s) => /Rukia Otieno (?:makes|is waiting|has not said)/.test(s))).toEqual([]);
     expect(read.strings.join(' ')).toMatch(/Amani Wekesa is waiting on you for/);
   });
@@ -88,7 +92,8 @@ describe('request 101 (d): the reader is "you" about themselves', () => {
     '%s reads Rukia by her name, since it is not about them',
     async (_who, userId) => {
       const read = await bothSessionsAs('sales', userId);
-      expect(read.one.theConversationWorthHaving).toBe('Rukia Otieno makes a decision on the discount. That is what settles who decides the discount.');
+      expect(read.one.theConversationWorthHaving).toBeNull()
+      expect(read.strings.join(' ')).toMatch(/Rukia Otieno makes a decision on the discount/);
       expect(read.strings.join(' ')).not.toMatch(/\byou make a decision\b/i);
     },
   );

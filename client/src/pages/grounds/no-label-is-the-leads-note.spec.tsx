@@ -122,9 +122,9 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
     /* My work opens the B7 page for a lead too (batch 1, group 10); the roster is behind "Who has answered" inside it. */
     expect(openTab(/^My work$/)).toBe(true)
     fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
-    await waitFor(() => expect(screen.getAllByText('One colleague').length).toBeGreaterThan(0))
-    expect(screen.getAllByText('Another colleague').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('A third colleague').length).toBeGreaterThan(0)
+    /* "Who has answered" opens People and setup's one list now (page audit, 24 November 2026, row 8), which names somebody with no
+       name and no address the way People and setup always has (nameWithoutGuessing); never by the lead's note. */
+    await waitFor(() => expect(screen.getAllByText('Somebody invited by email').length).toBe(3))
     /* The lead reads their own note, beside the name, and says it is theirs. */
     expect(noNoteAsAName('lead, check-ins').length).toBeGreaterThan(0)
 

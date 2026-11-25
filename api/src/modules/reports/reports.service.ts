@@ -2500,18 +2500,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
       .filter((f): f is NonNullable<typeof f> => !!f);
     const howManyDifferences = Array.isArray((result as any).divergences) ? (result as any).divergences.length : 0;
     /*
-     * HOW MANY ANSWERED, NOT HOW MANY WERE WRITTEN UP, AND THEY ARE NOT THE SAME NUMBER.
-     *
-     * This passed `findings.length` as the count of people who answered, so the sentence was always
-     * "N of N people have given an account" - true by construction and therefore saying nothing. On
-     * the live open link it read "6 of 6" on the same page as a table headed "9 people answered this
-     * check-in": a person whose answer produced no finding is still a person who answered.
-     */
-    const peopleWhoAnswered = await (this.prisma.checkIn?.findMany?.({
-      where: { groundId, status: CheckInStatus.COMPLETED, AND: [NOT_A_QUIET_CLOSE], },
-      select: { participantId: true },
-    }) ?? Promise.resolve([] as any[])).then((rows: any[]) => new Set(rows.map((r) => r.participantId)).size).catch(() => findings.length);
-    /*
      * AND NOW SOMETHING THAT CAN READ WRITES IT. See the-picture-in-plain-sentences.
      *
      * What stood here joined slot names to raw answers - "said this was for:", "Where they say they
@@ -2526,32 +2514,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
       .filter((t: any): t is string => typeof t === 'string' && !!t.trim())
       .slice(0, 4);
     /*
-     * THE SAME PEOPLE AS THE CHECK-IN'S HEADER, FOR THIS ROUND. Hafsah, 28 September 2026. This counted
-     * everybody who had ever finished a check-in, the lead included, against everybody but a lead who
-     * only asks, so the two numbers were of different people ("Four of the 6" beside a header saying
-     * something else). Now both count who is in the round by the header's rule (whoIsInTheRound),
-     * and "answered" is who answered this round.
+     * WHO ANSWERED THIS ROUND, FROM THE ONE COUNT (howManyHaveAnswered), the count the board, the check-in page and the reports'
+     * headers read. This kept a copy of that rule, and when its copy found nobody it fell back on everybody who had ever answered, so
+     * the report on check-in 4 opened "All thirteen people have given an update." on the board that said "7 of 13 people have answered
+     * this check-in." (page audit, 24 November, row 1). Who answered, and who was invited and has not joined, are the count's own.
      */
-    const answeredThisRound = new Set(
-      ((await (this.prisma.checkIn?.findMany?.({
-        where: { groundId, sessionNumber: roundNow, status: { in: AN_ANSWER }, AND: [NOT_A_QUIET_CLOSE], },
-        select: { participantId: true },
-      }) ?? Promise.resolve([] as any[])).catch(() => [] as any[])) as any[]).map((r: any) => r.participantId),
-    );
-    /* Somebody away, who has not answered, is not in the count (week 23). */
-    const awayThisRound = await whoOnACheckInIsAway(this.prisma, groundId);
-    /* Nobody an admin has not let in yet is in the count (decision 77). */
-    const notLetInThisRound = await whoIsNotLetInYet(this.prisma, parties as any[]);
-    /* Nor anybody invited who has not joined yet (Hafsah, 13 October): not counted, and not in the judgement's room below. */
-    const notJoinedThisRound = await whoHasNotJoinedYet(this.prisma, parties as any[]).catch(() => new Set<string>());
-    const inTheRound = whoIsInTheRound(
-      (parties as any[]).map((p: any) => ({ ...p, notLetIn: notLetInThisRound.has(p.id), notJoinedYet: notJoinedThisRound.has(p.id), awayUntil: awayThisRound.get(p.id) ?? null, checkIns: answeredThisRound.has(p.id) ? [{ status: 'COMPLETED', sessionNumber: roundNow }] : [] })),
-      roundNow,
-      (ground as any).scenario,
-    );
-    const inRoundIds = new Set(inTheRound.map((p: any) => p.id));
-    const answered = [...answeredThisRound].filter((id) => inRoundIds.has(id)).length || Math.min(peopleWhoAnswered, inTheRound.length);
-    const expected = inTheRound.length || answered;
+    const theCount = await howManyHaveAnswered(this.prisma, groundId, roundNow);
+    const answered = theCount.answered;
+    const expected = theCount.expected;
+    /* Invited, not joined, and not answered: not in the judgement's room below (Hafsah, 13 October). */
+    const notJoinedThisRound = new Set(theCount.notJoinedIds);
     /*
      * AND THE SECOND READ, WHERE THERE ARE ENOUGH SEPARATE ACCOUNTS FOR IT TO MEAN ANYTHING.
      *
@@ -2704,7 +2676,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
        * "3 of 4 are blocked" about three people in three different situations. See thisIsARoom.
        */
       /* Somebody invited who has not joined yet is not in the room: nothing is asked of them yet (Hafsah, 13 October). */
-      people: (parties as any[]).filter((p) => !p.managingOnly && !(notJoinedThisRound.has(p.id) && !answeredThisRound.has(p.id))).map((p) => ({
+      people: (parties as any[]).filter((p) => !p.managingOnly && !notJoinedThisRound.has(p.id)).map((p) => ({
         who: labelById.get(p.id) ?? 'a party',
         isLead: p.partyType === PartyType.INITIATOR,
         role: (p.remitAsGiven ?? p.roleAsDescribed ?? null) as string | null,
@@ -4312,7 +4284,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
            endpoint took ten seconds and the page waited on it before drawing the shared half. */
         const [worded, wordedQ] = await Promise.all([
           this.phrase('the picture from everybody', drafts),
-          question ? this.phrase('the conversation worth having', [question]) : Promise.resolve({} as Record<string, string>),
+          question && question.key === 'question' ? this.phrase('the conversation worth having', [question]) : Promise.resolve({} as Record<string, string>),
         ]);
         const pictureLines = drafts.map((d) => worded[d.key] ?? d.text);
         /* Keyed as well, so the page can lead with the finding and leave out the lines the tiles and
@@ -4357,7 +4329,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
           ? {
             key: findingKey,
             text: picture.find((l) => l.key === findingKey)!.text,
-            basis: picture.find((l) => l.key === 'basis')?.text ?? null,
             wouldHaveSurfaced: wouldHaveSurfaced?.say ?? null,
           }
           : null;
@@ -4369,7 +4340,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
           sharedPicture: drafts.length ? pictureLines.join(' ') : null,
           pictureBasis: drafts.length ? 'engines' : 'none',
           /* An old row's field names come out and a sentence said twice is said once (journey walk rows 1 and 2; no-field-names-on-the-page.ts). */
-          theConversationWorthHaving: question ? readableWithoutFieldNames(wordedQ.question ?? question.text) : null,
+          /* A question drawn from the difference is not said again: the difference is said once, where things stand (page audit, 24 November, row 6). */
+          theConversationWorthHaving: question && question.key === 'question' ? readableWithoutFieldNames(wordedQ.question ?? question.text) : null,
           /* How the question is found is the lead's method; a participant with none is told nothing about it. */
           whyNoQuestion: question || oneTime || !viewerIsLead ? null : WHY_NO_QUESTION,
           /* The direction itself, for the page to draw as lists. Null off a discovery ground. */

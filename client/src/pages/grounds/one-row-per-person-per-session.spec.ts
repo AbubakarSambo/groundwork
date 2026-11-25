@@ -22,19 +22,17 @@ import path from 'path'
  * anybody had more than one session; it only became visible once something true stood next to it.
  */
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const CODE = readFileSync(path.join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
+/* The roster is People and setup's one list of people now (page audit, 24 November 2026, row 8, approved by Hafsah): each person's
+   row carries their check-in dots. Its status is said once, by the row's own sentence, so the dot-row label ("Some check-ins done,
+   some still open") went; "No expectation set for them yet." is left off when nothing is set; and what is expected of them is on
+   their card under the row, opened from "···", rather than a link to another tab. */
+const CODE = readFileSync(path.join(__dirname, 'PeopleAndSetupAsPictured.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/^\s*\/\/.*$/gm, '')
 
 describe('one row per person, one cell per session', () => {
   it('a row carries every session that person has', () => {
-    expect(CODE).toMatch(/const theirSessions = \[\.\.\.\(ground\.checkIns \?\? \[\]\)\]/)
-    /*
-     * B-080: WIDENED, NOT NARROWED. A set-up row (`isSetup: true`) is not a session - the same rule
-     * `sessionsDoneBy` already applies to "Your sessions" - so it is now excluded here too; without
-     * it, a lead who only manages and never checks in read "Some sessions done, some still open"
-     * from her one completed set-up row alone. Every *real* session that person has is still here.
-     */
+    expect(CODE).toMatch(/const theirSessions = \[\.\.\.\(g\?\.checkIns \?\? \[\]\)\]/)
     expect(CODE).toMatch(/\.filter\(\(c: any\) => c\.participantId === p\.id && !c\.isSetup\)/)
   })
 
@@ -42,74 +40,19 @@ describe('one row per person, one cell per session', () => {
     expect(CODE).toMatch(/\(a\.sessionNumber \?\? 0\) - \(b\.sessionNumber \?\? 0\)/)
   })
 
-  /**
-   * THE CONTRADICTION THIS FOUND. A row's overall state has to be read from all of that person's
-   * sessions; from one of them it is a guess that happens to be right when there is only one.
-   */
-  it('the row state comes from all their sessions, not from one', () => {
-    expect(CODE).toMatch(/theirSessions\.every\(\(c: any\) => c\.status === 'COMPLETED'\)/)
-    expect(CODE).toMatch(/theirSessions\.some\(\(c: any\) => c\.status === 'IN_PROGRESS'\)/)
-  })
-
-  /** Half-done is its own state, and it is the one the old label got wrong. */
-  it('and says so when some are done and some are not', () => {
-    expect(CODE).toContain('Some check-ins done, some still open')
-  })
-
-  /**
-   * The two things the cells replaced are gone, not left alongside. Keeping either would put the
-   * same numbers on the screen twice, which is what the tab already suffered from.
-   */
   it('the three stat tiles are gone, because the header carries that line', () => {
     expect(CODE).not.toContain('label="This round"')
     expect(CODE).not.toContain('label="Still to come"')
   })
 
-  it('and the flat run of session cards is gone', () => {
-    expect(CODE).not.toMatch(/Session \{ci\.sessionNumber\}\{isMine \? ' ·  yours' : ''\}/)
+  it('only your own sessions are clickable, finished ones too', () => {
+    expect(CODE).toMatch(/disabled=\{!isSelf\}/)
+    expect(CODE).not.toMatch(/isSelf && !done/)
   })
 
-  /**
-   * Only your own unfinished session is openable from here. Somebody else's check-in is not yours to
-   * walk into, and a finished one is not reopened by clicking a cell.
-   */
-  it('only your own sessions are clickable, and now the finished ones too', () => {
-    /*
-     * IT USED TO BE `&& !done`, which made your own COMPLETED session the one cell you could not
-     * click - and that is where your private report lives. Reported as "I cannot find the report
-     * that popped up after I was done with my first check-in, once it closes I have no idea where
-     * it went." It is not in the Report tab and never was: that tab holds the SHARED report, which
-     * does not exist until everyone has checked in.
-     *
-     * The wall is unchanged and is what the condition is actually for: somebody else's session is
-     * never clickable, finished or not.
-     */
-    expect(CODE).toMatch(/const isMine = p\.userId === user\?\.id\b(?!\s*&&\s*!done)/)
-    expect(CODE).not.toMatch(/const isMine = p\.userId === user\?\.id && !done/)
-  })
-
-  it('and says what opening a finished one gives you', () => {
-    /* A cell that becomes clickable without saying why is a cell people do not click. */
-    expect(CODE).toContain('yours, open it to read your report')
-  })
-
-  /** The expectation state on the row - and the words themselves live on Context, not here. */
-  it('each row says whether anything is expected of them, and whether they have seen it', () => {
-    /**
-     * REVIEW ROUND 3, ITEM 5: A SENTENCE, CAPITALISED, WITH A FULL STOP - it read as a lowercase
-     * fragment trailing off the sessions row above it.
-     */
-    expect(CODE).toContain(/* Names its subject now: it sat under a sessions line and read as contradicting it. */ 'No expectation set for them yet.')
-    expect(CODE).toContain('Expectation set. They have seen it.')
-    expect(CODE).toContain('Expectation set. Not seen yet.')
-  })
-
-  /**
-   * The state is here; the words are on Context, published where everyone reads them. A row that
-   * summarised the expectation instead of pointing at it would be a second copy of something whose
-   * whole purpose is to exist in one place, in plain view.
-   */
-  it('and the state opens the tab where the words actually live', () => {
-    expect(CODE).toMatch(/onClick=\{\(\) => setTab\('docs'\)\}/)
+  it('each row says whether something is expected of them, and whether they have seen it, and nothing when nothing is', () => {
+    expect(CODE).toContain('Their expectation is set. They have seen it.')
+    expect(CODE).toContain('Their expectation is set. They have not seen it yet.')
+    expect(CODE).not.toContain('No expectation set for them yet.')
   })
 })

@@ -20,7 +20,8 @@ import { YouAreIn } from '@/pages/today/YouAreIn'
  * docs/prototype/screens/C1-today-and-check-ins/check-ins.txt:
  *
  *   "Check-ins"
- *   "Every check-in you run or take part in. Each has its own board."
+ *   (The prototype's line under the title, "Every check-in you run or take part in. Each has its own board.", is left out: it explains
+ *   the screen. Page audit row 14, Hafsah, 24 November 2026.)
  *   "You run"  "3 open"     "You're in"  "2 open"     "Finished"
  *   "Check-in"  "What it's for"  "Needs you"  "Where it stands"
  *   "You see these boards as a participant: the team's picture once it's shared, and your own part in full."
@@ -146,7 +147,6 @@ export function GroundsListPage() {
     <Page>
       <PageTitle
         title="Check-ins"
-        subtitle="Every check-in you run or take part in. Each has its own board."
         action={
           /* A signed-in person starts one at /start?new=1, never the anonymous entry chat. */
           user?.mayOpenCheckIns !== false && <Button to="/start?new=1">Start a check-in</Button>

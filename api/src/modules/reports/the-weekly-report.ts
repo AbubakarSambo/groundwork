@@ -432,7 +432,10 @@ export function aHandoffThatCleared(d: AWeeksHandoff, who: string, onWhom: strin
     const theySaid = theirs ? ` ${on.charAt(0).toUpperCase()}${on.slice(1)} said, "${theirs}."` : '';
     return `${who} said the work was waiting on ${on} ${forWhat}, and it is no longer waiting.${note ? ` ${note}` : ''}${theySaid}`;
   }
-  return `${who} ${who === 'You' ? 'are' : 'is'} no longer waiting${onWhom ? ` on ${onWhom}` : ''} ${forWhat}.`;
+  /* Where the wait's "on" is the thing itself, nobody else is named: "Juma Test is no longer waiting on the price list for the price
+     list." was read on Today (page audit, 24 November, row 12). It is "no longer waiting for the price list". */
+  const onSomebodyElse = onWhom && inASentence(onWhom).toLowerCase() !== what.toLowerCase() ? onWhom : null;
+  return `${who} ${who === 'You' ? 'are' : 'is'} no longer waiting${onSomebodyElse ? ` on ${onSomebodyElse}` : ''} ${forWhat}.`;
 }
 
 /**

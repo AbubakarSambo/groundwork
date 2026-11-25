@@ -37,6 +37,11 @@ const RECORD_ROWS = [
   { id: 'r2', participantId: 'pid-1', participant: { id: 'pid-1' }, checkIn: { sessionNumber: 2 }, type: 'PROGRESS', text: WAIRIMU_SAID, disputedAt: null, saidWordForWord: true, createdAt: new Date() },
 ];
 
+const CHECK_INS = [
+  { participantId: 'pid-1', sessionNumber: 2, status: 'COMPLETED', closedReason: null, turns: [] as any[] },
+  { participantId: 'pid-2', sessionNumber: 2, status: 'COMPLETED', closedReason: null, turns: [] as any[] },
+];
+
 function harness() {
   const upserts: any[] = [];
   const any = () => jest.fn(async () => [] as any[]);
@@ -52,7 +57,10 @@ function harness() {
     },
     user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'o1' })) },
     groundParticipant: {
-      findMany: jest.fn(async (args: any) => (args?.select?.checkIns ? PARTICIPANTS.map((p) => ({ ...p, checkIns: [] })) : PARTICIPANTS)),
+      /* Each person's own check-ins on the relation, as the database returns them: the report counts the round through the one count (howManyHaveAnswered). */
+      findMany: jest.fn(async (args: any) => (args?.select?.checkIns
+        ? PARTICIPANTS.map((p) => ({ ...p, checkIns: CHECK_INS.filter((c) => c.participantId === p.id && (args.select.checkIns.where?.sessionNumber === undefined || c.sessionNumber === args.select.checkIns.where.sessionNumber)) }))
+        : PARTICIPANTS)),
       findFirst: jest.fn(async () => null),
     },
     recordEntry: {
@@ -62,10 +70,9 @@ function harness() {
     groundDependency: { findMany: jest.fn(async () => [{ triedSaid: null, what: 'the final prices', fromParticipantId: 'pid-2', onParticipantId: null, onLabel: 'Fatuma', status: 'WAITING', createdAt: new Date('2026-10-11'), escalatedAt: new Date('2026-10-25') }]), count: jest.fn(async () => 1) },
     checkIn: {
       count: jest.fn(async () => 2),
-      findMany: jest.fn(async () => [
-        { participantId: 'pid-1', sessionNumber: 2, status: 'COMPLETED', turns: [] },
-        { participantId: 'pid-2', sessionNumber: 2, status: 'COMPLETED', turns: [] },
-      ]),
+      findMany: jest.fn(async () => CHECK_INS),
+      /* The round is the highest session somebody has finished, as the database works it out. */
+      aggregate: jest.fn(async () => ({ _max: { sessionNumber: 2 } })),
       findFirst: jest.fn(async () => ({ specificityDimensions: null, sessionNumber: 2 })),
     },
     groundDocument: { count: jest.fn(async () => 0), groupBy: any(), findMany: any() },

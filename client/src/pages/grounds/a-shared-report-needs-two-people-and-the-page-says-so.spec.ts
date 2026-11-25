@@ -41,7 +41,8 @@ describe('a check-in with one person on it', () => {
      * quiet text link is .gwui-plain-link") - same click handler, same place, no `kit.tsx` import
      * left anywhere in this tab.
      */
-    expect(report).toMatch(/className="gwui-plain-link" onClick=\{\(\) => setTab\('checkins'\)\}/)
+    /* The list of people is People and setup's now (page audit, 24 November 2026, row 8), so the link opens it. */
+    expect(report).toMatch(/className="gwui-plain-link" onClick=\{\(\) => setTab\('settings'\)\}/)
     expect(report).not.toMatch(/<TextAction/)
   })
 

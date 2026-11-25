@@ -33,7 +33,8 @@ describe('what the picture is made of', () => {
   const all = lines.map((l) => l.text).join('\n');
 
   it('every line traces to an engine output that was handed in', () => {
-    expect(all).toContain(base.confidence.saying);
+    /* Changed 24 November (page audit, row 6): how much there is to go on is said once, in its own place, not as a line of the picture. */
+    expect(all).not.toContain(base.confidence.saying);
     expect(all).toContain('Repeated future-tense promises without completions.');
     /* Its own sentence now, after the names, never after a colon (request 101 a). */
     expect(all).toContain('This is true of Tunde. Work in this remit is described by others more than by its owner.');

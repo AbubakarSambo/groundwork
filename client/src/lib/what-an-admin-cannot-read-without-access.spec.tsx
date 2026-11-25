@@ -45,7 +45,7 @@ describe('one sentence for what an admin cannot read without access', () => {
     useAuthStore.setState({ user: { id: 'u1', role: 'ADMIN', organizationName: 'Kijani Foods' } } as any)
     ;(apiClient.get as any).mockResolvedValue({ data: { data: { people: 1, admins: 1, checkIns: 0, paying: false, connected: false } } })
     render(withQueryClient(<AdminFirstRun />))
-    expect(await screen.findByRole('region', { name: 'Welcome' })).toBeTruthy()
+    expect(await screen.findByText(/You’re an admin\./)).toBeTruthy()
     expect(document.body.textContent).not.toContain(WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS)
   })
 })

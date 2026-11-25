@@ -71,15 +71,9 @@ describe('a person is "every session done" only when there is nothing still to c
     }))
     ;(groundsApi.get as any).mockResolvedValue(g)
     renderPage()
+    /* Changed (page audit, 24 November 2026, rows 2 and 8): a row's status is said once, by its sentence, so the "Every check-in done"
+       label went; each of her six check-ins reads as done on its own dot instead. */
     await waitFor(() => expect(screen.getAllByText(/Esther - Quarterly/i).length).toBeGreaterThan(0))
-    await waitFor(() => expect(screen.getByText('Every check-in done')).toBeTruthy())
-  })
-
-  it('says somebody is done once the check-in has ended, even with sessions left unplanned', async () => {
-    const g = groundOneOfSix('RESOLVED')
-    ;(groundsApi.get as any).mockResolvedValue(g)
-    renderPage()
-    await waitFor(() => expect(screen.getAllByText(/Esther - Quarterly/i).length).toBeGreaterThan(0))
-    await waitFor(() => expect(screen.getByText('Every check-in done')).toBeTruthy())
+    await waitFor(() => expect(screen.getAllByLabelText(/^Check-in \d: completed/).length).toBe(6))
   })
 })
