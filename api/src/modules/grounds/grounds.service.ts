@@ -834,13 +834,11 @@ export class GroundsService {
            a-cohort-is-not-a-payroll. */
         freeParticipantCap: dto.freeParticipantCap ?? howManyTheFreePlanCovers(dto.scenario, DEFAULT_FREE_MEMBER_LIMIT),
         isFreeGround,
-        /* One session in hand, unless the free plan has stopped for this organisation (U.19). */
-        sessionsBalance: canCreate.sessionsToStart ?? 1,
+        /* No free session in hand: the free plan is the free trial, which is cover (22 November 2026). */
+        sessionsBalance: 0,
         ...(canCreate.freeReason === 'ACCESS_CODE' && canCreate.codeId
           ? { accessCodeId: canCreate.codeId, freeReason: 'ACCESS_CODE' }
-          : canCreate.freeReason === 'FREE_TIER'
-            ? { freeReason: 'FREE_TIER' }
-            : {}),
+          : {}),
       };
 
       const ground = await tx.ground.create({ data: groundData as any });
@@ -1036,8 +1034,7 @@ export class GroundsService {
           joinToken: crypto.randomBytes(24).toString('hex'),
           freeParticipantCap: howManyTheFreePlanCovers(dto.scenario, DEFAULT_FREE_MEMBER_LIMIT),
           isFreeGround,
-          sessionsBalance: canCreate.sessionsToStart ?? 1,
-          ...(canCreate.freeReason === 'FREE_TIER' ? { freeReason: 'FREE_TIER' } : {}),
+          sessionsBalance: 0,
         } as any,
       });
 
@@ -2754,7 +2751,7 @@ export class GroundsService {
 
     const org = await this.prisma.organization.findUnique({
       where: { id: ground.organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true, freeExtensionUsed: true },
+      select: { subscriptionPlan: true, subscriptionStatus: true },
     });
 
     // Only worth computing before the report exists (or before the current

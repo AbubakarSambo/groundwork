@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData, PANEL_RANGES, type PanelRange, type Rate, type ActivationFunnel, type ActivationStage, type ActivationNowBucket, type ActivationEmailOutcome, type ParticipantActivation, type ParticipantReachedStep, type ParticipantStuckBucket } from '@/api/prompts'
-import { adminApi, type DailyUsage, type PricingPlanRow, type InboundMessage, type CallRequestRow, type CoachingBatch } from '@/api/admin'
+import { adminApi, type DailyUsage, type PricingPlanRow, type InboundMessage, type CallRequestRow } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 import { coachApi, type CoachRequestRow } from '@/api/coach'
@@ -107,22 +107,11 @@ function WhatsAppToggle() {
 }
 
 /**
- * THE COACHING BLOCK, AND THE SWITCH THAT LETS IT REACH A PROMPT.
- *
- * The setting existed, the read-before-you-decide route existed, and neither had a page: the switch
- * could only be thrown in SQL, and the batch it says to read first could only be read with curl
- * (fix plan B12). The rows come first, the switch second, in the order the route's own summary
- * gives them.
+ * THE COACHING READS. Coaching is always on (Hafsah, 22 November 2026): there is no switch, only what it has read so far.
  */
-function CoachingSwitch() {
-  const qc = useQueryClient()
+function CoachingReads() {
   const { data, isLoading, error, refetch } = useQuery({ queryKey: ['admin-coaching'], queryFn: adminApi.getCoaching })
   const [open, setOpen] = useState(false)
-  const toggle = useMutation({
-    mutationFn: (live: boolean) => adminApi.setCoachingLive(live),
-    onSuccess: (r) => qc.setQueryData(['admin-coaching'], (old: CoachingBatch | undefined) => old ? { ...old, live: r.live } : old),
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That could not be changed.'),
-  })
   if (isLoading) return null
   if (error || !data) return <SectionFailed what="Coaching" error={error} retry={() => refetch()} />
   return (
@@ -133,25 +122,9 @@ function CoachingSwitch() {
           <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
             The coach's read of where each person is, and what it would say next. {data.count === 0
               ? 'Nothing has been read yet.'
-              : `${data.count} ${data.count === 1 ? 'read' : 'reads'} so far. Read them before turning this on.`}
+              : `${data.count} ${data.count === 1 ? 'read' : 'reads'} so far.`} Coaching is always on.
           </div>
         </div>
-        <button className="gwui-tap-target"
-          type="button"
-          onClick={() => toggle.mutate(!data.live)}
-          disabled={toggle.isPending}
-          style={{
-            width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-            background: data.live ? 'var(--gw-navy)' : 'var(--gw-border)',
-            position: 'relative', flexShrink: 0, marginLeft: 16,
-          }}
-          aria-label={data.live ? 'Turn off coaching' : 'Turn on coaching'}
-        >
-          <span style={{ position: 'absolute', top: 3, left: data.live ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
-        </button>
-      </div>
-      <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.live ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
-        {data.live ? 'Live: the block reaches the prompt' : 'Off: read, never said'}
       </div>
       {data.count > 0 && (
         <div style={{ marginTop: 10 }}>
@@ -554,167 +527,6 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
 }
 
 /**
- * HOW MANY PEOPLE A FREE ORGANISATION MAY HAVE.
- *
- * The second free limit, and the one the pricing page now advertises: "10 free check-ins, for
- * teams of 5 or fewer". It lives in `platform_settings` beside the check-in limit because it is
- * the same decision and the same shape, one number for the whole platform.
- *
- * THE COUNT INCLUDES THE ACCOUNT CREATOR. Said on this screen as well as in the refusal message,
- * because an admin setting "5" here will otherwise assume it means five invitations.
- *
- * Lowering it never removes anybody. The limit is only consulted when somebody NEW is invited, so
- * an organisation already above it keeps every member and is simply unable to add more.
- */
-function FreeMemberLimitRow() {
-  const qc = useQueryClient()
-  const { data } = useQuery({ queryKey: ['admin-free-member-limit'], queryFn: adminApi.getFreeMemberLimit })
-  const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState('')
-  const [err, setErr] = useState<string | null>(null)
-
-  const save = useMutation({
-    mutationFn: () => {
-      const n = Number(value)
-      if (!value.trim() || !Number.isInteger(n) || n < 1) {
-        throw new Error('That needs to be a whole number of people, at least 1.')
-      }
-      return adminApi.setFreeMemberLimit(n)
-    },
-    onSuccess: (res) => {
-      qc.setQueryData(['admin-free-member-limit'], res)
-      /** Every surface that quotes the free team size reads this through the pricing endpoint. */
-      qc.invalidateQueries({ queryKey: ['public-pricing'] })
-      setEditing(false)
-      setErr(null)
-      toast.success(`Free accounts now cover ${res.freeMemberLimit} people, the creator included. Nobody already on an account is removed.`)
-    },
-    onError: (e: Error) => setErr(e.message),
-  })
-
-  if (!data) return null
-
-  return (
-    <div style={{ ...C, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>Free team size</div>
-        <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 2 }}>
-          People allowed on a free account, counting the person who created it
-        </div>
-        {err && <div style={{ fontSize: 11, color: 'var(--gw-red-t)', marginTop: 3 }}>{err}</div>}
-      </div>
-      {editing ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <input
-            autoFocus
-            value={value}
-            onChange={e => setValue(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') save.mutate(); if (e.key === 'Escape') { setEditing(false); setErr(null) } }}
-            style={{ width: 64, padding: '5px 7px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
-          />
-          <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>people</span>
-          <button className="btn pri sm"
-            onClick={() => save.mutate()}
-            disabled={save.isPending}
-          >
-            Save
-          </button>
-          <button
-            onClick={() => { setEditing(false); setErr(null) }}
-            style={{ padding: '5px 10px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            Cancel
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.freeMemberLimit}</span>
-          <button className="btn sec sm"
-            onClick={() => { setValue(String(data.freeMemberLimit)); setEditing(true) }}
-          >
-            Edit
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
- * HOW MANY GROUNDS BEFORE SOMEBODY HAS TO PAY.
- *
- * The other half of pricing, and it was the harder one to change: a hardcoded 10 in the API, a
- * second hardcoded 10 in the client, and the words "10 Grounds" written out across three builds.
- * It sits with the plan prices because it is the same decision - what the free tier is worth.
- */
-function FreeGroundLimitRow() {
-  const qc = useQueryClient()
-  const { data } = useQuery({ queryKey: ['admin-free-ground-limit'], queryFn: adminApi.getFreeGroundLimit })
-  const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState('')
-  const [err, setErr] = useState<string | null>(null)
-
-  const save = useMutation({
-    mutationFn: () => {
-      const n = Number(value)
-      if (!value.trim() || !Number.isInteger(n)) throw new Error('That needs to be a whole number of check-ins.')
-      return adminApi.setFreeGroundLimit(n)
-    },
-    onSuccess: (res) => {
-      qc.setQueryData(['admin-free-ground-limit'], res)
-      /** The pricing page reads this too, so it must not keep showing the old number. */
-      qc.invalidateQueries({ queryKey: ['public-pricing'] })
-      setEditing(false); setErr(null)
-    },
-    onError: (e: any) => setErr(e?.response?.data?.message ?? e?.message ?? 'Could not save.'),
-  })
-
-  if (!data) return null
-  return (
-    <div style={{ ...C, padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 700 }}>Free check-ins</div>
-        <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 1 }}>
-          Before an organisation needs a subscription. Zero means no free tier.
-        </div>
-        {err && <div style={{ fontSize: 12, color: 'var(--gw-red-b)', marginTop: 4 }}>{err}</div>}
-      </div>
-      {editing ? (
-        <>
-          <input
-            aria-label="Free check-in limit"
-            value={value}
-            inputMode="numeric"
-            onChange={e => setValue(e.target.value)}
-            style={{ width: 62, padding: '5px 8px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
-          />
-          <button className="btn pri sm"
-            onClick={() => save.mutate()}
-            disabled={save.isPending}
-          >
-            {save.isPending ? 'Saving...' : 'Save'}
-          </button>
-          <button className="btn sec sm"
-            onClick={() => { setEditing(false); setErr(null) }}
-          >
-            Cancel
-          </button>
-        </>
-      ) : (
-        <>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.freeGroundLimit}</span>
-          <button className="btn sec sm"
-            onClick={() => { setValue(String(data.freeGroundLimit)); setEditing(true) }}
-          >
-            Change
-          </button>
-        </>
-      )}
-    </div>
-  )
-}
-
-/**
  * THE PRICES RAN OUT OF ORDER. W-UX-7.
  *
  * Scale ($1,650) was listed AFTER Enterprise, because this rendered whatever order the endpoint
@@ -738,8 +550,6 @@ function PricingPanel() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {[...data].sort((a, b) => rankOf(a.plan) - rankOf(b.plan)).map(row => <PricingRow key={row.plan} row={row} />)}
-      <FreeGroundLimitRow />
-      <FreeMemberLimitRow />
       <FreeTrialRow />
       <TrialGraceRow />
       <AnchorTrialRow />
@@ -1034,7 +844,7 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
         <div style={SL}>Integrations</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <WhatsAppToggle />
-          <CoachingSwitch />
+          <CoachingReads />
           <StripeStatus />
         </div>
       </section>

@@ -309,7 +309,6 @@ export interface Ground {
   org?: {
     subscriptionPlan: string | null
     subscriptionStatus: string | null
-    freeExtensionUsed: boolean
   } | null
 }
 

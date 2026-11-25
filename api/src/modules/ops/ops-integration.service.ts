@@ -61,7 +61,7 @@ export class OpsIntegrationService {
     if (!row) {
       return {
         configured: false,
-        enabled: false,
+        enabled: true,
         says: 'Groundwork is not connected. Nothing here depends on it.',
       };
     }

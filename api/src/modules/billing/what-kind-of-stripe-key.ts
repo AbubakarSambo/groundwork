@@ -35,3 +35,14 @@ export function whatTheStripeKeyIs(kind: TheKindOfKey): { says: string; badge: s
       return { says: 'No Stripe key is set here, so nothing can be charged. Prices below can still be edited. They will apply when a key is set.', badge: 'No key set' };
   }
 }
+
+/**
+ * WHETHER AN ORGANISATION CAN PAY HERE AT ALL (Hafsah, 23 November 2026: nobody is paused after their trial while paying is not
+ * wired). The one rule, read from one place: a real Stripe key is set, test or live, and a live key only in production (a live key
+ * anywhere else is refused, `aLiveKeyIsRefusedHere`). While it is false nobody is told to choose a plan and nobody is paused; the
+ * moment it is true, the four weeks after a trial and the pause apply as built. Not a switch: it follows the key.
+ */
+export function payingIsPossibleHere(key: string | null | undefined = process.env.STRIPE_SECRET_KEY, nodeEnv: string | undefined = process.env.NODE_ENV): boolean {
+  const kind = theKindOfStripeKey(key);
+  return kind === 'test' || (kind === 'live' && nodeEnv === 'production');
+}

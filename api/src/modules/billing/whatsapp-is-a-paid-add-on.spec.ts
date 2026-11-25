@@ -56,7 +56,9 @@ function world(opts: { trial?: any; org?: any; sent?: number; stripeConfigured?:
       findUnique: jest.fn(async () => ({ ...org })),
       findMany: jest.fn(async () => [{ id: org.id }]),
       update: jest.fn(async (q: any) => { Object.assign(org, q.data); return org; }),
+      updateMany: jest.fn(async (q: any) => { if (org.freeTrialStartedAt) return { count: 0 }; Object.assign(org, q.data); return { count: 1 }; }),
     },
+    ground: { findFirst: jest.fn(async () => null), findMany: jest.fn(async () => []) },
     pricingPlan: {
       findMany: jest.fn(async () => plans),
       findUnique: jest.fn(async (q: any) => plans.find((p) => p.plan === q.where.plan)),
@@ -406,8 +408,10 @@ describe('Baridi at its monthly limit', () => {
   });
 });
 
-describe('an organisation still on the free plan, made before the switch', () => {
-  it('keeps WhatsApp as today, with nothing charged, under the limit of the plan its size fits', async () => {
+/* Rewritten 23 November 2026: there is no old free plan to keep (Hafsah, 22 November). An organisation made before the switch,
+   with nothing covering it, is given the free trial once, and its WhatsApp goes with the trial, with nothing charged. */
+describe('an organisation made before the switch, with nothing covering it', () => {
+  it('is given the free trial once, and keeps WhatsApp, with nothing charged', async () => {
     const before = {
       createdAt: new Date('2026-08-01T09:00:00Z'), subscriptionPlan: null, subscriptionStatus: null, subscriptionStripeId: null,
       freeUntil: null, freePlan: null, freeTrialStartedAt: null, whatsappAddOnOn: false, whatsappAddOnItemId: null,
@@ -415,13 +419,10 @@ describe('an organisation still on the free plan, made before the switch', () =>
     const { addOn } = world({ org: before, sent: 3 });
     expect(await addOn.mayWeSend('org-baridi', NOW)).toEqual({ send: true });
     const read: any = await addOn.whatTheyRead('org-baridi', true, NOW);
-    expect(read.says.charge).toBe('Nothing is charged for WhatsApp while you are on the free plan.');
-    expect(read.use).toMatchObject({ sent: 3, limit: 500 });
-    /* No plan is named to an organisation on the free plan (release blocker, 5 October). */
-    expect(read.plan).toBeNull();
-    expect(read.price).toBeNull();
-    expect(read.says.price).toBeNull();
-    expect(JSON.stringify(read)).not.toMatch(/Starter|STARTER|\$20/);
+    expect(read.says.charge).toBe('Your free trial lasts 1 month. Nothing is charged for WhatsApp until it ends.');
+    expect(read.charged).toBe(false);
+    expect(read.plan).toBe('SMALL_TEAM');
+    expect(JSON.stringify(read)).not.toMatch(/free plan/);
   });
 });
 

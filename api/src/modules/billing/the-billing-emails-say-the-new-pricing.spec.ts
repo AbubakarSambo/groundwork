@@ -15,19 +15,20 @@ function anEmailService() {
 const words = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 
 describe('the cancellation email', () => {
-  it('to a team that began in the free month: check-ins pause until it subscribes again, and nothing about free check-ins or sessions', async () => {
+  it('to any team: check-ins pause until it subscribes again, and nothing about free check-ins or sessions', async () => {
     const { email, sent } = anEmailService();
-    await email.sendSubscriptionCancelled('grace@baridi.test', 'SMALL_TEAM', null);
+    await email.sendSubscriptionCancelled('grace@baridi.test', 'SMALL_TEAM');
     const t = words(sent[0].html);
     expect(t).toContain('Check-ins pause until you subscribe again. Nothing is deleted, and every record stays readable.');
     expect(t).toContain('If you want to carry on as a team, you can subscribe again at any time.');
     expect(t).not.toMatch(/ten free check-ins|buy sessions/);
   });
 
-  it('to a team that had the free plan before: back on it, with its own numbers', async () => {
+  /* Updated 23 November 2026: there is no free plan to go back to (Hafsah, 22 November: "there's nothing like 10 free checkins"). */
+  it('never says a team is back on a free plan', async () => {
     const { email, sent } = anEmailService();
-    await email.sendSubscriptionCancelled('grace@baridi.test', 'STARTER', { checkIns: 10, people: 5 });
-    expect(words(sent[0].html)).toContain('Your team is back on the free plan, which covers up to 10 check-ins and 5 people.');
+    await email.sendSubscriptionCancelled('grace@baridi.test', 'STARTER');
+    expect(words(sent[0].html)).not.toMatch(/free plan|free check-ins/);
   });
 });
 

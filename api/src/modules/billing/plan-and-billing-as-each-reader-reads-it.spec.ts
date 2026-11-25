@@ -15,7 +15,8 @@ import { BillingController, theStatusAsTheyMayReadIt } from './billing.controlle
  */
 
 const ADMIN_ONLY = [
-  'cancelAccount', 'claimFreeExtension', 'createSubscription', 'cancelSubscription', 'keepSubscription',
+  /* The free extension's route went with the free plan, 22 November 2026. */
+  'cancelAccount', 'createSubscription', 'cancelSubscription', 'keepSubscription',
   'changeSubscriptionPlan', 'pauseSubscription', 'resumeSubscription', 'applyContributorCode',
   'purchaseSession', 'redeemContributorCode', 'disableCode', 'getShareCard', 'listContributorCodes', 'portal',
   /* Turning the WhatsApp add-on on or off (decision 78). */

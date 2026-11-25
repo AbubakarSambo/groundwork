@@ -19,19 +19,10 @@ import { join } from 'path';
  */
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
+/* The free extension this checked is gone with the free plan (22 November 2026): the only free plan is the free trial. */
 describe('money', () => {
-  it('the free extension is spent on a ground in the caller’s organisation, or not at all', async () => {
-    const prisma: any = {
-      ground: { findFirst: jest.fn(async ({ where }: any) => (where.organizationId === 'org-mine' ? null : { id: 'g' })), update: jest.fn() },
-      organization: { findUnique: jest.fn(async () => ({ freeExtensionUsed: false })), update: jest.fn() },
-      billingEvent: { create: jest.fn() },
-      $transaction: jest.fn(),
-    };
-    const svc = Object.create(BillingService.prototype) as BillingService;
-    (svc as any).prisma = prisma;
-    await expect(svc.claimFreeExtension('org-mine', 'g-somebody-elses')).rejects.toBeInstanceOf(NotFoundException);
-    expect(prisma.$transaction).not.toHaveBeenCalled();
-    expect(prisma.ground.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'g-somebody-elses', organizationId: 'org-mine' } }));
+  it('there is no free extension to spend on anybody else’s ground', () => {
+    expect((BillingService.prototype as any).claimFreeExtension).toBeUndefined();
   });
 });
 

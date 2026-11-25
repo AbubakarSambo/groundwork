@@ -29,20 +29,19 @@ function people(count: number, cap: number | null | undefined, includingYou = fa
   return `${count} of ${cap} people${includingYou ? ', including you' : ''}.`
 }
 
-export type WhatCovers = 'paid' | 'paused' | 'on the house' | 'free' | 'no plan'
+export type WhatCovers = 'paid' | 'paused' | 'on the house' | 'no plan'
 
 export function whatCoversThem(status: BillingStatus | undefined): WhatCovers {
   const sub = status?.subscription
   if (sub?.plan && sub.status === 'active') return 'paid'
   if (sub?.plan && sub.status === 'paused') return 'paused'
   if (status?.onTheHouse) return 'on the house'
-  /* Only once the free trial's switch is on, for an organisation created after it (U.19). */
-  if (status?.onTheFreePlan === false) return 'no plan'
-  return 'free'
+  /* There is no free plan besides the free trial, which is `onTheHouse` (22 November 2026). */
+  return 'no plan'
 }
 
 /** "Growth, $400 a month. 27 of 100 people." */
-export function thePlanLine(status: BillingStatus | undefined, pricing: LivePricing | undefined, freeGrounds: number): string {
+export function thePlanLine(status: BillingStatus | undefined, pricing: LivePricing | undefined): string {
   const count = status?.people?.count ?? 0
   const cap = status?.people?.cap
   const covers = whatCoversThem(status)
@@ -55,14 +54,7 @@ export function thePlanLine(status: BillingStatus | undefined, pricing: LivePric
     const free = status!.onTheHouse!
     return `${nameOf(free.plan)}, free until ${whenItWas(free.until, 'full')}. ${people(count, cap)}`
   }
-  if (covers === 'no plan') return 'No plan yet. Choose one below to open check-ins and add people.'
-  /* The free plan's people include the person who signed up, and every message says so. */
-  const places = cap == null
-    ? `${count} ${count === 1 ? 'person is' : 'people are'} using it, including you.`
-    : count >= cap
-      ? `All ${cap} places are used, including yours.`
-      : `${count} of ${cap} places are used, including yours.`
-  return `You are on the free plan, which covers up to ${freeGrounds} check-ins${cap == null ? '' : ` and ${cap} people`}. ${places}`
+  return 'No plan yet. Choose one below to open check-ins and add people.'
 }
 
 /** "1 October, $400, by card ending 4417." Or what happens instead of a payment. */

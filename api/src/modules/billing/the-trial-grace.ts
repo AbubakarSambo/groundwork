@@ -15,6 +15,8 @@ import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE, isAZone } from '../../comm
  * It applies only while the free trial's switch (`pricing.freeTrial`) is on, the switch that turns billing on: with it off there
  * is no trial to end, nothing is charged, and nobody is paused.
  */
+import { payingIsPossibleHere } from './what-kind-of-stripe-key';
+
 export const TRIAL_GRACE_KEY = 'pricing.trialGrace';
 
 /**
@@ -102,7 +104,7 @@ export async function theGraceSetting(prisma: any): Promise<TrialGraceSetting> {
 }
 
 /**
- * THE GRACE IN FORCE NOW: the weeks and the moment nobody's weeks start before. Null while the free trial's switch is off, which
+ * THE GRACE IN FORCE NOW: the weeks and the moment nobody's weeks start before. Null only while the free trial's switch is off, which
  * means no trial ends into a pause. Read straight from the two rows so every door (the email door, the WhatsApp door, the gates)
  * reads the same thing without needing the pricing service.
  */
@@ -112,11 +114,12 @@ export async function theGraceInForce(prisma: any): Promise<TheGrace | null> {
     theGraceSetting(prisma),
   ]);
   const trial = trialRow?.value as { on?: unknown; onSince?: unknown } | undefined;
-  if (trial?.on !== true) return null;
-  const moments = [setting.onSince, typeof trial.onSince === 'string' ? trial.onSince : undefined]
+  /* On unless the row says off (22 November 2026), as the free trial itself reads. */
+  if (trial?.on === false) return null;
+  const moments = [setting.onSince, typeof trial?.onSince === 'string' ? trial.onSince : undefined]
     .map((s) => (s ? new Date(s).getTime() : NaN))
     .filter((t) => !Number.isNaN(t));
-  return { weeks: setting.weeks, notBefore: moments.length ? new Date(Math.max(...moments)) : null };
+  return { weeks: setting.weeks, notBefore: moments.length ? new Date(Math.max(...moments)) : null, payingIsPossible: payingIsPossibleHere() };
 }
 
 /** Where this organisation's trial stands now. 'not on a trial' for an organisation that cannot be read. */
@@ -216,6 +219,8 @@ export const TOLD_ABOUT_PAYING = (organizationId: string) => ({
 export async function theNoteAboutPaying(prisma: any, organizationId: string, reader: 'admin' | 'lead', now: Date = new Date()): Promise<string | null> {
   const where = await whereThisOrganisationStands(prisma, organizationId, now);
   if (where.stands !== 'after its trial' && where.stands !== 'paused') return null;
+  /* No pause day means nothing can be paid for yet, so there is nothing to say about paying. */
+  if (where.stands === 'after its trial' && !where.pausesAt) return null;
   const [setting, org, named] = await Promise.all([
     theGraceSetting(prisma),
     Promise.resolve(prisma?.organization?.findUnique?.({ where: { id: organizationId }, select: { name: true } })).catch(() => null),

@@ -64,9 +64,11 @@ describe('the anchor trial', () => {
 
 describe('the setting', () => {
   const pricing = (value: any) => new PricingService({ platformSetting: { findUnique: jest.fn(async ({ where }: any) => (where.key === ANCHOR_TRIAL_KEY ? (value === undefined ? null : { value }) : null)) } } as any, {} as any);
-  it('is off unless the row says on, and a bad row reads as off', async () => {
-    expect((await pricing(undefined).getAnchorTrial()).on).toBe(false);
-    expect((await pricing({ on: 'yes' }).getAnchorTrial()).on).toBe(false);
+  /* Updated 23 November 2026 (Hafsah, 22 November: "nothing switch off from now on"): on unless the row says off. */
+  it('is on unless the row says off', async () => {
+    expect((await pricing(undefined).getAnchorTrial()).on).toBe(true);
+    expect((await pricing({ on: 'yes' }).getAnchorTrial()).on).toBe(true);
+    expect((await pricing({ on: false }).getAnchorTrial()).on).toBe(false);
     expect(await pricing({ on: true }).getAnchorTrial()).toEqual({ on: true, months: 1, people: 20 });
   });
 });
@@ -128,9 +130,11 @@ describe('the anchor month and the regular trial', () => {
     expect(asked[0].OR).toEqual([{ startedFrom: 'anchor' }, { scenario: 'HELP_TEAM_UNDERSTAND' }]);
   });
 
-  it('fault 1: once the anchor month has ended, a later answer gives no second free run', async () => {
+  /* Updated 23 November 2026: every organisation gets the free trial once (Hafsah, 22 November), and an anchor month given on
+     its own, while the regular trial was off, was not it. So once that month has ended, the trial can still be given. */
+  it('fault 1, as the rule now is: once an anchor month given on its own has ended, the regular trial is given once', async () => {
     const org = anAnchorMonth();
-    expect(await later(org, new Date('2026-11-20T10:00:00Z'))).toEqual({ granted: false, why: 'it has a free run of its own' });
+    expect(await later(org, new Date('2026-11-20T10:00:00Z'))).toMatchObject({ granted: true });
   });
 
   it('fault 2: a free run on another plan, or that does not end a month after an anchor start, is not taken for one', async () => {

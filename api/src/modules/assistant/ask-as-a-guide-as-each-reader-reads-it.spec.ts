@@ -110,8 +110,12 @@ describe('"How do I...?"', () => {
     expect(r.text).toBe('Open Settings in the menu. Under You, find Phone number, press Change, type your number and press Save. An admin can change anybody’s number on the People page, by pressing Change beside it.');
   });
 
-  it('a member asking how to add someone to Groundwork is told an admin does it', async () => {
-    const r = await asReader('MEMBER', false, howTo('invite_someone')).say('How do I add someone to Groundwork?');
+  /* Updated 23 November 2026: anyone may add people unless an admin chose "Only admins" (Hafsah, 22 November), so this reader's
+     organisation chose it. */
+  it('a member asking how to add someone to Groundwork, where an admin chose "Only admins", is told an admin does it', async () => {
+    const m = asReader('MEMBER', false, howTo('invite_someone'));
+    m.prisma.organization.findUnique = jest.fn(async () => ({ name: 'Baridi', guestsMayJoin: false, whoMayAddPeople: 'ADMINS' }));
+    const r = await m.say('How do I add someone to Groundwork?');
     expect(r.text).toBe('Only an admin can invite somebody to your organisation here, so ask one of your admins to do it.');
   });
 

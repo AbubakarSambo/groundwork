@@ -205,14 +205,17 @@ describe('Grace, an admin, on Growth', () => {
   })
 })
 
-describe('Grace, on the free plan', () => {
+/* Updated 23 November 2026: there is no free plan of check-ins any more (Hafsah, 22 November); an organisation nothing covers
+   reads that it has no plan yet. */
+describe('Grace, with nothing covering her organisation', () => {
   beforeEach(() => {
     m.status = { subscription: { plan: null, status: null, periodEnd: null, endsAt: null, freeExtensionUsed: false }, people: { count: 3, cap: 5 }, onTheHouse: null, activeGrounds: [], card: null, invoices: [] }
   })
 
-  it('reads that the five include her, and that nothing is charged until she chooses', async () => {
+  it('reads that she has no plan yet, and that nothing is charged until she chooses', async () => {
     renderIt()
-    await waitFor(() => expect(text()).toContain('You are on the free plan, which covers up to 10 check-ins and 5 people. 3 of 5 places are used, including yours.'))
+    await waitFor(() => expect(text()).toContain('No plan yet. Choose one below to open check-ins and add people.'))
+    expect(text()).not.toMatch(/free plan|check-ins are free/i)
     expect(text()).toContain('Nothing is charged until you choose a plan.')
     expect(screen.getAllByText('Move to this')).toHaveLength(5)
     expect(screen.queryByText('Stopping')).toBeNull()
@@ -237,11 +240,12 @@ describe('a new organisation once the switch is on, with no plan yet (U.19)', ()
     expect(screen.getAllByText('Move to this')).toHaveLength(5)
   })
 
-  it('an organisation already on the free plan still reads it, after the switch', async () => {
+  it('an organisation made before the switch reads the same: no plan yet, never an old free plan', async () => {
     m.pricing = { ...m.pricing, trial: TRIAL_ON }
-    m.status = { subscription: { plan: null, status: null, periodEnd: null, endsAt: null, freeExtensionUsed: false }, people: { count: 3, cap: 5 }, onTheFreePlan: true, onTheHouse: null, activeGrounds: [], card: null, invoices: [] }
+    m.status = { subscription: { plan: null, status: null, periodEnd: null, endsAt: null }, people: { count: 3, cap: 1 }, onTheHouse: null, activeGrounds: [], card: null, invoices: [] }
     renderIt()
-    await waitFor(() => expect(text()).toContain('You are on the free plan, which covers up to 10 check-ins and 5 people. 3 of 5 places are used, including yours.'))
+    await waitFor(() => expect(text()).toContain('No plan yet. Choose one below to open check-ins and add people.'))
+    expect(text()).not.toMatch(/free plan|10 check-ins/i)
   })
 })
 
@@ -341,7 +345,8 @@ describe('group 1 review fixes', () => {
     vi.doUnmock('@/stores/auth')
   })
 
-  it('says once, truthfully, that every row is a free check-in you can extend - no tag on every row', async () => {
+  /* Updated 23 November 2026: the free extension went with the free plan, so the sentence no longer offers one. */
+  it('says once, truthfully, that every row is a free check-in - no tag on every row', async () => {
     const { groundsApi } = await import('@/api/grounds')
     ;(groundsApi.list as any).mockResolvedValueOnce([
       { id: 'g1', label: 'Faith, first 90 days', isFreeGround: true, org: { freeExtensionUsed: false } },
@@ -351,7 +356,7 @@ describe('group 1 review fixes', () => {
     await waitFor(() => expect(screen.getByText('In progress')).toBeTruthy())
     /* GROUP 1'S THIRD REVIEW: the free extension is claimed from inside a check-in
        (SessionPaywallModal.tsx), never from this page - said truthfully. */
-    expect(await screen.findByText('Each of these is a free check-in. You can extend one for free from its own check-in.')).toBeTruthy()
+    expect(await screen.findByText('Each of these is a free check-in.')).toBeTruthy()
     expect(screen.queryByText('Free check-in')).toBeNull()
     expect(screen.queryByText('Free extension available')).toBeNull()
   })

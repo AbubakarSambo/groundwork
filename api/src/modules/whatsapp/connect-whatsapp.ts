@@ -51,7 +51,7 @@ export async function connectWhatsAppFor(
     const number = ours.displayNumber?.trim();
     if (!ours.enabled || !number || !/\d{7,}/.test(number.replace(/\D/g, ''))) return null;
     const switchedOn = await prisma.platformSetting?.findUnique?.({ where: { key: 'whatsapp_enabled' } });
-    if (switchedOn?.value !== true) return null;
+    if (switchedOn?.value === false) return null;
     const org = await prisma.organization?.findUnique?.({ where: { id: who.organizationId }, select: { whatsappAddOnOn: true, whatsappFreeUntil: true } });
     if (!whatsAppIsOnFor(org)) return null;
     /* Only an organisation number that really works points elsewhere; a half-set-up row is no connection (a-connection-that-works.ts). */

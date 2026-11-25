@@ -8,7 +8,6 @@ export interface WhatsAppToggleState {
 }
 
 export interface CoachingBatch {
-  live: boolean
   count: number
   rows: {
     participantId: string
@@ -159,8 +158,6 @@ export const adminApi = {
 
   /** The coaching batch, read before the switch is thrown, and the switch. */
   getCoaching: () => apiClient.get<CoachingBatch>('/admin/coaching').then(r => r.data),
-  setCoachingLive: (live: boolean) =>
-    apiClient.patch<{ live: boolean }>('/admin/coaching', { live }).then(r => r.data),
 
   /** Release 1's sales board, switched on or off for one organisation (staff only). The server says back what changed. */
   setReleaseOneSalesBoard: (organizationId: string, on: boolean) =>
@@ -200,17 +197,9 @@ export const adminApi = {
   getPricing: () =>
     apiClient.get<PricingPlanRow[]>('/admin/pricing').then(r => (Array.isArray(r.data) ? r.data : [])),
 
-  getFreeGroundLimit: () =>
-    apiClient.get<{ freeGroundLimit: number }>('/admin/pricing/free-ground-limit').then(r => r.data),
 
-  setFreeGroundLimit: (freeGroundLimit: number) =>
-    apiClient.patch<{ freeGroundLimit: number }>('/admin/pricing/free-ground-limit', { freeGroundLimit }).then(r => r.data),
 
-  getFreeMemberLimit: () =>
-    apiClient.get<{ freeMemberLimit: number }>('/admin/pricing/free-member-limit').then(r => r.data),
 
-  setFreeMemberLimit: (freeMemberLimit: number) =>
-    apiClient.patch<{ freeMemberLimit: number }>('/admin/pricing/free-member-limit', { freeMemberLimit }).then(r => r.data),
 
   getFreeTrial: () =>
     apiClient.get<AdminFreeTrial>('/admin/pricing/free-trial').then(r => r.data),
@@ -277,7 +266,6 @@ export const adminApi = {
 
 export interface PricingSnapshot {
   planPricesCents: Record<string, number>
-  freeGroundLimit: number
   updatedAt: string | null
   updatedBy: string | null
 }
@@ -286,7 +274,7 @@ export interface PricingSnapshot {
 export const pricingAdminApi = {
   get: () => apiClient.get<PricingSnapshot>('/billing/admin/pricing').then(r => r.data),
 
-  update: (patch: { planPricesCents?: Record<string, number>; freeGroundLimit?: number }) =>
+  update: (patch: { planPricesCents?: Record<string, number> }) =>
     apiClient.patch<PricingSnapshot>('/billing/admin/pricing', patch).then(r => r.data),
 
   reset: () => apiClient.post<PricingSnapshot>('/billing/admin/pricing/reset').then(r => r.data),

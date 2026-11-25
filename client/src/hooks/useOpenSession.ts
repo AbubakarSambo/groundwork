@@ -29,7 +29,6 @@ export function useOpenSession(groundId: string | undefined) {
     if (showPaywall) paywallOpener.current = document.activeElement as HTMLElement | null
     else paywallOpener.current?.focus?.()
   }, [showPaywall])
-  const [paywallFreeExtensionAvailable, setPaywallFreeExtensionAvailable] = useState(false)
   const [paywallCode, setPaywallCode] = useState('')
   const [paywallCodeMsg, setPaywallCodeMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
@@ -62,8 +61,8 @@ export function useOpenSession(groundId: string | undefined) {
     return () => { mountedRef.current = false }
   }, [])
 
-  const settleProbe = (outcome: { blocked: boolean; checkIn: any; freeExtensionAvailable?: boolean }) => {
-    const { blocked, checkIn, freeExtensionAvailable } = outcome
+  const settleProbe = (outcome: { blocked: boolean; checkIn: any }) => {
+    const { blocked, checkIn } = outcome
     /*
      * A SILENT AUTO-OPEN MUST NOT CLOBBER WHAT THE READER IS DOING BY THE TIME IT RESOLVES.
      *
@@ -80,7 +79,6 @@ export function useOpenSession(groundId: string | undefined) {
     const shouldNavigate = (checkIn as any)?.__shouldNavigate as (() => boolean) | undefined
     if (shouldNavigate && !shouldNavigate()) return
     if (blocked && !(checkIn as any)?.isFreeGround) {
-      setPaywallFreeExtensionAvailable(freeExtensionAvailable ?? false)
       setShowPaywall(true)
     } else {
       /* Into the check-in's own Check-in tab, where the conversation is drawn (batch 2, group 5). */
@@ -109,7 +107,7 @@ export function useOpenSession(groundId: string | undefined) {
       if (!mountedRef.current) return
       if (res.status === 403) {
         setProbeStatus('idle')
-        settleProbe({ blocked: true, checkIn, freeExtensionAvailable: res.data?.freeExtensionAvailable })
+        settleProbe({ blocked: true, checkIn })
         return
       }
       if (res.status !== 200 && res.status !== 201) {
@@ -165,17 +163,6 @@ export function useOpenSession(groundId: string | undefined) {
     onError: () => setPaywallCodeMsg({ ok: false, text: 'That didn’t work. Try again.' }),
   })
 
-  const claimFreeExtensionMut = useMutation({
-    mutationFn: () => billingApi.claimFreeExtension(groundId!),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['ground', groundId] })
-      setShowPaywall(false)
-      setPaywallFreeExtensionAvailable(false)
-      toast.success('Free check-in added. You can now start your check-in.')
-    },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add the free check-in. Try again.'),
-  })
-
   const createSubscriptionMut = useMutation({
     mutationFn: (plan: string) => billingApi.createSubscription(plan as any),
     onSuccess: r => {
@@ -208,13 +195,11 @@ export function useOpenSession(groundId: string | undefined) {
     paywall: {
       show: showPaywall,
       close: () => setShowPaywall(false),
-      freeExtensionAvailable: paywallFreeExtensionAvailable,
       code: paywallCode,
       setCode: setPaywallCode,
       codeMsg: paywallCodeMsg,
       setCodeMsg: setPaywallCodeMsg,
       redeem: redeemPaywallCode,
-      claimFreeExtension: claimFreeExtensionMut,
       createSubscription: createSubscriptionMut,
     },
   }

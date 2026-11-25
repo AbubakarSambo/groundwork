@@ -432,7 +432,7 @@ describe('the head count', () => {
 
   it('reads as a sentence on every plan', () => {
     expect(howManyHere(27, 'GROWTH', 100)).toBe('27 people, on the Growth plan, which is for up to 100.')
-    expect(howManyHere(3, null, 5)).toBe('3 people, on the free plan, which is for up to 5.')
+    expect(howManyHere(3, null, 5)).toBe('3 people, with no plan chosen yet, which covers up to 5.')
     expect(howManyHere(1, 'ENTERPRISE', null)).toBe('1 person.')
   })
 
@@ -443,12 +443,12 @@ describe('the head count', () => {
    * admin can act on them. Named here, not just counted, when there are few enough to name.
    */
   it('names who the seat count leaves out, so it never just disagrees with the table', () => {
-    expect(howManyHere(5, null, 5, ['Faraji'])).toBe('5 people, on the free plan, which is for up to 5. Faraji is waiting to be let in.')
-    expect(howManyHere(5, null, 5, ['Faraji', 'Zawadi'])).toBe('5 people, on the free plan, which is for up to 5. Faraji and Zawadi are waiting to be let in.')
-    expect(howManyHere(5, null, 5, [], ['Zawadi'])).toBe('5 people, on the free plan, which is for up to 5. Zawadi is on a check-in with no seat for them.')
+    expect(howManyHere(5, null, 5, ['Faraji'])).toBe('5 people, with no plan chosen yet, which covers up to 5. Faraji is waiting to be let in.')
+    expect(howManyHere(5, null, 5, ['Faraji', 'Zawadi'])).toBe('5 people, with no plan chosen yet, which covers up to 5. Faraji and Zawadi are waiting to be let in.')
+    expect(howManyHere(5, null, 5, [], ['Zawadi'])).toBe('5 people, with no plan chosen yet, which covers up to 5. Zawadi is on a check-in with no seat for them.')
     expect(howManyHere(5, null, 5, ['Faraji'], ['Zawadi']))
-      .toBe('5 people, on the free plan, which is for up to 5. Faraji is waiting to be let in. Zawadi is on a check-in with no seat for them.')
-    expect(howManyHere(5, null, 5, ['A', 'B', 'C', 'D'])).toBe('5 people, on the free plan, which is for up to 5. 4 more are waiting to be let in.')
+      .toBe('5 people, with no plan chosen yet, which covers up to 5. Faraji is waiting to be let in. Zawadi is on a check-in with no seat for them.')
+    expect(howManyHere(5, null, 5, ['A', 'B', 'C', 'D'])).toBe('5 people, with no plan chosen yet, which covers up to 5. 4 more are waiting to be let in.')
   })
 
   /**
@@ -468,9 +468,9 @@ describe('the head count', () => {
       .toBe('26 people, on the Growth plan, which is for up to 100. 2 people are waiting to be let in.')
     /* The same rule for the other two name-based sentences this function builds. */
     expect(howManyHere(5, null, 5, [], ['Somebody']))
-      .toBe('5 people, on the free plan, which is for up to 5. 1 person is on a check-in with no seat for them.')
+      .toBe('5 people, with no plan chosen yet, which covers up to 5. 1 person is on a check-in with no seat for them.')
     expect(howManyHere(5, null, 5, [], [], ['Someone', 'Somebody']))
-      .toBe('5 people, on the free plan, which is for up to 5. 2 people were not let in.')
+      .toBe('5 people, with no plan chosen yet, which covers up to 5. 2 people were not let in.')
   })
 
   it('says nothing extra when the count and the table already agree', async () => {
@@ -486,10 +486,10 @@ describe('the head count', () => {
    * sentences on the same page disagreeing about the same person.
    */
   it('says somebody an admin has declined was not let in, never that they are waiting', () => {
-    expect(howManyHere(5, null, 5, [], [], ['Faraji'])).toBe('5 people, on the free plan, which is for up to 5. Faraji was not let in.')
-    expect(howManyHere(5, null, 5, [], [], ['Faraji', 'Zawadi'])).toBe('5 people, on the free plan, which is for up to 5. Faraji and Zawadi were not let in.')
+    expect(howManyHere(5, null, 5, [], [], ['Faraji'])).toBe('5 people, with no plan chosen yet, which covers up to 5. Faraji was not let in.')
+    expect(howManyHere(5, null, 5, [], [], ['Faraji', 'Zawadi'])).toBe('5 people, with no plan chosen yet, which covers up to 5. Faraji and Zawadi were not let in.')
     expect(howManyHere(5, null, 5, ['Peter'], [], ['Faraji']))
-      .toBe('5 people, on the free plan, which is for up to 5. Peter is waiting to be let in. Faraji was not let in.')
+      .toBe('5 people, with no plan chosen yet, which covers up to 5. Peter is waiting to be let in. Faraji was not let in.')
   })
 })
 

@@ -33,7 +33,8 @@ describe('what /billing/status returns', () => {
 
   it('reads the subscription off the organisation', () => {
     /* The plan and its status come through the one shared list of what a cover read needs (2 November 2026). */
-    expect(GET_STATUS).toContain('...WHAT_COVER_READS');
+    expect(GET_STATUS).toContain('this.theOrgWithItsCover(organizationId');
+    expect(CODE).toMatch(/const select = \{ \.\.\.WHAT_COVER_READS, \.\.\.extra \}/);
     expect(GET_STATUS).toContain('subscriptionPeriodEnd: true');
     const shared = readFileSync(join(__dirname, '../../common/subscription.ts'), 'utf8');
     for (const field of ['subscriptionPlan: true', 'subscriptionStatus: true']) expect(shared.slice(shared.indexOf('export const WHAT_COVER_READS'))).toContain(field);
@@ -72,15 +73,9 @@ describe('what /billing/status returns', () => {
     expect(GET_STATUS).not.toContain('PLAN_MEMBER_CAPS');
   });
 
-  it('a free organisation reports its FREE limit, not "no cap"', () => {
-    /**
-     * The gap that let person number six in. A free account has a cap now, and reporting null for
-     * it showed no ceiling to the only people who have one.
-     */
-    /* U.19: through the one reader of the uncovered limit, which is the free plan's while the free
-       trial's switch is off (as today), and only the creator for a new organisation once it is on. */
-    expect(GET_STATUS).toContain('this.theUncoveredSeatLimit(org)');
-    expect(CODE).toMatch(/theUncoveredSeatLimit[\s\S]{0,300}this\.pricing\.getFreeMemberLimit\(\) : 1/);
+  it('an organisation nothing covers reports a cap of one, the person who set it up, not "no cap"', () => {
+    /* Updated 23 November 2026: there is no free plan of five people; the free trial is cover, so it reports its plan's cap. */
+    expect(GET_STATUS).toContain("covers.covers === 'free tier' ? 1 : covers.plan ? await this.pricing.memberCapFor(covers.plan as any) : null");
   });
 
   it('and the cap it reports is the one the gate will apply', () => {
@@ -89,7 +84,7 @@ describe('what /billing/status returns', () => {
      * one level up: two readers of one number, each correct alone.
      */
     const gate = CODE.slice(CODE.indexOf('async canInviteMember('), CODE.indexOf('private async warnAboutTheMemberCap('));
-    for (const call of ['this.theUncoveredSeatLimit(org)', 'this.pricing.memberCapFor(']) {
+    for (const call of ['this.theOrgWithItsCover(organizationId', 'this.pricing.memberCapFor(']) {
       expect(gate).toContain(call);
       expect(GET_STATUS).toContain(call);
     }

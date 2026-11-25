@@ -96,6 +96,11 @@ export type WhatCovers = 'paid' | 'on the house' | 'free tier';
 export interface TheGrace {
   weeks: number;
   notBefore: Date | null;
+  /**
+   * Whether an organisation can pay here at all (`payingIsPossibleHere`). False: nobody is paused after a trial and nobody is
+   * refused for having no plan, because there is no plan anybody could choose. Missing reads as true, as built.
+   */
+  payingIsPossible?: boolean;
 }
 
 export type WhereTheTrialStands = 'a customer' | 'not on a trial' | 'in its trial' | 'after its trial' | 'paused';
@@ -130,6 +135,8 @@ export function whereTheTrialStands(
   if (!aFreeMonth) return { stands: 'not on a trial', ...none };
   if (until!.getTime() > now.getTime()) return { stands: 'in its trial', ...none };
   if (!grace) return { stands: 'not on a trial', ...none };
+  /* Nothing to pay with: the weeks after the trial never run out (23 November 2026). */
+  if (grace.payingIsPossible === false) return { stands: 'after its trial', trialEnded: until, pausesAt: null };
   const from = Math.max(until!.getTime(), grace.notBefore ? grace.notBefore.getTime() : 0);
   const pausesAt = new Date(from + grace.weeks * 7 * DAY);
   return { stands: now.getTime() < pausesAt.getTime() ? 'after its trial' : 'paused', trialEnded: until, pausesAt };
@@ -157,6 +164,8 @@ export function whatCoversThem<T extends CoverFields>(
   if (stands?.stands === 'after its trial' && org.freePlan) {
     return { covers: 'on the house', plan: org.freePlan as any, until: stands.pausesAt, afterItsTrial: true };
   }
+  /* Nothing to pay with (23 November 2026): nobody is refused for having no plan, since there is none they could choose. */
+  if (grace?.payingIsPossible === false) return { covers: 'on the house', plan: (org.freePlan as any) ?? null, until: null, afterItsTrial: true };
   return { covers: 'free tier', plan: null, until: null };
 }
 

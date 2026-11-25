@@ -24,7 +24,7 @@ describe('the numbers show before somebody pays, not after', () => {
      label is `label="Plan"` / `label="So far"` rather than kit.tsx's `<b>Plan</b>`. */
   it('the plan line, with people against the cap, is not gated on already having a subscription', () => {
     const row = code.slice(code.indexOf('label="Plan"') - 200, code.indexOf('label="Plan"') + 400)
-    expect(row).toContain('thePlanLine(billingStatus, livePricing, freeGrounds)')
+    expect(row).toContain('thePlanLine(billingStatus, livePricing)')
     expect(code.slice(code.indexOf('label="Plan"') - 300, code.indexOf('label="Plan"'))).not.toMatch(/isSubscribed \|\| isPaused\) &&/)
   })
 

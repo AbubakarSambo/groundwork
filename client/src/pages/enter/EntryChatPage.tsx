@@ -4124,7 +4124,7 @@ export function EntryChatPage() {
               */}
             {refusedByThePlan && (
               <div className="gwui-ec-refusal-band">
-                <Callout tone="warning" title={whetherTheyMayOpenOne.data?.noPlan ? 'No plan yet' : 'You have used all of your free check-ins'}>
+                <Callout tone="warning" title={whetherTheyMayOpenOne.data?.noPlan ? 'No plan yet' : 'This check-in cannot be opened yet'}>
                   {planLimitNotice({
                     reason: refusedByThePlan,
                     isAdmin: user?.role === 'ADMIN',

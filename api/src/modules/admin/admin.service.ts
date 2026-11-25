@@ -17,7 +17,6 @@ import { EmailService } from '../email/email.service';
 import { SEAT_RELATION_COUNT } from '../../common/seats';
 import { isCovered, ACTIVE } from '../../common/subscription';
 import { A_CUSTOMER, A_REAL_CHECK_IN } from '../prompts/what-the-platform-has-actually-done';
-import { COACHING_LIVE_KEY } from '../conversation/conversation.service';
 import {
   CORRECTION_WINDOW_KEY, DEFAULT_CORRECTION_WINDOW_DAYS, MAX_CORRECTION_WINDOW_DAYS, isAWindow,
 } from '../conversation/the-window-for-correcting-a-record';
@@ -138,14 +137,9 @@ export class AdminService implements OnApplicationBootstrap {
     };
   }
 
-  /**
-   * THE FIRST COACHING OUTPUTS, WITH THEIR INPUT. Nothing here reaches a person until the
-   * coaching_live setting is true; this is where somebody reads a batch before deciding that.
-   */
+  /** THE COACHING OUTPUTS, WITH THEIR INPUT. Coaching is always on (22 November 2026); this is where somebody reads what it did. */
   async getCoaching() {
-    const [live, rows] = await Promise.all([
-      this.prisma.platformSetting.findUnique({ where: { key: COACHING_LIVE_KEY } }).catch(() => null),
-      this.prisma.coachingState.findMany({
+    const rows = await this.prisma.coachingState.findMany({
         orderBy: { updatedAt: 'desc' },
         take: 200,
         include: {
@@ -157,10 +151,8 @@ export class AdminService implements OnApplicationBootstrap {
             },
           },
         },
-      }),
-    ]);
+      });
     return {
-      live: live?.value === true || live?.value === 'true',
       count: rows.length,
       rows: rows.map((r) => ({
         participantId: r.participantId,
@@ -182,22 +174,6 @@ export class AdminService implements OnApplicationBootstrap {
         updatedAt: r.updatedAt,
       })),
     };
-  }
-
-  /**
-   * A SETTING NOTHING CAN WRITE IS A CONSTANT IN A CONFIGURATION COSTUME (fix plan B12). Two of the
-   * four platform settings had readers, an admin page that described them, and no writer anywhere
-   * but SQL: the switch that lets the coaching block reach a live prompt, and the number of days
-   * somebody has to correct their own record after a report is released. Written the same way the
-   * WhatsApp switch and the two free limits are written, from the same page.
-   */
-  async setCoachingLive(live: boolean, adminUserId: string): Promise<{ live: boolean }> {
-    await this.prisma.platformSetting.upsert({
-      where: { key: COACHING_LIVE_KEY },
-      create: { key: COACHING_LIVE_KEY, value: live, updatedBy: adminUserId },
-      update: { value: live, updatedBy: adminUserId },
-    });
-    return { live };
   }
 
   /**

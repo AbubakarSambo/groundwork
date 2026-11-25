@@ -31,31 +31,16 @@ export const PLAN_LABELS: Record<SubscriptionPlan, string> = {
  * edits one in place. The Stripe Product is created once per plan and reused.
  */
 /**
- * The free-ground limit does not belong in `pricing_plans` - that table is keyed by plan and this
- * is one number for the whole platform - so it sits in `platform_settings`, beside the WhatsApp
- * toggle. It was a hardcoded 10 in the API and another hardcoded 10 in the client, plus the words
- * "10 Grounds" written out across three builds.
+ * How many people a check-in made on the old free plan may hold while nothing covers its organisation. Written on every
+ * new check-in as `freeParticipantCap`, and read only for a check-in marked free (`isFreeGround`), which no new check-in
+ * is since the free plan became the free trial (22 November 2026). Kept so a check-in already running keeps its rule.
  */
-export const FREE_GROUND_LIMIT_KEY = 'pricing.freeGroundLimit';
-export const DEFAULT_FREE_GROUND_LIMIT = 10;
-export const MAX_FREE_GROUND_LIMIT = 1000;
+export const DEFAULT_FREE_MEMBER_LIMIT = 5;
 
-/**
- * How many people a free organisation may have. Beside the ground limit because it is the same
- * decision - what the free tier is worth - and the same shape: one number for the whole platform,
- * so it belongs in `platform_settings` rather than in `pricing_plans`, which is keyed by plan.
- *
- * The count INCLUDES the person who created the account, on both the account gate and the
- * per-check-in cap. Five means them plus four others, and every message that quotes the number
- * has to say so, because "5 people" reads as "5 people I can invite".
- */
 /** What the admin is told when a price changes: the public page does not follow. */
 export const THE_SITE_IS_NOW_OUT_OF_STEP = (plan: string, amountCents: number) =>
   `${plan} is now ${(amountCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })} a month here; the public pricing page still shows the figure it was built with until the site is rebuilt.`;
 
-export const FREE_MEMBER_LIMIT_KEY = 'pricing.freeMemberLimit';
-export const DEFAULT_FREE_MEMBER_LIMIT = 5;
-export const MAX_FREE_MEMBER_LIMIT = 1000;
 
 /**
  * THE FREE TRIAL: TEAMS UNDER 20 PEOPLE, FREE FOR ONE MONTH. Hafsah's decision of 26 September,
@@ -64,8 +49,8 @@ export const MAX_FREE_MEMBER_LIMIT = 1000;
  * The numbers live here, in the database, and every screen builds its sentence from them, so no
  * screen can say a different number. The same setting decides whether billing GRANTS the trial
  * (the-free-trial.service.ts, U.19), so the sentence and the grant are switched on and off together.
- * It is off by default. A promise on a screen that billing does not keep is the thing this exists to
- * prevent.
+ * It is ON by default (Hafsah, 22 November 2026: "turn the switch on, nothing switch off from now on"), and it is the
+ * only free plan: there is no count of free check-ins ("there's nothing like 10 free checkins").
  */
 export const FREE_TRIAL_KEY = 'pricing.freeTrial';
 /** What the WhatsApp add-on's Stripe Prices are marked with, so its subscription line is never mistaken for the plan's. */
@@ -88,38 +73,16 @@ export const NO_LIVE_KEY_HERE = 'A live Stripe key is set here, and this is not 
  * read): it is what tells an organisation that was already on the free plan from a new one.
  */
 export interface FreeTrial { on: boolean; teamsUnder: number; months: number; onSince?: string }
-export const DEFAULT_FREE_TRIAL: FreeTrial = { on: false, teamsUnder: 20, months: 1 };
+export const DEFAULT_FREE_TRIAL: FreeTrial = { on: true, teamsUnder: 20, months: 1 };
 
 /**
  * THE ANCHOR'S OWN TRIAL (anchor piece 34; decision 96 item 3). "One-month free trial, up to 20 people", where the 20
  * do not include the lead (decision 121, item 4), so the plan that covers it holds 21 seats. Its own
- * setting, so `pricing.freeTrial` and the paid client are untouched. Off unless the row says `{ "on": true }`.
+ * setting, so `pricing.freeTrial` and the paid client are untouched. On unless the row says `{ "on": false }` (22 November 2026).
  */
 export const ANCHOR_TRIAL_KEY = 'pricing.anchorTrial';
 export interface AnchorTrial { on: boolean; months: number; people: number }
-export const DEFAULT_ANCHOR_TRIAL: AnchorTrial = { on: false, months: 1, people: 20 };
-
-/**
- * ONE SWITCH (Hafsah, 27 September). While the free trial is OFF, which is how it ships, the free plan
- * is exactly as today: the free check-ins, the free people, the free extension and the first session
- * on the house. When it is switched ON, the trial for teams under its size starts, and the free plan
- * stops for every organisation created from that moment. Teams at or over the trial's size always pay.
- *
- * NOBODY IS CUT OFF. An organisation that existed before the switch keeps the free plan it has, even
- * after the switch. And anything unknown reads as "keeps it": a trial switched on with no record of
- * when, or an organisation with no creation date, is treated as already on the free plan, because the
- * wrong answer in that direction costs a month's fee and the wrong answer in the other stops somebody's
- * team mid check-in.
- */
-export function freePlanApplies(trial: FreeTrial | null | undefined, orgCreatedAt: Date | string | null | undefined): boolean {
-  if (!trial?.on) return true;
-  if (!trial.onSince) return true;
-  if (!orgCreatedAt) return true;
-  const since = new Date(trial.onSince).getTime();
-  const created = new Date(orgCreatedAt).getTime();
-  if (Number.isNaN(since) || Number.isNaN(created)) return true;
-  return created < since;
-}
+export const DEFAULT_ANCHOR_TRIAL: AnchorTrial = { on: true, months: 1, people: 20 };
 
 @Injectable()
 export class PricingService {
@@ -170,30 +133,28 @@ export class PricingService {
    * that has to make two requests to state one offer will eventually state half of it.
    */
   async publicPricing() {
-    const [plans, groundLimit, memberLimit, trial, anchorTrial] = await Promise.all([
+    const [plans, trial, anchorTrial] = await Promise.all([
       this.listPlans(),
-      this.getFreeGroundLimit(),
-      this.getFreeMemberLimit(),
       this.getFreeTrial(),
       this.getAnchorTrial(),
     ]);
     /* The public read says whether the trial is on and its numbers, never when it was switched on. The anchor's trial
        is said beside it (anchor piece 34), so the anchor landing says "for a month" only while it is on. */
-    return { plans, free: { groundLimit, memberLimit }, trial: { on: trial.on, teamsUnder: trial.teamsUnder, months: trial.months }, anchorTrial };
+    return { plans, trial: { on: trial.on, teamsUnder: trial.teamsUnder, months: trial.months }, anchorTrial };
   }
 
-  /** The anchor trial and whether it is on. Never throws: a bad or missing row is the default, which is off. Only `on` is read. */
+  /** The anchor trial and whether it is on. Never throws: a bad or missing row is the default, which is on. Only `on` is read. */
   async getAnchorTrial(): Promise<AnchorTrial> {
     try {
       const row = await this.prisma.platformSetting.findUnique({ where: { key: ANCHOR_TRIAL_KEY } });
       const v = row?.value as Partial<AnchorTrial> | undefined;
-      return { ...DEFAULT_ANCHOR_TRIAL, on: v?.on === true };
+      return { ...DEFAULT_ANCHOR_TRIAL, on: v?.on !== false };
     } catch {
       return DEFAULT_ANCHOR_TRIAL;
     }
   }
 
-  /** The trial's numbers and whether it is on. Never throws: a bad or missing row means the default, which is off. */
+  /** The trial's numbers and whether it is on. Never throws: a bad or missing row means the default, which is on. */
   async getFreeTrial(): Promise<FreeTrial> {
     try {
       const row = await this.prisma.platformSetting.findUnique({ where: { key: FREE_TRIAL_KEY } });
@@ -208,7 +169,7 @@ export class PricingService {
         return out;
       }
     } catch (err) {
-      this.logger.warn(`Could not read the free trial, so it is off: ${(err as Error)?.message}`);
+      this.logger.warn(`Could not read the free trial, so it reads as the default: ${(err as Error)?.message}`);
     }
     return { ...DEFAULT_FREE_TRIAL };
   }
@@ -220,7 +181,7 @@ export class PricingService {
       teamsUnder: input.teamsUnder !== undefined ? Number(input.teamsUnder) : now.teamsUnder,
       months: input.months !== undefined ? Number(input.months) : now.months,
     };
-    /* When it is switched on, remember the moment: organisations created before it keep the free plan. */
+    /* When it is switched on, remember the moment: no trial ends into a pause before it (the-trial-grace.ts). */
     if (next.on) next.onSince = now.on && now.onSince ? now.onSince : new Date().toISOString();
     if (!Number.isInteger(next.teamsUnder) || next.teamsUnder < 2 || next.teamsUnder > 10_000) {
       throw new BadRequestException('The team size for the free trial must be a whole number between 2 and 10,000.');
@@ -459,69 +420,5 @@ export class PricingService {
     });
     this.logger.log(`Created Stripe price ${price.id} for plan ${plan} (${row.amountCents} cents)`);
     return price.id;
-  }
-
-  /**
-   * The live free-ground limit, or the shipped default.
-   *
-   * Never throws. A missing or nonsense row must mean "the limit we shipped with", not zero - zero
-   * would silently paywall every organisation on the platform, which is the most damaging possible
-   * reading of a bad row.
-   */
-  async getFreeGroundLimit(): Promise<number> {
-    try {
-      const row = await this.prisma.platformSetting.findUnique({ where: { key: FREE_GROUND_LIMIT_KEY } });
-      const v = row?.value;
-      if (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= MAX_FREE_GROUND_LIMIT) return v;
-    } catch (err) {
-      this.logger.warn(`Could not read the free ground limit, using the default: ${(err as Error)?.message}`);
-    }
-    return DEFAULT_FREE_GROUND_LIMIT;
-  }
-
-  /**
-   * The live free member limit, or the shipped default. Never throws, for the same reason
-   * `getFreeGroundLimit` never does: a bad row must mean "the limit we shipped with", not zero.
-   * Zero here would refuse every free organisation its own founder.
-   */
-  async getFreeMemberLimit(): Promise<number> {
-    try {
-      const row = await this.prisma.platformSetting.findUnique({ where: { key: FREE_MEMBER_LIMIT_KEY } });
-      const v = row?.value;
-      if (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= MAX_FREE_MEMBER_LIMIT) return v;
-    } catch (err) {
-      this.logger.warn(`Could not read the free member limit, using the default: ${(err as Error)?.message}`);
-    }
-    return DEFAULT_FREE_MEMBER_LIMIT;
-  }
-
-  async setFreeMemberLimit(limit: number, adminUserId: string): Promise<number> {
-    /**
-     * At least one, not zero. The creator's own row is counted, so a limit of zero would lock
-     * an organisation out of itself the moment it was created.
-     */
-    if (!Number.isInteger(limit) || limit < 1 || limit > MAX_FREE_MEMBER_LIMIT) {
-      throw new BadRequestException(`The free member limit must be a whole number between 1 and ${MAX_FREE_MEMBER_LIMIT}.`);
-    }
-    await this.prisma.platformSetting.upsert({
-      where: { key: FREE_MEMBER_LIMIT_KEY },
-      create: { key: FREE_MEMBER_LIMIT_KEY, value: limit, updatedBy: adminUserId },
-      update: { value: limit, updatedBy: adminUserId },
-    });
-    this.logger.log(`Free member limit set to ${limit} by ${adminUserId}`);
-    return limit;
-  }
-
-  async setFreeGroundLimit(limit: number, adminUserId: string): Promise<number> {
-    if (!Number.isInteger(limit) || limit < 0 || limit > MAX_FREE_GROUND_LIMIT) {
-      throw new BadRequestException(`The free check-in limit must be a whole number between 0 and ${MAX_FREE_GROUND_LIMIT}.`);
-    }
-    await this.prisma.platformSetting.upsert({
-      where: { key: FREE_GROUND_LIMIT_KEY },
-      create: { key: FREE_GROUND_LIMIT_KEY, value: limit, updatedBy: adminUserId },
-      update: { value: limit, updatedBy: adminUserId },
-    });
-    this.logger.log(`Free ground limit set to ${limit} by ${adminUserId}`);
-    return limit;
   }
 }

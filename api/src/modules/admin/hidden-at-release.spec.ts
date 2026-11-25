@@ -3,7 +3,7 @@ import { AssistantService } from '../assistant/assistant.service';
 import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
 import { SCENARIO_FAMILY, BoardFamily } from '../board/board-families';
 import { KINDS_OF_WORK } from '../board/the-kind-of-work';
-import { KINDS_OFFERED_AT_RELEASE, theBoardKindsOffered, aKindMayBeGiven, contextIsInAskGroundwork, theNewBillingPartsAreShown, theAnchorScenarioIsOn, theOldContextChatIsOpen } from './what-is-hidden-at-release';
+import { KINDS_OFFERED_AT_RELEASE, theBoardKindsOffered, aKindMayBeGiven, contextIsInAskGroundwork, theAnchorScenarioIsOn, theOldContextChatIsOpen } from './what-is-hidden-at-release';
 
 /**
  * WHAT THE RELEASE HIDES (decisions 78, 88 and 90): a hidden thing is not offered to anything NEW,
@@ -23,30 +23,24 @@ describe('the anchor scenario switch (piece 0 of docs/anchor-scenario-plan.md)',
   });
 });
 
-describe('the three settings, with no row at all', () => {
-  it('offer sales (a team, or an organisation of several teams) and engineering of the twelve kinds, keep the billing parts off, and have Context in Ask (on since it moved there)', async () => {
-    const p = settings({});
-    /* 15 November 2026: every kind of work is offered for every organisation (everything has a board), so the default is all of them. A stored row can still narrow it. */
-    expect(await theBoardKindsOffered(p)).toEqual([...KINDS_OF_WORK]);
-    expect(await contextIsInAskGroundwork(p)).toBe(true);
-    expect(await theNewBillingPartsAreShown(p)).toBe(false);
-  });
-  it('read a broken row as the default, never as everything on', async () => {
-    const p = settings({ 'release.boardKindsOffered': 'nonsense', 'release.contextInAskGroundwork': 'yes', 'release.planAndBillingNewParts': { on: 'true' } });
-    /* 15 November 2026: every kind of work is offered for every organisation (everything has a board), so the default is all of them. A stored row can still narrow it. */
-    expect(await theBoardKindsOffered(p)).toEqual([...KINDS_OF_WORK]);
-    /* A context row nobody can read fails closed: off, not on by guesswork. */
-    expect(await contextIsInAskGroundwork(p)).toBe(false);
-    expect(await theNewBillingPartsAreShown(p)).toBe(false);
-  });
-  it('turn on when the row says so', async () => {
-    const p = settings({ 'release.boardKindsOffered': { kinds: ['sales org', 'a law firm matter'] }, 'release.contextInAskGroundwork': { on: true }, 'release.planAndBillingNewParts': { on: true } });
-    /* A row written before "sales team" existed: where sales is offered, a sales team is too (Release 1). */
-    expect(await theBoardKindsOffered(p)).toEqual(['sales team', 'sales org', 'a law firm matter']);
-    expect(await contextIsInAskGroundwork(p)).toBe(true);
-    expect(await theNewBillingPartsAreShown(p)).toBe(true);
-    expect(await aKindMayBeGiven(settings({}), 'a law firm matter', 'a law firm matter')).toBe(true);
+/*
+ * UPDATED 23 November 2026 (Hafsah, 22 November: "nothing switch off from now on"): every kind of work is offered, and the row
+ * that could narrow it (`release.boardKindsOffered`) is no longer read; the billing parts' setting (`release.planAndBillingNewParts`)
+ * is gone, as nothing read it; the old context chat is on unless its row says off.
+ */
+describe('the settings, with no row and with any row', () => {
+  it('offer every kind of work, whatever a row says, and have Context in Ask', async () => {
+    expect(await theBoardKindsOffered(settings({}))).toEqual([...KINDS_OF_WORK]);
+    expect(await theBoardKindsOffered(settings({ 'release.boardKindsOffered': { kinds: ['sales org'] } }))).toEqual([...KINDS_OF_WORK]);
+    expect(await contextIsInAskGroundwork(settings({}))).toBe(true);
     expect(await aKindMayBeGiven(settings({}), 'a law firm matter', null)).toBe(true);
+  });
+  it('keep the old context chat open unless its row says off', async () => {
+    expect(await theOldContextChatIsOpen(settings({}))).toBe(true);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': { on: false } }))).toBe(false);
+  });
+  it('a context row nobody can read still fails closed', async () => {
+    expect(await contextIsInAskGroundwork(settings({ 'release.contextInAskGroundwork': 'yes' }))).toBe(false);
   });
 });
 
@@ -204,14 +198,15 @@ describe('onboarding and project check-ins get their board without a kind', () =
   });
 });
 
-describe('the old context chat switch (off by default on wip/next)', () => {
-  it('is OFF with no row, off when the row cannot be read or is garbage, and on only when the row says on', async () => {
-    expect(await theOldContextChatIsOpen(settings({}))).toBe(false);
-    expect(await theOldContextChatIsOpen({ platformSetting: { findUnique: async () => { throw new Error('down'); } } } as any)).toBe(false);
-    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': 'garbage' }))).toBe(false);
-    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': { on: false } }))).toBe(false);
-    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': false }))).toBe(false);
+/* Updated 23 November 2026: on unless its row says off (Hafsah, 22 November: nothing is switched off). */
+describe('the old context chat switch', () => {
+  it('is ON with no row, with a row it cannot read and with a row that says on, and off only when the row says off', async () => {
+    expect(await theOldContextChatIsOpen(settings({}))).toBe(true);
+    expect(await theOldContextChatIsOpen({ platformSetting: { findUnique: async () => { throw new Error('down'); } } } as any)).toBe(true);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': 'garbage' }))).toBe(true);
     expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': { on: true } }))).toBe(true);
     expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': true }))).toBe(true);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': { on: false } }))).toBe(false);
+    expect(await theOldContextChatIsOpen(settings({ 'release.oldContextChat': false }))).toBe(false);
   });
 });

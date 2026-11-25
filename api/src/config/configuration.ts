@@ -8,31 +8,12 @@ export const appConfig = registerAs("app", () => ({
   // this email is promoted on startup. No-ops once any platform admin exists,
   // so it can never be used to add a second one later - see AdminService.onApplicationBootstrap.
   platformAdminBootstrapEmail: process.env.PLATFORM_ADMIN_BOOTSTRAP_EMAIL,
-  // Post-report guide generation (per-participant bridge coaching, one Gemini call
-  // per party per report release). The feature is BUILT and proven accurate but has
-  // no UI surface yet, so it is OFF by default to avoid paying for output nothing
-  // renders. Flip to true once a client component shows each participant their guide.
-  postReportGuideEnabled: process.env.POST_REPORT_GUIDE_ENABLED === "true",
+  // Post-report guide generation (per-participant bridge coaching, one Gemini call per party per report release). ON
+  // unless the env says "false" (Hafsah, 22 November 2026: nothing is switched off). No screen shows the guide yet, so
+  // each one costs a model call that nothing renders until a client component shows it.
+  postReportGuideEnabled: process.env.POST_REPORT_GUIDE_ENABLED !== "false",
   /**
-   * THE COACHING LAYER. Off unless explicitly turned on, and off is the default
-   * everywhere including production.
-   *
-   * Detection already ships: the role maps, the seven universal modes, the
-   * function stored on a participant, and the neutral probes that reach the
-   * prompt are all live today and are NOT behind this flag, because they are
-   * existing behaviour and gating them would change what current grounds do.
-   *
-   * What this gates is the layer built on top of detection: coaching state, one
-   * step per session, the staircases, and anything that reads back what somebody
-   * was asked to do last time. That layer speaks directly to a person about
-   * their own work, so it stays off until its traces have been read by a human.
-   *
-   * The test that matters is not that it works when on. It is that a check-in
-   * with this off behaves EXACTLY as it did before any of it existed.
-   */
-
-  /**
-   * CONTEXT. Off by default, on the same terms as the coaching flag above.
+   * CONTEXT. Was off by default.
    *
    * What it gates: the Documents tab becoming a Context tab, open and closed
    * context as named things, per-person worries, documents read into context,
@@ -40,7 +21,7 @@ export const appConfig = registerAs("app", () => ({
    * did not capture.
    *
    * This one changes what people SEE ABOUT EACH OTHER, which is why it needs a
-   * switch more than the coaching layer did. Today every document is private to
+   * switch more than the coaching layer did. Then every document was private to
    * whoever uploaded it - not by policy, but because a participant guard was
    * applied to a list query - so turning this on is the first time the lead's
    * material reaches anybody. If that lands wrong, it lands wrong in the most
@@ -70,33 +51,12 @@ export const appConfig = registerAs("app", () => ({
    */
   contextEnabled: process.env.CONTEXT_ENABLED !== "false",
   /**
-   * G30-G33. Off is today's product: the specificity signal, unchanged. On, the
-   * same measurement is said about the picture instead of about the person, and
-   * the report carries the line saying it is not final.
-   *
-   * A kill switch, because this changes sentences people read about themselves,
-   * and a wrong sentence there costs more than a missing one.
+   * G30-G33. ON unless the env says "false" (Hafsah, 22 November 2026: nothing is switched off). The specificity
+   * measurement is said about the picture instead of about the person, and the report carries the line saying it is
+   * not final.
    */
-  confidenceEnabled: process.env.CONFIDENCE_ENABLED === "true",
+  confidenceEnabled: process.env.CONFIDENCE_ENABLED !== "false",
 
-  /**
-   * OBJECTIVES AND BASELINE. Off by default, same terms as the two above.
-   *
-   * What it gates: an objective per person rather than one per ground, and a
-   * day-one baseline recorded on purpose rather than inferred from session 1.
-   *
-   * WHY THIS ONE NEEDS THE SWITCH MOST. An objective field is a place to put a
-   * target and score somebody against it, which is what every other product in
-   * this category does. The rules that stop it - a proposal nobody has seen is
-   * never read against, an absent objective produces no read at all, and the
-   * only question asked of two objectives is whether they CONNECT - are the
-   * whole design, and if any of them turns out to be wrong in practice the
-   * damage is done to a person rather than to a screen.
-   *
-   * OFF MEANS THE OLD PRODUCT: one success definition belonging to the lead, and
-   * the arc inferred from session 1 as it is today.
-   */
-  objectivesEnabled: process.env.OBJECTIVES_ENABLED === "true",
   /**
    * THE API'S PUBLIC ADDRESS, WITHOUT /api/v1 (for example https://api.myground.work). Not a
    * secret. The Connections page builds the WhatsApp callback address from it, the one an

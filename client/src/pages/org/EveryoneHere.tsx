@@ -81,15 +81,12 @@ export function howManyHere(
   waitingWithNoCheckIn: string[] = [], overThePlanSays: string | null = null,
   /* Invited with no account yet (run 9): a row below that holds no seat, so the head count never disagrees with the rows shown. */
   invitedWithNoAccount: string[] = [],
-  /* An organisation with no cover at all (its free month is over, or the free plan never applied to it): not "on the free plan", which Plan and billing and the Pricing page never say of it (run 10). */
-  withNoPlanYet = false,
 ): string {
   const peopleCount = (n: number) => (n === 1 ? '1 person' : `${n} people`)
   const people = peopleCount(count)
   const first = cap == null ? `${people}.` : (() => {
-    if (!plan && withNoPlanYet) return `${people}, with no plan chosen yet, which covers up to ${cap}.`
-    const name = plan ? `the ${PLAN_LABELS[plan as SubscriptionPlan] ?? plan} plan` : 'the free plan'
-    return `${people}, on ${name}, which is for up to ${cap}.`
+    if (!plan) return `${people}, with no plan chosen yet, which covers up to ${cap}.`
+    return `${people}, on the ${PLAN_LABELS[plan as SubscriptionPlan] ?? plan} plan, which is for up to ${cap}.`
   })()
   /*
    * B-212: "SOMEONE AND SOMEONE ARE WAITING TO BE LET IN." `names` here are already first names
@@ -247,7 +244,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
   const startOf = useMemo(() => new Map((grounds.data ?? []).map((g) => [g.id, { startsAt: g.startsAt, createdAt: g.createdAt }])), [grounds.data])
   const status = useQuery({
     queryKey: ['billing-status-people'],
-    queryFn: () => apiClient.get('/billing/status').then((r: any) => (r.data.data ?? r.data) as { people?: { count: number; cap: number | null }; subscription?: { plan: string | null }; onTheHouse?: { plan: string } | null; onTheFreePlan?: boolean }),
+    queryFn: () => apiClient.get('/billing/status').then((r: any) => (r.data.data ?? r.data) as { people?: { count: number; cap: number | null }; subscription?: { plan: string | null }; onTheHouse?: { plan: string } | null }),
     retry: false,
   })
   const [find, setFind] = useState('')
@@ -294,7 +291,6 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
     waitingWithNoCheckIn,
     data?.overThePlanSays ?? null,
     invitedWithNoAccount,
-    !status.data?.subscription?.plan && !status.data?.onTheHouse && status.data?.onTheFreePlan === false,
   )
 
   /*
@@ -406,8 +402,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
           waitingWithNoCheckIn,
           data?.overThePlanSays ?? null,
           invitedWithNoAccount,
-          !status.data?.subscription?.plan && !status.data?.onTheHouse && status.data?.onTheFreePlan === false,
-        )}
+              )}
       >
         <Stack gap={18}>
           {/*

@@ -235,7 +235,6 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendSubscriptionCancelled: 'about paying',
   sendSubscriptionPaymentFailed: 'about paying',
   sendSubscriptionRenewal: 'about paying',
-  sendFreeExtensionClaimed: 'about paying',
   sendApproachingSessionLimit: 'about paying',
   sendMemberCapWarning: 'about paying',
   sendCareFeeConfirmation: 'about paying',

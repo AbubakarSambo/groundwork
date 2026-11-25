@@ -858,8 +858,8 @@ export class ReportsService {
   }
 
   /**
-   * G30's kill switch, read where it is used rather than at the call site, and
-   * failing to OFF.
+   * G30's setting (on unless the env says "false", configuration.ts), read where it is used rather than at the call
+   * site, and failing to OFF.
    *
    * A flag that can throw would take the whole report down, which is a worse
    * outcome than the flag being wrong - and one spec's mock config is not a

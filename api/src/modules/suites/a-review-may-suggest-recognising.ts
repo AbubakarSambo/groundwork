@@ -37,17 +37,17 @@ export const RECOGNISE_SETTING_KEY = 'reviews.recognise';
 
 export interface RecogniseSetting { on: boolean; keptAtLeast: number; atLeastSettled: number }
 
-/** The proposal: off, nine in ten kept, at least eight settled. */
-export const PROPOSED_RECOGNISE_SETTING: RecogniseSetting = { on: false, keptAtLeast: 0.9, atLeastSettled: 8 };
+/** The proposal: on (22 November 2026: nothing is switched off), nine in ten kept, at least eight settled. */
+export const PROPOSED_RECOGNISE_SETTING: RecogniseSetting = { on: true, keptAtLeast: 0.9, atLeastSettled: 8 };
 
 const FOUR_WEEKS = 28 * 86_400_000;
 
-/** The stored setting, read defensively: anything missing or odd is the proposal, and "on" only when it says so. */
+/** The stored setting, read defensively: anything missing or odd is the proposal, and "off" only when it says so. */
 export function readRecogniseSetting(stored: unknown): RecogniseSetting {
   const v = (stored && typeof stored === 'object' ? stored : {}) as Record<string, unknown>;
   const share = typeof v.keptAtLeast === 'number' && v.keptAtLeast > 0 && v.keptAtLeast <= 1 ? v.keptAtLeast : PROPOSED_RECOGNISE_SETTING.keptAtLeast;
   const settled = typeof v.atLeastSettled === 'number' && Number.isInteger(v.atLeastSettled) && v.atLeastSettled > 0 ? v.atLeastSettled : PROPOSED_RECOGNISE_SETTING.atLeastSettled;
-  return { on: v.on === true, keptAtLeast: share, atLeastSettled: settled };
+  return { on: v.on !== false, keptAtLeast: share, atLeastSettled: settled };
 }
 
 /** What the writer reads: the suggestion, with the count behind it (decision 86). */

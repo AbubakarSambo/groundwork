@@ -21,7 +21,6 @@ export interface BillingStatus {
     periodEnd: string | null
     /** Non-null means a cancellation is scheduled: access runs to this date and then stops. */
     endsAt: string | null
-    freeExtensionUsed: boolean
   }
   /** `cap: null` means unlimited or no plan - render the count without a ceiling. W14-7. */
   people: { count: number; cap: number | null }
@@ -39,11 +38,6 @@ export interface BillingStatus {
   afterTheTrial?: string | null
   activeGrounds: GroundBalance[]
   card?: { brand: string; last4: string } | null
-  /**
-   * U.19: false when nothing covers the organisation and the free plan has stopped for it (the free
-   * trial's switch is on and it is new). True, or absent from an older server, means the free plan.
-   */
-  onTheFreePlan?: boolean
   /** Admin only (U.19): the paid subscription invoices, newest first. */
   invoices?: { paidOn: string; amountCents: number; currency: string }[]
   /** Admin only: counts of what the organisation has done. */
@@ -70,23 +64,9 @@ export interface CanCreateGroundResult {
   reason?: string
   freeReason?: string
   codeId?: string
-  groundsUsed?: number
-  /** U.19: refused because the organisation has no plan and the free plan has stopped for it. */
+  /** Refused because nothing covers the organisation: its free trial is over, or its team starts on a plan. */
   noPlan?: boolean
 }
-
-/**
- * The free limits are NOT constants here any more.
- *
- * `FREE_GROUND_LIMIT = 10` lived here while the API read the same number out of
- * `platform_settings`, where a platform admin edits it. Five screens rendered this constant, so
- * changing the limit in the admin panel changed what the API enforced and nothing the user read.
- * Both limits now arrive on `GET /billing/pricing` as `free.groundLimit` and `free.memberLimit`.
- *
- * The defaults below are the pre-load fallback ONLY, the same treatment the prices already get,
- * and they are pinned against the API's own defaults by a guard rather than typed twice.
- */
-export const FALLBACK_FREE_LIMITS = { groundLimit: 10, memberLimit: 5 } as const
 
 export type SubscriptionPlan = 'STARTER' | 'SMALL_TEAM' | 'GROWTH' | 'BUSINESS' | 'SCALE' | 'ENTERPRISE'
 
@@ -208,7 +188,6 @@ export interface WhatAMonthSays {
 
 export interface LivePricing {
   plans: LivePricingRow[]
-  free: { groundLimit: number; memberLimit: number }
   /** The free trial (Hafsah, 26 September). Billing grants it while it is on (U.19); say nothing while off. */
   trial?: { on: boolean; teamsUnder: number; months: number }
   /** The anchor's own free month (anchor piece 34): it grants the same free month, so a page that offers one says it while it is on. */
@@ -272,7 +251,6 @@ export interface WhatsAppBillingAdmin {
   freeTrial: { months: number; endsOn: string } | null
   /** The end of the free WhatsApp month every organisation gets, while it lasts (13 October, evening). */
   freeUntil?: string | null
-  onTheFreePlan: boolean
   use: { month: string; sent: number; limit: number | null; startsAgainOn: string }
   sending: boolean
   heldBecause: 'not turned on' | 'not on a paid plan' | 'at the limit' | null
@@ -322,9 +300,6 @@ export const billingApi = {
 
   portal: () =>
     apiClient.post<{ portalUrl: string }>('/billing/portal').then(r => r.data),
-
-  claimFreeExtension: (groundId: string) =>
-    apiClient.post('/billing/free-extension', { groundId }).then(r => r.data),
 
   /* Quiet on a server error: the billing page says what happened in one sentence of its own
      ("Paying is not set up yet. Nothing was charged."), and the shared pop-up said the opposite

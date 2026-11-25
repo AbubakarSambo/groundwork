@@ -2023,20 +2023,18 @@ export class EmailService implements OnModuleInit {
   // --- Billing ---
 
   /**
-   * Payment request. Sent to the org admin when a ground's first (free) session
-   * is complete and the next session requires payment.
+   * Payment request. Sent to the org admin when nothing covers the organisation any more (its free trial and the four
+   * weeks after it are over, or its team started on a plan) and somebody needs a check-in.
    */
   async sendPaymentRequestEmail(adminEmail: string, orgName: string, groundId: string): Promise<void> {
     const billingUrl = `${this.frontendUrl}/billing?groundId=${groundId}`;
     await this.sendEmail({
       to: adminEmail,
       subject: 'Add a card to open more check-ins on Groundwork',
-      /* This used to say a check-in "has used its free session" and, in the next line, that every free
-         check-in runs unlimited sessions - two sentences that cannot both be true. What happened: the
-         free check-ins are used up. What a card buys: more of them, and more people. */
+      /* There is no count of free check-ins (22 November 2026): what happened is that nothing covers the organisation. */
       html: this.layout(
-        `<p>Your workspace (<strong>${escapeHtml(orgName)}</strong>) has used all of its free check-ins.</p>
-         <p>Every check-in you already have keeps running, with unlimited check-ins and reports, and every record stays yours. Adding a card lets your team open more check-ins and add more people.</p>
+        `<p>Your organisation, <strong>${escapeHtml(orgName)}</strong>, has no plan yet, so your team cannot open new check-ins.</p>
+         <p>Every record stays yours. Choosing a plan lets your team open more check-ins and add more people.</p>
          <p><a href="${billingUrl}">Add a card</a></p>`,
       ),
     }, undefined, 'sendPaymentRequestEmail');
@@ -2052,7 +2050,7 @@ export class EmailService implements OnModuleInit {
       to: adminEmail,
       subject: `${name} tried to check in and could not`,
       html: this.layout(
-        `<p><strong>${escapeHtml(name)}</strong> tried to check in on <strong>${escapeHtml(groundLabel)}</strong> but the free check-ins have been used.</p>
+        `<p><strong>${escapeHtml(name)}</strong> tried to check in on <strong>${escapeHtml(groundLabel)}</strong> but your organisation has no plan yet.</p>
          <p>Resubscribe or apply an access code to unblock them. Nothing they have said is lost.</p>
          <p><a href="${groundUrl}">Go to the check-in</a></p>`,
       ),
@@ -2116,16 +2114,10 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Sent when an org cancels their subscription. */
-  async sendSubscriptionCancelled(email: string, plan: string, freePlan: { checkIns: number; people: number } | null = null): Promise<void> {
+  async sendSubscriptionCancelled(email: string, plan: string): Promise<void> {
     const planLabel = plan.replace('_', ' ').toLowerCase();
-    /*
-     * FIX LIST ITEM 6: this said "Your team keeps ten free check-ins" and "buy sessions" to everybody. Sessions are not sold,
-     * and the free plan is only for an organisation that had it before the free month began. So it says what is true for
-     * this one: the free plan with its own numbers, or the light prototype's "Check-ins pause until you subscribe again."
-     */
-    const after = freePlan
-      ? `Your team is back on the free plan, which covers up to ${freePlan.checkIns} check-ins and ${freePlan.people} people. Nothing is deleted, and every record stays readable.`
-      : 'Check-ins pause until you subscribe again. Nothing is deleted, and every record stays readable.';
+    /* The light prototype's words. There is no free plan to go back to: the only free plan is the free trial (22 November 2026). */
+    const after = 'Check-ins pause until you subscribe again. Nothing is deleted, and every record stays readable.';
     await this.sendEmail({
       to: email,
       subject: 'Your Groundwork subscription has been cancelled',
@@ -2170,19 +2162,6 @@ export class EmailService implements OnModuleInit {
          <p><a href="${this.frontendUrl}/billing">View billing</a></p>`,
       ),
     }, undefined, 'sendSubscriptionRenewal');
-  }
-
-  /** Sent when the free session extension is claimed. */
-  async sendFreeExtensionClaimed(email: string, groundLabel: string, groundUrl: string): Promise<void> {
-    await this.sendEmail({
-      to: email,
-      subject: `Free check-in added to ${groundLabel}`,
-      html: this.layout(
-        `<p>Your free check-in extension has been added to <strong>${escapeHtml(groundLabel)}</strong>.</p>
-         <p>Check-ins on the free tier run unlimited check-ins. Subscribe when your team needs more check-ins, or more people.</p>
-         <p><a href="${groundUrl}">Go to your check-in</a></p>`,
-      ),
-    }, undefined, 'sendFreeExtensionClaimed');
   }
 
   /** Sent when a check-in's session balance reaches 1. */
@@ -2303,7 +2282,7 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>${greeting(name)}</p>
          <p>Your Groundwork subscription for <strong>${escapeHtml(orgName)}</strong> is now active.</p>
-         <p>Your subscription lifts the limit on free check-ins. Nobody is ever charged per check-in, and participants are never charged at all.</p>
+         <p>Your team can open check-ins and add people as your plan allows. Nobody is ever charged per check-in, and participants are never charged at all.</p>
          <p>Your records are always yours, regardless of plan status.</p>`,
       ),
     }, undefined, 'sendCareFeeConfirmation');

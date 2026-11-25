@@ -218,8 +218,6 @@ import { withoutAThingTheLeadListedAsTheirs } from './a-thing-the-lead-listed-is
 import { aCutThatLeavesAFragment, afterTheCut } from './a-cut-never-leaves-a-fragment';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
 
-/** The coaching block reaches a live prompt only when this platform setting is true. See coachingIsLive(). */
-export const COACHING_LIVE_KEY = 'coaching_live';
 import {
   CORRECTION_WINDOW_KEY,
   DEFAULT_CORRECTION_WINDOW_DAYS,
@@ -1490,7 +1488,7 @@ export class ConversationService {
            * mid-check-in while the only person who could clear it heard nothing.
            */
           this.tellAnAdminToAddACard(checkIn.groundId).catch(() => undefined);
-          throw new ForbiddenException({ message: gate.reason, freeExtensionAvailable: gate.freeExtensionAvailable ?? false });
+          throw new ForbiddenException({ message: gate.reason });
         }
         // Metering runs ONLY for metered grounds. gate.sessionsBalance === -1
         // signals unlimited (free-tier or active subscription) - those grounds are
@@ -1512,7 +1510,6 @@ export class ConversationService {
             const again = await this.billing.canStartSession(checkIn.groundId).catch(() => null);
             throw new ForbiddenException({
               message: (again && !again.allowed && again.reason) || 'This check-in cannot start until your team adds more check-ins. Only an admin can do that, and your answers so far are kept.',
-              freeExtensionAvailable: again?.freeExtensionAvailable ?? false,
             });
           }
           /**
@@ -5754,7 +5751,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     /* Judgements of a person off for this organisation: no coaching, pattern or earlier "seen before" about them reaches the model (organisation/person-judgements.ts). */
     const judgedHere = await thePersonJudgementsAreOn(this.prisma, (ground as any)?.organizationId ?? null);
-    const coachingBlock = judgedHere ? await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber) : '';
+    /* Coaching is always on (Hafsah, 22 November 2026): no setting, flag or organisation switch turns it off. */
+    const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
     /*
      * GROUNDWORK MANAGES, INSIDE THE CHECK-IN (groundwork-manages-the-check-in.ts): what is late, what they said and nothing shows, a
      * figure that changed, and one line of coaching on their own pattern, from their own record as it was last built. Only where the
@@ -6811,27 +6809,6 @@ ${told}` : '';
     }
   }
 
-  private coachingEnabled(): boolean {
-    return true;
-  }
-
-  /**
-   * platform_settings.coaching_live: ON BY DEFAULT, ON EVERY DATABASE (decision 57, item 6, 30
-   * September 2026). Coaching is one of the product's protected capabilities (decision 55); a
-   * missing row used to read as off, which switched it off everywhere until somebody had set the
-   * row by hand, including on every new database. A missing row now reads as on. An admin can
-   * still pause it: a row whose value is explicitly `false` (or `"false"`) still turns it off.
-   */
-  private async coachingIsLive(): Promise<boolean> {
-    try {
-      const row = await this.prisma.platformSetting.findUnique({ where: { key: COACHING_LIVE_KEY } });
-      if (row === null || row === undefined) return true;
-      return row.value !== false && row.value !== 'false';
-    } catch {
-      return true;
-    }
-  }
-
   /**
    * What the coach has to say into THIS session, or nothing.
    *
@@ -6845,14 +6822,7 @@ ${told}` : '';
    * chosen from their last week rather than this one.
    */
   private async coachingBlock(participantId: string, sessionNumber: number): Promise<string> {
-    if (!this.coachingEnabled()) return '';
-    /*
-     * THE GATE. Rows are written on every completed session and can be read at /admin/coaching.
-     * The block reaches a live prompt only once the platform setting below has been set to true,
-     * by a person, after reading a first batch. Until then the chain runs in full and says nothing
-     * to anybody. There is no default row: absent means off.
-     */
-    if (!(await this.coachingIsLive())) return '';
+    /* Always on (Hafsah, 22 November 2026): the `coaching_live` setting is gone. Rows can still be read at /admin/coaching. */
     try {
       const row = await this.prisma.coachingState.findUnique({ where: { participantId } });
       if (!row?.currentStep) return '';
@@ -6899,13 +6869,10 @@ ${told}` : '';
    * Whether the last step worked is the assessment's reading too: layer 3 follows each step up in the next assessment, and a
    * step whose pattern was not seen again worked.
    *
-   * Never while they are away or after they have gone, never on a setup, and never where the organisation keeps judgements of
-   * a person off.
+   * Never while they are away or after they have gone, and never on a setup. Always on otherwise: no switch turns coaching off.
    */
   private async observeForCoaching(checkInId: string, participantId: string, sessionNumber: number): Promise<void> {
-    if (!this.coachingEnabled()) return;
     const at = await (this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { groundId: true, isSetup: true } }) ?? Promise.resolve(null)).catch(() => null);
-    if (!(await thePersonJudgementsAreOnFor(this.prisma, (at as any)?.groundId ?? null))) return;
     if ((at as any)?.isSetup) return;
 
     const participant = await this.prisma.groundParticipant.findUnique({
@@ -6956,7 +6923,6 @@ ${told}` : '';
     },
     outcomeOfLastStep?: StepOutcome | null,
   ): Promise<{ offered: string | null }> {
-    if (!this.coachingEnabled()) return { offered: null };
     try {
       const row = await this.prisma.coachingState.findUnique({ where: { participantId } });
       let state: CoachingStateShape = row
