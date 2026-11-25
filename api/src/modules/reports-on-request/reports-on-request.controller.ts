@@ -1,4 +1,5 @@
 import { Controller, HttpCode, Post, UploadedFile, UseInterceptors, BadRequestException } from '@nestjs/common';
+import { ONE_FILE } from '../../common/the-most-a-file-may-weigh';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, CurrentUserData } from '../../common';
@@ -17,7 +18,7 @@ export class ReportsOnRequestController {
 
   @Post('material')
   @HttpCode(200)
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('file', ONE_FILE))
   @ApiOperation({ summary: 'Add a file to the report you asked for in Ask. It is read once and used only for your report.' })
   async material(@CurrentUser() user: CurrentUserData, @UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file came through, so choose a file and try again.');

@@ -13,6 +13,7 @@
  * MEASURED. Each assessment logs one line, "assessment-measure", with the model calls it made and the milliseconds from the
  * close to ready, and keeps both on the assessment, so the with-against-without test can read them.
  */
+import { theDocumentsInOneRead, WITH_ITS_READING } from '../documents/what-a-document-says';
 import { whoTheyMeant } from '../grounds/who-they-meant';
 import { theSpeakerLine } from './the-person-speaking';
 import { everybodyMayOpen } from './a-private-documents-numbers-stay-with-it';
@@ -146,13 +147,14 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
      * the only way its numbers reach the aims.
      */
     const documents = isTheLead
-      ? ((((await deps.prisma.groundDocument?.findMany?.({
+      /* One read shared by her documents, each whole or as the reading of the whole of it, and never cut without saying so. */
+      ? theDocumentsInOneRead((((await deps.prisma.groundDocument?.findMany?.({
           where: { groundId: row.groundId, participantId: row.participantId },
           orderBy: { createdAt: 'asc' },
-          select: { fileName: true, content: true, visibility: true },
+          select: { fileName: true, content: true, visibility: true, ...WITH_ITS_READING },
         })?.catch?.(() => [])) ?? []) as any[])
-          .filter((d) => everybodyMayOpen(d, deps.contextEnabled !== false) && String(d.content ?? '').trim())
-          .map((d) => ({ name: String(d.fileName ?? 'A document'), content: String(d.content).trim().slice(0, 12_000) })))
+          .filter((d) => everybodyMayOpen(d, deps.contextEnabled !== false) && String(d.content ?? '').trim()))
+          .map((d) => ({ name: String(d.fileName ?? 'A document'), content: d.says.trim() }))
       : [];
     /* The same promise written twice is put once; what is read about it settles both rows. */
     const openOnce = oneOfEach(openPromises);

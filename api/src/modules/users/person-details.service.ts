@@ -1,3 +1,4 @@
+import { A_FILE_TOO_LARGE } from '../../common/the-most-a-file-may-weigh';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -69,12 +70,12 @@ export class PersonDetailsService {
     return { fileName: cv.fileName, contentType: cv.mimeType, body: Buffer.from(cv.bytes) };
   }
 
-  /** The person or an admin adds a CV, or replaces the one there. A PDF or a Word file, up to 10 MB. */
+  /** The person or an admin adds a CV, or replaces the one there. A PDF or a Word file, up to the most one file may weigh. */
   async setTheCv(organizationId: string, readerId: string, subjectId: string, file: Express.Multer.File | undefined) {
     const [reader, subject] = await Promise.all([this.theReader(organizationId, readerId), this.theSubject(organizationId, subjectId)]);
     if (!mayChangeTheCv(reader, subject)) throw new ForbiddenException(NOT_YOURS_TO_CHANGE);
     if (!file?.buffer?.length || !A_CV_MAY_BE[file.mimetype]) throw new BadRequestException(NOT_A_CV);
-    if (file.size > MOST_A_CV_MAY_WEIGH) throw new BadRequestException('That file is bigger than 10 MB. Add a smaller copy of the CV.');
+    if (file.size > MOST_A_CV_MAY_WEIGH) throw new BadRequestException(A_FILE_TOO_LARGE);
     const fileName = (file.originalname ?? '').trim().slice(0, 200) || `CV.${A_CV_MAY_BE[file.mimetype]}`;
     const data = { fileName, mimeType: file.mimetype, bytes: file.buffer, size: file.size, uploadedByUserId: readerId, uploadedAt: new Date() };
     await this.prisma.personCv.upsert({

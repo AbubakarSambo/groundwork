@@ -21,6 +21,8 @@
  * as `startsAt` is the vocabulary, so the filter calls this only for the screens' own routes.
  */
 
+import { A_FILE_TOO_LARGE } from '../the-most-a-file-may-weigh';
+
 export const SOMETHING_WENT_WRONG = 'Something went wrong on my side. Please try again in a minute, and if it happens again, tell me.';
 
 const BY_DEFAULT: Record<string, string> = {
@@ -34,6 +36,8 @@ const BY_DEFAULT: Record<string, string> = {
   'gone': 'That is not available any more, so go back and start again from Today.',
   'payload too large': 'That is too large to send, so choose something smaller and try again.',
   'request entity too large': 'That is too large to send, so choose something smaller and try again.',
+  /* The upload library's own words for a file over the limit every upload route shares, said with the limit. */
+  'file too large': A_FILE_TOO_LARGE,
   'unprocessable entity': 'That could not be used as it was sent, so check what you typed and try again.',
   'internal server error': SOMETHING_WENT_WRONG,
   'service unavailable': 'Groundwork cannot do that for a moment, so please try again in a minute.',

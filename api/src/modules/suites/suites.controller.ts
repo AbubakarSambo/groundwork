@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpStatus, Param, Post, Put, Query, Res, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { ONE_FILE } from '../../common/the-most-a-file-may-weigh';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -630,7 +631,7 @@ export class SuitesController {
   @Post('spend/requests/:id/attachment')
   @ApiOperation({ summary: 'The person who asked attaches a receipt or a proforma to their own request while it waits. Its name and words are kept, no file.' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('file', ONE_FILE))
   attachToSpend(@CurrentUser() user: CurrentUserData, @Param('id') id: string, @UploadedFile() file: Express.Multer.File, @Body() body: { kind?: string }) {
     return this.filed.attachToSpending({ userId: user.id, organizationId: user.organizationId }, id, body?.kind, file);
   }

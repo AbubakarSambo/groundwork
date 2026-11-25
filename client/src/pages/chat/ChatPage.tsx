@@ -660,12 +660,14 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
       /*
        * WHAT THE DOCUMENT SUGGESTS, SHOWN ONCE IT IS READ (26 October 2026). Since a0db2a191 ("Nobody waits for a model") the reading is
        * written onto the document after the upload is answered, so `doc.assessment` is never on the upload's reply and this card had
-       * quietly stopped appearing. It is fetched when it is ready, for up to a minute, and shown then. the-document-card-waits-for-its-reading.spec.ts
+       * quietly stopped appearing. It is fetched when it is ready and shown then. the-document-card-waits-for-its-reading.spec.ts
+       * Up to five minutes, not one (22 November 2026): a long document is read whole, in parts, before its card is written, and a minute
+       * was not enough for it.
        */
       if (!doc.assessment && groundId) {
         const docId = doc.id, docName = doc.name, gid = groundId
         void (async () => {
-          for (let i = 0; i < 20; i++) {
+          for (let i = 0; i < 100; i++) {
             await new Promise((r) => setTimeout(r, 3000))
             const found = await documentsApi.list(gid).then((all: any) => (Array.isArray(all) ? all : all?.data ?? []).find((d: any) => d.id === docId)).catch(() => null)
             if (found?.assessment?.suggests?.length) {
@@ -687,13 +689,15 @@ export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, s
         } catch { /* non-critical follow-up; the upload itself already succeeded */ }
       }
     },
-    onError: (_err, { file, ctx }) => {
+    onError: (err: any, { file, ctx }) => {
       // Restore what the person typed/picked instead of silently discarding it -
       // previously a failed upload cleared pendingDoc/docContext with no way to retry.
       setPendingDoc(file)
       setDocContext(ctx)
       setDocContextMode(true)
-      toast.error('That did not upload. Nothing was added to the record, try again.')
+      /* The server's own sentence when it gave one, such as the size limit for a file that is too large (22 November 2026). */
+      const said = err?.response?.data?.message
+      toast.error(typeof said === 'string' && said.trim() ? said : 'That did not upload. Nothing was added to the record, try again.')
     },
   })
 

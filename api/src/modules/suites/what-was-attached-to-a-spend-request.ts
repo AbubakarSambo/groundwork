@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
+import { MOST_A_FILE_MAY_WEIGH, A_FILE_TOO_LARGE } from '../../common/the-most-a-file-may-weigh';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { PDFParse } = require('pdf-parse') as { PDFParse: new (opts: { data: Buffer }) => { getText: () => Promise<{ text: string }>; destroy: () => Promise<void> } };
 
@@ -11,11 +12,10 @@ const { PDFParse } = require('pdf-parse') as { PDFParse: new (opts: { data: Buff
  */
 export const KINDS = { receipt: 'a receipt', quote: 'a proforma or quote' } as const;
 export type AnAttachedKind = keyof typeof KINDS;
-const MAX_BYTES = 10 * 1024 * 1024;
 
 export async function theWordsOfAnAttachment(file: { buffer: Buffer; mimetype?: string; originalname?: string; size?: number } | undefined): Promise<string | null> {
   if (!file) throw new BadRequestException('No file came through, so choose a file and try again.');
-  if ((file.size ?? file.buffer.length) > MAX_BYTES) throw new BadRequestException('That file is larger than 10 MB, so choose a smaller one.');
+  if ((file.size ?? file.buffer.length) > MOST_A_FILE_MAY_WEIGH) throw new BadRequestException(A_FILE_TOO_LARGE);
   const mime = file.mimetype ?? '';
   const name = String(file.originalname ?? '').toLowerCase();
   if (mime === 'application/pdf' || name.endsWith('.pdf')) {

@@ -43,6 +43,9 @@ import { whatAParticipantIsToldAboutThis } from '../grounds/what-a-participant-i
 import { whatToPutToThem, theReplyAlreadyQuotesIt } from './the-line-that-touches-what-they-said';
 import { aDirectiveAboutTheBurden, countWhatWasAsked, stampWhatItAskedFor } from './the-same-burden-on-both-sides';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from './a-prompt-that-ran-out-of-room-says-so';
+import { whatADocumentSays, theDocumentsInOneRead, theReadingIfItLandsSoon, isBeingRead, notReadWholeYet, WITH_ITS_READING } from '../documents/what-a-document-says';
+/** How long the reply to an upload waits for the reading of a long document before it speaks from the start of it. */
+const WAIT_FOR_THE_WHOLE_OF_IT = 90_000;
 import { isTheirs, ONLY_THEIR_WORDS } from './a-record-is-what-they-said';
 import { whatTheySaidAboutWhy } from './they-said-why-themselves';
 import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
@@ -63,7 +66,7 @@ import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { almostNothingHereYet } from './how-short-a-check-in-may-be';
 import { withoutTheLastOne } from './a-first-session-has-no-last-one';
-import { theContextWeHave, whoThisNameIs, theNameWeUseFor, WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, MOST_OF_A_DOCUMENT_WE_READ, type WhatADocumentHolds } from '../documents/what-a-document-holds';
+import { theContextWeHave, whoThisNameIs, theNameWeUseFor, WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, type WhatADocumentHolds } from '../documents/what-a-document-holds';
 import { isAnApology, NOTHING_TO_APOLOGISE_FOR } from './an-apology-is-not-owed';
 import { theOneThingToDoBetter } from './what-this-session-is-missing';
 import { theAimsThatAreNew } from './an-aim-said-twice-is-one-aim';
@@ -5143,7 +5146,7 @@ export class ConversationService {
            can read it. Without that the block went in under one heading claiming the person being
            interviewed had written all of it - see where-this-document-came-from.ts. */
         select: {
-          fileName: true, content: true, uploaderNote: true, visibility: true, mimeType: true, createdAt: true, origin: true,
+          fileName: true, content: true, uploaderNote: true, visibility: true, mimeType: true, createdAt: true, origin: true, ...WITH_ITS_READING,
           participant: {
             select: {
               userId: true, email: true,
@@ -5297,6 +5300,7 @@ export class ConversationService {
       return {
       fileName: d.fileName,
       content: d.content,
+      synthesis: d.synthesis ?? null,
       uploaderNote: d.uploaderNote,
       provenance: whereThisCameFrom({
         mine: d.participant?.userId === checkIn.participant.userId,
@@ -9634,7 +9638,7 @@ ${told}` : '';
   private async documentsThatMayBack(participantId: string, groundId: string) {
     const docs = await this.prisma.groundDocument.findMany({
       where: { groundId, OR: [{ participantId }, { visibility: 'OPEN' as any }] },
-      select: { id: true, fileName: true, content: true, origin: true, descriptionCheck: true, mimeType: true, participantId: true },
+      select: { id: true, fileName: true, content: true, origin: true, descriptionCheck: true, mimeType: true, participantId: true, ...WITH_ITS_READING },
       orderBy: { createdAt: 'desc' },
       take: 12,
     }).then((all) => all.filter((d) => {
@@ -9653,8 +9657,9 @@ ${told}` : '';
   }
 
   /** Which of these lines these documents back, or read differently. A read only: nothing is written. */
-  private async whatTheDocumentsBack(readable: { fileName: string; content: string | null }[], lines: string[]) {
-    const documents = readable.map((d, i) => `[${i}] "${d.fileName}"\n${(d.content ?? '').slice(0, 6000)}`).join('\n\n');
+  private async whatTheDocumentsBack(readable: { fileName: string; content: string | null; synthesis?: string | null }[], lines: string[]) {
+    /* One read shared by every document, each the whole of it or its reading of the whole of it, and never cut without saying so. */
+    const documents = theDocumentsInOneRead(readable).map((d, i) => `[${i}] "${d.fileName}"\n${d.says}`).join('\n\n');
     const numbered = lines.map((t, i) => `[${i}] ${t.replace(/^\[VERIFIABILITY:\w+\] /, '')}`).join('\n');
     return this.anthropic.extract<{ backed: { line: number; document: number; where: string }[]; readsDifferently?: { line: number; document: number; says: string }[] }>(
       ANCHOR_TO_DOCUMENTS_PROMPT,
@@ -10379,9 +10384,8 @@ ${told}` : '';
     const theirOwnTurns = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
     const forOthers = me.partyType === PartyType.INITIATOR;
     const { readable, privateFigures, numbersInTheirWords, sumsOnlyARequestSaid } = await this.whatTheySaidAndGave(groundId, participantId, theirOwnTurns, forOthers);
-    const attached = readable
-      .filter((d) => (d.content ?? '').trim())
-      .map((d) => `THEY ATTACHED "${d.fileName}":\n${(d.content ?? '').slice(0, MOST_OF_A_DOCUMENT_WE_READ)}`)
+    const attached = theDocumentsInOneRead(readable.filter((d) => (d.content ?? '').trim()))
+      .map((d) => `THEY ATTACHED "${d.fileName}":\n${d.says}`)
       .join('\n\n');
     const spoken = turns
       .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
@@ -10853,7 +10857,7 @@ ${told}` : '';
     const theirDocuments = await (this.prisma.groundDocument?.findMany?.({
       where: { groundId, participantId },
       orderBy: { createdAt: 'asc' },
-      select: { fileName: true, content: true, visibility: true },
+      select: { fileName: true, content: true, visibility: true, ...WITH_ITS_READING },
     }) ?? Promise.resolve([])).catch(() => [] as { fileName: string; content: string | null; visibility?: string | null }[]);
     /*
      * A PRIVATE DOCUMENT KEEPS ITS AUDIENCE (pilots, 13 October 2026, problem 3). What the lead's
@@ -11775,7 +11779,7 @@ ${told}` : '';
     if (!isLead) return null;
     const docs = await this.prisma.groundDocument.findMany({
       where: { groundId, NOT: { holds: { equals: null as any } } },
-      select: { id: true, fileName: true, holds: true, content: true },
+      select: { id: true, fileName: true, holds: true, content: true, ...WITH_ITS_READING },
     });
     const waiting = docs.filter((d) => ((d.holds as any)?.unmatched ?? []).length);
     if (!waiting.length) return null;
@@ -11797,7 +11801,7 @@ ${told}` : '';
          numbers are belongs to the document, and duplicating them here would be a second copy to drift. */
       const read = await this.anthropic.extract<WhatADocumentHolds>(
         WHAT_A_DOCUMENT_HOLDS_PROMPT,
-        [{ role: 'user', content: `Document: "${d.fileName}"\n\n${(d.content ?? '').slice(0, MOST_OF_A_DOCUMENT_WE_READ)}` }],
+        [{ role: 'user', content: `Document: "${d.fileName}"\n\n${whatADocumentSays(d)}` }],
         WHAT_A_DOCUMENT_HOLDS_SCHEMA as any,
       ).catch(() => null);
       const rows = (read?.forOnePerson ?? []).filter((r) => r?.personName?.trim() && r?.what?.trim() && Number.isFinite(r.target) && r.target > 0);
@@ -11868,13 +11872,21 @@ ${told}` : '';
     });
 
     /*
+     * THE WHOLE OF IT, NOT ITS FIRST TWO PAGES (Hafsah, 22 November 2026). A long document is read in parts after the upload is answered
+     * (what-a-document-says). This reply waits a short while for that reading, so it can say what is in all of it; when the reading is not
+     * done in time, it reads as much as fits and says plainly that it is still reading the rest.
+     */
+    const reading = doc && notReadWholeYet(doc as any) ? await theReadingIfItLandsSoon(doc.id, WAIT_FOR_THE_WHOLE_OF_IT) : null;
+    const whole = doc ? { ...doc, synthesis: (doc as any).synthesis ?? reading } : null;
+
+    /*
      * THE DOCUMENT THIS CHECK-IN ACKNOWLEDGES WAS ADDED IN THE CHECK-IN (final real-model check, item 9). Njeri's Equity slip for FN-004
      * was sent with no word that it came from her check-in, so it was never filed on FN-004, and Wanjiru's morning said "Nothing is paid
      * with proof yet." for four mornings. Where the check-in itself says it has a document, the document is filed on its item as proof,
      * once, by the same rule as an upload from the check-in (proof-filed-on-its-item.ts).
      */
     if (doc && !(await this.prisma.itemEvidence?.findFirst?.({ where: { documentId: doc.id }, select: { id: true } }).catch(() => null))) {
-      await fileTheProofOnItsItem(this.prisma as any, this.anthropic, { id: doc.id, groundId: checkIn.groundId, participantId: checkIn.participantId, fileName: doc.fileName, mimeType: doc.mimeType, uploaderNote: (doc as any).uploaderNote ?? null, content: doc.content })
+      await fileTheProofOnItsItem(this.prisma as any, this.anthropic, { id: doc.id, groundId: checkIn.groundId, participantId: checkIn.participantId, fileName: doc.fileName, mimeType: doc.mimeType, uploaderNote: (doc as any).uploaderNote ?? null, content: doc.content, synthesis: whole?.synthesis ?? null })
         .catch((err: any) => this.logger.warn(`Could not file ${doc.fileName} as evidence from check-in ${checkIn.id}: ${err?.message ?? err}`));
     }
 
@@ -11883,10 +11895,10 @@ ${told}` : '';
        * WHAT IS IN IT IS SAID BACK, AND USED (Hafsah, 26 October 2026: "document synthesize needs to happen each chat where it tells them
        * whats in the doc and uses it as context, we used to have that"). This said "Do not summarise the document."
        */
-      'You are Groundwork. A document has just been attached to this check-in. Name it, then say in two or three short sentences what is in it that matters to this check-in: the names, amounts, dates and items, exactly as the document writes them. Then ask one question: what does it confirm about what they have told you? Plain, full sentences. Do not make a judgement. Do not list questions.';
+      'You are Groundwork. A document has just been attached to this check-in. Name it, then say in two to four short sentences what is in it that matters to this check-in, from the whole of it and not only its start: the names, amounts, dates and items, exactly as the document writes them. Then ask one question: what does it confirm about what they have told you? Plain, full sentences. Do not make a judgement. Do not list questions.';
 
-    const docContext = doc
-      ? `[Document attached: "${doc.fileName}"]\n${doc.content.slice(0, 6000)}`
+    const docContext = doc && whole
+      ? `[Document attached: "${doc.fileName}"]\n${whatADocumentSays(whole, undefined, { stillReading: notReadWholeYet(whole) && isBeingRead(doc.id) })}`
       : '[A document was attached but could not be read.]';
 
     const reply = await this.anthropic.respond(systemPrompt, [{ role: 'user', content: docContext }]);

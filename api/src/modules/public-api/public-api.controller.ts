@@ -1,3 +1,4 @@
+import { ONE_FILE } from '../../common/the-most-a-file-may-weigh';
 import {
   UseInterceptors,
   UploadedFile,
@@ -728,7 +729,7 @@ export class PublicApiController {
   @UseGuards(EmbedSessionGuard)
   @ApiOperation({ summary: 'Attach a document to a check-in. PDF, Word, Excel, PowerPoint, text.' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('file', ONE_FILE))
   async attachToCheckIn(
     @Req() req: { panel: PanelCaller },
     @Param('id') id: string,
@@ -766,7 +767,7 @@ export class PublicApiController {
   @Post('grounds/:groundId/documents')
   @HttpCode(201)
   @UseGuards(EmbedSessionGuard)
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('file', ONE_FILE))
   @ApiOperation({ summary: 'Add a document to a check-in. It arrives private.' })
   async putADocumentIn(
     @Req() req: { panel: PanelCaller },

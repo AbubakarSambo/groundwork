@@ -1,6 +1,7 @@
 import { readsAsAPayment, readsAsASignedOrder } from '../board/a-deals-four-criteria';
 import { KINDS_THAT_ARE_NOT_WORK } from '../board/the-kind-of-work';
 import { weCouldNotReadIt } from './a-document-we-could-not-read-is-not-a-source';
+import { whatADocumentSays } from './what-a-document-says';
 import { BILL, LOAN_OWED, F, aBillIsNamed } from '../board/the-collections-record';
 
 /**
@@ -105,7 +106,7 @@ export async function theItemTheDocumentIsAbout(
   const said = [
     `THEIR ITEMS:\n${hers.map(anItemAsALine).join('\n')}`,
     `THE DOCUMENT'S FILE NAME: ${doc.fileName ?? ''}`,
-    `ITS TEXT:\n${text ? text.slice(0, 6000) : '(none could be read)'}`,
+    `ITS TEXT:\n${text ? whatADocumentSays({ ...doc, content: text }) : '(none could be read)'}`,
     doc.uploaderNote?.trim() ? `THE NOTE IT WAS ADDED WITH: ${doc.uploaderNote.trim()}` : '',
     lastSaid?.trim() ? `WHAT THEY SAID LAST IN THEIR CHECK-IN: ${lastSaid.trim()}` : '',
   ].filter(Boolean).join('\n\n');
@@ -123,7 +124,7 @@ export function whatItShows(content: string | null | undefined): string | null {
   return first.length < t.length && !/[.!?]$/.test(first) ? `${first}...` : first;
 }
 
-type ADocumentsWords = { fileName?: string | null; uploaderNote?: string | null; content?: string | null };
+type ADocumentsWords = { fileName?: string | null; uploaderNote?: string | null; content?: string | null; synthesis?: string | null };
 
 /** A document's words: its name, the note it was added with, and its text where it could be read. */
 function theWordsOf(doc: ADocumentsWords): string {
@@ -133,7 +134,7 @@ function theWordsOf(doc: ADocumentsWords): string {
 export async function fileTheProofOnItsItem(
   prisma: any,
   reader: TheReader | null | undefined,
-  doc: { id: string; groundId: string; participantId: string | null; fileName: string; mimeType: string; uploaderNote?: string | null; content: string },
+  doc: { id: string; groundId: string; participantId: string | null; fileName: string; mimeType: string; uploaderNote?: string | null; content: string; synthesis?: string | null },
   now: Date = new Date(),
 ): Promise<{ id: string; itemName: string | null } | null> {
   const ground = await prisma?.ground?.findUnique?.({ where: { id: doc.groundId }, select: { organizationId: true } }).catch(() => null);
@@ -189,7 +190,7 @@ export async function fileProofThatWasFiledOnNothing(prisma: any, reader: TheRea
   const onSomebodyElses = (o: any) => { const on = items.find((i) => i.id === o.workItemId); return !!on?.ownerParticipantId && on.kind !== BILL && on.kind !== LOAN_OWED && on.ownerParticipantId !== o.participantId; };
   let filed = 0;
   for (const o of proof.filter((p) => !p.workItemId || onSomebodyElses(p))) {
-    const doc: any = await Promise.resolve(prisma.groundDocument?.findUnique?.({ where: { id: o.documentId }, select: { fileName: true, uploaderNote: true, content: true } })).catch(() => null);
+    const doc: any = await Promise.resolve(prisma.groundDocument?.findUnique?.({ where: { id: o.documentId }, select: { fileName: true, uploaderNote: true, content: true, synthesis: true } as any })).catch(() => null);
     if (!doc) continue;
     const item = await theItemTheDocumentIsAbout(reader, doc, items, o.participantId ?? null);
     if ((item?.id ?? null) === (o.workItemId ?? null)) continue;

@@ -11,7 +11,7 @@ describe('what is in a document is said back, in every chat', () => {
   it('the check-in says what is in it, as written, then asks what it confirms', () => {
     const src = read('conversation.service.ts').replace(/\/\*[\s\S]*?\*\//g, '');
     expect(src).not.toContain('Do not summarise the document.');
-    expect(src).toContain('say in two or three short sentences what is in it that matters to this check-in');
+    expect(src).toContain('say in two to four short sentences what is in it that matters to this check-in, from the whole of it and not only its start');
   });
   it('WhatsApp says the same back after the file arrives', () => {
     const wa = read('..', 'public-api', 'whatsapp-for-an-organisation.service.ts');

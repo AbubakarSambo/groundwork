@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { theContextWeHave, WHAT_A_DOCUMENT_HOLDS_PROMPT, MOST_OF_A_DOCUMENT_WE_READ, aSentence } from './what-a-document-holds';
+import { theContextWeHave, WHAT_A_DOCUMENT_HOLDS_PROMPT, aSentence } from './what-a-document-holds';
+import { ONE_READ } from './what-a-document-says';
 
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
 const DOCS = strip(readFileSync(join(__dirname, 'documents.service.ts'), 'utf8'));
@@ -87,7 +88,8 @@ describe('what a document holds', () => {
     expect(WHAT_A_DOCUMENT_HOLDS_PROMPT).toContain('A column of progress so far, a percentage complete, or last year');
     expect(WHAT_A_DOCUMENT_HOLDS_PROMPT).toContain('take the total only');
     expect(WHAT_A_DOCUMENT_HOLDS_PROMPT).toContain('an empty answer is a correct answer');
-    expect(MOST_OF_A_DOCUMENT_WE_READ).toBeGreaterThanOrEqual(60_000);
+    /* Its own number is gone: it reads one read, the number every reader of a document shares (22 November 2026). */
+    expect(ONE_READ).toBeGreaterThanOrEqual(60_000);
   });
 
   it('is read once, on every path a file arrives by - and never while somebody waits', () => {
