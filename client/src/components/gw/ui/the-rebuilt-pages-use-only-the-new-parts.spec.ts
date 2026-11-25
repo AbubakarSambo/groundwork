@@ -413,6 +413,10 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'components/gw/AskGroundwork.tsx',
       'components/gw/ui/ChatBar.tsx',
       'pages/ask/AskPage.tsx',
+      'pages/board/prototype/TheNewHireBoardAsPictured.tsx',
+      'pages/board/prototype/TheNewProjectBoardAsPictured.tsx',
+      'pages/board/prototype/TheGoalsBoardAsPictured.tsx',
+      'pages/board/prototype/the-board-sections.tsx',
     ])
   })
 

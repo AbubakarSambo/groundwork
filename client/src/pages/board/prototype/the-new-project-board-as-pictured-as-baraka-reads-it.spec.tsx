@@ -60,17 +60,19 @@ describe('a new project ported from the prototype, as Baraka reads it', { timeou
 
   it('with it on, he reads the prototype\'s parts in its order and words, with this check-in\'s own records', async () => {
     const { container } = renderIt(true)
-    await screen.findByText('Where each target stands', undefined, { timeout: 30000 })
+    await screen.findByText('What needs you in this check-in', undefined, { timeout: 30000 })
     const text = container.textContent ?? ''
-    const order = ['Where each target stands', 'What needs you in this check-in', 'Every incident, and what shows it', 'The team today', 'Who checked in',
-      'Blockers', 'What keeps coming up', 'Reports', 'Every session', 'Where this is heading']
+    /* Changed 24 November 2026: rebuilt on the design system. A part with nothing in it is not drawn (rule 10), so "Where each target
+       stands" with no target is gone, and the Reports section's one link is "All N sessions" (bug 42), not a second "Every session". */
+    const order = ['What needs you in this check-in', 'Every incident, and what shows it', 'The team today', 'Who checked in',
+      'Blockers', 'Reports', 'Where this is heading']
     for (let i = 1; i < order.length; i++) expect(at(text, order[i - 1]), `${order[i - 1]} before ${order[i]}`).toBeLessThan(at(text, order[i]))
-    expect(text).toContain('No target is set yet.')
+    expect(text).not.toContain('Where each target stands')
     expect(text).toContain('The one thing slowing me down')
     expect(text).not.toContain('Baraka has')
     /* The word "ground" is never on screen: the targets prompt says "this check-in" (release test, 21 November 2026, bug 41). */
     expect(text).not.toMatch(/\bground\b/i)
-    expect(container.querySelector('.askdock input[aria-label="Ask about this board"]')).not.toBeNull()
+    expect(container.querySelector('.askdock')).toBeNull()
   })
 
   /* Bug 42 (release test, 21 November 2026): "14 Nov, session 4: 2 of 3 checked in" against "4 of 5" on the check-ins page. The rows
@@ -82,6 +84,7 @@ describe('a new project ported from the prototype, as Baraka reads it', { timeou
     const served = (n: number) => (board as any).theCount.bySession[String(n)]
     for (const n of [3, 4]) expect(text).toContain(`${served(n).answered.length} of ${served(n).onTheCheckIn.length} checked in.`)
     expect(text).toContain(`All ${(board as any).theCount.session} sessions`)
-    expect(text).toContain(`Session ${(board as any).theCount.session} of 12.`)
+    /* Changed 24 November 2026: the frame's line, as on every board since journey 3, says "Check-in", not "Session". */
+    expect(text).toContain(`Check-in ${(board as any).theCount.session} of 12.`)
   })
 })

@@ -2805,62 +2805,39 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /* A new project, ported from the prototype's own markup (engineering-release-as-lead.html, "Get a new project off to a good start"), for whoever runs it. */
   /* A sales organisation's goals, ported from the prototype's own markup (sales-org-as-lead.html, salesorg.txt), for whoever runs it. */
   if (designPass && (b as any).kindOfWork === 'sales org' && b.scenario === 'OKR_ALIGNMENT' && !groundId && !theWholeBoard && viewerRunsThisCheckIn && !isParticipantView) {
-    return (
-      <Page>
-        <PartBoundary>
-          <TheGoalsBoardAsPictured
-            b={b}
-            ground={groundForSignals}
-            groundId={id!}
-            sessionRows={sessionRows as any[]}
-            tabs={headerTabs}
-            addSomething={!groundEnded ? <AddSomething groundId={id!} /> : null}
-            renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
-            showAsk={showAsk}
-            askWith={(q) => useAskStore.getState().showWith(q)}
-            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
-          />
-        </PartBoundary>
-      </Page>
+    return inTheFrame(
+      <PartBoundary>
+        <TheGoalsBoardAsPictured
+          b={b}
+          groundId={id!}
+          sessionRows={sessionRows as any[]}
+          renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
+          onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
+          navigate={navigate}
+        />
+      </PartBoundary>,
     )
   }
   if (designPass && b.scenario === 'NEW_PROJECT' && !groundId && !theWholeBoard && viewerRunsThisCheckIn && !isParticipantView) {
-    return (
-      <Page>
-        <PartBoundary>
-          <TheNewProjectBoardAsPictured
-            b={b}
-            ground={groundForSignals}
-            groundId={id!}
-            sessionRows={sessionRows as any[]}
-            tabs={headerTabs}
-            addSomething={!groundEnded ? <AddSomething groundId={id!} /> : null}
-            renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
-            showAsk={showAsk}
-            askWith={(q) => useAskStore.getState().showWith(q)}
-            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
-          />
-        </PartBoundary>
-      </Page>
+    return inTheFrame(
+      <PartBoundary>
+        <TheNewProjectBoardAsPictured
+          b={b}
+          groundId={id!}
+          sessionRows={sessionRows as any[]}
+          renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
+          onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
+          navigate={navigate}
+        />
+      </PartBoundary>,
     )
   }
-  /* A new hire's first ninety days, ported from the prototype's own markup (kwame-first-90-days-as-lead.html), for whoever runs it. */
+  /* A new hire's first ninety days (kwame-first-90-days-as-lead.html), for whoever runs it. */
   if (designPass && b.family === 'ONBOARDING' && !groundId && !theWholeBoard && viewerRunsThisCheckIn && !isParticipantView) {
-    return (
-      <Page>
-        <PartBoundary>
-          <TheNewHireBoardAsPictured
-            b={b}
-            ground={groundForSignals}
-            groundId={id!}
-            tabs={headerTabs}
-            addSomething={!groundEnded ? <AddSomething groundId={id!} /> : null}
-            showAsk={showAsk}
-            askWith={(q) => useAskStore.getState().showWith(q)}
-            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
-          />
-        </PartBoundary>
-      </Page>
+    return inTheFrame(
+      <PartBoundary>
+        <TheNewHireBoardAsPictured b={b} groundId={id!} onRecordTheDecision={() => navigate(`/grounds/${id}/end`)} />
+      </PartBoundary>,
     )
   }
   if (designPass && isSalesOrg && (b as any).kindOfWork !== 'sales org' && !groundId && !theWholeBoard && viewerRunsThisCheckIn && !isParticipantView) {
