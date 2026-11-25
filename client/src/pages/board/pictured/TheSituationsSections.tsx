@@ -1,6 +1,6 @@
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whoHasAnsweredOnTheBoard } from '@/lib/the-one-count'
-import { Section, Panel, EdgeList, EdgeRow, Tag, ShowAll } from '@/components/gw/ui'
+import { Section, Panel, EdgeList, EdgeRow, Tag, ShowAll, Empty, useTheDesignSystem } from '@/components/gw/ui'
 
 /**
  * RELEASE 8: THE SECTIONS A SITUATION'S BOARD DRAWS THAT NO KIT PICTURE DRAWS ON ITS OWN (api/src/modules/board/release-8-situations.ts).
@@ -41,6 +41,10 @@ const dayAndMonth = (iso: string) => {
 /** The one line above a situation's board: empty while nothing is clear, and what is still to come once something is. */
 export function TheSituationsNote({ b }: { b: Any }) {
   const s = b?.situation
+  /* On a rebuilt page (journey 3): an empty board says so in one line, with no box; "… appear here once a check-in gives them something
+     to show" explains the screen (design guide, rule 6), so it is not drawn. */
+  const ds = useTheDesignSystem()
+  if (ds) return s?.empty ? <Empty>{s.empty}</Empty> : null
   const says = s?.empty ?? s?.stillToCome ?? null
   if (!says) return null
   return s.empty ? <Panel><p className="gwui-panel-text">{says}</p></Panel> : <p className="t-small">{says}</p>

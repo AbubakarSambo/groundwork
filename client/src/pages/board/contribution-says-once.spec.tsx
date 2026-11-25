@@ -61,6 +61,6 @@ describe('"Contribution against role": the repeated note drawn once, under the h
     }
     renderAs({ id: 'u-rukia' }, board)
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
-    expect(await screen.findByText(/No position is shown for Rukia Otieno or Amani Wekesa/)).toBeTruthy()
+    expect(await screen.findAllByText(/No position is shown for Rukia Otieno or Amani Wekesa/)).toHaveLength(1)
   })
 })

@@ -154,6 +154,7 @@ import { ThePicturedSalesBoard, theScheduleInWords, ThePicturedOwnDeals, Groundw
 import { PROJECT_ORDER } from './release-5-orders'
 import { theSituationsOrder } from './pictured/TheSituationsSections'
 import { ThePicturedBoard, TheTemplateSection } from './pictured/ThePicturedBoard'
+import { TheBoardFrame, TheBoardActions } from './TheBoardFrame'
 import { MessageCircle } from 'lucide-react'
 import { YourTeamPersonByPerson } from './pictured/YourTeamPersonByPerson'
 import { TheLightSalesBoard, TheLightNeedsYou, TheLightBesideTheHeadline, TheLightBoxes, TheLightSummaryFirst } from './TheLightSalesBoard'
@@ -165,7 +166,7 @@ import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
 import { REFERENCES_AND_RESOURCES } from '@/lib/the-references-tab'
-import { Page, CheckInHeader, Section, Placed, UpdatedLine, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Callout, Stack, SubHeading, Note, FlexRow, Text, Skeleton } from '@/components/gw/ui'
+import { Page, Section, Placed, Empty, UpdatedLine, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Callout, Stack, SubHeading, Note, FlexRow, Text, Skeleton } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
@@ -497,7 +498,8 @@ function OverTimeSection({ groundId, viewerRunsThisCheckIn }: { groundId: string
 function MaybeFolded({ fold, children }: { fold: boolean; children: ReactNode }) {
   /* Open, never folded: everything below the participant's own view is on the page as it is for the lead (Hafsah, 13 November 2026). */
   if (!fold) return <>{children}</>
-  return <div id={THE_WHOLE_CHECK_IN_ID}>{children}</div>
+  /* `ds-flow` draws no box of its own, so the sections inside keep the page's 32px between them (blocks.css). */
+  return <div id={THE_WHOLE_CHECK_IN_ID} className="ds-flow">{children}</div>
 }
 
 
@@ -572,24 +574,16 @@ function ActionButtons({ groundId, action }: { groundId: string; action?: AnActi
         {choices.map((c) => (
           <UIButton
             key={c.label}
-            /* D-3: "No" and "Not now" are the prototype's .btn.quiet beside the answer. */
-            kind={/^(?:No|Not now)\b/.test(c.label) ? 'quiet' : 'secondary'}
-            size="small"
+            /* Every answer is a link on the right of the row (rule 9, Hafsah, 23 November 2026). */
+            kind="quiet"
             disabled={run.isPending}
             onClick={c.route ? () => { setNotYetSaid(null); run.mutate(c.route) } : () => setNotYetSaid(action.says ?? null)}
           >
             {c.label}
           </UIButton>
         ))}
-        {/*
-          `flexBasis: '100%'` on this one child, inside the parent's own flex-wrap row
-          (`gwui-edge-acts`), is what pushes it onto a line of its own under the buttons, the same
-          way a row of buttons already wraps onto a new line when it runs out of room - not a new
-          gap or margin of its own. The shared `Note` part's own `tone="muted"` (13.5px,
-          `--gw-muted`) is what several other rows on this board already use for a line exactly
-          like this one.
-        */}
-        {notYetSaid && <div style={{ flexBasis: '100%' }}><Note tone="muted">{notYetSaid}</Note></div>}
+        {/* The engine's own sentence for what staying open means, under the answers. */}
+        {notYetSaid && <Note tone="muted">{notYetSaid}</Note>}
       </>
     )
   }
@@ -603,7 +597,7 @@ function ActionButtons({ groundId, action }: { groundId: string; action?: AnActi
    */
   const label = action.label || (action.goesTo === 'context' ? `Open ${REFERENCES_AND_RESOURCES}` : 'Open your check-in')
   return (
-    <UIButton kind="secondary" size="small" to={`/grounds/${groundId}?tab=${action.goesTo === 'context' ? 'context' : 'chat'}`}>
+    <UIButton kind="quiet" to={`/grounds/${groundId}?tab=${action.goesTo === 'context' ? 'context' : 'chat'}`}>
       {label}
     </UIButton>
   )
@@ -1310,7 +1304,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * answer is simply what the board is waiting on, and the fix is one click away.
    */
   if ((data as any).withheldUntilYouCheckIn) {
-    /* "Check in first, then you'll see the board." with one button (Hafsah, 25 October): no label above it, no way back offered. */
+    /* "Check in first, then you'll see the board." with one button (Hafsah, 25 October): no label above it, no way back offered.
+       On its own address it is drawn in the board's frame, with the check-in's name and tabs, so the reader is not on a bare page
+       (journey 3, 23 November 2026): one line and its one action (rule 10), and "Add something" with the header's actions. */
+    if (!groundId) {
+      const name = String((groundForSignals as any)?.label ?? (groundForSignals as any)?.title ?? 'This check-in')
+      return (
+        <TheBoardFrame title={name} action={<TheBoardActions><AddSomething groundId={id!} /></TheBoardActions>}
+          tabs={[
+            { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
+            { key: 'chat', label: 'Check-in', to: `/grounds/${id}` },
+            { key: 'context', label: REFERENCES_AND_RESOURCES, to: `/grounds/${id}?tab=context` },
+            { key: 'record', label: 'My work', to: `/grounds/${id}?tab=record` },
+            { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
+          ]}>
+          <Empty action={<UIButton onClick={() => navigate(`/grounds/${id}`)}>Do my check-in</UIButton>}>{(data as any).saying}</Empty>
+        </TheBoardFrame>
+      )
+    }
     return (
       <div className="gw-locked">
         <Panel>
@@ -1696,6 +1707,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
   ]
   const has = (s: string) => b.sections.includes(s as any)
+  /* Whether this board is drawn on the design system: it is, in its own frame, everywhere but inside /boards (TheBoardFrame.tsx). */
+  const onTheDesignSystem = !groundId
+  /* The waits Blockers draws, by their handoff's id: one source for whether a wait is already on this board. */
+  const blockerIds = new Set<string>(((b as any).blockers ?? []).map((x: { id: string }) => x.id))
+  /* "Waiting on"'s own waits: the handoffs Blockers does not already draw. */
+  const waitsNotInBlockers = (b.dependencies ?? []).filter((d) => !blockerIds.has(d.id))
   /**
    * THE ANCHOR'S REMAINING SECTIONS, NAMED BY THE SWITCHBOARD (decision 114;
    * docs/answers-from-engine.md, "8 October (later): the anchor through the ordinary routes, route
@@ -2024,12 +2041,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * out twice in this file.
    */
   const everySessionLink = () => (
-    <Link
-      to={`/grounds/${id}?tab=record`}
-      className="gwui-wide-outline-btn gwui-mt-20 gwui-pt-11 gwui-pr-16 gwui-pb-11 gwui-pl-16 gwui-fs-16"
-    >
-      {EVERY_SESSION.heading}
-    </Link>
+    /* A quiet link, not a full-width outlined bar: the board's one main button is "Your check-in" (rule 8). */
+    <UIButton kind="quiet" to={`/grounds/${id}?tab=record`}>{EVERY_SESSION.heading}</UIButton>
   )
   const whatNeedsYouSection = () => {
     const missedHere = viewerRunsThisCheckIn ? (b.missedCheckIns ?? []) : []
@@ -2253,11 +2266,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const theTargets = () => (
     <>
         {(shown.objectives || shown.divergence) && (
-          <Section heading="What success looks like">
-            <Panel>
-              <PartBoundary><WhatSuccessLooksLikeFor groundId={id!} yourName={myName} headingIsTheCallers /></PartBoundary>
-            </Panel>
-          </Section>
+          <PartBoundary><WhatSuccessLooksLikeFor groundId={id!} yourName={myName} asASection /></PartBoundary>
         )}
 
         {shown.objectives && b.objectives && (
@@ -2741,10 +2750,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         ? `/grounds/${id}?tab=report`
                         : (!r.shared && canOpenMine ? `/checkin/${r.myCheckInId}/report` : `/grounds/${id}/session/${r.sessionNumber}`)
                       return (
-                        <UIButton
-                          kind="secondary" size="small"
-                          onClick={() => navigate(target)}
-                        >
+                        /* A link on the right of the row (rule 9). */
+                        <UIButton kind="quiet" to={target}>
                           {canShare ? 'Share it' : 'Open'}
                         </UIButton>
                       )
@@ -2793,9 +2800,41 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   )
 
   /*
+   * THE BOARD'S FRAME (journey 3, on the design system, Hafsah, 23 November 2026). The breadcrumb, the title, the cadence line, the
+   * reader's own actions, the tabs with "Views", and "Last updated" are drawn once by TheBoardFrame, round every board this page draws,
+   * so every building block below draws the twelve rules' look. One main button: "Your check-in" for whoever runs it, "Start my
+   * check-in" for a person in it (board-as-participant.txt), never on a check-in that has ended; "Add something" and "Ask" are links.
+   * Inside /boards (`groundId` given) that page draws its own switcher and header, so the board is drawn bare, as before.
+   */
+  const frameLede: string | undefined = ((picturedDecision ? (() => { /* The one count's people and answers (howItIsGoing), never the roster counted here. */ const progress = (b as any).howItIsGoing?.glance?.progress; const n = progress?.ofPeople; if (n == null) return null; const done = progress?.answeredThisRound ?? null; return `${n} people answer once.${done != null ? ` ${done} of ${n} have answered.` : ''}` })() : picturedLead || picturedReader || picturedParticipant || picturedOnboarding || picturedPlan || picturedOtherKind ? picturedCadenceLine : picturedMember ? [((b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name ? `Run by ${(b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name}.` : null), theScheduleInWords(groundForSignals as any, null), spineWords].filter(Boolean).join(' ') : cadenceLine) || undefined) || undefined
+  const frameAction = (
+    <TheBoardActions>
+      {(viewerRunsThisCheckIn || (isAParty && !groundEnded)) && (
+        !viewerRunsThisCheckIn && (noSessionOpenForReader || noSessionOpenForReaderFallback || iHaveNothingOpenOrPending) ? (
+          (whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback) && <Note tone="muted">{whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback}</Note>
+        ) : (
+          <UIButton to={`/grounds/${id}`}>{isAParty && !viewerRunsThisCheckIn ? 'Start my check-in' : 'Your check-in'}</UIButton>
+        )
+      )}
+      {(isAParty || viewerRunsThisCheckIn) && !groundEnded && <AddSomething groundId={id!} />}
+      <UIButton kind="quiet" onClick={showAsk}><MessageCircle size={18} aria-hidden="true" />Ask</UIButton>
+    </TheBoardActions>
+  )
+  /* "Last updated", once, in the frame: the light board's short line with the full sentence behind its ⓘ (the approved rename), every
+     other board the full sentence. */
+  const frameUpdated = shortUpdatedLine
+    ? <UpdatedLine short={whenTheBoardLastChangedInShort(b.lastChangedAt)} full={whenTheBoardLastChanged(b.lastChangedAt, direct)} />
+    : (whenTheBoardLastChanged(b.lastChangedAt, direct) || null)
+  const inTheFrame = (body: ReactNode) => groundId ? <Page>{body}</Page> : (
+    <TheBoardFrame title={b.title} lede={frameLede} action={frameAction} tabs={headerTabs} updated={frameUpdated}
+      views={<TheOtherBoardsYouAreIn groundId={id!} label="Views" plain />}>
+      {body}
+    </TheBoardFrame>
+  )
+  /*
    * THE SALES BOARD, PORTED FROM THE PROTOTYPE'S OWN MARKUP (Hafsah, 21 November 2026: "port the prototype's sales board one-to-one:
    * its markup, its class names and its stylesheet, with real data in its slots"). With the design switch on, a sales team's board
-   * is prototype/TheSalesBoardAsPictured.tsx, header and all, for whoever runs it. With the switch off, nothing here runs.
+   * is prototype/TheSalesBoardAsPictured.tsx inside the board's frame, for whoever runs it. With the switch off, nothing here runs.
    */
   /* A new project, ported from the prototype's own markup (engineering-release-as-lead.html, "Get a new project off to a good start"), for whoever runs it. */
   /* A sales organisation's goals, ported from the prototype's own markup (sales-org-as-lead.html, salesorg.txt), for whoever runs it. */
@@ -2859,161 +2898,32 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     )
   }
   if (designPass && isSalesOrg && (b as any).kindOfWork !== 'sales org' && !groundId && !theWholeBoard && viewerRunsThisCheckIn && !isParticipantView) {
-    return (
-      <Page>
-        <PartBoundary>
-          <TheSalesBoardAsPictured
-            b={b}
-            groundId={id!}
-            ground={groundForSignals}
-            sessionRows={sessionRows as any[]}
-            reader="lead"
-            tabs={headerTabs}
-            renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
-            addSomething={!groundEnded ? <AddSomething groundId={id!} /> : null}
-            showAsk={showAsk}
-            askWith={(q) => useAskStore.getState().showWith(q)}
-            onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
-            navigate={navigate}
-          />
-        </PartBoundary>
-      </Page>
+    return inTheFrame(
+      <PartBoundary>
+        <TheSalesBoardAsPictured
+          b={b}
+          groundId={id!}
+          ground={groundForSignals}
+          sessionRows={sessionRows as any[]}
+          reader="lead"
+          renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
+          onRecordTheDecision={() => navigate(`/grounds/${id}/end`)}
+          navigate={navigate}
+        />
+      </PartBoundary>,
     )
   }
 
+
   return (
     <TheDirectMorning on={direct}>
-    <Page>
+    {inTheFrame(
       <MaybeTheLightSalesBoard glance={light ? b.atAGlance ?? null : null} readerRunsIt={lightLead}>
-        {/*
-          U.10 (c1): THE SHARED PAGE RHYTHM APPLIES NOW (Page's own `.gwui-page-wrap > * + *`, 30px
-          between direct children), the way every other rebuilt page gets its section spacing - not
-          escaped by a wrapping div, which is what made "What we are aiming for" touch the panel
-          above it (the switchboard sections below were plain siblings with no margin of their
-          own). Every element up to here (the header, "Last updated…", the kind-of-work banner, the
-          session pills, "How to read this board" and so on) already carries its own inline
-          marginTop, which wins over the class rule - so removing the escape hatch changes nothing
-          about their spacing, and only affects elements that had none, which is exactly the
-          switchboard's sections further down.
-        */}
-        {/* Somebody who has just answered from a link lands here with ?done=1: their answer landed, and where the report goes. */}
-
-        {/*
-          U.10 (a): THE PROTOTYPE'S HEADER AND TABS (board-as-lead.jpg), NOT THE DARK NAVY CARD.
-          "← Back to the check-in" and a dark header of the board's own invention are gone; every
-          check-in page now shares the same header (components/gw/ui/CheckInHeader.tsx, as
-          GroundAdminPage.tsx and GroundParticipantPage.tsx already use it) for the breadcrumb, the
-          serif title, the cadence line, "Your check-in", "Ask" and the tab bar - drawn here inside
-          the shared Page frame (components/gw/ui/Page.tsx), not a bespoke wrapper of the board's
-          own. The old components/gw/TheCheckInHeader.tsx is retired from this page (it still runs
-          the report pages, which this task does not touch).
-
-          THE OTHER BOARDS, BESIDE THE NAME OF THIS ONE (picture-check round 6, item A). A board was
-          a page you arrived at from one check-in and left the same way - read one, back to the
-          list, find the next, open it, open its board. See the component for why the server says
-          which have one. It used to sit above the header of its own accord, styled for the dark
-          header the board no longer has - on the cream page its near-white text on white was almost
-          invisible, and the prototype has nothing above the breadcrumb. It is real navigation, not
-          the check-in switcher, so rather than delete it, it now draws in the tab row's own
-          "Views ▾" slot (not built - nothing answers what that menu would offer), restyled for a
-          light ground. NOT WHEN THE BOARDS PAGE IS ALREADY SWITCHING: on /boards the tabs above do
-          this job, and two switchers is a reader asking which of them is the real one.
-
-          B-151... B-150, RATHER: NONE OF THIS WHEN /boards IS ALREADY SHOWING ITS OWN SWITCHER.
-          The comment above only ever silenced this header's OWN inner board-switcher
-          (`trailing`), gated on `!groundId` - the breadcrumb, the serif title, "Your check-in",
-          "Ask" and the full six-tab bar were never gated at all, so TeamBoardsPage, which passes
-          `groundId` as a prop precisely so it can draw its own tab strip above the board, got this
-          whole header a second time underneath it: a second "Check-ins / <name>", a second title,
-          and all six tabs where the deep page audit found them. `groundId` (present only when a
-          caller supplies it, as TeamBoardsPage does; absent on this page's own route,
-          `/grounds/:id/board`, where `id` comes from `useParams` instead) is exactly the flag the
-          `trailing` line already reasoned from - so the rest of the header now reasons from it
-          too, rather than only the one piece of it that happened to get checked.
-        */}
-        {!groundId && (
-        <CheckInHeader
-          crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: b.title }]}
-          title={b.title}
-          updated={shortUpdatedLine ? undefined : (whenTheBoardLastChanged(b.lastChangedAt, direct) || undefined)}
-          subtitle={(picturedDecision ? (() => { /* The one count's people and answers (howItIsGoing), never the roster counted here. */ const progress = (b as any).howItIsGoing?.glance?.progress; const n = progress?.ofPeople; if (n == null) return null; const done = progress?.answeredThisRound ?? null; return `${n} people answer once.${done != null ? ` ${done} of ${n} have answered.` : ''}` })() : picturedLead || picturedReader || picturedParticipant || picturedOnboarding || picturedPlan || picturedOtherKind ? picturedCadenceLine : picturedMember ? [((b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name ? `Run by ${(b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name}.` : null), theScheduleInWords(groundForSignals as any, null), spineWords].filter(Boolean).join(' ') : cadenceLine) || undefined}
-          action={(
-            /*
-              B-204: AT A PHONE WIDTH, THE NEXT-SESSION NOTE COULD RUN THE WHOLE PAGE SIDEWAYS.
-
-              `shrink0` is here to protect the "Start my check-in"/"Your check-in" BUTTON this row
-              usually holds from being squeezed by a long title - the header's own title/action row
-              already wraps this whole action block onto its own line below the title when the two
-              do not fit side by side, which is enough room for a short button. But the OTHER thing
-              this row can hold, in its place, is a full sentence ("Session 3 opened on 10 October,
-              while session 1 is still open.") - read live on Zawadi's view of Msingi's "Sales team,
-              Q4" at 390px, where that sentence plus "Ask" measured 424px wide against a 390px
-              screen, 34px of it permanently off the right edge, because `shrink0` kept the row at
-              that one-line width instead of letting it wrap. `wrap` lets the sentence and "Ask"
-              reflow onto their own lines within whatever width the row is actually given; `capWidth`
-              keeps the row from exceeding that width in the first place, the same way `shrink0`
-              already reaches past this one row's own inline style for a real, named need. Wairimu's
-              own view (the button, not the sentence) is one short word and was never the problem -
-              unaffected either way.
-            */
-            <FlexRow gap={16} align="center" shrink0 wrap capWidth>
-              {/*
-                THE PROTOTYPE USES TWO DIFFERENT WORDS HERE. The lead's own board says "Your
-                check-in" (board-as-lead.txt); a party's says "Start my check-in"
-                (board-as-participant.txt). Both go to the same place - the Check-in tab.
-
-                ONBOARDING BOARD FIX 6: NOT WHILE NOTHING IS OPEN. A participant used to be offered
-                "Start my check-in" between rounds too, when the phase spine already said the next
-                session had not opened yet (session 5 opening 12 October, read live). The lead keeps
-                her own action regardless - she always has something to do here, open session or
-                not - but a participant with nothing open now reads when the next one does instead,
-                in the engine's own words.
-
-                FAULT 6 (live walk, 6 October 2026): NEVER "START MY CHECK-IN" ON AN ENDED CHECK-IN.
-                Amani, a member on a check-in that had already ended, still read "Start my check-in"
-                here - pressing it opened "No check-in open right now", because there is none. A
-                participant gets no action at all once `groundEnded`; the lead keeps "Your check-in"
-                either way, since she has other reasons to open it (reading past sessions).
-              */}
-              {(viewerRunsThisCheckIn || (isAParty && !groundEnded)) && (
-                !viewerRunsThisCheckIn && (noSessionOpenForReader || noSessionOpenForReaderFallback || iHaveNothingOpenOrPending) ? (
-                  (whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback) && <Note tone="muted">{whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback}</Note>
-                ) : (
-                  <Link className="btn pri"
-                    to={`/grounds/${id}`}
-                  >
-                    {isAParty && !viewerRunsThisCheckIn ? 'Start my check-in' : 'Your check-in'}
-                  </Link>
-                )
-              )}
-              {/* Add something, any time, for anybody in the check-in (Hafsah after polish round 3; components/gw/AddSomething.tsx). */}
-              {(isAParty || viewerRunsThisCheckIn) && !groundEnded && <AddSomething groundId={id!} />}
-              {/* Board review, 1 October, item 8: a quiet text link that opens Ask, drawn with its
-                  own one-off classes instead of the shared `gwui-plain-link` every other quiet
-                  text link on this board uses - the button-count test could not tell it apart
-                  from a real button because of it. */}
-              {picturedLead || picturedParticipant || picturedOnboarding || picturedMember || picturedDecision || picturedPlan || picturedOtherKind ? (
-                /* board-as-lead.jpg: a speech mark and "Ask", in bold, not underlined. */
-                <button type="button" onClick={showAsk} className="gwui-plain-link pb-ask-link">
-                  <MessageCircle size={18} aria-hidden="true" />
-                  Ask
-                </button>
-              ) : (
-                <button type="button" onClick={showAsk} className="gwui-plain-link">
-                  Ask
-                </button>
-              )}
-            </FlexRow>
-          )}
-          active="board"
-          tabs={headerTabs}
-          trailing={!groundId ? <TheOtherBoardsYouAreIn groundId={id!} label={light || picturedLead || picturedOnboarding || picturedMember || picturedParticipant || picturedDecision || picturedPlan || picturedOtherKind ? 'Views' : undefined} plain={picturedLead || picturedOnboarding || picturedMember || picturedParticipant || picturedDecision || picturedPlan || picturedOtherKind} /> : undefined}
-        />
-        )}
+        {/* The header, the tabs and "Last updated" are the board's frame (TheBoardFrame.tsx, journey 3), drawn round everything below. */}
         {/* Straight from "Send N invitations", who was not invited is said here, where the lead lands, not only in a toast. */}
         {viewerRunsThisCheckIn && id && <TheyWereNotInvited groundId={id} />}
         {/* Straight from "Send N invitations": the board shows what is known while setup's report is written (Hafsah, 3 November evening). */}
-        {b.fullReportComing && <p className="gwui-fs-15 gwui-ink-dark gwui-mt-8" role="status">{b.fullReportComing}</p>}
+        {b.fullReportComing && <Note role="status">{b.fullReportComing}</Note>}
 
         {/*
           WHEN IT LAST CHANGED, AND THAT OPENING IT CHANGES NOTHING (U.10). The same line for every
@@ -3021,7 +2931,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           The prototype has this small-grey line directly under the tab bar.
         */}
         {/* The light sales board: "Updated Wed 23 Sep, 6pm ⓘ", the full sentence behind the ⓘ (approved rename). */}
-        {shortUpdatedLine ? (
+        {/* Inside /boards, where there is no frame, the short line as before. */}
+        {groundId && shortUpdatedLine ? (
           <UpdatedLine short={whenTheBoardLastChangedInShort(b.lastChangedAt)} full={whenTheBoardLastChanged(b.lastChangedAt, direct)} />
         ) : null}
         {/*
@@ -3045,7 +2956,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </Note>
         )}
         {b.readOnlyNote && (
-          <p role="note" className="gwui-fs-15 gwui-ink-text gwui-mt-8" style={{lineHeight: '23px'}}>{b.readOnlyNote}</p>
+          <Note>{b.readOnlyNote}</Note>
         )}
 
         {/* The direct morning is no longer one block above the board (Hafsah, 24 October): each of its lines is drawn once where it belongs on the board (pictured/TheMorningOnTheBoard.tsx). */}
@@ -3320,9 +3231,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           work on next, what to ask each person, the work plan, and the rest) is one tap away rather than gone.
         */}
         {drawnAsPictured && (
-          <div className="pb-whole-board-link">
-            <Link to={`/grounds/${id}/board?whole=1`} className="gwui-plain-link">See every other part of this board</Link>
-          </div>
+          <UIButton kind="quiet" to={`/grounds/${id}/board?whole=1`}>See every other part of this board</UIButton>
         )}
         {!drawnAsPictured && (<>
 
@@ -3993,7 +3902,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           SUPPORT DESK BOARD FIX 4: THE SAME FOLD, BY THE SAME TABLE ROW. support.txt shows no
           "Open issues" either, so `kindLayout['support desk'].openIssuesInFold` says so here too.
         */}
-        {!(isProjectBoard || layoutFor(kindOfWorkKey)?.openIssuesInFold) && (b as any).openIssues && (
+        {!(isProjectBoard || layoutFor(kindOfWorkKey)?.openIssuesInFold) && (b as any).openIssues && !onTheDesignSystem && (
           <Section heading="Open issues">
             <Note tone="muted">{(b as any).openIssues.why}</Note>
           </Section>
@@ -4055,7 +3964,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           PROJECT BOARD REVIEW 1, FIX 11: "OPEN ISSUES", FOLDED HERE ON THESE BOARDS - see the
           comment where it would otherwise have drawn, above.
         */}
-        {(isProjectBoard || layoutFor(kindOfWorkKey)?.openIssuesInFold) && (b as any).openIssues && (
+        {(isProjectBoard || layoutFor(kindOfWorkKey)?.openIssuesInFold) && (b as any).openIssues && !onTheDesignSystem && (
           <Section heading="Open issues">
             <Note tone="muted">{(b as any).openIssues.why}</Note>
           </Section>
@@ -4184,7 +4093,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.obligations && <ObligationsSection rows={b.obligations} />}
         {/* ONBOARDING BOARD FIX 1: moved for this family to right after "What needs you" - see above. */}
         {!isOnboarding && shown.personHistory && <PersonHistorySection rows={b.personHistory} />}
-        {shown.risks && <RisksSection rows={b.risks} />}
+        {/* A wait already drawn under Blockers is not said again as a risk (journey 3, 23 November 2026): the server words each open
+            handoff as a risk too, with the same handoff's id, so Amani read the same wait on Baraka three times on one board. */}
+        {shown.risks && <RisksSection rows={(b.risks ?? []).filter((r) => !blockerIds.has(r.id.replace(/^handoff-/, '')))} />}
         {shown.evidenceIndex && <EvidenceIndexSection rows={b.evidenceIndex} />}
         {shown.contradictions && <ContradictionsSection rows={b.contradictions} />}
         {shown.busyOrMoving && <BusyOrMovingSection data={b.busyOrMoving} />}
@@ -4422,37 +4333,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               shape (label/value/sub), from the same server function (atAGlanceTiles). The label
               stays for a screen reader, without being shown as its own heading.
             */}
-            {onAPhone ? (
-              <Panel pad={false}>
-                <div className="gwui-pt-2 gwui-pb-2 gwui-pl-14 gwui-pr-14">
-                  <RowList label="The quick read">
-                    {b.quickRead.map((q) => {
-                      const toneClass = q.tone === 'bad' ? 'gwui-ink-red' : q.tone === 'warn' ? 'gwui-ink-amber' : q.tone === 'good' ? 'gwui-ink-green' : 'gwui-ink-text'
-                      return (
-                        <Row key={q.label} columns="1fr">
-                          <span className="gw-sr-only">{q.label}</span>
-                          <div className={`gwui-fs-15 ${toneClass}`} style={{lineHeight: '23px'}}>{tileSentence(q)}</div>
-                        </Row>
-                      )
-                    })}
-                  </RowList>
-                </div>
-              </Panel>
-            ) : (
-              <div className="gwui-gap-10" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-                {b.quickRead.map((q) => {
-                  const toneClass = q.tone === 'bad' ? 'gwui-ink-red' : q.tone === 'warn' ? 'gwui-ink-amber' : q.tone === 'good' ? 'gwui-ink-green' : 'gwui-ink-text'
-                  return (
-                    <Panel key={q.label} pad={false}>
-                      <div className="gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14">
-                        <span className="gw-sr-only">{q.label}</span>
-                        <div className={`gwui-fs-15 ${toneClass}`} style={{lineHeight: '23px'}}>{tileSentence(q)}</div>
-                      </div>
-                    </Panel>
-                  )
-                })}
-              </div>
-            )}
+            {/* JOURNEY 3 (23 November 2026): four short facts as four rows, one drawing at every width, with no box round each (rule 10).
+                The tone is the row's dot: red a problem, amber a look, green what holds. */}
+            <EdgeList label="The quick read">
+              {b.quickRead.map((q) => (
+                <EdgeRow key={q.label} kind={q.tone === 'bad' ? 'concern' : q.tone === 'warn' ? 'look' : q.tone === 'good' ? 'ready' : undefined}
+                  reason={q.label} title={tileSentence(q)} />
+              ))}
+            </EdgeList>
           </Section>
         )}
 
@@ -4595,8 +4483,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             heading={b.family === 'UPDATE' ? 'What each person said' : 'Who owns what'}
             
           >
-            <div className="gwui-gap-14" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(320px,100%),1fr))'}}>
-              {b.whoOwnsWhat.map((p) => (
+            <div className="ds-grid ds-grid-3">
+              {/* A card for somebody with nothing listed is not drawn on the rebuilt board (rule 10); an update's "Has not answered yet." is kept. */}
+              {b.whoOwnsWhat.filter((p) => !onTheDesignSystem || b.family === 'UPDATE' || p.items.some((it) => theWordsOfALine(it.text))).map((p) => (
                 <Panel key={p.participantId} pad={false}>
                   <div className="gwui-pt-13 gwui-pr-15 gwui-pb-10 gwui-pl-15 gwui-rule-bottom">
                     {/*
@@ -4658,7 +4547,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </Section>
         )}
 
-        {shown.dependencies && b.dependencies && (
+        {/* "Waiting on" draws only the waits Blockers does not already draw, so each handoff is said once on the board. */}
+        {shown.dependencies && b.dependencies && (waitsNotInBlockers.length > 0 || (!onTheDesignSystem && b.dependencies.length === 0)) && (
           <Section heading="Waiting on">
             {/*
               U.10: ONE CARD PER BLOCKER, THE PROTOTYPE'S LAYOUT (board-as-lead.jpg, "Blockers").
@@ -4680,7 +4570,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               <Panel><Text size="15" ink="sub" lineHeight={1.6}>Nothing here yet.</Text></Panel>
             ) : (
               <Stack gap={10}>
-                {b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d) => {
+                {waitsNotInBlockers.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d) => {
                   const onWhom = d.on ?? 'someone outside this check-in'
                   const statusSaid = d.status === 'BLOCKING' ? 'This is blocking work.' : d.status === 'CLEARED' ? 'This is cleared.' : 'This is waiting.'
                   const title = d.what ? d.what.charAt(0).toUpperCase() + d.what.slice(1) : 'Waiting on something'
@@ -4701,15 +4591,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                    * not a sentence. Said instead the same way `readerIsOnWhom`'s own line already
                    * is, just with the name instead of "you".
                    *
-                   * AND `blockers[].holdingUp`, NOT `dependencies[].then`. The engine already
-                   * writes a full sentence for what happens once this clears (board.blockers,
-                   * matched to this same handoff by id) - "Aisha Wanjiku said that once it is
-                   * cleared, "I can finish the ledger export."" - where the old "When this
-                   * arrives, {name} says: "{then}."" built a second, cruder version of the same
-                   * sentence from the bare quote alone.
+                   * What happens once a wait clears is the engine's own `blockers[].holdingUp`, drawn in
+                   * Blockers with the rest of that handoff; a wait drawn here is never in Blockers, so it
+                   * has none, and no cruder "When this arrives" is built from `then` in its place.
                    */
-                  const matchingBlocker = (b as any).blockers?.find((bl: { id: string }) => bl.id === d.id)
-                  const holdingUp = matchingBlocker?.holdingUp as string | null | undefined
                   return (
                     <Panel key={d.id}>
                       <FlexRow gap={10} align="flex-start" justify="space-between">
@@ -4727,11 +4612,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             leading word is wrong (real-user walk, Kijani Foods, fault 1). */}
                         <b>{fromWord}</b> {needsWord} {midSentence(d.what)} from <b>{onWhomInSentence}</b>. {statusSaid}
                       </div>
-                      {holdingUp && (
-                        <div className="gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8 gwui-fs-15 gwui-ink-text" style={{background: 'var(--gw-blue-bg)', borderRadius: 8, lineHeight: '23px'}}>
-                          {holdingUp}
-                        </div>
-                      )}
                     </Panel>
                   )
                 })}
@@ -4763,7 +4643,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </div>
         )}
 
-        {shown.contribution && b.contribution && (
+        {/* On the rebuilt board, before anybody's role is said, contribution is the server's one sentence saying so and what to do, drawn once
+            as sent, never a box for each person (rule 10). */}
+        {shown.contribution && b.contribution && onTheDesignSystem && b.contribution.every((c) => !c.remitDefined) && b.contributionSaysOnce && (
+          <Section heading="Contribution against role"><Note>{b.contributionSaysOnce}</Note></Section>
+        )}
+        {shown.contribution && b.contribution && !(onTheDesignSystem && b.contribution.every((c) => !c.remitDefined)) && (
           <Section heading="Contribution against role">
             <Panel>
               <Stack gap={10}>
@@ -5123,7 +5008,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
 
         {/* ---------------------------------------------- logistics */}
-        {has('poll') && (
+        {/* FIND A TIME, ONLY WHERE THERE IS ONE OR SOMEBODY CAN SET IT UP (journey 3, 23 November 2026). With no poll, whoever runs it
+            reads one line and the one way to set it up (rule 10); a person in it, who cannot set one up, reads nothing. */}
+        {has('poll') && !b.poll && b.canEditFrame && !showPollForm && (
+          <Section heading="Find a time">
+            <Empty action={<UIButton kind="quiet" onClick={() => { setShowPollForm(true); setPollQ('Weekly sync, best time'); setPollOpts('') }}>Set up an availability poll</UIButton>}>No availability poll yet.</Empty>
+          </Section>
+        )}
+        {has('poll') && (b.poll || showPollForm) && (
           <Section heading="Find a time" note={b.canEditFrame ? undefined : `${(groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'} can set up a poll to find a time.`}>
             <Panel>
               {b.canEditFrame && (
@@ -5372,7 +5264,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {/* Release 4: a template on a team whose board is not one of the kit's team types shows its stages here (Release 4 only). */}
         {(b as any).releaseFourTeams && (b as any).template && !picturedOtherKind && <TheTemplateSection b={b} />}
       </MaybeTheLightSalesBoard>
-    </Page>
+    )}
     </TheDirectMorning>
   )
 }

@@ -100,13 +100,15 @@ describe('the trader training programme board, as the lead', () => {
 
     const body = document.body.textContent ?? ''
     const theTeamToday = body.indexOf('The team today')
-    const byCounty = body.indexOf('By county')
     expect(theTeamToday).toBeGreaterThanOrEqual(0)
-    expect(byCounty).toBeGreaterThan(theTeamToday)
+    // Changed 23 November (journey 3): this fixture's grouping is not known, so on the rebuilt board "By county" is not drawn (rule 10).
+    // Where it is known it draws in the same place, after "The team today" (themesAndAreaAfterTheTeam in BoardPage.tsx).
+    expect(body.indexOf('By county')).toBe(-1)
     expect(screen.queryByText('By area')).toBeNull()
 
-    // "Open issues" is still on the board. The fold called "Everything else from this check-in" is gone (it opened by default, so it was a heading that hid nothing).
-    expect(screen.getByText('Open issues')).toBeTruthy()
+    // Changed 23 November (journey 3): "Open issues" with nothing open, only the sentence that nothing is, is not drawn on the rebuilt
+    // board (design guide, rule 10). The fold called "Everything else from this check-in" is gone (it opened by default, so it was a heading that hid nothing).
+    expect(screen.queryByText('Open issues')).toBeNull()
     expect(screen.queryByText('Everything else from this check-in')).toBeNull()
   })
 })

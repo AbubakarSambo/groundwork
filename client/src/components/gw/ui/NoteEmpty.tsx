@@ -39,6 +39,12 @@ export function Note({ tone, center, role, children }: {
   role?: 'status' | 'alert'
   children: React.ReactNode
 }) {
+  /* ON A REBUILT PAGE, one line of secondary text (rule 5), coloured only by its tone (blocks.css). */
+  const ds = useTheDesignSystem()
+  if (ds) {
+    const tint = ({ error: 'ds-note-con', amber: 'ds-note-att', green: 'ds-note-rec', navy: 'ds-note-act' } as Record<string, string>)[tone ?? '']
+    return <p className={tint ? `ds-text-secondary ${tint}` : 'ds-text-secondary'} role={role ?? (tone === 'error' ? 'alert' : undefined)}>{children}</p>
+  }
   const className = [
     'gwui-note',
     'gw-line',

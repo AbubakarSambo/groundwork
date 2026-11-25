@@ -121,8 +121,10 @@ describe('request 108 (d): "Where this is heading" and "Record the decision"', (
     renderBoard(baseBoard())
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.getByText('Where this is heading')).toBeInTheDocument()
-    expect(screen.getByText('OKRs aligned to company direction.')).toBeInTheDocument()
-    expect(screen.getByText('Not yet, more check-ins needed.')).toBeInTheDocument()
+    /* 23 November (journey 3): one drawing of this section for every board (WhereThisIsHeadingBody.tsx), with the prototype's short
+       name for each ending ("On course", board-as-lead.txt) and without "not yet", which the prototype's boards never list. */
+    expect(screen.getByText('On course')).toBeInTheDocument()
+    expect(screen.queryByText('Not yet, more check-ins needed.')).not.toBeInTheDocument()
     expect(screen.getByText('Femi Okonkwo is waiting for the bank statements.')).toBeInTheDocument()
     expect(screen.getByText('Whether to take the credit committee delays to the Head of Credit.')).toBeInTheDocument()
     expect(screen.getByText('You decide.')).toBeInTheDocument()
@@ -137,11 +139,13 @@ describe('request 108 (d): "Where this is heading" and "Record the decision"', (
 })
 
 describe('request 107 (c), parts 3 and 4: by area, and reported against criteria', () => {
-  it('says why "by area" is not known, rather than inventing a grouping', async () => {
+  /* Changed 23 November (journey 3): on the rebuilt board a part with nothing to group is not drawn at all (design guide, rule 10:
+     an empty section is one line and an action, or nothing). It still never invents a grouping. */
+  it('draws no "by area" when nothing on record says where the work belongs, rather than inventing a grouping', async () => {
     renderBoard(baseBoard())
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
-    expect(screen.getByText('By area')).toBeInTheDocument()
-    expect(screen.getByText(/Nothing on record says which site, county, team or queue/)).toBeInTheDocument()
+    expect(screen.queryByText('By area')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Nothing on record says which site, county, team or queue/)).not.toBeInTheDocument()
   })
 
   it('counts what was reported at each stage, never "criteria met"', async () => {
