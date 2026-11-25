@@ -3,6 +3,7 @@ import { askGroundwork, textOf } from './request-92-harness';
 import { ConversationService } from '../conversation/conversation.service';
 import { EXPECTATION_PROMPT } from '../conversation/prompt-library';
 import { boardAs, person } from '../board/the-switchboards-sections-harness';
+import { CHECK_IN_SETUP_PROMPT } from './a-check-in-set-up-by-talking';
 
 /**
  * A CHECK-IN SET UP IN THE CHAT IS READ LIKE ONE SET UP ON /start (Hafsah, in the browser, 22 November 2026: "it didn't hold").
@@ -37,10 +38,16 @@ function gemini() {
     extract: jest.fn(async (prompt: string, history: any[]) => {
       /* The one reading of the situation and the kind (which-situation-this-is.ts). */
       if (/say which situation it is, how sure you are, and what kind of work/.test(prompt)) return { scenario: 'PULSE_CHECK', confidence: 'low', kind: 'sales team' };
-      /* What she said about the check-in she is setting up (a-check-in-set-up-by-talking.ts). */
-      if (/Somebody is setting up a check-in in Groundwork, by chat/.test(prompt)) {
-        const said = String(history?.[0]?.content ?? '');
-        return /freezers/.test(said) ? { updatesOn: 'sales of 8 freezers and activation of 4 Drop Access points' } : null;
+      /*
+       * The set-up's turn (a-check-in-set-up-by-talking.ts). Changed 24 November 2026: the set-up is led by the model, which reads the whole
+       * conversation and writes each reply, so this answers as Gemini would for each thing she says, instead of reading one answer into a slot.
+       */
+      if (prompt === CHECK_IN_SETUP_PROMPT) {
+        const said = /Their new message: ([\s\S]*)$/.exec(String(history?.[0]?.content ?? ''))?.[1] ?? '';
+        if (/freezers/.test(said)) return { reply: 'Who are your two reps? Give me an email address for each of them.', updatesOn: 'sales of 8 freezers and activation of 4 Drop Access points' };
+        if (/kito@/.test(said)) return { reply: 'How often should they check in?', people: [{ name: 'Kito Dube', email: 'kito@msingi.test' }, { name: 'Lerato Nkosi', email: 'lerato@msingi.test' }] };
+        if (/Every week/.test(said)) return { reply: '', cadence: 'WEEKLY' };
+        return null;
       }
       /* Each person's own number: nobody is named in what she typed, so nobody's own. */
       if (prompt === EXPECTATION_PROMPT) return { expectations: [] };
@@ -129,7 +136,7 @@ describe('a check-in set up in the chat, as Neema at Msingi Foods sets it up', (
 
   it('is said back and opened as a sales team, with her words kept, and her targets on record with nothing waiting for a card', async () => {
     const { said, grounds, db, conversation } = await setItUp();
-    expect(said[2]).toBe('Here is the check-in I will open. It is called "Updates on sales of 8 freezers and activation of 4 Drop Access points", and it asks for updates on sales of 8 freezers and activation of 4 Drop Access points. I will run it as a check-in to set goals and keep the team on track. Kito Dube (kito@msingi.test) and Lerato Nkosi (lerato@msingi.test) will be in it, and each of them will be emailed an invitation. They will check in every week. Shall I open it?');
+    expect(said[2]).toBe('Here is the check-in I will open. It is called "Updates on sales of 8 freezers and activation of 4 Drop Access points", and it asks for updates on sales of 8 freezers and activation of 4 Drop Access points. I will run it as a check-in to set goals and keep the team on track. Kito Dube (kito@msingi.test) and Lerato Nkosi (lerato@msingi.test) will be in it, and each of them will be emailed an invitation. Each of them will read what it is for in these words, "You check in every week with your updates on sales of 8 freezers and activation of 4 Drop Access points." They will check in every week. Shall I open it?');
     expect(said[3]).toBe('I have opened "Updates on sales of 8 freezers and activation of 4 Drop Access points". Kito Dube and Lerato Nkosi have been invited.');
     expect(grounds.create.mock.calls[0][2]).toEqual(expect.objectContaining({ scenario: 'OKR_ALIGNMENT', kindOfWork: 'sales team', cadence: 'WEEKLY' }));
     expect(db.setupWords?.text).toContain('They each sell 8 freezers and activate 4 Drop Access points a week.');

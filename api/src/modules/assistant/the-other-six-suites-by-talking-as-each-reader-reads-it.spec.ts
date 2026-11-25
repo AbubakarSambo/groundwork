@@ -120,10 +120,11 @@ describe('a check-in set up from one sentence (chat is king, step 2), the same o
     expect(route('Get updates from my team on deals, payments and visits').lane).toBe('start_a_check_in');
     const l = lead(true);
     const said = await l.say('Get updates from my team on deals, payments and visits');
-    expect(said).toBe('What do you want updates on? For example, "deals, payments and visits", or somebody joining, or a role changing hands.');
+    /* Changed 24 November 2026: the set-up is led by the model. With the model off, it says what it still needs, and nobody is taken. */
+    expect(said).toBe('To open it, I still need to know what you want updates on, who should be in it and how often they should check in.');
     expect(said).not.toContain('Nia Chebet');
     expect(l.created[0].kind).toBe('check_in_setup');
-    expect(l.created[0].payload.offered.map((p: any) => p.name)).toEqual([]);
+    expect(l.created[0].payload.people).toEqual([]);
   });
 
   it('is the same on WhatsApp: the same people are named and the same yes is waited for', async () => {

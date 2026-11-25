@@ -1,18 +1,19 @@
 /**
- * A CHECK-IN SET UP BY TALKING, ONE STEP AT A TIME (Batch S, group S6; Hafsah, 19 November 2026).
+ * A CHECK-IN SET UP BY TALKING, LED BY THE MODEL (Hafsah, 24 November 2026, after a set-up on her own WhatsApp failed).
  *
- * "Set up a check-in" used to be one yes or no about the people who report to the lead on the roster, and a lead with nobody on the
- * roster was told "tell me who should be in it", which nothing then read. Now Ask asks, in turn, what they want updates on, who is in
- * it and how to reach each person, and how often they check in. Only what is still missing is asked. The whole of it is said back,
- * and it is opened only on a yes, through the same writers a check-in made on screen goes through (GroundsService.create,
- * addParticipant and addTheirWhatsAppNumber), so it is the same record.
+ * It was a form: it asked what she wanted updates on, then who, then how often, and read one answer at a time into slots, with fixed
+ * sentences doing the talking. "I want updates from Abubakar on specifics on the Ai project" lost both the topic and Abubakar, "He is under
+ * my team" was read as a person's name, and "Can I setup a checkin from here" started it all again. Now, on every turn, the model reads the
+ * whole set-up conversation, the organisation's people and what has been gathered, and writes the next reply in its own words. It finds
+ * people by what she means ("Abubakar", "my team") and asks only for what is still missing.
  *
- * The person's words are read by the model where it is there (what they want updates on, the people, how often). Emails and phone
- * numbers are read by their form, because an invitation must go to exactly the address that was given. Nothing is guessed: what is
- * missing is asked for.
+ * Fixed rules stay only where something is opened or sent (fix rule 4). An address is taken only from the roster or from her own words,
+ * read by its form, never from the model alone. Once nothing is missing, the whole check-in is said back in the product's words, naming
+ * everybody with how they will be reached, and it is opened only on her plain yes, through the same writers a check-in made on screen
+ * goes through (assistant.service.ts, openTheCheckInSetUpByTalking).
  */
 import { saidAsAList, whichSituation } from './what-a-new-check-in-would-be';
-import { theRhythmIn, type TheRhythm } from '../entry/what-they-asked-for-in-so-many-words';
+import { type TheRhythm } from '../entry/what-they-asked-for-in-so-many-words';
 import { THE_SCENARIO_TABLE } from '../conversation/the-scenario-table';
 
 export const CHECK_IN_SETUP_KIND = 'check_in_setup';
@@ -21,120 +22,174 @@ export interface APerson {
   name: string;
   email?: string;
   phone?: string;
+  /** Their roster id, when they are on the roster. */
+  id?: string;
 }
 
 export interface TheSetupSoFar {
   updatesOn?: string;
+  /** What the check-in is for, in plain sentences made from her words, as the people in it will read it. */
+  brief?: string;
   people: APerson[];
-  /** Named, with no way to reach them yet. */
-  unreachable: string[];
   cadence?: TheRhythm;
-  /** The people on the roster who report to this lead, offered as the people when they say yes. */
-  offered: APerson[];
-  /** What was asked last, so the next message is read as its answer. */
-  asked: 'start' | 'updates' | 'people' | 'often' | 'confirm';
+  /** 'confirm' once the whole of it has been said back, so a plain yes opens it. */
+  asked: 'talking' | 'confirm';
   /**
-   * What she said while setting it up, each with the question it answered, kept so the check-in is read from her own words once it is
-   * opened, as one set up on /start is: its kind of work, and the targets she gave (assistant.service.ts, openTheCheckInSetUpByTalking).
+   * The conversation so far: each thing she said, with what Groundwork had said just before it. The model reads it on every turn, and the
+   * check-in is read from her words once it is opened, as one set up on /start is (openTheCheckInSetUpByTalking).
    */
-  said?: { words: string; asked: string | null }[];
-  /** The situation and the kind of work, from the one reading of her words at the say-back (whatTheReadingSets), said back and opened with. */
+  said: { words: string; asked: string | null }[];
+  /** The situation and the kind of work, from the one reading of her words at the say-back, said back and opened with. */
   scenario?: string;
   kindOfWork?: string;
 }
 
-const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
-const PHONE = /\+?\d[\d\s-]{7,16}\d/;
-
-/** What the model may hand back, read with care: anything that is not the right shape is left out. */
-export interface WhatTheModelHeard {
-  updatesOn?: string;
-  people?: APerson[];
-  cadence?: TheRhythm;
+/** Somebody on the organisation's roster, as the set-up reads them. */
+export interface OnTheRosterForSetUp {
+  externalId: string;
+  displayName: string | null;
+  email: string | null;
+  phone?: string | null;
+  title?: string | null;
+  department?: string | null;
+  managerExternalId?: string | null;
 }
 
-export const SETUP_READING_PROMPT = `Somebody is setting up a check-in in Groundwork, by chat, and has just answered a question about it. Read only what they said.
+const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+const PHONE = /\+?\d[\d\s-]{7,16}\d/g;
+const digits = (s: string) => s.replace(/\D/g, '');
 
-- updatesOn: what they want updates on, in a few of their own words ("deals, payments and visits"), if they said it.
-- people: each person they named for the check-in, with an email address or a phone number if they gave one. Leave out anybody they did not name.
-- cadence: how often the people check in, if they said: DAILY, WEEKLY, FORTNIGHTLY or MONTHLY.
+export const CHECK_IN_SETUP_PROMPT_KEY = 'assistant.check-in-set-up-by-talking';
 
-Leave out anything they did not say. Never make up a name, an address or a number.`;
+export const CHECK_IN_SETUP_PROMPT = `You are Groundwork, helping somebody set up a check-in by chat, on WhatsApp or in the app. A check-in is a regular conversation Groundwork has with each person in it to get their updates. To open one, Groundwork needs three things: what they want updates on; who is in it, each person with an email address, because the invitation goes by email, and a phone number as well if they want that person's check-ins on WhatsApp; and how often people check in, every day, every week, every two weeks or every month.
 
-export const SETUP_READING_SCHEMA = {
-  name: 'the_check_in_setup',
-  description: 'What the person said about the check-in they are setting up.',
+You get the organisation's people, what the set-up has gathered so far, the conversation so far and their new message. Read the whole conversation, not only the last message, and work out what they mean. One message can say several things at once: "updates from Abubakar on the AI project, he's on my team" gives you what it is about and who is in it.
+
+Give back:
+- updatesOn: what they want updates on, in a few of their own words, as it reads after "Updates on", for example "the AI project" or "deals, payments and visits". A topic is enough: never ask them to be more specific about it. Leave it out if they have not said.
+- brief: what the check-in is for, in one or two plain sentences made from what they said, written for the people in it to read, in full sentences with no colons, for example "Each week you tell me how deals, payments and visits went, and what is stuck." Leave out anything rude or private. Write it from what they have said; never ask them for more to write it with.
+- people: everybody who should be in it so far, the whole list, keeping the people already gathered unless they take somebody out. For somebody on the list of people, give their id. A first name means the person on the list with that first name. Put the whole team in, the people marked as reporting to them, only when they ask for the whole team; "I want updates from my team" said before they name anybody is a general wish, and once they name people, it is those people. "He is under my team" says where he is; it adds nobody. For somebody who is not on the list, give the name they used, and an email address or a phone number only if they typed it. Never make up a name, an address or a number. A sentence is never a name: "He is under my team" tells you where to look for him, it is not a person.
+- cadence: how often, if they said: DAILY, WEEKLY, FORTNIGHTLY or MONTHLY.
+- stops: true only when they ask to stop or cancel setting it up. Being unsure is not stopping: say what they can change, and that nothing opens until they say yes.
+- somethingElse: true only when the message is plainly about something else, not this set-up, for example "how is Kito doing?". Asking whether they can set it up here, asking how it works, being annoyed, or correcting you is about this set-up.
+- reply: what Groundwork says to them next.
+
+How to write the reply:
+- Plain, short, direct sentences, the way a capable colleague talks. No lists, no headings, no colons, no emoji. Use people's names, and call the person you are talking to "you".
+- Answer what they asked first. If they ask whether they can set it up here, say yes, right here, and carry on from what you already have. Never start again.
+- Say briefly what you understood, then ask only about what is listed under "Still missing", after you have taken in their new message. Ask nothing else: never ask what about the topic they want, never ask for more detail, and never ask whether anybody else should be in it. The people you name in your reply are exactly the people in your list.
+- When you looked for somebody on the list and could not find them, say who you looked for, and ask who they mean or for their email address. When more than one person fits, name them and ask which. When somebody has no email address on file, say so and ask for it.
+- If they are annoyed, acknowledge it in a few words, without repeating what they said, and get on with it.
+- Never repeat their words back as if they were somebody's name.
+- Never say the check-in is open or that anybody is invited. When nothing is missing, Groundwork says the whole check-in back instead of your reply, and asks for their yes.`;
+
+export const CHECK_IN_SETUP_SCHEMA = {
+  name: 'the_check_in_set_up',
+  description: 'What the check-in being set up holds now, and what Groundwork says next.',
   input_schema: {
     type: 'object',
     properties: {
+      reply: { type: 'string', description: 'What Groundwork says next, in plain sentences.' },
       updatesOn: { type: 'string' },
-      people: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, email: { type: 'string' }, phone: { type: 'string' } }, required: ['name'] } },
+      brief: { type: 'string', description: 'What the check-in is for, in one or two plain sentences, for the people in it to read.' },
+      people: {
+        type: 'array',
+        items: { type: 'object', properties: { id: { type: 'string', description: 'Their id on the list of people, if they are on it.' }, name: { type: 'string' }, email: { type: 'string' }, phone: { type: 'string' } }, required: ['name'] },
+      },
       cadence: { type: 'string', enum: ['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY'] },
+      stops: { type: 'boolean' },
+      somethingElse: { type: 'boolean' },
     },
+    required: ['reply'],
   },
 };
 
-export function whatTheModelHeard(raw: any): WhatTheModelHeard {
-  if (!raw || typeof raw !== 'object') return {};
-  const out: WhatTheModelHeard = {};
-  if (typeof raw.updatesOn === 'string' && raw.updatesOn.trim()) out.updatesOn = raw.updatesOn.trim().slice(0, 200);
-  if (['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY'].includes(raw.cadence)) out.cadence = raw.cadence;
-  if (Array.isArray(raw.people)) {
-    out.people = raw.people
-      .filter((p: any) => p && typeof p.name === 'string' && p.name.trim())
-      .map((p: any) => ({
-        /* A name that is only an address is no name: the address is read below, and the person it is for is worked out from what was asked. */
-        name: EMAIL.test(p.name) || PHONE.test(p.name) ? '' : p.name.trim().slice(0, 120),
-        ...(EMAIL.test(`${p.email ?? ''} ${p.name}`) ? { email: EMAIL.exec(`${p.email ?? ''} ${p.name}`)![0].toLowerCase() } : {}),
-        ...(PHONE.test(`${p.phone ?? ''} ${EMAIL.test(p.name) ? '' : p.name}`) ? { phone: PHONE.exec(`${p.phone ?? ''} ${EMAIL.test(p.name) ? '' : p.name}`)![0].trim() } : {}),
-      }));
-  }
+const RHYTHM_SAID: Record<TheRhythm, string> = { DAILY: 'every day', WEEKLY: 'every week', FORTNIGHTLY: 'every two weeks', MONTHLY: 'every month' };
+
+export const SETUP_STOPPED = 'I have stopped setting it up. Nothing was opened and nobody was invited.';
+
+/** What is still needed before it can be said back, in words. The model is told it, and it is said when the model cannot be reached. */
+export function whatIsStillMissing(s: TheSetupSoFar): string[] {
+  const out: string[] = [];
+  if (!s.updatesOn) out.push('what you want updates on');
+  if (!s.people.length) out.push('who should be in it');
+  const noEmail = s.people.filter((p) => !p.email).map((p) => p.name);
+  if (noEmail.length) out.push(`an email address for ${saidAsAList(noEmail)}`);
+  if (!s.cadence) out.push('how often they should check in');
   return out;
 }
 
-/** The people in an answer, read by the form of each address, one person to a line or between commas. Used where the model said nothing. */
-export function thePeopleIn(said: string): APerson[] {
-  return String(said ?? '')
-    .split(/\n|;|,(?![^()]*\))|\band\b/i)
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((part) => {
-      const email = EMAIL.exec(part)?.[0]?.toLowerCase();
-      const phone = PHONE.exec(part.replace(EMAIL, ''))?.[0]?.trim();
-      const name = part.replace(EMAIL, '').replace(PHONE, '').replace(/[()<>:,-]+/g, ' ').replace(/\s+/g, ' ').trim();
-      return { name, ...(email ? { email } : {}), ...(phone ? { phone } : {}) };
-    })
-    .filter((p) => p.email || p.phone || /^[A-Za-z][A-Za-z' .-]{1,60}$/.test(p.name));
+/** Said only when the model cannot be reached: what is still needed, so nothing is guessed. */
+export function whatToSayWithNoModel(s: TheSetupSoFar): string {
+  return `To open it, I still need to know ${saidAsAList(whatIsStillMissing(s))}.`;
 }
 
-/** A name with no address, found on the roster by the whole name or by a first name only one person has. */
-export function foundOnTheRoster(name: string, roster: { displayName: string | null; email: string | null }[]): { displayName: string; email: string } | null {
-  const n = name.trim().toLowerCase();
-  const withAddress = roster.filter((r) => r.displayName && r.email) as { displayName: string; email: string }[];
-  const whole = withAddress.filter((r) => r.displayName.toLowerCase() === n);
-  if (whole.length === 1) return whole[0];
-  const first = withAddress.filter((r) => r.displayName.toLowerCase().split(/\s+/)[0] === n);
-  return first.length === 1 ? first[0] : null;
+/** What the model is given on each turn: the people, what is gathered, what is missing, the conversation so far and the new message. */
+export function theTurnForTheModel(s: TheSetupSoFar, roster: OnTheRosterForSetUp[], me: string, message: string): string {
+  const nameOf = (id: string | null | undefined) => roster.find((r) => r.externalId === id)?.displayName ?? null;
+  const people = roster
+    .filter((r) => r.displayName)
+    .slice(0, 300)
+    .map((r) => {
+      const about = [r.title, r.department].filter(Boolean).join(', ');
+      const reports = r.managerExternalId === me ? 'reports to you' : nameOf(r.managerExternalId) ? `reports to ${nameOf(r.managerExternalId)}` : '';
+      const reach = [r.email ? 'has an email address' : 'has no email address', r.phone ? 'has a phone number' : ''].filter(Boolean).join(', ');
+      return `- id ${r.externalId}: ${r.displayName}${r.externalId === me ? ' (this is the person setting it up)' : ''}${about ? `, ${about}` : ''}${reports ? `, ${reports}` : ''}, ${reach}`;
+    });
+  const gathered = [
+    `What they want updates on: ${s.updatesOn ?? 'not said yet'}`,
+    `People: ${s.people.length ? s.people.map((p) => `${p.name}${p.id ? ` (id ${p.id})` : ''}, ${p.email ? 'email known' : 'no email yet'}${p.phone ? ', phone known' : ''}`).join('; ') : 'nobody yet'}`,
+    `How often: ${s.cadence ? RHYTHM_SAID[s.cadence] : 'not said yet'}`,
+  ];
+  const missing = whatIsStillMissing(s);
+  const before = s.said.flatMap((t) => [...(t.asked ? [`Groundwork: ${t.asked}`] : []), `Them: ${t.words}`]);
+  return [
+    'The organisation\'s people:', people.length ? people.join('\n') : 'Nobody is on the list yet.',
+    '', 'What the set-up has so far:', ...gathered.map((g) => `- ${g}`),
+    `Still missing: ${missing.length ? missing.join('; ') : 'nothing'}`,
+    '', 'The conversation so far:', before.length ? before.join('\n') : 'Nothing yet.',
+    '', `Their new message: ${message.trim() ? message.slice(0, 2000) : '(they asked Groundwork to set one up for them)'}`,
+  ].join('\n');
 }
 
-const RHYTHM_SAID: Record<TheRhythm, string> = { DAILY: 'every day', WEEKLY: 'every week', FORTNIGHTLY: 'every two weeks', MONTHLY: 'every month' };
-
-export const ASK_WHAT_UPDATES = 'What do you want updates on? For example, "deals, payments and visits", or somebody joining, or a role changing hands.';
-export const ASK_HOW_OFTEN = 'How often should they check in? Every day, every week, every two weeks, or every month?';
-export const SETUP_STOPPED = 'I have stopped setting it up. Nothing was opened and nobody was invited.';
-
-export function askWhoIsInIt(offered: APerson[]): string {
-  const how = 'Give me each person’s name with an email address, and a phone number too if you want their check-ins on WhatsApp, one person to a line.';
-  if (!offered.length) return `Who should be in it, and how do I reach each of them? ${how}`;
-  return `Who should be in it, and how do I reach each of them? ${saidAsAList(offered.map((p) => p.name))} ${offered.length === 1 ? 'reports' : 'report'} to you, so say yes to ask ${offered.length === 1 ? 'them' : 'all of them'}. Or ${how.charAt(0).toLowerCase()}${how.slice(1)}`;
+export interface TheModelsTurn {
+  reply: string;
+  stops: boolean;
+  somethingElse: boolean;
+  /** What the set-up holds now. */
+  so: TheSetupSoFar;
 }
 
-/** Somebody named who cannot be invited yet: no address, or a phone number with no email, because invitations go by email. */
-export function askHowToReach(unreachable: string[], phoneOnly: string[]): string {
-  const out: string[] = [];
-  if (unreachable.length) out.push(`I do not know how to reach ${saidAsAList(unreachable)}. What is ${unreachable.length === 1 ? 'their' : 'each person’s'} email address?`);
-  if (phoneOnly.length) out.push(`I need an email address for ${saidAsAList(phoneOnly)} as well, because the invitation goes by email. I will keep the phone number beside it, so their check-ins can reach them on WhatsApp.`);
-  return out.join(' ');
+/**
+ * The model's turn, laid over what is kept. Its words are its own, but every address is checked: somebody on the roster is reached at the
+ * roster's address unless she typed another, and anybody else only at an address she typed. Nothing the model makes up reaches anybody.
+ */
+export function theModelsTurn(raw: any, s: TheSetupSoFar, roster: OnTheRosterForSetUp[], me: string, message: string): TheModelsTurn | null {
+  if (!raw || typeof raw !== 'object' || typeof raw.reply !== 'string') return null;
+  const herWords = [...s.said.map((t) => t.words), message].join('\n');
+  const emailsShe = new Set((herWords.match(EMAIL) ?? []).map((e) => e.toLowerCase()));
+  const phonesShe = (herWords.match(PHONE) ?? []).map((p) => p.trim());
+  const theEmail = (said: unknown) => (typeof said === 'string' && emailsShe.has(said.trim().toLowerCase()) ? said.trim().toLowerCase() : undefined);
+  const thePhone = (said: unknown) => (typeof said === 'string' && digits(said).length >= 9 ? phonesShe.find((p) => digits(p) === digits(said)) : undefined);
+
+  const so: TheSetupSoFar = { ...s, people: [...s.people] };
+  if (typeof raw.updatesOn === 'string' && raw.updatesOn.trim()) so.updatesOn = raw.updatesOn.trim().replace(/[.!?]+$/, '').slice(0, 200);
+  if (typeof raw.brief === 'string' && raw.brief.trim()) so.brief = raw.brief.trim().slice(0, 600);
+  if (['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY'].includes(raw.cadence)) so.cadence = raw.cadence;
+  if (Array.isArray(raw.people)) {
+    const people: APerson[] = [];
+    for (const p of raw.people) {
+      if (!p || typeof p.name !== 'string' || !p.name.trim()) continue;
+      const onRoster = typeof p.id === 'string' ? roster.find((r) => r.externalId === p.id && r.externalId !== me && r.displayName) : undefined;
+      const email = theEmail(p.email) ?? onRoster?.email?.toLowerCase() ?? undefined;
+      const phone = thePhone(p.phone);
+      const name = onRoster?.displayName ?? p.name.trim().slice(0, 120);
+      if (people.some((q) => (onRoster && q.id === onRoster.externalId) || q.name.toLowerCase() === name.toLowerCase())) continue;
+      people.push({ name, ...(email ? { email } : {}), ...(phone ? { phone } : {}), ...(onRoster ? { id: onRoster.externalId } : {}) });
+    }
+    so.people = people;
+  }
+  return { reply: raw.reply.trim(), stops: raw.stops === true, somethingElse: raw.somethingElse === true, so };
 }
 
 /** The situation the check-in is, from what they want updates on: a regular read unless the words plainly name another one. */
@@ -149,6 +204,7 @@ function inASentence(updatesOn: string): string {
   return /^[A-Z][a-z]/.test(t) && !/^[A-Z][a-z]+\s+[A-Z]/.test(t) ? `${t.charAt(0).toLowerCase()}${t.slice(1)}` : t;
 }
 
+/** The check-in's name, from her own words, never a template's. */
 export function theNameFor(updatesOn: string): string {
   return `Updates on ${inASentence(updatesOn)}`.slice(0, 120);
 }
@@ -159,7 +215,17 @@ function theSituationInWords(scenario: string): string {
   return `${name.charAt(0).toLowerCase()}${name.slice(1)}`;
 }
 
-/** The whole of it, said back before anything is opened or sent. Everybody is named, never counted. */
+/** What the check-in is for, as the people in it read it: the model's sentences from her words, or what she wants updates on. */
+export function theBriefOf(s: TheSetupSoFar): string {
+  return s.brief ?? `You check in ${s.cadence ? RHYTHM_SAID[s.cadence] : 'regularly'} with your updates on ${inASentence(s.updatesOn ?? '')}.`;
+}
+
+/** Nothing is missing, so it can be said back. */
+export function readyToSayBack(s: TheSetupSoFar): boolean {
+  return whatIsStillMissing(s).length === 0;
+}
+
+/** The whole of it, said back before anything is opened or sent. Everybody is named with how they will be reached, never counted. */
 export function saidBack(s: TheSetupSoFar): string {
   const updatesOn = inASentence(s.updatesOn ?? '');
   const each = s.people.map((p) => `${p.name} (${[p.email, p.phone].filter(Boolean).join(', ')})`);
@@ -167,56 +233,8 @@ export function saidBack(s: TheSetupSoFar): string {
   return [
     `Here is the check-in I will open. It is called "${theNameFor(updatesOn)}", and it asks for updates on ${updatesOn}. I will run it as a check-in to ${theSituationInWords(s.scenario ?? theSituationFor(updatesOn).scenario)}.`,
     `${saidAsAList(each)} will be in it, and ${one ? 'they' : 'each of them'} will be emailed an invitation.`,
+    `${one ? 'They' : 'Each of them'} will read what it is for in these words, "${theBriefOf(s)}"`,
     `They will check in ${RHYTHM_SAID[s.cadence as TheRhythm]}.`,
     'Shall I open it?',
   ].join(' ');
-}
-
-/** The next question, or the say-back once nothing is missing. */
-export function theNextStep(s: TheSetupSoFar): { asked: TheSetupSoFar['asked']; says: string } {
-  if (!s.updatesOn) return { asked: 'updates', says: ASK_WHAT_UPDATES };
-  const phoneOnly = s.people.filter((p) => !p.email && p.phone).map((p) => p.name);
-  if (s.unreachable.length || phoneOnly.length) return { asked: 'people', says: askHowToReach(s.unreachable, phoneOnly) };
-  if (!s.people.length) return { asked: 'people', says: askWhoIsInIt(s.offered) };
-  if (!s.cadence) return { asked: 'often', says: ASK_HOW_OFTEN };
-  return { asked: 'confirm', says: saidBack(s) };
-}
-
-/**
- * One answer laid over what is kept. What the model heard is read first; where it heard nothing for the question that was asked, the
- * answer itself is read: the words as what they want updates on, the addresses by their form, and the rhythm words.
- */
-export function oneAnswerLaidOver(
-  s: TheSetupSoFar,
-  said: string,
-  heard: WhatTheModelHeard,
-  roster: { displayName: string | null; email: string | null }[],
-  saidYes: boolean,
-): TheSetupSoFar {
-  const next: TheSetupSoFar = { ...s, people: [...s.people], unreachable: [...s.unreachable] };
-  const updatesOn = heard.updatesOn ?? (s.asked === 'updates' ? said.trim().replace(/[.!?]+$/, '') : undefined);
-  if (updatesOn && (!s.updatesOn || s.asked === 'updates')) next.updatesOn = updatesOn;
-
-  if (s.asked === 'people' && saidYes && s.offered.length && !s.people.length) next.people = [...s.offered];
-  else {
-    const named = heard.people?.length ? heard.people : s.asked === 'people' ? thePeopleIn(said) : [];
-    for (const given of named) {
-      /* An address with no name beside it is for the person still waiting for one, or, with nobody waiting, is its own name. */
-      const waiting = next.unreachable[0] ?? next.people.find((q) => !q.email)?.name;
-      const p = given.name ? given : { ...given, name: waiting ?? given.email ?? given.phone ?? '' };
-      if (!p.name) continue;
-      const already = next.people.find((q) => q.name.toLowerCase() === p.name.toLowerCase());
-      const fromRoster = !p.email ? foundOnTheRoster(p.name, roster) : null;
-      const person: APerson = { name: fromRoster?.displayName ?? p.name, ...(p.email || fromRoster ? { email: p.email ?? fromRoster!.email } : {}), ...(p.phone ? { phone: p.phone } : {}) };
-      if (already) Object.assign(already, { ...(person.email ? { email: person.email } : {}), ...(person.phone ? { phone: person.phone } : {}) });
-      else if (person.email || person.phone) next.people.push(person);
-      else if (!next.unreachable.includes(person.name)) next.unreachable.push(person.name);
-      next.unreachable = next.unreachable.filter((n) => !next.people.some((q) => q.name.toLowerCase() === n.toLowerCase()));
-    }
-    next.unreachable = next.unreachable.filter((n) => !next.people.some((p) => p.name.toLowerCase() === n.toLowerCase()));
-  }
-
-  const cadence = heard.cadence ?? theRhythmIn(said) ?? undefined;
-  if (cadence && (!s.cadence || s.asked === 'often')) next.cadence = cadence;
-  return next;
 }

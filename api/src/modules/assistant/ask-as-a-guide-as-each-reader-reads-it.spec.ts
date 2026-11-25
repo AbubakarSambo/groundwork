@@ -3,7 +3,7 @@ import { askStartersFor } from './ask-name';
 import { route } from './the-router-is-deterministic';
 import { THE_GUIDE } from './what-the-assistant-can-do';
 import { whatTheModelSaid } from './ask-understands-with-the-model';
-import { oneAnswerLaidOver, saidBack, thePeopleIn, theNextStep } from './a-check-in-set-up-by-talking';
+import { CHECK_IN_SETUP_PROMPT, saidBack, theModelsTurn, whatIsStillMissing } from './a-check-in-set-up-by-talking';
 
 /**
  * ASK AS A GUIDE, AS EACH READER READS IT (Batch S, groups S5 and S6; Hafsah, 19 November 2026).
@@ -136,8 +136,9 @@ describe('"How do I...?"', () => {
     const l = asReader('MEMBER', true, howTo('set_up_a_check_in'));
     const r = await l.say('How do I set up a check-in?');
     expect(r.text).toBe('Press Start a check-in in the menu. Say what you need updates on and press Continue, answer the questions, and press Invite and finish. Shall I do it for you?');
+    /* Changed 24 November 2026: the set-up is led by the model. This fake model reads only "How do I...", so the set-up falls back to saying what it still needs. */
     const yes = await l.say('yes');
-    expect(yes.text).toBe('What do you want updates on? For example, "deals, payments and visits", or somebody joining, or a role changing hands.');
+    expect(yes.text).toBe('To open it, I still need to know what you want updates on, who should be in it and how often they should check in.');
   });
 
   it('a no to the offer does nothing', async () => {
@@ -167,12 +168,38 @@ describe('"How do I...?"', () => {
   });
 });
 
+/**
+ * Changed 24 November 2026 (Hafsah, after a set-up on her own WhatsApp failed): the set-up was a form that asked what, then who, then how
+ * often, in fixed sentences. The model leads it now, so this fake model answers the set-up's prompt as Gemini would, one turn for each thing
+ * Grace says. What is still checked is the product's part: who is reached at which address, the say-back word for word, and nothing opened
+ * before her yes. The fixed questions and thePeopleIn are gone, so the tests of them now test the same promises on theModelsTurn.
+ */
+function aSetUpModel(turns: Record<string, any>) {
+  return {
+    respond: jest.fn(async () => { throw new Error('no composing here'); }),
+    extract: jest.fn(async (prompt: string, h: any[]) => {
+      if (prompt !== CHECK_IN_SETUP_PROMPT) return null;
+      const m = /Their new message: ([\s\S]*)$/.exec(String(h[0].content))?.[1] ?? '';
+      return turns[m] ?? { reply: 'Go on.' };
+    }),
+  };
+}
+
 describe('a check-in set up by talking, turn by turn, as Grace the lead reads it', () => {
-  it('asks what she wants updates on, then who, then how often, says it all back, and opens it only on her yes', async () => {
+  const GRACE = aSetUpModel({
+    'Set up a check-in': { reply: 'Happy to. What do you want updates on? Mercy Wairimu and Kevin Omondi report to you, if they are the people.' },
+    'Deals, payments and visits': { reply: 'Deals, payments and visits it is. Who should be in it?', updatesOn: 'deals, payments and visits' },
+    'Mercy\nJuma Otieno juma@baridi.co.ke +254 712 345 678': { reply: 'Mercy Wairimu and Juma Otieno, then. How often should they check in?', people: [{ id: 'm', name: 'Mercy' }, { name: 'Juma Otieno', email: 'juma@baridi.co.ke', phone: '+254 712 345 678' }] },
+    'Every week': { reply: '', cadence: 'WEEKLY' },
+    'Deals and visits': { reply: 'Who should be in it?', updatesOn: 'deals and visits' },
+    'Mercy and Kevin, every two weeks': { reply: '', people: [{ id: 'm', name: 'Mercy' }, { id: 'k', name: 'Kevin' }], cadence: 'FORTNIGHTLY' },
+  });
+
+  it('reads what she says in her own words, says it all back, and opens it only on her yes', async () => {
     const created: any[] = [];
     const added: any[] = [];
     const numbers: any[] = [];
-    const l = asReader('MEMBER', true);
+    const l = asReader('MEMBER', true, GRACE);
     (l.service as any).grounds = {
       create: jest.fn(async (_o: string, _u: string, dto: any) => { created.push(dto); return { id: 'g-new' }; }),
       addParticipant: jest.fn(async (_g: string, _o: string, _u: string, dto: any) => { added.push(dto); return { id: `pp-${added.length}` }; }),
@@ -180,13 +207,13 @@ describe('a check-in set up by talking, turn by turn, as Grace the lead reads it
     };
     l.prisma.person.findFirst = jest.fn(async () => ({ id: 'p1', externalId: 'u-1', displayName: 'Grace Achieng', active: true, linkedUserId: 'u-1' }));
 
-    expect((await l.say('Set up a check-in')).text).toBe('What do you want updates on? For example, "deals, payments and visits", or somebody joining, or a role changing hands.');
-    expect((await l.say('Deals, payments and visits')).text).toBe('Who should be in it, and how do I reach each of them? Mercy Wairimu and Kevin Omondi report to you, so say yes to ask all of them. Or give me each person’s name with an email address, and a phone number too if you want their check-ins on WhatsApp, one person to a line.');
-    expect((await l.say('Mercy\nJuma Otieno juma@baridi.co.ke +254 712 345 678')).text).toBe('How often should they check in? Every day, every week, every two weeks, or every month?');
+    expect((await l.say('Set up a check-in')).text).toBe('Happy to. What do you want updates on? Mercy Wairimu and Kevin Omondi report to you, if they are the people.');
+    expect((await l.say('Deals, payments and visits')).text).toBe('Deals, payments and visits it is. Who should be in it?');
+    expect((await l.say('Mercy\nJuma Otieno juma@baridi.co.ke +254 712 345 678')).text).toBe('Mercy Wairimu and Juma Otieno, then. How often should they check in?');
     expect(created).toEqual([]);
     /* Changed 22 November 2026: the situation is said in its card's words (the scenario table), the same words /start uses, since it is now read by the one reading. */
     const back = (await l.say('Every week')).text;
-    expect(back).toBe('Here is the check-in I will open. It is called "Updates on deals, payments and visits", and it asks for updates on deals, payments and visits. I will run it as a check-in to keep a read on live work. Mercy Wairimu (mercy@baridi.co.ke) and Juma Otieno (juma@baridi.co.ke, +254 712 345 678) will be in it, and each of them will be emailed an invitation. They will check in every week. Shall I open it?');
+    expect(back).toBe('Here is the check-in I will open. It is called "Updates on deals, payments and visits", and it asks for updates on deals, payments and visits. I will run it as a check-in to keep a read on live work. Mercy Wairimu (mercy@baridi.co.ke) and Juma Otieno (juma@baridi.co.ke, +254 712 345 678) will be in it, and each of them will be emailed an invitation. Each of them will read what it is for in these words, "You check in every week with your updates on deals, payments and visits." They will check in every week. Shall I open it?');
     expect(created).toEqual([]);
     expect((await l.say('yes')).text).toBe('I have opened "Updates on deals, payments and visits". Mercy Wairimu and Juma Otieno have been invited.');
     expect(created[0]).toEqual(expect.objectContaining({ label: 'Updates on deals, payments and visits', scenario: 'PULSE_CHECK', cadence: 'WEEKLY' }));
@@ -195,34 +222,34 @@ describe('a check-in set up by talking, turn by turn, as Grace the lead reads it
   });
 
   it('a no at the say-back opens nothing and invites nobody', async () => {
-    const l = asReader('MEMBER', true);
+    const l = asReader('MEMBER', true, GRACE);
     const create = jest.fn();
     (l.service as any).grounds = { create };
     await l.say('Set up a check-in');
     await l.say('Deals and visits');
-    await l.say('yes');
-    await l.say('every two weeks');
+    expect((await l.say('Mercy and Kevin, every two weeks')).text).toMatch(/Shall I open it\?$/);
     expect((await l.say('no')).text).toBe('I have stopped setting it up. Nothing was opened and nobody was invited.');
     expect(create).not.toHaveBeenCalled();
   });
 
-  it('somebody given with only a phone number is asked for an email, because the invitation goes by email', () => {
-    const so = oneAnswerLaidOver({ updatesOn: 'visits', people: [], unreachable: [], offered: [], asked: 'people' }, 'Juma +254712345678', {}, [], false);
-    expect(theNextStep(so).says).toBe('I need an email address for Juma as well, because the invitation goes by email. I will keep the phone number beside it, so their check-ins can reach them on WhatsApp.');
-    const then = oneAnswerLaidOver({ ...so, asked: 'people' }, 'juma@baridi.co.ke', {}, [], false);
+  it('somebody given with only a phone number still needs an email, because the invitation goes by email', () => {
+    const start = { updatesOn: 'visits', people: [], cadence: 'WEEKLY' as const, asked: 'talking' as const, said: [] };
+    const first = theModelsTurn({ reply: 'What is Juma’s email address?', people: [{ name: 'Juma', phone: '+254712345678' }] }, start, [], 'u-1', 'Juma +254712345678')!.so;
+    expect(whatIsStillMissing(first)).toEqual(['an email address for Juma']);
+    const then = theModelsTurn({ reply: '', people: [{ name: 'Juma', email: 'juma@baridi.co.ke', phone: '+254712345678' }] }, { ...first, said: [{ words: 'Juma +254712345678', asked: null }] }, [], 'u-1', 'juma@baridi.co.ke')!.so;
     expect(then.people).toEqual([{ name: 'Juma', email: 'juma@baridi.co.ke', phone: '+254712345678' }]);
   });
 
-  it('a name with no address and nobody on the roster by that name is asked about, never guessed', () => {
-    const so = oneAnswerLaidOver({ updatesOn: 'visits', people: [], unreachable: [], offered: [], asked: 'people' }, 'Wanjiku', {}, [], false);
-    expect(theNextStep(so).says).toBe('I do not know how to reach Wanjiku. What is their email address?');
+  it('an address or a number the model gives that she never typed is not taken, so the email is still asked for', () => {
+    const so = theModelsTurn({ reply: 'Got it.', people: [{ name: 'Wanjiku', email: 'wanjiku@baridi.co.ke', phone: '+254700000000' }] }, { updatesOn: 'visits', people: [], asked: 'talking', said: [] }, [], 'u-1', 'Wanjiku')!.so;
+    expect(so.people).toEqual([{ name: 'Wanjiku' }]);
+    expect(whatIsStillMissing(so)).toContain('an email address for Wanjiku');
   });
 
   it('the say-back names every single person, never a count', () => {
     const people = ['A', 'B', 'C', 'D', 'E'].map((n) => ({ name: n, email: `${n.toLowerCase()}@x.co` }));
-    const s = saidBack({ updatesOn: 'visits', people, unreachable: [], offered: [], cadence: 'MONTHLY', asked: 'confirm' });
+    const s = saidBack({ updatesOn: 'visits', people, cadence: 'MONTHLY', asked: 'confirm', said: [] });
     expect(s).toContain('A (a@x.co), B (b@x.co), C (c@x.co), D (d@x.co) and E (e@x.co)');
     expect(s).not.toMatch(/others/);
-    expect(thePeopleIn('Mercy, Kevin and Juma juma@x.co').map((p) => p.name)).toEqual(['Mercy', 'Kevin', 'Juma']);
   });
 });

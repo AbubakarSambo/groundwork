@@ -29,7 +29,7 @@ export function anInboundHarness(opts: {
   /** A question about this person's own request waits for their answer (decision 85, build step 7). */
   questionWaiting?: { id: string; suite: 'leave' | 'spend'; ref: string; askedBy: string; about: string } | null;
   /** Messages Groundwork sent this number, for a reply's context and the last opening notice (decision 106 item 1). */
-  sends?: { providerMessageId?: string; checkInId: string; kind: string; createdAt: Date }[];
+  sends?: { providerMessageId?: string; checkInId: string | null; kind: string; createdAt: Date }[];
 } = {}) {
   const said: string[] = [];
   const sent: { org: string | null; via?: string; to: string; text: string; context?: any }[] = [];
@@ -74,6 +74,8 @@ export function anInboundHarness(opts: {
           && (!w.createdAt?.gt || x.createdAt > w.createdAt.gt));
         return rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null;
       }),
+      /* A note that something was said once (said-once-to-a-number.ts) is kept, so the next message reads it. */
+      create: jest.fn(async (q: any) => { (opts.sends ??= []).push({ checkInId: q.data.checkInId ?? null, kind: q.data.kind, createdAt: new Date() }); return q.data; }),
     },
   };
   /* What Groundwork says about a check-in is on the send record with it, as whatsapp.service writes it, so the next reply comes back to it. */
