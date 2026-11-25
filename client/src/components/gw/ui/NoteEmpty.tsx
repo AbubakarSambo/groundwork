@@ -1,6 +1,7 @@
 import React from 'react'
 import { Panel } from './Panel'
 import { useTheDesignPass } from '../../../lib/the-design-pass'
+import { useTheDesignSystem } from './the-design-system'
 import './gw-ui.css'
 
 /**
@@ -102,6 +103,20 @@ export function Empty({ title, children, action }: {
 }) {
   /* The design pass: an empty state is its title, its line and its one action, with no card round them. */
   const designPass = useTheDesignPass()
+  /*
+   * ON A REBUILT PAGE, THE EMPTY LINE (rule 10): one line and one action, centred, never a box. A
+   * title, where one is given, leads the same line in bold, so nothing a caller wrote is lost.
+   */
+  const ds = useTheDesignSystem()
+  if (ds) {
+    return (
+      <p className="ds-empty">
+        {title && <><b>{title}</b>{' '}</>}
+        {children}
+        {action && <>{' '}{action}</>}
+      </p>
+    )
+  }
   if (!title) {
     return <p className="gwui-empty-line gw-line">{children}</p>
   }

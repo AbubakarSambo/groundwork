@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { useTheDesignSystem } from './the-design-system'
 import './gw-ui.css'
 
 /**
@@ -63,6 +64,8 @@ export function Tabs({ items, active, onChange, label }: {
   onChange?: (key: string) => void
   label?: string
 }) {
+  /* ON A REBUILT PAGE (rule 11): the design system's tabs, which share the row so every tab fits at 390px without scrolling (blocks.css). */
+  const ds = useTheDesignSystem()
   const rowRef = useRef<HTMLDivElement>(null)
   const tabRefs = useRef(new Map<string, HTMLAnchorElement | HTMLButtonElement>())
 
@@ -93,11 +96,13 @@ export function Tabs({ items, active, onChange, label }: {
     row.scrollTo({ left: target, behavior: reduce ? 'auto' : 'smooth' })
   }, [active, items])
 
+  /* On a phone a rebuilt tab may wrap between its words, never inside one ("Check-in" stays whole). */
+  const words = (label: string) => (ds ? <span>{label.split(' ').map((w, i) => <React.Fragment key={i}>{i > 0 && ' '}<span className="ds-word">{w}</span></React.Fragment>)}</span> : label)
   return (
-    <div className="gwui-tabs" role="tablist" aria-label={label} ref={rowRef}>
+    <div className={ds ? 'ds-tabs' : 'gwui-tabs'} role="tablist" aria-label={label} ref={rowRef}>
       {items.map(item => {
         const isOn = item.key === active
-        const className = `gwui-tab${isOn ? ' gwui-tab-on' : ''}`
+        const className = ds ? `ds-tab${isOn ? ' ds-tab-on' : ''}` : `gwui-tab${isOn ? ' gwui-tab-on' : ''}`
         const setRef = (el: HTMLAnchorElement | HTMLButtonElement | null) => {
           if (el) tabRefs.current.set(item.key, el)
           else tabRefs.current.delete(item.key)
@@ -112,7 +117,7 @@ export function Tabs({ items, active, onChange, label }: {
               role="tab"
               aria-selected={isOn}
             >
-              {item.label}
+              {words(item.label)}
             </Link>
           )
         }
@@ -126,7 +131,7 @@ export function Tabs({ items, active, onChange, label }: {
             aria-selected={isOn}
             onClick={() => onChange?.(item.key)}
           >
-            {item.label}
+            {words(item.label)}
           </button>
         )
       })}

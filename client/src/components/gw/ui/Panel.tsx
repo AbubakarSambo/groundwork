@@ -1,5 +1,6 @@
 import React from 'react'
 import { PartBoundary } from './PartBoundary'
+import { useTheDesignSystem } from './the-design-system'
 import './gw-ui.css'
 
 /**
@@ -22,8 +23,10 @@ export function Panel({ as, pad = true, heading, children, ...rest }: {
   children: React.ReactNode
 } & React.HTMLAttributes<HTMLElement>) {
   const { className, ...elRest } = rest
-  const cls = ['panel', pad && 'pad', className].filter(Boolean).join(' ')
-  const inner = <>{heading && <h3 className="t-h3" style={{ marginBottom: 8 }}>{heading}</h3>}<PartBoundary>{children}</PartBoundary></>
+  /* ON A REBUILT PAGE this is the design system's card: a thin rule, 8px corners, 16px inside, its title at 18px (blocks.css). */
+  const ds = useTheDesignSystem()
+  const cls = (ds ? ['ds-card', !pad && 'ds-card-flush', className] : ['panel', pad && 'pad', className]).filter(Boolean).join(' ')
+  const inner = <>{heading && <h3 className={ds ? 'ds-text-card' : 't-h3 ds-under-8'}>{heading}</h3>}<PartBoundary>{children}</PartBoundary></>
   if (as === 'section') return <section className={cls} {...elRest}>{inner}</section>
   return <div className={cls} {...elRest}>{inner}</div>
 }

@@ -1,6 +1,7 @@
 import React from 'react'
 import { Tag, type TagTone } from './Tag'
 import { Button } from './Button'
+import { useTheDesignSystem } from './the-design-system'
 import './gw-ui.css'
 import { useIsAPhone } from '../../../lib/a-phone-is-not-a-narrow-desktop'
 
@@ -64,6 +65,22 @@ function cell(c: TableCell | boolean | undefined): React.ReactNode {
 }
 
 /** The small round mark at the start of a row: filled when something is on the record, open when it is only said or still open. Decorative. */
+/*
+ * THE TABLE'S CLASSES, AS IT WAS AND ON A REBUILT PAGE (rule 4, the design system, 23 November 2026).
+ * On a rebuilt page the table has no box of its own (a card holds it if it needs one), its numbers
+ * are right-aligned in tabular figures, and a wide table scrolls inside its own region (blocks.css).
+ */
+const OLD = {
+  wrap: 'gwui-table-wrap', panel: 'panel', wrapStack: 'gwui-table-wrap-stack', table: 'gwui-table', stack: 'gwui-table-stack',
+  caption: 'gwui-table-caption', num: 'gwui-table-num', rowhead: 'gwui-table-rowhead', hl: 'gwui-table-hl', missing: 'gwui-table-missing',
+  gaps: 'gwui-table-gaps', total: 'gwui-table-total', more: 'gwui-table-more', moreText: 't-small', summary: 'gwui-table-summary',
+}
+const DS: typeof OLD = {
+  wrap: 'ds-table-wrap', panel: '', wrapStack: '', table: 'ds-table', stack: 'ds-table-stack',
+  caption: 'ds-table-caption', num: 'ds-table-num', rowhead: 'ds-table-rowhead', hl: 'ds-table-hl', missing: '',
+  gaps: 'ds-table-gaps', total: 'ds-table-total', more: 'ds-table-more', moreText: 'ds-text-secondary', summary: 'ds-text-secondary',
+}
+
 export function Dot({ filled }: { filled?: boolean }) {
   return <span aria-hidden className={filled ? 'gwui-table-dot gwui-table-dot-on' : 'gwui-table-dot'} />
 }
@@ -89,6 +106,7 @@ export function Table({ caption, columns: allColumns, rows: allRows, totals, hid
   keepEmptyColumns?: boolean
 }) {
   const [showAll, setShowAll] = React.useState(false)
+  const k = useTheDesignSystem() ? DS : OLD
   /* A column nobody has filled in is not drawn: "Not said yet" fourteen times down one column says it once too often (Hafsah, 15 November). */
   const columns = allRows.length > 1 && !keepEmptyColumns ? allColumns.filter((c) => c.rowHeader || !allRows.every((row) => isMissing(row[c.key]))) : allColumns
   /* The cut is for a phone only: a desktop table of two hundred rows is a normal page (Hafsah, 15 November). */
@@ -101,29 +119,29 @@ export function Table({ caption, columns: allColumns, rows: allRows, totals, hid
   // stylesheet draws `data-label`, so the name is not a second copy in the page's text). Skipped where the header is hidden on purpose
   // (a column of sentences that names itself).
   const label = (c: TableColumn) => (stack && !hideHeader ? c.header : undefined)
-  const wrapCls = ['gwui-table-wrap', onPanel && 'panel', stack && 'gwui-table-wrap-stack'].filter(Boolean).join(' ')
+  const wrapCls = [k.wrap, onPanel && k.panel, stack && k.wrapStack].filter(Boolean).join(' ')
   return (
     <>
-    {phoneScreen && allRows.length > limit && summary ? <p className="gwui-table-summary">{summary}</p> : null}
+    {phoneScreen && allRows.length > limit && summary ? <p className={k.summary}>{summary}</p> : null}
     <div className={wrapCls} {...(!stack ? { role: 'region', 'aria-label': caption, tabIndex: 0 } : {})}>
-      <table className={stack ? 'gwui-table gwui-table-stack' : 'gwui-table'} style={stack ? undefined : { minWidth }} {...r('table')} aria-label={stack ? caption : undefined}>
-        <caption className={showCaption ? 'gwui-table-caption' : 'gwui-sr-only'}>{caption}</caption>
+      <table className={stack ? `${k.table} ${k.stack}` : k.table} style={stack ? undefined : { minWidth }} {...r('table')} aria-label={stack ? caption : undefined}>
+        <caption className={showCaption ? k.caption : 'gwui-sr-only'}>{caption}</caption>
         {columns.some((c) => c.width) && <colgroup>{columns.map((c) => <col key={c.key} style={c.width ? { width: c.width } : undefined} />)}</colgroup>}
         <thead className={hideHeader ? 'gwui-sr-only' : undefined} {...r('rowgroup')}>
           <tr {...r('row')}>
             {columns.map((c) => (
-              <th key={c.key} scope="col" className={c.numeric ? 'gwui-table-num' : undefined} {...r('columnheader')}>{c.header}</th>
+              <th key={c.key} scope="col" className={c.numeric ? k.num : undefined} {...r('columnheader')}>{c.header}</th>
             ))}
           </tr>
         </thead>
         <tbody {...r('rowgroup')}>
           {rows.map((row, i) => (
-            <tr key={i} className={row._highlight ? 'gwui-table-hl' : undefined} {...r('row')}>
+            <tr key={i} className={row._highlight ? k.hl : undefined} {...r('row')}>
               {columns.map((c) =>
                 c.rowHeader ? (
-                  <th key={c.key} scope="row" className="gwui-table-rowhead" {...r('rowheader')}>{cell(row[c.key])}</th>
+                  <th key={c.key} scope="row" className={k.rowhead} {...r('rowheader')}>{cell(row[c.key])}</th>
                 ) : (
-                  <td key={c.key} className={[c.numeric && 'gwui-table-num', stack && isMissing(row[c.key]) && 'gwui-table-missing'].filter(Boolean).join(' ') || undefined} data-label={label(c)} {...r('cell')}>{
+                  <td key={c.key} className={[c.numeric && k.num, stack && isMissing(row[c.key]) && k.missing].filter(Boolean).join(' ') || undefined} data-label={label(c)} {...r('cell')}>{
                     /* Said once a row: the first gap in a row says "Not said yet", the others are a quiet dash under their own column's name. */
                     isMissing(row[c.key]) && columns.find((k) => !k.rowHeader && isMissing(row[k.key])) !== c
                       ? <span aria-label={MISSING}>–</span>
@@ -134,19 +152,19 @@ export function Table({ caption, columns: allColumns, rows: allRows, totals, hid
               {stack && !hideHeader && (() => {
                 const gaps = columns.filter((c) => !c.rowHeader && isMissing(row[c.key])).map((c) => c.header.toLowerCase())
                 /* One line a row on a phone, where there are two or more gaps; a single gap keeps its own cell. */
-                return gaps.length > 1 ? <td className="gwui-table-gaps" {...r('cell')}>{`Not said yet for ${wordsOf(gaps)}.`}</td> : null
+                return gaps.length > 1 ? <td className={k.gaps} {...r('cell')}>{`Not said yet for ${wordsOf(gaps)}.`}</td> : null
               })()}
             </tr>
           ))}
         </tbody>
         {totals && (
           <tfoot {...r('rowgroup')}>
-            <tr className="gwui-table-total" {...r('row')}>
+            <tr className={k.total} {...r('row')}>
               {columns.map((c, i) =>
                 i === 0 ? (
-                  <th key={c.key} scope="row" className="gwui-table-rowhead" {...r('rowheader')}>{cell(totals[c.key])}</th>
+                  <th key={c.key} scope="row" className={k.rowhead} {...r('rowheader')}>{cell(totals[c.key])}</th>
                 ) : (
-                  <td key={c.key} className={c.numeric ? 'gwui-table-num' : undefined} data-label={label(c)} {...r('cell')}>{cell(totals[c.key])}</td>
+                  <td key={c.key} className={c.numeric ? k.num : undefined} data-label={label(c)} {...r('cell')}>{cell(totals[c.key])}</td>
                 ),
               )}
             </tr>
@@ -154,8 +172,8 @@ export function Table({ caption, columns: allColumns, rows: allRows, totals, hid
         )}
       </table>
       {cut && (
-        <div className="gwui-table-more">
-          <p className="t-small">{`The first ${limit} of ${allRows.length} ${what} are shown.`}</p>
+        <div className={k.more}>
+          <p className={k.moreText}>{`The first ${limit} of ${allRows.length} ${what} are shown.`}</p>
           <Button kind="secondary" size="small" onClick={() => setShowAll(true)}>{`Show the other ${allRows.length - limit}`}</Button>
         </div>
       )}

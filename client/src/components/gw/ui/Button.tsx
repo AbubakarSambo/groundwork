@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import { useTheDesignSystem } from './the-design-system'
 import './gw-ui.css'
 
 /**
@@ -39,8 +40,19 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, {
   /** For a choice among a small fixed set (e.g. "Right" / "Wrong" / "Not sure"): whether this is the one currently chosen. */
   'aria-pressed'?: boolean
 }>(function Button({ kind = 'primary', size, wide, redText, to, onClick, type = 'button', disabled, children, ...rest }, ref) {
+  /*
+   * ON A REBUILT PAGE (rule 8): the design system's three looks, read from the tokens. Primary is the
+   * main button (flat navy), secondary the second (a hairline), quiet a plain link; danger stays solid
+   * red. One height, 44px, so `size` does not apply there.
+   */
+  const ds = useTheDesignSystem()
   /* The prototype's .btn and its kinds (.pri, .sec, .quiet, .danger) and sizes (.big, .sm). */
-  const className = [
+  const className = ds ? [
+    'ds-btn',
+    ({ primary: 'ds-btn-main', secondary: 'ds-btn-second', quiet: 'ds-btn-link', danger: 'ds-btn-danger' } as const)[kind],
+    wide && 'ds-btn-wide',
+    redText && kind === 'secondary' && 'ds-btn-red',
+  ].filter(Boolean).join(' ') : [
     'btn',
     ({ primary: 'pri', secondary: 'sec', quiet: 'quiet', danger: 'danger' } as const)[kind],
     size === 'big' ? 'big' : size === 'small' ? 'sm' : null,

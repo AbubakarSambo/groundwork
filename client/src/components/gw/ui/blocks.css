@@ -1,0 +1,129 @@
+/*
+ * THE BUILDING BLOCKS (docs/groundwork-design-guide.md, section 4a, Hafsah, 23 November 2026).
+ *
+ * Every value here is read from styles/tokens.css. This file holds no colour, size or spacing of
+ * its own: the rule-12 check fails if a hex colour or a pixel value appears here, except the one
+ * phone width in an @media line, which a media query cannot read from a variable and which the
+ * check holds equal to --ds-phone.
+ *
+ * The blocks draw these classes only on a page rebuilt with `<Page title=...>` (the-design-system.ts),
+ * so a page that has not been rebuilt is unchanged.
+ */
+
+/* ── PAGE (rules 1 and 2) ───────────────────────────────────────────────────────────────────── */
+.main.ds-page { padding: var(--ds-page-top) var(--ds-page-side) var(--ds-page-bottom); min-width: 0; }
+.ds-page-in { max-width: var(--ds-content); }
+.ds-page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--ds-space-16); flex-wrap: wrap; }
+.ds-page-words { min-width: 0; flex: 1 1 auto; }
+.ds-page-head + * { margin-top: var(--ds-space-32); }
+.ds-page-body, .ds-page-side { min-width: 0; }
+.ds-page .ds-page-body > * + *, .ds-page .ds-page-side > * + * { margin-top: var(--ds-space-32); }
+.ds-page-split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--ds-space-32); align-items: start; }
+
+/* ── TEXT (rule 5): six sizes, two weights, and the big size for a greeting or a big number ──── */
+.ds-text-title, .ds-text-big { font-family: var(--ds-font-name); font-weight: var(--ds-weight-name); color: var(--ds-ink); margin: 0; font-variant-numeric: lining-nums; }
+.ds-text-title { font-size: var(--ds-text-title); line-height: var(--ds-lh-title); }
+.ds-text-big { font-size: var(--ds-text-big); line-height: var(--ds-lh-big); }
+.ds-text-section, .ds-text-card, .ds-text-body, .ds-text-secondary, .ds-text-meta { font-family: var(--ds-font-ui); margin: 0; }
+.ds-text-section { font-size: var(--ds-text-section); line-height: var(--ds-lh-section); font-weight: var(--ds-weight-bold); color: var(--ds-ink); }
+.ds-text-card { font-size: var(--ds-text-card); line-height: var(--ds-lh-card); font-weight: var(--ds-weight-bold); color: var(--ds-ink); }
+.ds-text-body { font-size: var(--ds-text-body); line-height: var(--ds-lh-body); font-weight: var(--ds-weight-body); color: var(--ds-ink); }
+.ds-text-secondary { font-size: var(--ds-text-secondary); line-height: var(--ds-lh-secondary); font-weight: var(--ds-weight-body); color: var(--ds-muted); }
+.ds-text-meta { font-size: var(--ds-text-meta); line-height: var(--ds-lh-meta); font-weight: var(--ds-weight-body); color: var(--ds-muted); }
+/* The page's one line under its title, 8px below it. */
+.ds-page-words > .ds-page-lede { margin-top: var(--ds-space-8); }
+/* Numbers in a stat or a table line up (rule 4). */
+.ds-num { font-variant-numeric: tabular-nums; }
+
+/* ── SECTION (rule 3): title, at most one line of explanation, the content, at most one action ─ */
+.ds-section { display: flex; flex-direction: column; gap: var(--ds-space-16); min-width: 0; }
+.ds-section-head { display: flex; flex-direction: column; gap: var(--ds-space-8); }
+.ds-section-action { display: flex; }
+/* Rows, cards and blocks inside one section are 16px apart. */
+.ds-section-body { min-width: 0; }
+.ds-section .ds-section-body > * + * { margin-top: var(--ds-space-16); }
+
+/* ── GRID OF CARDS (rule 1): 2, 3 or 4 equal columns, 16px apart ───────────────────────────── */
+.ds-grid { display: grid; gap: var(--ds-space-16); }
+.ds-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ds-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ds-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+/* ── CARD: a thin rule, no shadow, 16px inside ─────────────────────────────────────────────── */
+.ds-card { background: var(--ds-surface); border: var(--ds-line) solid var(--ds-rule); border-radius: var(--ds-corner); padding: var(--ds-space-16); min-width: 0; }
+.ds-card-flush { padding: 0; }
+/* A card's title and the lines under it are 8px apart, as a label and its value. */
+.ds-card.ds-card > * + * { margin-top: var(--ds-space-8); }
+/* The card's title, 8px above what it heads: the same gap the older panel heading had. */
+.ds-under-8 { margin-bottom: var(--ds-space-8); }
+
+/* ── ROW (rule 9): its title and detail on the left, its actions as links on the right ─────── */
+.ds-rows { border-top: var(--ds-line) solid var(--ds-rule); margin: 0; padding: 0; list-style: none; }
+.ds-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--ds-space-16); align-items: center; padding: var(--ds-space-16) 0; border-bottom: var(--ds-line) solid var(--ds-rule); }
+.ds-row-dotted { grid-template-columns: var(--ds-space-8) minmax(0, 1fr) auto; }
+.ds-row-dot { width: var(--ds-space-8); height: var(--ds-space-8); border-radius: 50%; align-self: start; margin-top: var(--ds-space-8); }
+.ds-row-dot.rec { background: var(--ds-rec); }
+.ds-row-dot.att { background: var(--ds-att); }
+.ds-row-dot.act { background: var(--ds-act); }
+.ds-row-dot.con { background: var(--ds-con); }
+.ds-row-main { min-width: 0; }
+.ds-row-link { color: inherit; text-decoration: none; }
+.ds-row-link::after { content: ''; position: absolute; inset: 0; }
+.ds-row-actions { position: relative; z-index: 1; display: flex; gap: var(--ds-space-16); flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+
+/* ── TABLE (rule 4): numbers right-aligned in tabular figures; a wide table scrolls on its own ─ */
+.ds-table-wrap { overflow-x: auto; max-width: 100%; }
+.ds-table { width: 100%; border-collapse: collapse; font-family: var(--ds-font-ui); font-size: var(--ds-text-body); line-height: var(--ds-lh-body); color: var(--ds-ink); }
+.ds-table-caption { caption-side: top; text-align: left; font-size: var(--ds-text-card); line-height: var(--ds-lh-card); font-weight: var(--ds-weight-bold); padding-bottom: var(--ds-space-8); }
+.ds-table th { text-align: left; font-size: var(--ds-text-secondary); line-height: var(--ds-lh-secondary); font-weight: var(--ds-weight-body); color: var(--ds-muted); padding: var(--ds-space-8) var(--ds-space-16) var(--ds-space-8) 0; border-bottom: var(--ds-line) solid var(--ds-rule); vertical-align: bottom; }
+.ds-table td, .ds-table th.ds-table-rowhead { padding: var(--ds-space-8) var(--ds-space-16) var(--ds-space-8) 0; border-top: var(--ds-line) solid var(--ds-rule); vertical-align: top; overflow-wrap: break-word; }
+.ds-table th.ds-table-rowhead { font-size: var(--ds-text-body); line-height: var(--ds-lh-body); font-weight: var(--ds-weight-bold); color: var(--ds-ink); border-bottom: 0; }
+.ds-table tbody tr:first-child td, .ds-table tbody tr:first-child th.ds-table-rowhead { border-top: 0; }
+.ds-table .ds-table-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-right: 0; padding-left: var(--ds-space-16); }
+.ds-table-total td, .ds-table-total th.ds-table-rowhead { border-top: var(--ds-line) solid var(--ds-rule2); font-weight: var(--ds-weight-bold); }
+.ds-table-hl td, .ds-table-hl th.ds-table-rowhead { background: var(--ds-att-soft); }
+.ds-table-gaps { color: var(--ds-muted); font-size: var(--ds-text-secondary); line-height: var(--ds-lh-secondary); }
+.ds-table-more { display: flex; flex-wrap: wrap; gap: var(--ds-space-16); align-items: center; padding-top: var(--ds-space-16); }
+
+/* ── STAT (rule 7): the figure, what it is, and its date and source on one meta line ───────── */
+.ds-stat { border-top: var(--ds-line) solid var(--ds-rule); padding-top: var(--ds-space-16); min-width: 0; }
+.ds-stat.ds-stat > * + * { margin-top: var(--ds-space-8); }
+
+/* ── TABS (rule 11): every tab fits at 390px, without scrolling ─────────────────────────────── */
+.ds-tabs { display: flex; border-bottom: var(--ds-line) solid var(--ds-rule); }
+.ds-tab { flex: 0 1 auto; min-width: 0; min-height: var(--ds-tap); padding: 0 var(--ds-space-16); display: inline-flex; align-items: center; background: none; border: 0; border-bottom: var(--ds-line-on) solid transparent; margin-bottom: calc(-1 * var(--ds-line)); font-family: var(--ds-font-ui); font-size: var(--ds-text-body); line-height: var(--ds-lh-body); color: var(--ds-muted); text-decoration: none; cursor: pointer; }
+.ds-word { white-space: nowrap; }
+.ds-tab-on { color: var(--ds-ink); font-weight: var(--ds-weight-bold); border-bottom-color: var(--ds-navy); }
+
+/* ── EMPTY LINE (rule 10): one line and one action, the only thing centred (rule 4) ─────────── */
+.ds-empty { margin: 0; padding: var(--ds-space-16) 0; text-align: center; font-size: var(--ds-text-body); line-height: var(--ds-lh-body); color: var(--ds-muted); }
+
+/* ── BUTTON (rule 8): main is flat navy, second has a hairline, a link is plain; 44px, 8px corners ─ */
+.ds-btn { min-height: var(--ds-tap); padding: 0 var(--ds-space-16); border: 0; border-radius: var(--ds-corner); display: inline-flex; align-items: center; justify-content: center; gap: var(--ds-space-8); font-family: var(--ds-font-ui); font-size: var(--ds-text-body); line-height: var(--ds-lh-body); font-weight: var(--ds-weight-bold); text-decoration: none; white-space: nowrap; cursor: pointer; }
+.ds-btn-main { background: var(--ds-navy); color: var(--ds-on-ink); }
+.ds-btn-main:hover { background: var(--ds-navy-d); }
+.ds-btn-second { background: var(--ds-surface); color: var(--ds-ink); box-shadow: inset 0 0 0 var(--ds-line) var(--ds-rule2); }
+.ds-btn-second.ds-btn-red { color: var(--ds-con); }
+.ds-btn-link { background: transparent; color: var(--ds-navy); padding: 0; }
+.ds-btn-link:hover { text-decoration: underline; }
+.ds-btn-danger { background: var(--ds-con); color: var(--ds-on-ink); }
+.ds-btn-wide { width: 100%; }
+.ds-btn:disabled, .ds-btn[aria-disabled="true"] { cursor: not-allowed; background: var(--ds-surface); color: var(--ds-muted); box-shadow: inset 0 0 0 var(--ds-line) var(--ds-rule2); }
+.ds-btn-link:disabled { background: transparent; box-shadow: none; }
+
+/* ── ON A PHONE (rules 1 and 11): one column, 16px at the sides, nothing scrolls sideways ───── */
+@media (max-width: 860px) {
+  .ds-page-split, .ds-grid-2, .ds-grid-3, .ds-grid-4 { grid-template-columns: minmax(0, 1fr); }
+  .ds-row { grid-template-columns: minmax(0, 1fr); gap: var(--ds-space-8); }
+  .ds-row-dotted { grid-template-columns: var(--ds-space-8) minmax(0, 1fr); column-gap: var(--ds-space-16); }
+  .ds-row-dotted > .ds-row-actions { grid-column: 2; }
+  .ds-row-actions { justify-content: flex-start; }
+  .ds-tab { flex: 1 1 auto; justify-content: center; text-align: center; padding: 0 var(--ds-space-8); font-size: var(--ds-text-secondary); line-height: var(--ds-lh-secondary); }
+  .ds-btn { white-space: normal; text-align: center; }
+  .ds-table-stack thead { display: none; }
+  .ds-table-stack, .ds-table-stack tbody, .ds-table-stack tfoot, .ds-table-stack tr, .ds-table-stack td, .ds-table-stack th { display: block; }
+  .ds-table-stack tr { padding: var(--ds-space-16) 0; border-top: var(--ds-line) solid var(--ds-rule); }
+  .ds-table.ds-table-stack td, .ds-table.ds-table-stack th.ds-table-rowhead { border: 0; padding: 0; text-align: left; }
+  .ds-table-stack td + td { margin-top: var(--ds-space-8); }
+  .ds-table-stack td[data-label]::before { content: attr(data-label); display: block; font-size: var(--ds-text-meta); line-height: var(--ds-lh-meta); color: var(--ds-muted); }
+}
