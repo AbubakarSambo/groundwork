@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { askApi, type AskBlock, type AskReply, type TextBlock, type ClaimBlock, type ProposalBlock, type PickerBlock, type NextStepBlock } from '@/api/ask'
@@ -10,8 +10,8 @@ import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
 import { askNameFor } from '@/lib/ask-name'
 import { useAuthStore } from '@/stores/auth'
 import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
-import { Mark } from './kit'
-import { Composer } from './ui/Composer'
+import { ProofMark } from './ui/ProofMark'
+import { ChatBar } from './ui/ChatBar'
 import { GroundworkIsWriting } from './ui/GroundworkIsWriting'
 import { STILL_READING_WHAT_YOU_WROTE } from '@/lib/opening-is-slow'
 import { whatTheServerSaid } from '@/lib/what-the-server-said'
@@ -41,16 +41,6 @@ export const ADDING_A_FILE_FOR_EVERYONE = 'I want to add a document for the whol
  */
 const ASK_CAPTION_FALLBACK = 'Ask about the company, your work or your check-ins.'
 
-/*
- * WIDTH CHECK, ITEM 8: THE COMPOSER'S OWN RESTING HEIGHT CUT OFF ITS OWN HINT. The placeholder -
- * "Ask about the company, your work or your check-ins" - wraps to two lines at the panel's own
- * 400px width, but the box this empty composer rests at (38px: a 24px line at this field's 16px/1.5
- * plus its 11px top-and-bottom padding, the Composer's own values) only ever had room to show the
- * first of them; the second sat cut off against the box's own bottom edge rather than genuinely
- * absent. 70px is two such lines (24px * 2) plus the same padding - the box still grows further as
- * somebody types (see the `onChange` below), this only fixes where it RESTS, empty.
- */
-const COMPOSER_RESTING_HEIGHT = '48px'
 
 /**
  * ASK (D1, U.14): the panel beside every page on a computer, and #/chat on a phone. Named for the
@@ -114,9 +104,9 @@ const isUploadStep = (b: NextStepBlock): b is NextStepBlock & { id: string } =>
 const uploadGroundId = (b: NextStepBlock & { id: string }): string =>
   (typeof b.context?.groundId === 'string' && b.context.groundId) || b.id
 
-/* The prototype's chat bubbles (.bub.me, .bub.them) and suggestion chips (.chip). */
-const bubble = (mine: boolean): string => (mine ? 'bub me' : 'bub them')
-const chip = 'chip'
+/* A bubble in the conversation (blocks.css): yours on the right in ink, Groundwork's on the left. */
+const bubble = (mine: boolean): string => (mine ? 'ds-bubble ds-bubble-me' : 'ds-bubble ds-bubble-them')
+const chip = 'ds-chip'
 
 /**
  * THE DESIGN PASS (21 November 2026): a long answer in paragraphs is drawn as one bubble a paragraph,
@@ -273,7 +263,6 @@ export function AskGroundwork({
      upload itself failed). Drawn as its own line, in the Context page's own words. */
   const [reading, setReading] = useState(false)
   const end = useRef<HTMLDivElement>(null)
-  const composerRef = useRef<HTMLTextAreaElement>(null)
   const sentInitial = useRef(false)
   const fileInput = useRef<HTMLInputElement>(null)
   /* The check-in the file just chosen belongs to - uploaded to, polled, and said "I've uploaded
@@ -308,13 +297,6 @@ export function AskGroundwork({
     const t = setTimeout(() => setWaitedAWhile(true), 4000)
     return () => clearTimeout(t)
   }, [sending])
-
-  /* The box grows as somebody types (see the Composer's onChange below) and needs to shrink back
-     once what was in it is sent - `send` clears `draft` only after a reply comes back, so this
-     watches for that rather than doing it optimistically. */
-  useEffect(() => {
-    if (draft === '' && composerRef.current) composerRef.current.style.height = COMPOSER_RESTING_HEIGHT
-  }, [draft])
 
   /*
    * ONLY THE NEWEST WAITING PROPOSAL CAN BE ANSWERED (decision 50). Once a newer one arrives, an
@@ -500,16 +482,16 @@ export function AskGroundwork({
       if (isText(b)) return <GroundworksWords key={k} text={b.body} apart={designPass} />
       if (isClaim(b)) {
         /* A claim with how it is known (request 16). The mark comes from the record, never from here. */
-        return <p key={k} className={bubble(false)}><Mark mark={b.mark} /> {b.says}</p>
+        return <p key={k} className={bubble(false)}><ProofMark mark={b.mark} /> {b.says}</p>
       }
       if (isProposal(b)) {
         return (
-          <div key={k} className="stack gw-answer">
+          <div key={k} className="ds-chat-ask">
             {!texts.has(b.summary) && <p className={bubble(false)}>{b.summary}</p>}
             {b.proposalId === latestProposalId && !answered.has(b.proposalId) && (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="btn pri sm" disabled={sending} onClick={() => answer(b.proposalId, true)}>Yes</button>
-                <button type="button" className="btn sec sm" disabled={sending} onClick={() => answer(b.proposalId, false)}>No</button>
+              <div className="ds-chat-answers">
+                <button type="button" className="ds-btn ds-btn-main" disabled={sending} onClick={() => answer(b.proposalId, true)}>Yes</button>
+                <button type="button" className="ds-btn ds-btn-second" disabled={sending} onClick={() => answer(b.proposalId, false)}>No</button>
               </div>
             )}
           </div>
@@ -517,7 +499,7 @@ export function AskGroundwork({
       }
       if (isPicker(b)) {
         return (
-          <div key={k} className="gw-chips">
+          <div key={k} className="ds-chips">
             {b.options.map((o) => (
               <button key={o.key} type="button" className={chip} disabled={sending || !isLatest} onClick={() => ask(o.label)}>{o.label}</button>
             ))}
@@ -530,13 +512,15 @@ export function AskGroundwork({
         if (isUploadStep(b)) {
           if (fileTaken) return null
           return (
-            <button key={k} type="button" className={chip} disabled={sending || reading}
-              onClick={() => startUpload(uploadGroundId(b))}>
-              {b.label}
-            </button>
+            <div key={k} className="ds-chips">
+              <button type="button" className={chip} disabled={sending || reading}
+                onClick={() => startUpload(uploadGroundId(b))}>
+                {b.label}
+              </button>
+            </div>
           )
         }
-        return <Link key={k} to={b.href} className={`${chip} gw-start`}>{b.label}</Link>
+        return <div key={k} className="ds-chips"><Link to={b.href} className={chip}>{b.label}</Link></div>
       }
       return null
     })
@@ -545,46 +529,32 @@ export function AskGroundwork({
   /* Named here once, so the header and the "is writing…" indicator always agree. */
   const askDisplayName = page.data?.askName ?? askNameFor(orgName)
 
+  /* The box's hint, in the prototype's words when Ask is about one check-in. */
+  const hint = aboutId ? 'Ask about this check-in' : 'Ask a question'
+
   return (
-    <section aria-labelledby="gw-ask-title" className={onClose ? 'gw-ask-drawer' : 'chatpage'}>
-      <div className="asst-h gw-asst-h">
-        {/* Named for the organisation (decision 100), in the prototype's bold line; a heading for screen readers. */}
-        <b id="gw-ask-title" role="heading" aria-level={2} className="gw-grow">{askDisplayName}</b>
-        {onClose && (
-          <button type="button" className="rl-ic" onClick={onClose} aria-label="Close">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </button>
-        )}
-        {/* The caption and the one line under it (decision 100), served and printed as they arrive, small, under the name. */}
-        <p className="t-small gw-full">{page.data?.caption ?? ASK_CAPTION_FALLBACK}</p>
-        {page.data?.addLine && <p className="t-tiny mut gw-full">{page.data.addLine}</p>}
+    /* D1 (ask-panel-lead.jpg, ask-on-a-phone.jpg), on the design system: the name and About at the top, the
+       conversation, then the bar to write in. Beside a page in the drawer, or its own page on a phone. */
+    <section aria-labelledby="gw-ask-title" className={onClose ? 'ds-chat' : 'ds-chat ds-chat-page'}>
+      <header className="ds-chat-head">
+        <div className="ds-chat-name">
+          {/* Named for the organisation (decision 100). */}
+          <h2 id="gw-ask-title" className="ds-text-card">{askDisplayName}</h2>
+          {onClose && (
+            <button type="button" className="ds-chat-close" onClick={onClose} aria-label="Close">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
+          )}
+        </div>
         {about.length > 0 && (
           /*
-           * ITEM 6: THE PICKER RAN PAST THE PANEL'S RIGHT EDGE. A flex item's default minimum width
-           * is its content's own width, not zero, so a long check-in label ("Faith, first 90 days")
-           * could make the `<select>` wider than the 400px drawer, pushing it (and this row) past
-           * the edge instead of wrapping or shrinking. `minWidth: 0` on both the row and the select,
-           * with the select set to `flex: 1`, lets it shrink to the space actually available.
-           *
-           * REQUEST 153, PART TWO: THE FIRST OPTION IS THE ORGANISATION, NOT A CHECK-IN. One
-           * check-in is an optional focus a person may pick; it is never what Ask is about, so the
-           * list always offers "The whole organisation and your work" first, and picking it sends
-           * no `groundId` at all (the ordinary case, not a special one - docs/ask-definition.md).
+           * REQUEST 153, PART TWO: THE FIRST OPTION IS THE ORGANISATION, NOT A CHECK-IN. A check-in is a
+           * focus a person may pick; picking the organisation sends no `groundId` at all. On a narrow
+           * screen the choice takes its own line rather than being cut (B-231; blocks.css .ds-chat-about).
            */
-          /*
-           * B-231: AT 390 THE SELECT READ "The whole organisation and your wor", CUT OFF. Item 6's
-           * own fix (`flex: 1, minWidth: 0`, kept exactly as is - the-live-checks.spec.tsx pins
-           * both) shrinks the select to whatever the row has left after "About", which at 390 was
-           * too little for the longest option, and a plain `<select>` clips rather than wraps. The
-           * row itself now wraps (`flexWrap: 'wrap'`), and `.gwui-ask-about-select`'s own narrow-
-           * screen rule (gw-ui.css, written up in docs/the-parts-against-the-prototype.md) gives the
-           * select `flex-basis: 100%` there, so it drops to its own full-width line instead of
-           * squeezing beside "About" - inline styles untouched, so item 6's own shrink-to-fit still
-           * holds at every width this rule does not apply at.
-           */
-          <label className="t-small gw-ask-about">
-            <span className="mut">About</span>
-            <select value={aboutId} onChange={(e) => setChosen(e.target.value)} className="input">
+          <label className="ds-chat-about">
+            <span className="ds-text-secondary">About</span>
+            <select value={aboutId} onChange={(e) => setChosen(e.target.value)} className="ds-chat-select">
               <option value="">The whole organisation and your work</option>
               {aboutWithDates.map((g) => {
                 const apart = whatTellsItApart(aboutWithDates, g)
@@ -593,15 +563,16 @@ export function AskGroundwork({
             </select>
           </label>
         )}
-      </div>
+        {/* The one line under the name (decision 100), served as it arrives. */}
+        <p className="ds-text-secondary">{page.data?.caption ?? ASK_CAPTION_FALLBACK}</p>
+      </header>
 
-      <div className="asst-body">
+      <div className="ds-chat-body">
         {page.data && !page.data.canAsk && page.data.why && <p className={bubble(false)}>{page.data.why}</p>}
         {/*
          * THE GREETING (`welcome`): served once, the first time somebody opens Ask, then `null`
          * (docs/answers-from-engine.md, "Request 153, part two"). `said.length === 0` keeps it from
-         * sitting on screen once this same visit has already asked something, ahead of the next
-         * fetch of `/ask` that would clear it server-side too.
+         * sitting on screen once this same visit has already asked something.
          */}
         {page.data?.canAsk && page.data.welcome && said.length === 0 && <p className={bubble(false)}>{page.data.welcome}</p>}
         {(page.data?.turns ?? []).map((t, i) => (
@@ -609,10 +580,10 @@ export function AskGroundwork({
             ? <p key={`t-${i}`} className={bubble(true)}>{t.says}</p>
             : <GroundworksWords key={`t-${i}`} text={anOldAskAnswerReadsProperly(t.says)} apart={designPass} />
         ))}
-        {/* The questions you could ask, as the prototype's chips, after what has been said, until you ask something this visit. */}
+        {/* The questions you could ask, as the prototype's chips, until you ask something this visit. The server chooses
+            them and how many, with the reader's own role first (ask-name.ts, askStartersFor). */}
         {page.data?.canAsk && (page.data?.starters ?? []).length > 0 && said.length === 0 && (
-          <div role="group" aria-label="Questions you could ask" className="gw-chips">
-            {/* All of them: the server cuts the list once, to a short one with the reader's own role first (ask-name.ts, askStartersFor). Cut here as well, a lead's and an admin's own lines were never seen. */}
+          <div role="group" aria-label="Questions you could ask" className="ds-chips">
             {(page.data?.starters ?? []).map((q) => (
               <button key={q} type="button" className={chip} disabled={sending || reading} onClick={() => ask(q)}>{q}</button>
             ))}
@@ -620,81 +591,51 @@ export function AskGroundwork({
         )}
         {said.map((s, i) => s.from === 'you'
           ? <p key={`s-${i}`} className={bubble(true)}>{s.says}</p>
-          : <div key={`s-${i}`} style={{ display: 'contents' }}>{drawBlocks(s.reply, i, i === latestGroundworkIndex, s.fileTaken)}</div>)}
+          : <Fragment key={`s-${i}`}>{drawBlocks(s.reply, i, i === latestGroundworkIndex, s.fileTaken)}</Fragment>)}
         {reading && <p className={bubble(false)}>{STILL_READING}</p>}
         {sending && (
-          /*
-           * ITEM 3: A SIGN OF WORK WHILE WAITING. A reply can take up to 90 seconds, and until now
-           * nothing showed at all in that time - the buttons went quietly unresponsive with no
-           * explanation. Now the one shared "<name> is writing…" indicator every chat uses
-           * (GroundworkIsWriting.tsx), under Ask's own name, and after four seconds the same
-           * sentence the check-in conversation says once a wait is long enough to need explaining.
-           */
+          /* A sign of work while a reply is on its way (up to 90 seconds), and after four seconds the check-in's own sentence. */
           <>
-            <GroundworkIsWriting name={askDisplayName} />
-            {waitedAWhile && (
-              <p className={bubble(false)}>
-                <span role="status" className="t-tiny mut">
-                  {STILL_READING_WHAT_YOU_WROTE}
-                </span>
-              </p>
-            )}
+            <p className={bubble(false)}><GroundworkIsWriting name={askDisplayName} wrap={false} /></p>
+            {waitedAWhile && <p role="status" className={bubble(false)}>{STILL_READING_WHAT_YOU_WROTE}</p>}
           </>
         )}
         <div ref={end} />
       </div>
 
-      {/* Hidden: the "Choose a file" block above, and the "+" beside the message box, open this. */}
-      <input ref={fileInput} type="file" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR} onChange={onFileChosen} />
+      {/* Hidden: the "Choose a file" step above, and the paperclip, open this. */}
+      <input ref={fileInput} type="file" hidden accept={UPLOAD_ACCEPT_ATTR} onChange={onFileChosen} />
 
       {(askOk || !askSettled) && (
         /*
-         * ITEM 2: A MULTI-LINE MESSAGE BOX. This was a one-line `<input>`, so a pasted plan lost
-         * its own line breaks the moment it landed here. The shared `Composer` (already the check-in
-         * conversation's own footer, ChatPage.tsx) is a textarea that grows with its text - Enter
-         * sends, Shift+Enter starts a new line, the same as the prototype's chat.
-         *
-         * B-112: rendered while `page` is still loading (disabled, so it never flashes empty space
-         * where it belongs) and after a failed load too (enabled - see `askOk`, above), not only
-         * once `canAsk` has actually arrived true.
+         * B-112: drawn while `page` is still loading (disabled) and after a failed load too (working - see `askOk`),
+         * not only once `canAsk` has arrived true.
          */
-        <div>
+        <div className="ds-chat-foot">
           {page.isError && (
-            <p role="alert" className="t-small gw-said-wrong">
+            <p role="alert" className="ds-text-secondary ds-chat-note ds-chat-note-wrong">
               Ask didn't load fully. Nothing you have asked is lost. It is usually the connection.
               {askWhy?.canRetry && (
                 <>
                   {' '}
-                  <button type="button" onClick={() => page.refetch()} className="btn quiet sm">
-                    Try again
-                  </button>
+                  <button type="button" onClick={() => page.refetch()} className="ds-btn ds-btn-link">Try again</button>
                 </>
               )}
             </p>
           )}
-          {!askSettled && <p role="status" className="t-tiny mut gw-comp-note">Getting Ask ready.</p>}
-          {problem && <p role="alert" className="t-small gw-said-wrong">{problem}</p>}
-          <Composer
-            variant="ask"
-            inputRef={composerRef}
+          {!askSettled && <p role="status" className="ds-text-secondary ds-chat-note">Getting Ask ready.</p>}
+          {problem && <p role="alert" className="ds-text-secondary ds-chat-note ds-chat-note-wrong">{problem}</p>}
+          <ChatBar
             value={draft}
-            onChange={(v) => {
-              setDraft(v)
-              const el = composerRef.current
-              if (el) { el.style.height = COMPOSER_RESTING_HEIGHT; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }
-            }}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(draft, true) } }}
+            onChange={setDraft}
             onSend={() => ask(draft, true)}
             disabled={sending || !askSettled}
-            sendDisabled={!draft.trim()}
-            placeholder={page.data?.caption ?? 'Ask a question'}
-            ariaLabel={page.data?.caption ?? 'Ask a question'}
-            /* THE "+" (Hafsah, 15 October): for whoever may add a document here, a lead for the check-ins they run
-               (`addsContext`, served) or an admin for the whole organisation. It opens the file picker at once.
-               The server still decides, on the file's way in, whether they may and where it goes. */
-            onPlus={mayAddAFile ? () => { if (sending || reading) return; uploadTarget.current = CHOSEN_FIRST; fileInput.current?.click() } : undefined}
-            plusDisabled={sending || reading || !askSettled}
-            plusLabel="Add a photo or a document"
+            placeholder={hint}
+            /* THE PAPERCLIP (Hafsah, 15 October): for whoever may add a document here, a lead for the check-ins they run
+               (`addsContext`, served) or an admin for the whole organisation. The server still decides, on the file's
+               way in, whether they may and where it goes. */
+            onAttach={mayAddAFile ? () => { if (sending || reading) return; uploadTarget.current = CHOSEN_FIRST; fileInput.current?.click() } : undefined}
+            attachDisabled={sending || reading || !askSettled}
           />
         </div>
       )}

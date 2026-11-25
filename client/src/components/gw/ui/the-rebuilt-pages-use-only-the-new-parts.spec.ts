@@ -409,6 +409,10 @@ describe('a rebuilt page never falls back to the old parts', () => {
       /* Journey 2, a member's first check-in (23 November). See the comment on REBUILT_PAGES in rebuilt-pages.ts. */
       'components/gw/BetweenCheckIns.tsx',
       'pages/join/AnswerFirstPage.tsx',
+      /* Journey 6, asking Groundwork a question (23 November 2026). */
+      'components/gw/AskGroundwork.tsx',
+      'components/gw/ui/ChatBar.tsx',
+      'pages/ask/AskPage.tsx',
     ])
   })
 

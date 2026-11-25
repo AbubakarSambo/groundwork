@@ -77,19 +77,6 @@ html.design-pass .gwui-writing-dot { background: var(--gw-navy); }
   html.design-pass .gwui-ci-in-tab .ci-card { border-left: 0; border-right: 0; border-radius: 0; }
 }
 
-/* ── ASK ON A PHONE ──────────────────────────────────────────────────────────────────────────
-   Before: six suggested questions, each on its own line, filled the middle of the screen, so the
-   conversation itself had a few lines left between the header and the box. Now they are one row you
-   slide along, and the header is tighter. */
-@media (max-width: 640px) {
-  html.design-pass .chatpage .gw-chips,
-  html.design-pass .gw-ask-drawer .gw-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; margin-right: -16px; padding-right: 16px; scrollbar-width: none; }
-  html.design-pass .chatpage .gw-chips > *,
-  html.design-pass .gw-ask-drawer .gw-chips > * { flex: none; }
-  html.design-pass .chatpage .asst-h { padding: 8px 12px; row-gap: 2px; }
-  html.design-pass .chatpage .asst-h > .t-tiny { margin-top: 0; }
-}
-
 /* ── TODAY: the admin's welcome card ─────────────────────────────────────────────────────────
    Before: a heavy black 2px frame with four bordered cards inside it, a box of boxes, louder than
    "What needs you" above it. Now one quiet card with a hairline, and the four ways in as rows split by

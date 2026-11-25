@@ -1738,10 +1738,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       {isAuthenticated && askOpen && (
-        <div className="gw-ask-drawer" style={{
-          position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '100vw', zIndex: 45,
-          boxShadow: 'var(--gw-shadow-sheet)',
-        }}>
+        /* Ask beside the page (blocks.css, .ds-chat-drawer); hidden on a phone, where Ask is its own page. */
+        <div className="gw-ask-drawer ds-chat-drawer">
           <AskGroundwork
             onClose={hideAsk}
             initialMessage={pendingAskMessage}

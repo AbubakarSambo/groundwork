@@ -14,9 +14,6 @@
 .gw-composer-menu { position: absolute; bottom: 100%; left: 16px; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; box-shadow: var(--gw-shadow-menu); padding: 4px; z-index: 20; width: 260px; max-width: calc(100vw - 40px); }
 /* Ask's answers keep the line breaks they were written with. */
 .bub { white-space: pre-wrap; overflow-wrap: anywhere; }
-/* Ask beside a page on a computer: the prototype's .asst panel holds it; this fills it. */
-.gw-ask-drawer { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--surface); }
-.gw-ask-drawer .asst-body, .chatpage .asst-body { min-height: 0; }
 /* A button that fills its row, and a secondary button that does something that cannot be undone. */
 .btn.wide { width: 100%; }
 .btn.sec.red { color: var(--con); }
@@ -48,7 +45,7 @@
 .gw-grow { flex: 1; }
 .gw-full { width: 100%; }
 .gw-start { align-self: flex-start; }
-.gw-acts, .gw-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.gw-acts { display: flex; gap: 4px; flex-wrap: wrap; }
 .gw-pt-eyebrow { margin-bottom: 4px; }
 .gw-pt-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
 .crumb + .gw-pt-row { margin-top: 8px; }
@@ -60,19 +57,6 @@
 .gw-when-row { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 8px 0; border-top: 1px solid var(--rule); align-items: baseline; }
 .gw-when-row a { color: var(--ink); text-decoration: none; }
 .gw-when-row a:hover { text-decoration: underline; }
-.gw-chat-title { margin-bottom: 12px; }
-.gw-asst-h { flex-wrap: wrap; }
-.gw-ask-about { display: flex; gap: 4px; align-items: center; width: 100%; margin-top: 4px; }
-.gw-ask-about .input { min-height: 36px; padding: 0 8px; width: auto; max-width: 240px; }
-/* On a phone the question and answer area runs down to the tab bar, and "About" takes the width the row has, so its longest option is not cut (Fatima round 5, Ask box at 390). */
-@media (max-width: 860px) {
-  .chatpage { height: calc(100dvh - var(--dev) - 168px); min-height: 380px; }
-  .gw-ask-about .input { flex: 1 1 auto; min-width: 0; max-width: none; width: 100%; text-overflow: ellipsis; }
-}
-.asst-h > .t-tiny { margin-top: 4px; }
-.gw-answer { gap: 8px; align-self: flex-start; max-width: 82%; }
-.gw-said-wrong { margin: 8px 12px 0; color: var(--con); }
-.gw-comp-note { margin: 8px 12px 0; }
 .gw-block { display: block; }
 .gw-bold { font-weight: 700; }
 .gw-pad0 { padding: 0; }

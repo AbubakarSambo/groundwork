@@ -335,13 +335,10 @@ header.pub nav a.btn.quiet[aria-current]{box-shadow:inset 0 -2px 0 var(--navy)}
 @media (max-width:860px){.tabbar a.start{color:var(--navy)}.tabbar a.start i{width:auto!important;height:auto!important;background:none!important}.tabbar a.start svg{width:28px;height:28px}}
 /* ===== the assistant panel ===== */
 .asst{position:fixed;top:var(--dev);right:0;bottom:0;width:400px;max-width:100vw;z-index:45;background:var(--surface);border-left:1px solid var(--rule2);box-shadow:-12px 0 40px rgba(26,25,22,.10);display:flex;flex-direction:column}
-.asst-h{padding:12px 12px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:8px}
-.asst-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:var(--paper)}
 .asst-comp{border-top:1px solid var(--rule);padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;align-items:center;background:var(--surface)}
 .asst-comp input{flex:1;min-width:0}
 .kind{font-size:13px;color:var(--muted);margin-top:-4px}
 .kind.ci{color:var(--rec);font-weight:700}
-.chatpage{display:flex;flex-direction:column;height:calc(100vh - var(--dev) - 150px);border:1px solid var(--rule);border-radius:12px;overflow:hidden;background:var(--surface)}
 .askdock{display:flex;gap:8px;align-items:center;padding:12px 12px;border:1px solid var(--rule2);border-radius:12px;background:var(--surface)}
 /* the two samples */
 .sample-frame{border:1px solid var(--rule2);border-radius:12px;overflow:hidden;background:var(--surface);box-shadow:0 10px 30px rgba(26,25,22,.08)}
@@ -357,7 +354,6 @@ header.pub nav a.btn.quiet[aria-current]{box-shadow:inset 0 -2px 0 var(--navy)}
 @media (max-width:860px){.rl{display:none!important}.shell,.shell.rc{grid-template-columns:minmax(0,1fr)!important}.asst{display:none}}
 @media (max-width:860px){.hero2{grid-template-columns:minmax(0,1fr)!important}.emb-nav{flex-direction:row!important;overflow-x:auto;border-right:0;border-bottom:1px solid var(--rule)}.emb-nav span{white-space:nowrap}}
 @media (min-width:861px){.shell.ao .main{padding-right:440px}}
-@media (max-width:860px){.chatpage{height:calc(100dvh - var(--dev) - 260px);min-height:380px}}
 /* ===== the focused check-in, as on the canvas ===== */
 .ci-focus{max-width:560px;margin:0 auto}
 .ci-card{background:var(--surface);border:1px solid var(--rule);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:min(640px,calc(100vh - var(--dev) - 150px))}

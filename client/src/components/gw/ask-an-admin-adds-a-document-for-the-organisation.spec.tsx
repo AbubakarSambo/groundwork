@@ -8,11 +8,12 @@ import type { AskPage as AskPageData } from '@/api/ask'
 /**
  * HAFSAH'S FIX LIST, ITEM 3: an admin adds a document in Ask, said back before anything is kept. The server decides
  * who may (api/src/modules/ask/an-admin-adds-a-document-for-the-whole-organisation.spec.ts); here is what Grace, the
- * admin, reads in the panel: the line under the caption, the file picker, what was read, and the yes.
+ * admin, reads in the panel: the file picker, what was read, and the yes.
  */
 vi.mock('@/api/ask', () => ({ askApi: { mine: vi.fn(), ask: vi.fn(), answer: vi.fn(), addADocumentForTheOrganisation: vi.fn() } }))
 vi.mock('@/api/documents', () => ({ documentsApi: { upload: vi.fn(), list: vi.fn() } }))
 import { askApi } from '@/api/ask'
+import { askIsReady } from '@/test/ask-is-ready'
 import { documentsApi } from '@/api/documents'
 
 const GRACE: AskPageData = {
@@ -46,7 +47,7 @@ beforeEach(() => {
 })
 
 describe('Grace adds the staff handbook through Ask', () => {
-  it('reads the line under the caption, chooses the file, reads what it holds, and says yes', async () => {
+  it('asks to add a document, chooses the file, reads what it holds, and says yes', async () => {
     vi.mocked(askApi.ask).mockResolvedValue({
       lane: 'add_a_document', composedBy: 'rules',
       blocks: [
@@ -64,8 +65,10 @@ describe('Grace adds the staff handbook through Ask', () => {
     })
 
     const { container } = panel()
-    expect(await screen.findByText('You can also add a document for the whole organisation here.')).toBeInTheDocument()
-    fireEvent.change(screen.getByPlaceholderText(GRACE.caption), { target: { value: 'Add a document for the whole organisation.' } })
+    /* UPDATED 23 November (journey 6, rule 6): the line explaining how to add a document is no longer drawn; she asks in her own words. */
+    await askIsReady()
+    expect(screen.queryByText('You can also add a document for the whole organisation here.')).toBeNull()
+    fireEvent.change(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/), { target: { value: 'Add a document for the whole organisation.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText(OFFER)).toBeInTheDocument()
 
@@ -92,8 +95,8 @@ describe('Grace adds the staff handbook through Ask', () => {
     })
     vi.mocked(askApi.addADocumentForTheOrganisation).mockRejectedValue({ response: { data: { message: 'Only an admin of Msingi Foods can add a document for the whole organisation.' } } })
     const { container } = panel()
-    await screen.findByPlaceholderText(GRACE.caption)
-    fireEvent.change(screen.getByPlaceholderText(GRACE.caption), { target: { value: 'add a document' } })
+    await screen.findByPlaceholderText(/^Ask (a question|about this check-in)$/)
+    fireEvent.change(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/), { target: { value: 'add a document' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Choose a file' }))
     fireEvent.change(container.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [new File(['x'], 'a.pdf')] } })

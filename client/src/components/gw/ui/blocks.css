@@ -157,9 +157,7 @@
 /* Text a person wrote, with its own line breaks kept. */
 .ds-keep-lines { white-space: pre-wrap; overflow-wrap: anywhere; }
 /* What the person can press to answer: chips, each a tap tall. */
-.ds-chips { display: flex; flex-wrap: wrap; gap: var(--ds-space-8); }
 .ds-chips-stacked { flex-direction: column; align-items: flex-start; }
-.ds-chip { min-height: var(--ds-tap); padding: 0 var(--ds-space-16); border: 0; border-radius: calc(var(--ds-tap) / 2); background: var(--ds-surface); box-shadow: inset 0 0 0 var(--ds-line) var(--ds-rule2); font-family: var(--ds-font-ui); font-size: var(--ds-text-body); line-height: var(--ds-lh-body); color: var(--ds-ink); text-align: left; display: inline-flex; align-items: center; cursor: pointer; }
 .ds-chip:disabled { cursor: not-allowed; color: var(--ds-muted); }
 /* The box to type in: "+", the field and send on one row, each a tap tall. */
 .ds-composer { position: relative; display: flex; align-items: flex-end; gap: var(--ds-space-8); }
@@ -224,6 +222,48 @@
 .ds-when { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--ds-space-16); padding: var(--ds-space-8) 0; border-top: var(--ds-line) solid var(--ds-rule); }
 .ds-when a { color: var(--ds-ink); text-decoration: none; }
 .ds-when a:hover { text-decoration: underline; }
+
+/* ── THE CHAT (rule 12's chat bar; D1, ask-panel-lead.jpg and ask-on-a-phone.jpg) ───────────────
+   Ask: its name and About at the top, the conversation, then the bar to write in. Beside a page on a
+   computer (the drawer), its own page on a phone. */
+.ds-chat { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--ds-surface); font-family: var(--ds-font-ui); color: var(--ds-ink); }
+.ds-chat-drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 45; width: var(--ds-panel); max-width: 100vw; display: flex; flex-direction: column; border-left: var(--ds-line) solid var(--ds-rule2); box-shadow: var(--ds-shadow-panel); }
+.ds-chat-drawer > .ds-chat { flex: 1 1 auto; }
+/* Its own page: the room under the page title, down to the tab bar, so the bar to write in is always on screen. */
+.ds-chat-page { height: calc(100dvh - var(--ds-page-top) - var(--ds-lh-title) - var(--ds-space-32) - var(--ds-page-bottom)); min-height: calc(var(--ds-tap) * 8); border: var(--ds-line) solid var(--ds-rule); border-radius: var(--ds-corner); overflow: hidden; }
+.ds-chat-head { display: flex; flex-direction: column; gap: var(--ds-space-8); padding: var(--ds-space-16); border-bottom: var(--ds-line) solid var(--ds-rule); }
+.ds-chat-name { display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-16); }
+.ds-chat-close { flex: none; width: var(--ds-tap); height: var(--ds-tap); margin: calc(-1 * var(--ds-space-8)); display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--ds-corner); background: transparent; color: var(--ds-ink); cursor: pointer; }
+.ds-chat-close:hover { background: var(--ds-band); }
+/* "About" and its choice on one line; on a narrow screen the choice takes its own line rather than being cut. */
+.ds-chat-about { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ds-space-8); }
+.ds-chat-select { flex: 0 1 auto; max-width: 100%; min-height: var(--ds-tap); padding: 0 var(--ds-space-8); border: var(--ds-line) solid var(--ds-rule2); border-radius: var(--ds-corner); background: var(--ds-surface); font-family: var(--ds-font-ui); font-size: var(--ds-text-body); line-height: var(--ds-lh-body); color: var(--ds-ink); text-overflow: ellipsis; }
+.ds-chat-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--ds-space-8); padding: var(--ds-space-16); background: var(--ds-paper); }
+.ds-bubble { max-width: var(--ds-bubble); margin: 0; padding: var(--ds-space-8) var(--ds-space-16); border-radius: var(--ds-corner); font-size: var(--ds-text-body); line-height: var(--ds-lh-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ds-bubble-them { align-self: flex-start; background: var(--ds-chat); color: var(--ds-ink); }
+.ds-bubble-me { align-self: flex-end; background: var(--ds-ink); color: var(--ds-on-ink); }
+/* A suggested question, or a step to take: a round-ended outline, 44px tall. */
+.ds-chips { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--ds-space-8); }
+.ds-chip { min-height: var(--ds-tap); padding: var(--ds-space-8) var(--ds-space-16); display: inline-flex; align-items: center; border: 0; border-radius: var(--ds-pill); background: var(--ds-surface); box-shadow: inset 0 0 0 var(--ds-line) var(--ds-rule2); font-family: var(--ds-font-ui); font-size: var(--ds-text-body); line-height: var(--ds-lh-body); color: var(--ds-ink); text-align: left; text-decoration: none; cursor: pointer; }
+.ds-chip:hover { box-shadow: inset 0 0 0 var(--ds-line) var(--ds-navy); }
+.ds-chip:disabled { color: var(--ds-muted); cursor: not-allowed; box-shadow: inset 0 0 0 var(--ds-line) var(--ds-rule); }
+/* Something to say yes or no to: the words, then the two answers under them. */
+.ds-chat-ask { align-self: flex-start; max-width: var(--ds-bubble); display: flex; flex-direction: column; gap: var(--ds-space-8); }
+.ds-chat-ask > .ds-bubble { max-width: 100%; }
+.ds-chat-answers { display: flex; gap: var(--ds-space-8); }
+/* The bar to write in: the paperclip, the box, and Send. */
+.ds-chat-foot { border-top: var(--ds-line) solid var(--ds-rule); background: var(--ds-surface); }
+.ds-chat-note { margin: 0; padding: var(--ds-space-8) var(--ds-space-16) 0; }
+.ds-chat-note-wrong { color: var(--ds-con); }
+.ds-chat-bar { display: flex; align-items: flex-end; gap: var(--ds-space-8); padding: var(--ds-space-16); padding-bottom: calc(var(--ds-space-16) + env(safe-area-inset-bottom)); }
+.ds-chat-attach { flex: none; width: var(--ds-tap); height: var(--ds-tap); display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--ds-corner); background: var(--ds-surface); box-shadow: inset 0 0 0 var(--ds-line) var(--ds-rule2); color: var(--ds-ink); cursor: pointer; }
+.ds-chat-attach:hover { box-shadow: inset 0 0 0 var(--ds-line) var(--ds-navy); color: var(--ds-navy); }
+.ds-chat-attach:disabled { color: var(--ds-muted); cursor: not-allowed; }
+.ds-chat-box { flex: 1 1 auto; min-width: 0; min-height: var(--ds-tap); max-height: calc(var(--ds-tap) * 3); box-sizing: border-box; margin: 0; padding: var(--ds-space-8) var(--ds-space-16); border: var(--ds-line) solid var(--ds-rule2); border-radius: var(--ds-corner); background: var(--ds-surface); font-family: var(--ds-font-ui); font-size: var(--ds-text-body); line-height: var(--ds-lh-body); color: var(--ds-ink); resize: none; overflow-y: auto; }
+.ds-chat-box::placeholder { color: var(--ds-faint); }
+/* An empty box keeps its hint on its one line, as the prototype's does, rather than a second line cut in half. */
+.ds-chat-box:placeholder-shown { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-chat-box:focus { outline: none; border-color: var(--ds-navy); box-shadow: inset 0 0 0 var(--ds-line) var(--ds-navy); }
 
 /* ── ON A PHONE (rules 1 and 11): one column, 16px at the sides, nothing scrolls sideways ───── */
 @media (max-width: 860px) {

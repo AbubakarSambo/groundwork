@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { askIsReady } from '@/test/ask-is-ready'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -169,7 +170,7 @@ describe('an ordinary Ask question never sends openedFrom', () => {
         </MemoryRouter>
       </QueryClientProvider>,
     )
-    const composer = await screen.findByPlaceholderText(/Ask about/)
+    const composer = await askIsReady()
     fireEvent.change(composer, { target: { value: 'What are my priorities?' } })
     fireEvent.keyDown(composer, { key: 'Enter' })
     await waitFor(() => expect(askApi.ask).toHaveBeenCalled())

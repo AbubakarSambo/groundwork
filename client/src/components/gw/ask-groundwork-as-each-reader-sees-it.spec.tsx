@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { askIsReady } from '@/test/ask-is-ready'
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -91,23 +92,25 @@ function panel(data: AskPageData, at = '/grounds/g-sales/board') {
 beforeEach(() => { vi.clearAllMocks(); useAskStore.setState({ open: false }) })
 
 describe('Miriam, taking part in the sales team, opens Ask Groundwork on its board', () => {
-  it('reads the prototype’s panel, named for her organisation, about her check-in, with the caption, the one line and the privacy line', async () => {
+  it('reads the prototype’s panel, named for her organisation, about her check-in, with the one line under its name and no line explaining how to use it', async () => {
     panel(MIRIAMS)
     /* SCREEN FAULT 5d: the heading alone is no longer a safe "the real data has landed" wait -
        its fallback (askNameFor the signed-in person's own organisation) reads "Ask Baridi" too,
        before GET /ask has answered. The composer's placeholder still only takes this text from the
        real response, so that is what the rest of this test waits on. */
-    await screen.findByPlaceholderText(CAPTION)
+    await askIsReady()
     expect(screen.getByRole('heading', { name: 'Ask Baridi' })).toBeInTheDocument()
     /* No privacy note on the panel (standards: no privacy notes in messages or screens; Batch S round 2, T11). */
     expect(screen.queryByText(PRIVATE)).toBeNull()
     expect(screen.getByText(CAPTION)).toBeInTheDocument()
-    expect(screen.getByText(ADD_LINE)).toBeInTheDocument()
+    /* UPDATED 23 November (journey 6, design guide rule 6): "You can also add context or documents to your check-ins here."
+       explained how to use the panel, and the paperclip beside the box is that way in, so the line is no longer drawn. */
+    expect(screen.queryByText(ADD_LINE)).toBeNull()
     const about = screen.getByRole('combobox', { name: 'About' }) as HTMLSelectElement
     expect([...about.options].map(o => o.textContent)).toEqual(['The whole organisation and your work', 'Sales team, Q3'])
     /* She is on the check-in's own page, so it is the one picked by default - never the organisation. */
     expect(about.value).toBe('g-sales')
-    expect(screen.getByPlaceholderText(CAPTION)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument()
   })
 
@@ -120,8 +123,8 @@ describe('Miriam, taking part in the sales team, opens Ask Groundwork on its boa
   it('asks about the check-in chosen, and reads the answer as it comes', async () => {
     ;vi.mocked(askApi.ask).mockResolvedValue({ lane: 'what_is_stuck', composedBy: 'rules', blocks: [{ type: 'text', body: 'Nothing is recorded as waiting on you.' }] })
     panel(MIRIAMS)
-    await screen.findByPlaceholderText(CAPTION)
-    fireEvent.change(screen.getByPlaceholderText(CAPTION), { target: { value: 'What is waiting on me?' } })
+    await askIsReady()
+    fireEvent.change(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/), { target: { value: 'What is waiting on me?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByText('Nothing is recorded as waiting on you.')).toBeInTheDocument()
     expect(askApi.ask).toHaveBeenCalledWith('What is waiting on me?', 'g-sales')
@@ -139,8 +142,8 @@ describe('a request is said back, and only a yes to that request sends it', () =
     })
     ;vi.mocked(askApi.answer).mockResolvedValue({ lane: 'add_a_to_do', composedBy: 'rules', blocks: [{ type: 'text', body: 'On your list: call Kariuki about the deposit.' }] })
     panel(MIRIAMS)
-    await screen.findByPlaceholderText(CAPTION)
-    fireEvent.change(screen.getByPlaceholderText(CAPTION), { target: { value: 'remind me to call Kariuki about the deposit' } })
+    await askIsReady()
+    fireEvent.change(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/), { target: { value: 'remind me to call Kariuki about the deposit' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findAllByText(OFFER)).toHaveLength(1)
     expect(askApi.answer).not.toHaveBeenCalled()
@@ -156,11 +159,11 @@ describe('a request is said back, and only a yes to that request sends it', () =
     /* A refusal comes with its 4xx status, as the server sends it; whatTheServerSaid (5d1cbb40e) shows a server's words only for a 4xx. */
     ;vi.mocked(askApi.ask).mockRejectedValue({ response: { status: 403, data: { message: 'You are not part of this check-in.' } } })
     panel(MIRIAMS)
-    await screen.findByPlaceholderText(CAPTION)
-    fireEvent.change(screen.getByPlaceholderText(CAPTION), { target: { value: 'what is stuck?' } })
+    await askIsReady()
+    fireEvent.change(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/), { target: { value: 'what is stuck?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('You are not part of this check-in.')
-    expect((screen.getByPlaceholderText(CAPTION) as HTMLInputElement).value).toBe('what is stuck?')
+    expect((screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/) as HTMLInputElement).value).toBe('what is stuck?')
   })
 })
 
@@ -177,7 +180,7 @@ describe('Wairimu, who runs several check-ins', () => {
     expect(about.value).toBe('g-lead')
     fireEvent.change(about, { target: { value: 'g-sales' } })
     expect(about.value).toBe('g-sales')
-    fireEvent.change(screen.getByPlaceholderText(CAPTION), { target: { value: 'What is due?' } })
+    fireEvent.change(screen.getByPlaceholderText(/^Ask (a question|about this check-in)$/), { target: { value: 'What is due?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await waitFor(() => expect(askApi.ask).toHaveBeenCalledWith('What is due?', 'g-sales'))
   })
@@ -278,7 +281,7 @@ describe('somebody Ask Groundwork cannot answer yet', () => {
 describe('what nobody reads here', () => {
   it('no label on a person and nothing about how anybody was rated', async () => {
     const { container } = panel(MIRIAMS)
-    await screen.findByPlaceholderText(CAPTION)
+    await askIsReady()
     expect(container.textContent).not.toMatch(/\bPIP\b|at risk|low performer|rated|rating|score/i)
   })
 })
@@ -358,5 +361,44 @@ describe('where it opens', () => {
     render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/today']}><AskGroundwork onClose={() => {}} /></MemoryRouter></QueryClientProvider>)
     expect(await screen.findByRole('heading', { name: 'Ask Baridi' })).toBeInTheDocument()
     expect(screen.getByText(CAPTION)).toBeInTheDocument()
+  })
+})
+
+/*
+ * JOURNEY 6, ON THE DESIGN SYSTEM (Hafsah, 23 November 2026; ask-panel-lead.jpg, ask-panel-participant.jpg). What the lead
+ * and a participant read at the top of the panel, in order, and what they can press: one main button, the name and About
+ * at the top, the one line under them, and no sentence on how to use the panel.
+ */
+describe('journey 6: the panel each reader reads, on the design system', () => {
+  const headOf = (c: HTMLElement) => [...(c.querySelector('.ds-chat-head') as HTMLElement).querySelectorAll('h2, label > span, p')].map((e) => e.textContent)
+  const mainButtons = (c: HTMLElement) => [...c.querySelectorAll('.ds-btn-main')].map((b) => b.textContent)
+
+  it('Wairimu, the lead, reads the name, About and the one line, has one main button, and the paperclip to add a document', async () => {
+    const { container } = panel({ ...WAIRIMUS, addsContext: true })
+    expect((await askIsReady()).placeholder).toBe('Ask about this check-in')
+    expect(headOf(container)).toEqual(['Ask Baridi', 'About', CAPTION])
+    expect(screen.queryByText(ADD_LINE)).toBeNull()
+    expect(mainButtons(container)).toEqual(['Send'])
+    expect(screen.getByRole('button', { name: 'Add a photo or a document' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
+    /* Nothing in the panel sets its own spacing, size or colour (rule 12). */
+    expect(container.querySelectorAll('[style]')).toHaveLength(0)
+  })
+
+  it('Miriam, taking part, reads the same top, her earlier question on the right and the answer on the left, and no paperclip', async () => {
+    const { container } = panel(MIRIAMS)
+    expect((await askIsReady()).placeholder).toBe('Ask about this check-in')
+    expect(headOf(container)).toEqual(['Ask Baridi', 'About', CAPTION])
+    expect(screen.getByText('Why is Green Mart next quarter?').className).toContain('ds-bubble-me')
+    expect(screen.getByText('Green Mart said January, in writing.').className).toContain('ds-bubble-them')
+    expect(mainButtons(container)).toEqual(['Send'])
+    expect(screen.queryByRole('button', { name: 'Add a photo or a document' })).toBeNull()
+  })
+
+  it('with the whole organisation chosen, the box reads "Ask a question", and an empty box sends nothing', async () => {
+    panel(WAIRIMUS, '/company')
+    expect((await askIsReady()).placeholder).toBe('Ask a question')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(askApi.ask).not.toHaveBeenCalled()
   })
 })

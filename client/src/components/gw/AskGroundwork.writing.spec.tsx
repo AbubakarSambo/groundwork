@@ -44,7 +44,9 @@ describe('Ask Groundwork: the writing indicator', () => {
     let resolveAsk!: (v: unknown) => void
     ;(askApi.ask as any).mockReturnValue(new Promise((resolve) => { resolveAsk = resolve }))
     mount()
-    const field = await screen.findByPlaceholderText('Ask about the company, your work or your check-ins.')
+    const field = await screen.findByPlaceholderText(/^Ask (a question|about this check-in)$/)
+    /* The box is there while Ask loads, waiting; it takes a question once Ask is ready (UPDATED 23 November, journey 6: its hint no longer waits for the load). */
+    await waitFor(() => expect(field).not.toBeDisabled())
     await userEvent.type(field, 'What is our runway?')
     await userEvent.click(screen.getByRole('button', { name: /send/i }))
     expect(await screen.findByText('Ask Kijani Foods is writing…')).toBeTruthy()
@@ -57,7 +59,9 @@ describe('Ask Groundwork: the writing indicator', () => {
     let rejectAsk!: (e: unknown) => void
     ;(askApi.ask as any).mockReturnValue(new Promise((_resolve, reject) => { rejectAsk = reject }))
     mount()
-    const field = await screen.findByPlaceholderText('Ask about the company, your work or your check-ins.')
+    const field = await screen.findByPlaceholderText(/^Ask (a question|about this check-in)$/)
+    /* The box is there while Ask loads, waiting; it takes a question once Ask is ready (UPDATED 23 November, journey 6: its hint no longer waits for the load). */
+    await waitFor(() => expect(field).not.toBeDisabled())
     await userEvent.type(field, 'What is our runway?')
     await userEvent.click(screen.getByRole('button', { name: /send/i }))
     expect(await screen.findByText('Ask Kijani Foods is writing…')).toBeTruthy()

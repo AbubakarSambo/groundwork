@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { groundsApi } from '@/api/grounds'
 import { AskGroundwork } from '@/components/gw/AskGroundwork'
+import { Page } from '@/components/gw/ui/Page'
 import { useAskStore } from '@/stores/ask'
 
 /**
@@ -95,19 +96,15 @@ export function AskPage() {
   }, [about, isFetched, foundFetched, groundErrored, ground, found, queueMessage])
 
   return (
-    /* The prototype's #/chat: the page title "Chat", then the assistant's own panel (.chatpage) under it. */
-    <div className="main"><div className="wrap">
-      <h1 className="t-title gw-chat-title">Chat</h1>
-        <AskGroundwork
-          initialMessage={pendingAskMessage}
-          onSentInitialMessage={consumePendingAskMessage}
-          /* B-210: "About" is set to the check-in this page opened on, the same way a board's own
-             page already focuses Ask on itself - only once the reader is confirmed able to see it.
-             B-224: or, with no "about" link to confirm, the check-in AppShell's phone redirect
-             carried across in "ground" - see its own note on the redirect, and on `groundOnly`
-             above. */
-          aboutGroundId={about && !groundErrored ? about : (groundOnly || null)}
-        />
-    </div></div>
+    /* The prototype's #/chat (ask-on-a-phone.jpg): the page title "Chat", then Ask under it, on the design system. */
+    <Page title="Chat">
+      <AskGroundwork
+        initialMessage={pendingAskMessage}
+        onSentInitialMessage={consumePendingAskMessage}
+        /* B-210: "About" is set to the check-in this page opened on, only once the reader is confirmed able to see it.
+           B-224: or, with no "about" link to confirm, the check-in AppShell's phone redirect carried across in "ground". */
+        aboutGroundId={about && !groundErrored ? about : (groundOnly || null)}
+      />
+    </Page>
   )
 }

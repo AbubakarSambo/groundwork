@@ -2252,13 +2252,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-sr .gwui-tile-txt { font-size: 14px; }
 }
 
-/* ── ASK'S "ABOUT" PICKER, AT 390 (B-231) ─────────────────
-   "About" and the select shared one row, the select shrinking (item 6's own `flex: 1, minWidth:
-   0`, AskGroundwork.tsx) to whatever was left after "About" - which at 390 was too little for its
-   longest option ("The whole organisation and your work"), read cut off ("...and your wor"),
-   because a plain <select> clips rather than wraps. The row itself already wraps (`flexWrap:
-   'wrap'`); this gives the select the full row to itself there, instead of a squeezed remainder
-   beside "About". Written up in docs/the-parts-against-the-prototype.md. */
 
 
 /* ===== THE LIGHT PARTS (light prototype, 13 October 2026; docs/light-rebuild/sales-first.md,

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { askIsReady } from '@/test/ask-is-ready'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -51,7 +52,8 @@ describe('who sees the "+"', () => {
   it('Wanjiru, a lead who may add context, sees it', async () => {
     as('MEMBER'); vi.mocked(askApi.mine).mockResolvedValue(PAGE(true))
     panel()
-    expect(await screen.findByRole('button', { name: PLUS })).toBeInTheDocument()
+    await askIsReady()
+    expect(screen.getByRole('button', { name: PLUS })).toBeInTheDocument()
   })
 
   it('Grace, an admin, sees it for the whole organisation', async () => {
@@ -63,7 +65,7 @@ describe('who sees the "+"', () => {
   it('Miriam, who only takes part, does not', async () => {
     as('MEMBER'); vi.mocked(askApi.mine).mockResolvedValue(PAGE(false))
     panel()
-    await screen.findByPlaceholderText('Ask about the company, your work or your check-ins.')
+    await askIsReady()
     expect(screen.queryByRole('button', { name: PLUS })).toBeNull()
   })
 })
