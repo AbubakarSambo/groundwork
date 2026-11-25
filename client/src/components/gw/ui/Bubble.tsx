@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useTheDesignSystem } from './the-design-system'
 
 /**
  * A CONVERSATION BUBBLE (B3, docs/prototype/source/app.css: `.bub`, `.bub.them`, `.bub.me`).
@@ -24,6 +25,10 @@ export function Bubble({ mine, children, opacity = 1 }: {
   /** For a turn still arriving (the typewriter's placeholder). */
   opacity?: number
 }) {
+  /* On a rebuilt page (the conversation, journey 2), the bubble reads only the tokens (blocks.css, .ds-bub). */
+  if (useTheDesignSystem()) {
+    return <div className={`ds-bub ${mine ? 'ds-bub-me' : 'ds-bub-them'}${opacity === 1 ? '' : ' ds-bub-waiting'}`}>{children}</div>
+  }
   return (
     /* The prototype's chat bubble (.bub.me, .bub.them). */
     <div className={mine ? 'bub me' : 'bub them'} style={opacity === 1 ? undefined : { opacity }}>

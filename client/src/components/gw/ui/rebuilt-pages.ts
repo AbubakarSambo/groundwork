@@ -256,4 +256,10 @@ export const REBUILT_PAGES: string[] = [
   'pages/notfound/NotFoundPage.tsx',
   'components/gw/PageCrash.tsx',
   'components/gw/GroundGone.tsx',
+  /*
+   * JOURNEY 2, A MEMBER'S FIRST CHECK-IN (Hafsah, 23 November 2026): the page between check-ins and the answer link anyone can
+   * open without signing in, rebuilt on the design system's conversation blocks (blocks.css, "THE CONVERSATION").
+   */
+  'components/gw/BetweenCheckIns.tsx',
+  'pages/join/AnswerFirstPage.tsx',
 ]

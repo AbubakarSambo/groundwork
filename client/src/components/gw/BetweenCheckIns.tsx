@@ -10,6 +10,7 @@ import { GroundworkIsWriting } from './ui/GroundworkIsWriting'
 import { QuickReplies } from './ui/QuickReplies'
 import { Composer } from './ui/Composer'
 import { Button } from './ui/Button'
+import { InTheDesignSystem } from './ui/the-design-system'
 import { theNextOne, WRITE_ANYTHING_YOU_WANT_ME_TO_REMEMBER } from '@/lib/what-the-end-of-a-check-in-can-say'
 
 /**
@@ -156,80 +157,72 @@ export function BetweenCheckIns({ groundLabel, myCheckIns, groundId, canChangeTh
     void ask(m)
   }
 
+  /* On the design system (journey 2, between-check-ins.jpg): the card with the name and "No check-in open right now", Groundwork's
+     line, the four chips stacked, the answers, the notes waiting for the next check-in as rows with "Delete" on the right (rule 9),
+     and the box. A lead's "Change how often this runs" is a link under the card. Every value is a token. */
   return (
-    <div style={{ height: '100%', minHeight: 420, display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ flex: 1, minHeight: 0 }}>
-        <ConversationCard
-          header={<TheCheckInHeader title={groundLabel} underTitle={next.openId ? 'Your next check-in is open' : 'No check-in open right now'} />}
-          footer={
-            <Composer
-              value={draft}
-              onChange={setDraft}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-              onSend={send}
-              disabled={mode === 'note' ? addNote.isPending : asking}
-              sendDisabled={!draft.trim() || (mode === 'note' ? addNote.isPending : asking)}
-              placeholder={WRITE_ANYTHING_YOU_WANT_ME_TO_REMEMBER}
-              sendLabel={mode === 'note' ? 'Save' : 'Send'}
-            />
-          }
-        >
-          <Bubble mine={false}>
-            {next.openId ? 'Anything I can help with before you start?' : `${next.says ? `${next.says} ` : ''}Anything I can help with in the meantime?`}
-          </Bubble>
-          <QuickReplies
-            label="Anything I can help with in the meantime?"
-            stacked
-            disabled={asking}
-            items={['What am I missing?', 'Review my goals', 'What did I say I’d do?', 'Add a note for next time']}
-            onPick={(item) => {
-              if (item === 'Add a note for next time') { setMode('note'); return }
-              void ask(item)
-            }}
+    <InTheDesignSystem.Provider value={true}>
+      <ConversationCard
+        header={<TheCheckInHeader title={groundLabel} underTitle={next.openId ? 'Your next check-in is open' : 'No check-in open right now'} />}
+        after={canChangeTheRhythm && onGoToSetup ? <Button kind="quiet" onClick={onGoToSetup}>Change how often this runs</Button> : undefined}
+        footer={
+          <Composer
+            value={draft}
+            onChange={setDraft}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+            onSend={send}
+            disabled={mode === 'note' ? addNote.isPending : asking}
+            sendDisabled={!draft.trim() || (mode === 'note' ? addNote.isPending : asking)}
+            placeholder={WRITE_ANYTHING_YOU_WANT_ME_TO_REMEMBER}
+            sendLabel={mode === 'note' ? 'Save' : 'Send'}
           />
-          {exchanges.map((ex, i) => (
-            <Bubble key={i} mine={ex.mine}>{ex.text}</Bubble>
-          ))}
-          {/* No sign of work while waiting existed here at all before this (Hafsah, 9 October):
-              the composer just went quietly disabled. Same shared indicator every chat uses. */}
-          {asking && <GroundworkIsWriting />}
-          {waitingNotes.length > 0 && (
-            <div style={{ marginTop: 4 }}>
-              <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
-                Waiting for your next check-in
-              </div>
+        }
+      >
+        <Bubble mine={false}>
+          {next.openId ? 'Anything I can help with before you start?' : `${next.says ? `${next.says} ` : ''}Anything I can help with in the meantime?`}
+        </Bubble>
+        <QuickReplies
+          label="Anything I can help with in the meantime?"
+          stacked
+          disabled={asking}
+          items={['What am I missing?', 'Review my goals', 'What did I say I’d do?', 'Add a note for next time']}
+          onPick={(item) => {
+            if (item === 'Add a note for next time') { setMode('note'); return }
+            void ask(item)
+          }}
+        />
+        {exchanges.map((ex, i) => (
+          <Bubble key={i} mine={ex.mine}>{ex.text}</Bubble>
+        ))}
+        {/* No sign of work while waiting existed here at all before this (Hafsah, 9 October):
+            the composer just went quietly disabled. Same shared indicator every chat uses. */}
+        {asking && <GroundworkIsWriting />}
+        {waitingNotes.length > 0 && (
+          <div>
+            <p className="ds-text-meta">Waiting for your next check-in</p>
+            <ul className="ds-rows">
               {waitingNotes.map(n => (
-                <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 11px', marginBottom: 6 }}>
-                  <div style={{ flex: 1, fontSize: 12, color: 'var(--gw-text)', lineHeight: '19px', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0 }}>{n.text}</div>
-                  {confirmDeleteId === n.id ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>Delete this note?</span>
-                      <Button kind="danger" size="small" disabled={deleteNote.isPending} onClick={() => deleteNote.mutate(n.id)}>
-                        {deleteNote.isPending ? 'Deleting…' : 'Yes, delete it'}
-                      </Button>
-                      <Button kind="secondary" size="small" onClick={() => setConfirmDeleteId(null)}>Keep it</Button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmDeleteId(n.id)}
-                      aria-label="Delete this note"
-                      style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, fontFamily: 'inherit' }}
-                    >×</button>
-                  )}
-                </div>
+                <li key={n.id} className="ds-row">
+                  <p className="ds-row-main ds-text-body ds-keep-lines">{n.text}</p>
+                  <div className="ds-row-actions">
+                    {confirmDeleteId === n.id ? (
+                      <>
+                        <span className="ds-text-secondary">Delete this note?</span>
+                        <Button kind="danger" disabled={deleteNote.isPending} onClick={() => deleteNote.mutate(n.id)}>
+                          {deleteNote.isPending ? 'Deleting…' : 'Yes, delete it'}
+                        </Button>
+                        <Button kind="quiet" onClick={() => setConfirmDeleteId(null)}>Keep it</Button>
+                      </>
+                    ) : (
+                      <Button kind="quiet" aria-label="Delete this note" onClick={() => setConfirmDeleteId(n.id)}>Delete</Button>
+                    )}
+                  </div>
+                </li>
               ))}
-            </div>
-          )}
-        </ConversationCard>
-      </div>
-      {/* REVIEW ROUND 3, ITEM 4: REACHABLE DIRECTLY, NOT ONLY FROM INSIDE THE NOTE BOX - which
-          never actually offered it here anyway (it is gated on `nextOpensAt`, always null on this
-          screen). A quiet link under the card, the same as the note itself. */}
-      {canChangeTheRhythm && onGoToSetup && (
-        <div style={{ maxWidth: 560, margin: '0 auto', width: '100%' }}>
-          <Button kind="quiet" size="small" onClick={onGoToSetup}>Change how often this runs</Button>
-        </div>
-      )}
-    </div>
+            </ul>
+          </div>
+        )}
+      </ConversationCard>
+    </InTheDesignSystem.Provider>
   )
 }

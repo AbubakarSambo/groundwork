@@ -25,7 +25,9 @@ describe('TheEndCard', () => {
     const item = screen.getByText('A line of what happens next.')
     const list = item.closest('ul')
     expect(list).toBeTruthy()
-    expect(list).toHaveClass('gwui-ci-endcard-next')
+    /* Changed 23 November 2026 (journey 2, the design system): the list's bullets come from the blocks' .ds-list-bullets now; the
+       old .gwui-ci-endcard-next class is gone with the rest of the end card's own stylesheet. Still a bulleted list. */
+    expect(list).toHaveClass('ds-list-bullets')
   })
 
   /* sales-first.md, section 5: when the next one opens is one line above the fold, said once, not a bullet inside it. */
