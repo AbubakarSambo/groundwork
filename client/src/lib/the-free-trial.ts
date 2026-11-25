@@ -1,7 +1,6 @@
 /**
- * THE ONE SENTENCE ABOUT THE FREE TRIAL. Hafsah's decision of 26 September: teams under 20 people get
- * Groundwork free for 1 month (decision 78, 5 October: every free run is one month, where it was
- * three).
+ * THE ONE SENTENCE ABOUT THE FREE TRIAL. Every team, whatever its size, gets Groundwork free for a month, with WhatsApp
+ * free for up to 20 people (Hafsah, 25 November 2026; the month is decision 78's).
  *
  * The numbers come from the server (`trial` on GET /billing/pricing), never from a screen, and every
  * screen that mentions the trial uses this, so they all say it the same way. It gives nothing while
@@ -15,5 +14,5 @@ export function theFreeTrialSentence(trial: FreeTrial | null | undefined): strin
   if (!trial?.on) return null
   if (!Number.isInteger(trial.teamsUnder) || !Number.isInteger(trial.months) || trial.teamsUnder < 2 || trial.months < 1) return null
   const length = trial.months === 1 ? '1 month' : `${trial.months} months`
-  return `Teams of fewer than ${trial.teamsUnder} people get ${length} free, WhatsApp included, no card required.`
+  return `Every team gets ${length} free, with WhatsApp for up to ${trial.teamsUnder} people. No card required.`
 }

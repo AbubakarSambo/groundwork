@@ -210,7 +210,7 @@ export class WhatsAppService implements OnModuleInit {
       return result;
     }
     if (!this.addOn) return null;
-    const may = await this.addOn.mayWeSend(organizationId);
+    const may = await this.addOn.mayWeSend(organizationId, new Date(), to);
     if (may.send) return null;
     const result: SendResult = { sent: false, error: may.saying };
     await this.writeItDown(organizationId, to, result, { ...context, kind: context.kind ? `${context.kind}:held` : 'held' });
@@ -1304,7 +1304,7 @@ export class WhatsAppService implements OnModuleInit {
     if (all.length < 2 || !this.addOn) return all;
     const works: { id: string; name: string }[] = [];
     for (const o of all) {
-      const may = await this.addOn.mayWeSend(o.id).catch(() => ({ send: true as const }));
+      const may = await this.addOn.mayWeSend(o.id, new Date(), rawNumber).catch(() => ({ send: true as const }));
       if (may.send) works.push(o);
     }
     return works.length ? works : all;

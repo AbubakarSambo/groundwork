@@ -70,12 +70,11 @@ describe('what the person reads', () => {
     expect(screen.queryByText(/free/)).toBeNull()
   })
 
-  it('with the free trial on, the size question and the one shared sentence', async () => {
+  it('with the free trial on, the one shared sentence and no size question: the month is for any size (25 November 2026)', async () => {
     ;(billingApi.getPricing as any).mockResolvedValue(pricing(true))
     open()
-    const size = await screen.findByLabelText('How many people will use it?')
-    expect([...(size as HTMLSelectElement).options].map(o => o.textContent)).toEqual(['Fewer than 20', '20 or more'])
-    expect(screen.getByText('Teams of fewer than 20 people get 1 month free, WhatsApp included, no card required.')).toBeTruthy()
+    expect(await screen.findByText('Every team gets 1 month free, with WhatsApp for up to 20 people. No card required.')).toBeTruthy()
+    expect(screen.queryByLabelText('How many people will use it?')).toBeNull()
   })
 })
 
@@ -91,15 +90,14 @@ describe('creating it', () => {
     expect(assign).toHaveBeenCalledWith('/today')
   })
 
-  it('sends the size they chose, with the line they were shown, while the trial is on', async () => {
+  it('while the trial is on, says the month is owed, so it is given the moment the organisation is made', async () => {
     ;(billingApi.getPricing as any).mockResolvedValue(pricing(true))
     ;(authApi.createOrganisation as any).mockResolvedValue({ accessToken: 't', user: {}, organization: {} })
     open()
     fireEvent.change(await screen.findByLabelText('Organisation name'), { target: { value: 'Nyali Foods' } })
-    fireEvent.change(await screen.findByLabelText('How many people will use it?'), { target: { value: 'more' } })
     fireEvent.change(screen.getByLabelText('A billing email (optional)'), { target: { value: 'finance@nyali.test' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create it' }))
-    await waitFor(() => expect(authApi.createOrganisation).toHaveBeenCalledWith({ name: 'Nyali Foods', billingEmail: 'finance@nyali.test', teamSize: { said: 'more', line: 20 } }))
+    await waitFor(() => expect(authApi.createOrganisation).toHaveBeenCalledWith({ name: 'Nyali Foods', billingEmail: 'finance@nyali.test', teamSize: { said: 'fewer', line: 20 } }))
   })
 
   it('an empty name is said in a sentence, and nothing is sent', async () => {

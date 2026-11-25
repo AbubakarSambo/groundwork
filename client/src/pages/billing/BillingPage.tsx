@@ -551,7 +551,7 @@ export function BillingPage() {
         /* "Free month" (s73), in the prototype's words, with how this organisation began when it was asked. */
         <Section heading="Free month">
           <Panel>
-            <p className="gwui-panel-text-muted">{`${trialSentence.replace(/, no card required\.$/, ', with no card.')} Existing organisations that never had one get it from the day it starts, WhatsApp included.${billingStatus?.startedWith?.says ? ` ${billingStatus.startedWith.says}` : ''}`}</p>
+            <p className="gwui-panel-text-muted">{`${trialSentence} Organisations that were already using Groundwork get it too.${billingStatus?.startedWith?.says ? ` ${billingStatus.startedWith.says}` : ''}`}</p>
           </Panel>
         </Section>
       )}

@@ -100,7 +100,7 @@ beforeEach(() => {
     activeGrounds: [],
     card: { brand: 'visa', last4: '4417' },
     invoices: [],
-    startedWith: { said: 'more', line: 20, says: 'Baridi Appliances started with 27, so it began on a plan.' },
+    startedWith: { said: 'more', line: 20, says: 'Baridi Appliances started with 27.' },
     month: MONTH,
   }
 })
@@ -117,7 +117,7 @@ describe('Grace, on Small Team with 27 people', () => {
     expect(text()).toContain('Next payment 1 November, by card ending 4417. Your price only changes when you add people, switch WhatsApp on, or move plan.')
     expect(text()).toContain('Any plan: +$5 per extra seat')
     expect(text()).toContain('For 27')
-    expect(text()).toContain('Teams of fewer than 20 people get 1 month free, WhatsApp included, with no card. Existing organisations that never had one get it from the day it starts, WhatsApp included. Baridi Appliances started with 27, so it began on a plan.')
+    expect(text()).toContain('Every team gets 1 month free, with WhatsApp for up to 20 people. No card required. Organisations that were already using Groundwork get it too. Baridi Appliances started with 27.')
     expect(screen.getByRole('heading', { name: 'Free month' })).toBeTruthy()
     expect(screen.getAllByText('Move to this')).toHaveLength(4)
     /* Nothing lost from the page before (docs/light-rebuild/pricing.md). */

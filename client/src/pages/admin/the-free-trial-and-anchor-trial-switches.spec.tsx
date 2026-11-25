@@ -36,7 +36,7 @@ describe('the free trial row', () => {
   it('reads the served state, off', async () => {
     ;(adminApi.getFreeTrial as any).mockResolvedValue({ on: false, teamsUnder: 20, months: 1 })
     renderWith(<FreeTrialRow />)
-    expect(await screen.findByText('Teams of fewer than 20 people get 1 month free.')).toBeTruthy()
+    expect(await screen.findByText('Every team gets 1 month free, for as many people as they like, with WhatsApp for up to 20 of them.')).toBeTruthy()
     expect(screen.getByText('Off')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Turn on the free trial' })).toBeTruthy()
   })
@@ -44,7 +44,7 @@ describe('the free trial row', () => {
   it('reads the served state, on, with more than one month', async () => {
     ;(adminApi.getFreeTrial as any).mockResolvedValue({ on: true, teamsUnder: 20, months: 2 })
     renderWith(<FreeTrialRow />)
-    expect(await screen.findByText('Teams of fewer than 20 people get 2 months free.')).toBeTruthy()
+    expect(await screen.findByText('Every team gets 2 months free, for as many people as they like, with WhatsApp for up to 20 of them.')).toBeTruthy()
     expect(screen.getByText('On')).toBeTruthy()
   })
 

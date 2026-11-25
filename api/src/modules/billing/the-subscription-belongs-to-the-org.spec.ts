@@ -69,13 +69,19 @@ describe('what /billing/status returns', () => {
      */
     /* The plan it reads is now whichever covers them - their own, or one we gave them on the
        house - and it still comes from the table rather than a map in this file. */
-    expect(GET_STATUS).toContain('this.pricing.memberCapFor(covers.plan as any)');
+    /* Since 25 November 2026 every seat read goes through one method, `theSeatCap`, which reads the table. */
+    const SEAT_CAP = CODE.slice(CODE.indexOf('private async theSeatCap('), CODE.indexOf('private async extraSeatsFor('));
+    expect(GET_STATUS).toContain('this.theSeatCap(');
+    expect(SEAT_CAP).toContain('this.pricing.memberCapFor(covered.plan as any)');
     expect(GET_STATUS).not.toContain('PLAN_MEMBER_CAPS');
   });
 
   it('an organisation nothing covers reports a cap of one, the person who set it up, not "no cap"', () => {
     /* Updated 23 November 2026: there is no free plan of five people; the free trial is cover, so it reports its plan's cap. */
-    expect(GET_STATUS).toContain("covers.covers === 'free tier' ? 1 : covers.plan ? await this.pricing.memberCapFor(covers.plan as any) : null");
+    /* 25 November 2026: and in the free trial there is no limit at all. */
+    const SEAT_CAP = CODE.slice(CODE.indexOf('private async theSeatCap('), CODE.indexOf('private async extraSeatsFor('));
+    expect(SEAT_CAP).toContain("if (covered.covers === 'free tier') return 1;");
+    expect(SEAT_CAP).toContain("if (covered.covers === 'on the house' && org.freeTrialStartedAt) return null;");
   });
 
   it('and the cap it reports is the one the gate will apply', () => {
@@ -84,7 +90,7 @@ describe('what /billing/status returns', () => {
      * one level up: two readers of one number, each correct alone.
      */
     const gate = CODE.slice(CODE.indexOf('async canInviteMember('), CODE.indexOf('private async warnAboutTheMemberCap('));
-    for (const call of ['this.theOrgWithItsCover(organizationId', 'this.pricing.memberCapFor(']) {
+    for (const call of ['this.theOrgWithItsCover(organizationId', 'this.theSeatCap(']) {
       expect(gate).toContain(call);
       expect(GET_STATUS).toContain(call);
     }
