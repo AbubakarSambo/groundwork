@@ -1,3 +1,4 @@
+import type React from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { toast } from 'sonner'
@@ -169,6 +170,8 @@ export function peersVisibilitySentence(args: {
 export type PeopleAndSetupProps = {
   ground: any
   user: any
+  /** Each person's card and what people are down as doing, for whoever runs the check-in, drawn under Who's in it. */
+  eachPerson?: React.ReactNode
   id: string
   navigate: (to: string) => void
   isInitiator: boolean

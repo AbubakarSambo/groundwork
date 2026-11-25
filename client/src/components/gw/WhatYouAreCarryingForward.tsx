@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { groundsApi } from '@/api/grounds'
-import { Sec } from './kit'
+import { Section, Panel } from '@/components/gw/ui'
 import { SoloReportBody } from './SoloReportBody'
 
 /**
@@ -60,12 +60,11 @@ export function WhatYouAreCarryingForward({
               sentence, sitting beside the heading. The line under it already says what this is
               ("From your own check-in only..."), so the fragment is dropped rather than forced
               into a sentence that would only repeat that line. */}
-          <Sec title="What you are carrying forward" />
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginBottom: 4 }}>
-            From your own check-in only.
-          </div>
+          {/* Nothing is drawn until there is something to carry forward: "This appears once you finish your first check-in" was said
+              to people four check-ins in, beside "4 of 5 done" (journey 4, 23 November 2026). */}
           {mySoloReport?.report ? (
-            /*
+            <Section heading="What you are carrying forward" note="From your own check-in only.">
+            {/*
               REVIEW ROUND 3, ITEM 5: THE DARK NAVY CARD IS GONE. Every other card on My work
               (and the prototype's own my-record.jpg) sits on white with a thin border; this one
               alone was a dark, high-contrast box that read as a different kind of thing - a
@@ -73,10 +72,10 @@ export function WhatYouAreCarryingForward({
               the page. `SoloReportBody`'s `on="light"` draws its labels for a light background
               instead (still `on="dark"` by default, unchanged, where the lead's roster shows a
               shared solo report nested in its own dark row).
-            */
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 6 }}>
+            */}
+            <Panel>
               <SoloReportBody report={mySoloReport.report as Record<string, unknown>} on="light" />
-              <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 12, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <div className="ds-row-actions">
                 {/*
                   SAID ONCE. The band above this card already says "From your own check-in only.
                   Only you can see it unless you choose to share it", so the private state was the
@@ -84,7 +83,7 @@ export function WhatYouAreCarryingForward({
                   SHARED state is not a repeat of anything and stays: it is a change of state, and
                   a person needs to see that it took effect.
                 */}
-                <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>
+                <div className="ds-text-meta">
                   {mySoloReport.shared ? 'Shared with everyone in this check-in' : ''}
                 </div>
                 <button
@@ -96,14 +95,9 @@ export function WhatYouAreCarryingForward({
                   {mySoloReport.shared ? 'Stop sharing' : 'Share with everyone'}
                 </button>
               </div>
-            </div>
-          ) : (
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 6 }}>
-              {/* One line, not two. The second was a restatement of the first, and the box below
-                  this one was restating both again. */}
-              <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>This appears once you finish your first check-in.</div>
-            </div>
-          )}
+            </Panel>
+            </Section>
+          ) : null}
 
     {showShareConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>

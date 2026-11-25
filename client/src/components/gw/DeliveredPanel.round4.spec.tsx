@@ -2,10 +2,12 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DeliveredPanel } from './DeliveredPanel'
+import { groundsApi } from '@/api/grounds'
 
 vi.mock('@/api/grounds', () => ({
   groundsApi: {
-    myDeliveries: vi.fn().mockResolvedValue([]),
+    /* One thing said already: an empty list draws nothing at all (Hafsah, 24 November 2026), so the wording is read with one. */
+    myDeliveries: vi.fn().mockResolvedValue([{ id: 'd1', text: 'Signed Mama Pendo', evidence: null, objectiveId: null, carriedIntoCheckInId: null }]),
     addDelivery: vi.fn(),
     deleteMyDelivery: vi.fn(),
   },
@@ -45,5 +47,15 @@ describe('what you say you delivered, the wording', () => {
     await screen.findByText('Something you did that nobody asked for')
     expect(screen.getByText(/This goes to your next check-in, which will ask you about it\./)).toBeTruthy()
     expect(screen.queryByText(/This is not yours\./)).toBeNull()
+  })
+})
+
+describe('what you say you delivered, with nothing said yet', () => {
+  it('draws nothing at all: no heading, no empty form', async () => {
+    vi.mocked(groundsApi.myDeliveries).mockResolvedValueOnce([])
+    const { container } = mount()
+    await new Promise((r) => setTimeout(r, 20))
+    expect(container.textContent).toBe('')
+    expect(screen.queryByText('What you say you delivered')).toBeNull()
   })
 })

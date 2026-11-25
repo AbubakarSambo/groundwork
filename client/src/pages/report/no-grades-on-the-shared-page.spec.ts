@@ -88,15 +88,11 @@ describe('no grades on the shared page', () => {
     /* And the read itself, which is the point: how specific each session was, in bars a person can
        act on because the sentence under them names what fills one. */
     expect(AT_THE_TOP).toContain('How specific each check-in was')
-    /* And the actionable half - the one thing that would make the next session land harder - moved
-       with the specificity read it belongs to. */
-    const FIVE = readFileSync(
-      join(__dirname, '..', '..', 'components', 'gw', 'TheFiveThingsThatMakeItCheckable.tsx'),
-      'utf8',
-    )
-    /* Named as a dimension now, so the row itself can carry the mark rather than the person
-       having to work out which of five a sentence was about. */
-    expect(FIVE).toContain('mostUseful')
+    /* And the actionable half - the one thing that would make the next session land harder - is "Your focus this week" on the
+       person's own My work, beside the "Check-in quality" row (the five-things list that said it a third time went, Hafsah,
+       24 November 2026). */
+    const MY_WORK = readFileSync(join(__dirname, '..', 'grounds', 'MyWorkPage.tsx'), 'utf8')
+    expect(MY_WORK).toContain('focus this week')
     /* The per-session phrase moved to its own file when the session list moved to the Report tab
        and two surfaces needed the same reading. */
     const PHRASE = readFileSync(

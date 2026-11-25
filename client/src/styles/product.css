@@ -102,8 +102,6 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
 @media (max-width: 860px) { button.gw-link, p button.gw-link { min-height: 44px; display: inline-flex; } }
 /* Figures in the name face line up with the text around them (quality pass, D-6). */
 .t-title, .t-greet { font-variant-numeric: lining-nums; }
-/* B7: the focus band names itself inside the band, small and spaced. */
-.gw-focus-label { margin: 0 0 4px; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gw-blue-b); line-height: 20px;}
 /* The product's tap floor (44px for anything you can tap): the prototype's small button, chips, choices and view links are 36 to 40px. */
 .btn.sm, .chip, .seg button, .views a { min-height: 44px; }
 /* Lines read one under another with the prototype's thin rule between them. */

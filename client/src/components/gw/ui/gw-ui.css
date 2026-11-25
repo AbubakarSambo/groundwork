@@ -2437,15 +2437,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-session-row-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 0; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 400; color: var(--gw-text); text-align: left; line-height: 23px;}
 .gwui-session-row-open { font-size: 14px; color: var(--gw-navy); font-weight: 700; flex-shrink: 0; }
 .gwui-session-row-body { padding: 4px 0 16px; display: flex; flex-direction: column; gap: 12px; }
-/* B7's three numbers: small chips, the number in Literata beside its words. */
-.gwui-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-.gwui-chip { display: inline-flex; align-items: baseline; gap: 4px; background: var(--gw-card); border: 1px solid var(--gw-rule); border-radius: 8px; padding: 4px 12px; }
-.gwui-chip-value { font-family: var(--gw-font-name); font-weight: 500; font-size: 18px; font-variant-numeric: lining-nums; color: var(--gw-text); line-height: 29px;}
-.gwui-chip-label { font-size: 14px; color: var(--gw-sub); }
-/* B7's focus this week: the one dark band, its line in Literata. */
-.gwui-focus-band { background: var(--gw-navy-d); color: var(--gw-white); border-radius: 12px; padding: 16px 16px; }
-.gwui-focus-line { margin: 0; font-family: var(--gw-font-name); font-size: 18px; font-weight: 500; line-height: 26px; color: var(--gw-white); }
-.gwui-focus-why { margin: 4px 0 0; font-size: 14px; color: var(--gw-blue-b); }
 /* B6, References and resources: the top band, a suggestion's compact row, and How we work's four parts side by side. */
 .gwui-ref-band { background: var(--gw-blue-bg); border-radius: 8px; padding: 8px 16px; }
 .gwui-suggestion-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-bd); border-radius: 8px; padding: 8px 12px; }

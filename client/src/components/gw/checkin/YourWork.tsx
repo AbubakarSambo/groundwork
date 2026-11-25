@@ -11,14 +11,15 @@ import { Tag } from '@/components/gw/ui/Tag'
 import { Button } from '@/components/gw/ui/Button'
 import { WhatYouAreCarryingForward } from '../WhatYouAreCarryingForward'
 import { WhatYourRecordCanSupport } from '../WhatYourRecordCanSupport'
-import { TheFiveThingsThatMakeItCheckable } from '../TheFiveThingsThatMakeItCheckable'
 import { MyRecord } from '../MyRecord'
-import { PatternPanel } from '@/components/gw/ui'
+import { PatternPanel, EdgeList, EdgeRow } from '@/components/gw/ui'
+import { AttachAFile } from '../AttachAFile'
 import type { ServedPattern } from '@/api/patterns'
 import { MyCheckInSessions } from '../MyCheckInSessions'
 import { WhatToWalkInWith } from '../WhatToWalkInWith'
 import { DeliveredPanel } from '../DeliveredPanel'
 import { WhatSuccessLooksLikeFor } from '../WhatSuccessLooksLike'
+import type { MyWorkPart } from '@/pages/grounds/MyWorkPage'
 
 /**
  * "YOUR WORK" (B3, docs/prototype/screens/B3-the-check-in/my-record.jpg/.txt).
@@ -43,8 +44,7 @@ import { WhatSuccessLooksLikeFor } from '../WhatSuccessLooksLike'
  *
  * WHAT STAYS BEYOND THE PROTOTYPE'S OWN LIST, AND WHY. `WhatYouAreCarryingForward` (the one-line
  * summary the next session opens from, and the Share control that puts it in front of the others),
- * `WhatYourRecordCanSupport`/`TheFiveThingsThatMakeItCheckable` (how checkable this reader's own
- * account has been, and what would make the next one land harder), and `MyRecord`'s own panels
+ * `WhatYourRecordCanSupport` (how checkable this reader's own account has been), and `MyRecord`'s own panels
  * (the resolution control near the end of a check-in, the "insights locked" empty state) are real,
  * served, previously-reviewed features with nowhere else to live - the prototype's own mock is one
  * scenario's screenshot, not an exhaustive list of everything this product may honestly show. Left
@@ -119,8 +119,7 @@ export interface YourWorkProps {
   report: any
   totalSessions: number | null
   completedCount: number
-  /** This reader's own finished sessions, newest first, exactly as the caller already builds them
-      for `TheFiveThingsThatMakeItCheckable` (carries `specificityDimensions` too). */
+  /** This reader's own finished sessions, newest first. */
   myFinishedSessions: any[]
   /** One dot per session, done and still to come, exactly as `WhatYourRecordCanSupport` already
       reads it - passed straight through rather than rebuilt here, so the corrected/todo states and
@@ -173,12 +172,20 @@ export interface YourWorkProps {
    * corrections, what to walk in with, and the lead's two links. Left out, the page is exactly as before.
    */
   asTheRestOfMyWork?: boolean
+  /**
+   * WHICH PART OF THE REST, ON THE B7 PAGE (the design system, journey 4, 23 November 2026). MyWorkPage.tsx draws each part where it
+   * belongs: what you say you delivered and your files under What you achieved, what success looks like with the targets, what keeps
+   * coming up under Coaching, what you are carrying forward with your report once you open it, your sessions
+   * inside the Your check-ins card, and how much your record can support, corrections and the sign-off under the two cards.
+   * Left out, or 'all', the whole rest is drawn in its old order (My work's switch off).
+   */
+  part?: MyWorkPart | 'all'
 }
 
 export function YourWork({
   groundId, ground, myRecord, mySoloReport, refetchSoloReport, specificity, report,
   totalSessions, completedCount, myFinishedSessions, sessionDots, myParticipant, myName, leadFirstName,
-  otherParties, postReportGuide, aTeamReportComes, onSeeEverySession, onReadTeamReport, onSeeRoster, asTheRestOfMyWork,
+  otherParties, postReportGuide, aTeamReportComes, onSeeEverySession, onReadTeamReport, onSeeRoster, asTheRestOfMyWork, part = 'all',
 }: YourWorkProps) {
   const myCommitments = ((ground?.commitments ?? []) as any[]).filter((c) => c.participantId === myParticipant?.id)
   /* Their own files, the WhatsApp photos and pins included, from the same list and cache the Context tab reads. */
@@ -206,7 +213,75 @@ export function YourWork({
      once the page is too narrow for 320px twice - the same rule this page already follows for
      its own responsive rows, not a new one invented for this fix. */
   const rest = !!asTheRestOfMyWork
-  const sideColumn = (patterns.length > 0 || (!rest && (myCommitments.length > 0 || myFinishedSessions.length > 0))) && (
+  const show = (p: MyWorkPart) => part === 'all' || part === p
+  const managing = !!myParticipant?.managingOnly
+  /* Every part of the rest, drawn by the one piece of code, whichever page it lands on. */
+  const theRest = (
+    <>
+        {show('achieved') && myParticipant && !managing && (
+          <DeliveredPanel
+            groundId={groundId}
+            expectations={((myParticipant as any)?.objective?.all ?? []).map((o: any) => ({ id: o.id, text: o.text }))}
+          />
+        )}
+        {/* YOUR FILES, AND ATTACHING ONE (Hafsah, 24 November 2026): all that was kept of the "You" card, whose other parts said
+            "Nothing on record", "Nothing outstanding" and "Nothing yet". With no files, only "Attach something" is drawn. */}
+        {show('achieved') && myParticipant && (
+          <Section heading="Your files" action={<AttachAFile groundId={groundId} contextEnabled={ground?.contextEnabled === true} label="Attach something" />}>
+            {myFiles.length > 0 && (
+              <EdgeList label="Your files">
+                {myFiles.map((f) => (
+                  <EdgeRow
+                    key={f.id}
+                    reason={null}
+                    title={f.fileName ?? f.name}
+                    detail={f.visibility === 'OPEN'
+                      ? 'Everyone in this check-in can read it.'
+                      : f.visibility === 'CLOSED' ? 'Whoever runs this check-in can read it.' : 'Only you can read it.'}
+                  />
+                ))}
+              </EdgeList>
+            )}
+          </Section>
+        )}
+        {/* Drawn only once somebody has said what success looks like (the board's rule): an empty section is not drawn. */}
+        {show('expected') && leadFirstName && <WhatSuccessLooksLikeFor groundId={groundId} yourName={myName} asASection />}
+        {show('coaching') && patterns.length > 0 && (
+          <Section heading="Something that keeps coming up">
+            {patterns.map((p) => <PatternPanel key={p.id} pattern={p} invalidateKey={['my-record', groundId]} leadFirstName={leadFirstName} />)}
+          </Section>
+        )}
+        {/* B-080: she never checks in, so there is no record of her own to carry forward. */}
+        {show('report') && !managing && (
+          <WhatYouAreCarryingForward groundId={groundId} mySoloReport={mySoloReport} refetchSoloReport={refetchSoloReport} otherParties={otherParties} />
+        )}
+        {show('report') && postReportGuide != null && <WhatToWalkInWith guide={postReportGuide as any} />}
+        {show('check-ins') && (part === 'all' ? <Section heading="Your check-ins"><MyCheckInSessions groundId={groundId} /></Section> : <MyCheckInSessions groundId={groundId} />)}
+        {show('after-check-ins') && (
+          <WhatYourRecordCanSupport
+            strength={(myRecord as any)?.insightsLocked ? null : (myRecord as any)?.confidence}
+            trend={specificity?.trend}
+            sessions={sessionDots}
+            totalSessions={totalSessions}
+            coverage={{
+              iHaveCheckedIn: completedCount > 0,
+              answered: completedCount,
+              parties: aTeamReportComes ? null : 1,
+              waitingOn: [],
+              corroborated: (report as any)?.engagement?.whatCouldBeChecked ?? null,
+              documentBackedPct: (report as any)?.engagement?.documentBackedPct ?? null,
+              filesAttached: myFiles.length,
+              roundsFinished: completedCount,
+            }}
+            alsoNoticed={[]}
+          />
+        )}
+        {show('after-check-ins') && <CorrectionsYouHaveMade groundId={groundId} />}
+        {show('after-check-ins') && <MyRecord groundId={groundId} ground={ground} totalSessions={totalSessions} completedCount={completedCount} />}
+    </>
+  )
+  if (rest) return theRest
+  const sideColumn = (patterns.length > 0 || myCommitments.length > 0 || myFinishedSessions.length > 0) && (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {patterns.length > 0 && (
         <Section heading="Something that keeps coming up">
@@ -218,7 +293,7 @@ export function YourWork({
         </Section>
       )}
 
-      {!rest && myCommitments.length > 0 && (
+      {myCommitments.length > 0 && (
         <Section heading="What you said you’d do">
           <Panel pad={false}>
             {/*
@@ -250,7 +325,7 @@ export function YourWork({
         </Section>
       )}
 
-      {!rest && myFinishedSessions.length > 0 && (
+      {myFinishedSessions.length > 0 && (
         <Section heading="Your reports">
           <Panel pad={false}>
             {myFinishedSessions.slice(0, 5).map((s, i) => {
@@ -282,14 +357,14 @@ export function YourWork({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {!rest && <PageTitle
+      <PageTitle
         eyebrow={ground?.label}
         title="Your work"
         /* No subtitle: "Everything you’ve said, and what the proof shows. Only you see this page." was an explainer and a privacy
            note (Hafsah, 4 November, issue 41). Who reads it is the server's rule. */
-      />}
+      />
 
-      {rest ? sideColumn : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 20, alignItems: 'start' }}>
         <div>
           {/* THE NUMBER TILES THE SERVED DATA SUPPORTS. my-record.jpg shows a row of three; this
               check-in's own scenario decides how many of them mean anything here. */}
@@ -325,76 +400,9 @@ export function YourWork({
         </div>
 
         {sideColumn}
-      </div>}
-
-      {/* B-080: she never checks in, so there is no record of her own to carry forward, and "This
-          appears once you finish your first check-in." would never stop being true. */}
-      {!myParticipant?.managingOnly && (
-        <WhatYouAreCarryingForward
-          groundId={groundId}
-          mySoloReport={mySoloReport}
-          refetchSoloReport={refetchSoloReport}
-          otherParties={otherParties}
-        />
-      )}
-
-      <WhatYourRecordCanSupport
-        strength={(myRecord as any)?.insightsLocked ? null : (myRecord as any)?.confidence}
-        trend={specificity?.trend}
-        sessions={sessionDots}
-        totalSessions={totalSessions}
-        coverage={{
-          iHaveCheckedIn: completedCount > 0,
-          answered: completedCount,
-          parties: aTeamReportComes ? null : 1,
-          waitingOn: [],
-          corroborated: (report as any)?.engagement?.whatCouldBeChecked ?? null,
-          documentBackedPct: (report as any)?.engagement?.documentBackedPct ?? null,
-          filesAttached: myFiles.length,
-          roundsFinished: completedCount,
-        }}
-        alsoNoticed={[]}
-      />
-
-      <TheFiveThingsThatMakeItCheckable
-        dimensions={(myFinishedSessions[0] as any)?.specificityDimensions ?? null}
-        sessionNumber={(myFinishedSessions[0] as any)?.sessionNumber ?? null}
-        mostUseful={(myRecord as any)?.insightsLocked ? null : specificity?.mostUseful}
-        strongest={(myRecord as any)?.insightsLocked ? null : specificity?.strongest}
-      />
-
-      <MyRecord
-        groundId={groundId}
-        ground={ground}
-        myRecord={myRecord}
-        totalSessions={totalSessions}
-        completedCount={completedCount}
-      />
-
-      <div>
-        <div className="gwui-panel-text" style={{ fontWeight: 700, marginBottom: 8 }}>Your check-ins</div>
-        <MyCheckInSessions groundId={groundId} />
       </div>
 
-      {leadFirstName && (
-        <Section heading="What success looks like" note="In your words, next to their own">
-          {/* headingIsTheCallers: WhatSuccessLooksLike draws its own "What success looks like"
-              heading unless told this Section already has it - without this, the page would show
-              the same heading twice, two lines apart. */}
-          <WhatSuccessLooksLikeFor groundId={groundId} yourName={myName} headingIsTheCallers />
-        </Section>
-      )}
-
-      {myParticipant && !myParticipant.managingOnly && (
-        <DeliveredPanel
-          groundId={groundId}
-          expectations={((myParticipant as any)?.objective?.all ?? []).map((o: any) => ({ id: o.id, text: o.text }))}
-        />
-      )}
-
-      <CorrectionsYouHaveMade groundId={groundId} />
-
-      {postReportGuide != null && <WhatToWalkInWith guide={postReportGuide as any} />}
+      {theRest}
 
       {/* FOR THE LEAD: "EVERY SESSION" AND THE ROSTER STAY REACHABLE, AS QUIET LINKS - not a
           visible sub-tab, since running the whole check-in is a different job from reading your

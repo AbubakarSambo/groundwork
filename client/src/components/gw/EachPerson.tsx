@@ -142,27 +142,40 @@ export function EachPerson({
   const labelOf = (p: APersonOnTheCard) => labels.get(p.id) ?? 'a colleague'
   /* "Wanjiru’s", never "the lead’s" and never "your" to an admin reading the page (U.7 review). */
   const leadsOwn = leadFirstName ? `${leadFirstName}\u2019s` : 'the lead\u2019s'
+  const factsOf = (p: APersonOnTheCard) => {
+    const theirs = (p.objective?.all ?? []).filter((o: any) => o?.text?.trim())
+    const theirTargets = targets.filter((t) => t.ownerParticipantId === p.id)
+    const theirToDos = toDos.filter((t) => t.participantId === p.id && (t.status ?? 'UNKNOWN') === 'UNKNOWN')
+    /* Whose file it is, as the list serves it: theirs by id, or the reader's own by `mine` (night quality run 1). */
+    const theirFiles = files.filter((f) => f.participantId === p.id || (f.participantId == null && f.mine === true && p.userId === viewerUserId))
+    const theirAsks = asks[p.id] ?? []
+    /* The one line somebody reads when they are not opening it. Counts, never a verdict. */
+    const summary = [
+      theirs.length ? line(theirs.length, 'expectation') : null,
+      theirTargets.length ? line(theirTargets.length, 'target') : null,
+      theirToDos.length ? line(theirToDos.length, 'to-do') : null,
+      theirAsks.length ? `${line(theirAsks.length, 'thing')} to show` : null,
+      theirFiles.length ? line(theirFiles.length, 'file') : null,
+    ].filter(Boolean).join(', ')
+    return { theirs, theirTargets, theirToDos, theirFiles, theirAsks, summary }
+  }
+  /*
+   * A COLLEAGUE WITH NOTHING ON RECORD IS ONE LINE, NOT A CARD (journey 4, page-look audit, 23 November 2026). A member read six
+   * cards that each said "Nothing on record yet" over five empty parts, and could do nothing with any of them: they are one sentence
+   * that names them. The lead keeps every card: on an empty one she reads her own note and sets what is expected of that person.
+   */
+  const nothingYet = isLead ? [] : inOrder.filter((p) => !(viewerUserId && p.userId === viewerUserId) && !factsOf(p).summary)
+  const cards = inOrder.filter((p) => !nothingYet.includes(p))
+  const names = nothingYet.map((p) => atTheStart(labelOf(p)))
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-      <ShowAFew rows={inOrder} few={8} what="people">
+    <div className="ds-section">
+      <ShowAFew rows={cards} few={8} what="people">
       {(p) => {
         const isMe = !!viewerUserId && p.userId === viewerUserId
-        const theirs = (p.objective?.all ?? []).filter((o: any) => o?.text?.trim())
-        const theirTargets = targets.filter((t) => t.ownerParticipantId === p.id)
-        const theirToDos = toDos.filter((t) => t.participantId === p.id && (t.status ?? 'UNKNOWN') === 'UNKNOWN')
-        /* Whose file it is, as the list serves it: theirs by id, or the reader's own by `mine` (night quality run 1). */
-        const theirFiles = files.filter((f) => f.participantId === p.id || (f.participantId == null && f.mine === true && p.userId === viewerUserId))
-        const theirAsks = asks[p.id] ?? []
+        const { theirs, theirTargets, theirToDos, theirFiles, theirAsks, summary: counted } = factsOf(p)
+        const summary = counted || 'Nothing on record yet'
         const isOpen = !!open[p.id]
-        /* The one line somebody reads when they are not opening it. Counts, never a verdict. */
-        const summary = [
-          theirs.length ? line(theirs.length, 'expectation') : null,
-          theirTargets.length ? line(theirTargets.length, 'target') : null,
-          theirToDos.length ? line(theirToDos.length, 'to-do') : null,
-          theirAsks.length ? `${line(theirAsks.length, 'thing')} to show` : null,
-          theirFiles.length ? line(theirFiles.length, 'file') : null,
-        ].filter(Boolean).join(', ') || 'Nothing on record yet'
 
         return (
           /*
@@ -201,7 +214,7 @@ export function EachPerson({
             )}
           >
             {(
-              <div style={{ padding: '2px 0 0' }}>
+              <div className="ds-section">
                 {/* WHAT THEIR CHECK-IN IS ABOUT FOR THEM: the expectation, in the lead's words, and
                     whether the person has seen it. Never editable here - see the note at the top. */}
                 <Part title={isMe ? 'What is expected of you' : 'What is expected of them'}>
@@ -343,21 +356,24 @@ export function EachPerson({
         )
       }}
       </ShowAFew>
+      {names.length > 0 && (
+        <p className="ds-text-secondary">{`Nothing is on record yet for ${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0]}.`}</p>
+      )}
     </div>
   )
 }
 
 function Part({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ borderTop: '1px solid var(--gw-line)', paddingTop: 8, marginTop: 8 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 4 }}>{title}</div>
+    <div className="ds-section-head">
+      <p className="ds-text-secondary"><b>{title}</b></p>
       {children}
     </div>
   )
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px' }}>{children}</div>
+  return <p className="ds-text-secondary">{children}</p>
 }
 
 /*

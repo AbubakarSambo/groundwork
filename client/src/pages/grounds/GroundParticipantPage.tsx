@@ -786,8 +786,9 @@ export function GroundParticipantPage() {
           GroundAdminPage.tsx now widens, left narrower by mistake. */}
       <div
         hidden={tab === 'checkin'}
-        className={`gw-bd${(tab === 'settings' || tab === 'record' || tab === 'docs') ? '' : ' gwui-centered-column'}`}
-        style={{ maxWidth: (tab === 'settings' || tab === 'record' || tab === 'docs') ? 1150 : 600, width: '100%' }}
+        /* The wide tabs take the page's one content width (--ds-content, 1150px); the rest keep the 600px reading column. */
+        className={`gw-bd${(tab === 'settings' || tab === 'record' || tab === 'docs') ? ' ds-page-in' : ' gwui-centered-column'}`}
+        style={(tab === 'settings' || tab === 'record' || tab === 'docs') ? undefined : { maxWidth: 600 }}
       >
 
         {/**
@@ -804,9 +805,11 @@ export function GroundParticipantPage() {
         {/* CHECK-IN TAB */}
         {/* MY RECORD TAB */}
         {/* My work is the B7 page, served to this person as their own (MyWorkPage.tsx), with the rest of today's page and the parts that left References and resources under it. */}
-        {tab === 'record' && (() => {
-          const yours = (
-          <YourWork
+        {tab === 'record' && (
+          <MyWorkPage groundId={id!} onAllYourReports={() => goTab('report')} rest={(part, self) => (
+          <>
+          {(part === 'expected' || part === 'all') && <ContextPage ground={ground} role={isInitiator ? 'lead' : 'party'} viewerUserId={user?.id} only="what-moved-to-my-work" />}
+          {self && <YourWork
             groundId={id!}
             ground={ground}
             myRecord={myRecord}
@@ -839,10 +842,11 @@ export function GroundParticipantPage() {
                not a bare per-session link - see the note on `onReadTeamReport` in YourWork.tsx. */
             onReadTeamReport={() => goTab('report')}
             asTheRestOfMyWork
-          />
-          )
-          return <MyWorkPage groundId={id!} onAllYourReports={() => goTab('report')} rest={<>{yours}<ContextPage ground={ground} role={isInitiator ? 'lead' : 'party'} viewerUserId={user?.id} only="what-moved-to-my-work" /></>} />
-        })()}
+            part={part}
+          />}
+          </>
+          )} />
+        )}
 
         {/* REPORT TAB */}
         {tab === 'report' && (

@@ -3,6 +3,7 @@ import { render, screen, within, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MyWorkPage } from './MyWorkPage'
+import { Page } from '@/components/gw/ui'
 import { groundsApi } from '@/api/grounds'
 import { YourWork } from '@/components/gw/checkin/YourWork'
 import { ContextPage } from '@/components/gw/ContextPage'
@@ -133,8 +134,9 @@ const SERVED_TO_GRACE = {
   items: { ...SERVED_TO_MERCY.items, heading: 'Mercy’s deals' },
 }
 
+/* Inside the check-in's own page, as the check-in pages draw it: My work's title is then the h2 under the check-in's h1. */
 const wrap = (ui: React.ReactNode) => render(
-  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter>{ui}</MemoryRouter></QueryClientProvider>,
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><Page>{ui}</Page></MemoryRouter></QueryClientProvider>,
 )
 
 describe('My work, as each reader reads it', () => {
@@ -158,7 +160,8 @@ describe('My work, as each reader reads it', () => {
     expect(screen.getByText('Done on 13 October.')).toBeTruthy()
     expect(screen.getByText('Greenfield Hardware was won, for KES 112,500.')).toBeTruthy()
     for (const b of behaviours('You')) {
-      const row = screen.getByText(b.name).closest('[data-gw-behaviour]')!.parentElement!
+      /* The behaviour's own element is the whole row now (a design-system row inside it), so it is the row itself. */
+      const row = screen.getByText(b.name).closest('[data-gw-behaviour]') as HTMLElement
       expect(within(row).getByText(b.verdict)).toBeTruthy()
       expect(within(row).getByText(b.happened)).toBeTruthy()
       expect(within(row).getByText(b.means!)).toBeTruthy()
@@ -194,10 +197,19 @@ describe('My work, as each reader reads it', () => {
     expect(screen.queryByText('“Greenfield signed the order today.”')).toBeNull()
   })
 
-  it('what today’s page holds is drawn after the new sections', async () => {
+  /* Changed 23 November 2026 (journey 4): the rest of today's page is no longer poured out after the deals; each part is drawn where
+     it belongs on the B7 page, and the reader's own parts only on their own page. */
+  it('what today’s page holds is drawn in its place on the B7 page, and the page still ends with the deals', async () => {
     vi.mocked(groundsApi.myWork).mockResolvedValue(SERVED_TO_MERCY as any)
-    wrap(<MyWorkPage groundId="g-sales" rest={<div>Today’s record</div>} />)
-    expect(await screen.findByText('Today’s record')).toBeTruthy()
+    wrap(<MyWorkPage groundId="g-sales" rest={(part, self) => <p>{`Today’s ${part}, ${self ? 'her own' : 'not hers'}`}</p>} />)
+    await screen.findByRole('heading', { name: 'Mercy’s work' })
+    const said = screen.getAllByText(/^Today’s /).map((p) => p.textContent)
+    /* What she carries forward is drawn with her report once she opens it (Hafsah, 24 November 2026), so not here. */
+    expect(said).toEqual(['Today’s achieved, her own', 'Today’s expected, her own', 'Today’s coaching, her own', 'Today’s check-ins, her own', 'Today’s after-check-ins, her own'])
+    const order = [...document.querySelectorAll('h2, p')].map((e) => e.textContent)
+    expect(order.indexOf('Today’s achieved, her own')).toBeGreaterThan(order.indexOf('What you achieved'))
+    expect(order.indexOf('Today’s expected, her own')).toBeLessThan(order.indexOf('How you’re performing'))
+    expect(order.indexOf('Today’s after-check-ins, her own')).toBeLessThan(order.indexOf('Your deals'))
   })
 })
 
@@ -235,13 +247,20 @@ describe('with the switch off, My work and the Context page are as before', () =
     expect(screen.getByText('What people are down as doing')).toBeTruthy()
     expect(screen.getAllByText(/Sell 120 dispensers/).length).toBeGreaterThan(0)
     full.unmount()
-    wrap(<ContextPage ground={ground} role="lead" viewerUserId="u-grace" only="what-moved-to-my-work" />)
+    const mine = wrap(<ContextPage ground={ground} role="lead" viewerUserId="u-grace" only="what-moved-to-my-work" />)
     expect(screen.getByText('The plan, as agreed')).toBeTruthy()
     expect(screen.getByText('10 new leads a week')).toBeTruthy()
+    /* Each person's card and what people are down as doing went to People and setup (Hafsah, 24 November 2026). */
+    expect(screen.queryByText('What people are down as doing')).toBeNull()
+    expect(screen.queryByText('Call the bursar at Ruiru')).toBeNull()
+    expect(screen.queryByText(/Sell 120 dispensers/)).toBeNull()
+    /* No targets: nothing is drawn, not a "Nothing yet." */
+    expect(screen.queryByText(/^Nothing yet/)).toBeNull()
+    mine.unmount()
+    wrap(<ContextPage ground={ground} role="lead" viewerUserId="u-grace" only="each-person" />)
     expect(screen.getByText('What people are down as doing')).toBeTruthy()
     expect(screen.getByText('Call the bursar at Ruiru')).toBeTruthy()
-    expect(screen.getByText('Each person’s card')).toBeTruthy()
-    expect(screen.queryByText(/Sell 120 dispensers/)).toBeNull()
+    expect(screen.queryByText('The plan, as agreed')).toBeNull()
   })
 })
 

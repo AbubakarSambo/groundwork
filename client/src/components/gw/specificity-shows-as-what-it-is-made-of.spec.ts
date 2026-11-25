@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import path from 'path'
-import { wasItThere } from './TheFiveThingsThatMakeItCheckable'
 
 /**
  * "I NEED SPECIFICITY TO SHOW SOMEHOW."
@@ -29,66 +28,12 @@ const read = (f: string) => readFileSync(path.join(__dirname, f), 'utf8')
 const code = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 const SUPPORT = read('WhatYourRecordCanSupport.tsx')
-const FIVE = read('TheFiveThingsThatMakeItCheckable.tsx')
 const PARTY = read('../../pages/grounds/GroundParticipantPage.tsx')
 const LEAD = read('../../pages/grounds/GroundAdminPage.tsx')
 
-describe('the five things', () => {
-  it('read the dimensions the engine already stores', () => {
-    for (const dim of ['delivery', 'evidence', 'enablement', 'coverage', 'commitment']) {
-      expect(FIVE).toContain(`key: '${dim}'`)
-    }
-  })
-
-  it('and never print the engine\'s own words for them', () => {
-    /* "enablement" and "coverage" are field names. What a person recognises is what they did or did
-       not say, in the second person, which is what the labels are. */
-    const shown = code(FIVE)
-    expect(shown).toContain('What you were waiting on, and from whom')
-    expect(shown).toContain('What went badly, not only what went well')
-  })
-
-  it('collapse four stored levels to met or not', () => {
-    /* Nobody needs four grades of their own honesty; they need to know which one to fix. */
-    expect(wasItThere('specific')).toBe(true)
-    expect(wasItThere('directional')).toBe(true)
-    expect(wasItThere('vague')).toBe(false)
-    expect(wasItThere('managed')).toBe(false)
-    expect(wasItThere(undefined)).toBe(false)
-  })
-
-  it('say what to do next time, not what the engine failed to find', () => {
-    /*
-     * They were negative findings - "No dates, numbers or documents yet", "Nothing on record about
-     * what you were waiting on" - which read back as "I have no idea what this means, you speak
-     * english like a robot". Five sentences about absence, with no verb anybody could act on.
-     *
-     * Each is an instruction when it is missing and the same fact in the past tense when it is
-     * there. What must not come back is the list of absences.
-     */
-    /*
-     * NOUN PHRASES, NOT VERBS. It went from findings ("No dates, numbers or documents yet") to
-     * instructions ("Add a date, a number or a document"), and the second is the same scolding in a
-     * different grammar - five things you failed to do. A list of what to bring reads as a list.
-     */
-    expect(code(FIVE)).toContain('One date, number or document')
-    expect(code(FIVE)).not.toContain('No dates, numbers or documents yet')
-    expect(code(FIVE)).not.toContain('Nothing on record about')
-    expect(code(FIVE)).not.toMatch(/missing: 'Say /)
-    /* And it must say which session it is about, in the heading rather than a buried sub-line. */
-    /* The heading became her wording - "What would make your next check-in count for more" - and
-       the session is named in the sentence under it. Same requirement: a person must be able to
-       tell this is about one session rather than a standing judgement. */
-    expect(code(FIVE)).toContain('What would make your next check-in count for more')
-    expect(code(FIVE)).toContain('Check-in ${sessionNumber} was mostly about the situation around you')
-  })
-
-  it('and show nothing at all before a session has been read', () => {
-    /* Five empty rows would read as five failures. */
-    expect(FIVE).toContain('if (!dimensions || Object.keys(dimensions).length === 0) return null')
-  })
-})
-
+/* THE FIVE THINGS ARE GONE FROM MY WORK (Hafsah, 24 November 2026): "Your focus this week" and the "Check-in quality" row in How
+   you're performing already say what would make the next check-in count for more, so the five-things list and its file went, and
+   the checks on its wording with it. What may not come back is guarded below: a bar out of five, or a grade word on its own. */
 describe('what the record can support', () => {
   it('is a sentence, and no longer a face', () => {
     /*
@@ -165,9 +110,9 @@ describe('what the record can support', () => {
 describe('and both views of a check-in show the same two cards', () => {
   const YOUR_WORK = read('checkin/YourWork.tsx')
 
-  it('both cards live in the one shared component', () => {
+  it('the card lives in the one shared component, and the five-things list is not drawn (Hafsah, 24 November 2026)', () => {
     expect(YOUR_WORK).toContain('<WhatYourRecordCanSupport')
-    expect(YOUR_WORK).toContain('<TheFiveThingsThatMakeItCheckable')
+    expect(YOUR_WORK).not.toContain('TheFiveThingsThatMakeItCheckable')
   })
 
   /* the-two-views-are-a-pair: what a tab contains may differ by role; a person being a lead on one

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { createContext, useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { InTheDesignSystem } from './the-design-system'
 import './gw-ui.css'
@@ -16,6 +16,9 @@ import './gw-ui.css'
  * phone under 860px), content up to 1150px wide, left-aligned. `narrow` is for the invitation and
  * sign-in pages: one column 360px wide, centred. This branch goes when the last journey is rebuilt.
  */
+/** Whether this page sits inside another page's frame (a check-in's tab inside the check-in's own page). */
+const InsideAPage = createContext(false)
+
 export function Page({ narrow, title, crumbs, lede, action, side, children }: {
   narrow?: boolean
   /** The page's name. Giving it makes this a rebuilt page. */
@@ -30,12 +33,18 @@ export function Page({ narrow, title, crumbs, lede, action, side, children }: {
   side?: React.ReactNode
   children: React.ReactNode
 }) {
+  const nested = useContext(InsideAPage)
   if (title !== undefined) {
     const body = <div className="ds-page-body">{children}</div>
+    /*
+     * A TAB INSIDE A CHECK-IN'S PAGE (My work): the check-in's page already has the frame, its padding and its one h1, so a
+     * rebuilt tab inside it adds no second padding, and its title is the h2 under that h1.
+     */
+    const Title = nested ? 'h2' : 'h1'
     return (
       <InTheDesignSystem.Provider value={true}>
         {/* `main` keeps the shell's own room for Ask beside the page; ds-page sets the padding from the tokens. */}
-        <div className="main ds-page">
+        <div className={nested ? 'ds-page' : 'main ds-page'}>
           <div className="ds-page-in">
             <header className="ds-page-head">
               <div className="ds-page-words">
@@ -44,7 +53,7 @@ export function Page({ narrow, title, crumbs, lede, action, side, children }: {
                     {crumbs.map((c, i) => <React.Fragment key={c.label + i}>{i > 0 && ' / '}{c.to ? <Link to={c.to}>{c.label}</Link> : c.label}</React.Fragment>)}
                   </nav>
                 )}
-                <h1 className="ds-text-title">{title}</h1>
+                <Title className="ds-text-title">{title}</Title>
                 {lede && <p className="ds-text-body ds-page-lede">{lede}</p>}
               </div>
               {action}
@@ -68,8 +77,10 @@ export function Page({ narrow, title, crumbs, lede, action, side, children }: {
    * element itself, so the look is identical.
    */
   return (
-    <div className="main">
-      <div className={narrow ? 'gwui-page-narrow' : 'wrap gw-stack'}>{children}</div>
-    </div>
+    <InsideAPage.Provider value={true}>
+      <div className="main">
+        <div className={narrow ? 'gwui-page-narrow' : 'wrap gw-stack'}>{children}</div>
+      </div>
+    </InsideAPage.Provider>
   )
 }

@@ -1744,8 +1744,8 @@ export function GroundAdminPage() {
         keeps the 600px reading width, centred under the full-width header.
       */}
       <div
-        className={`gw-bd${tab === 'chat' ? ' gwui-ci-tab-body' : ''}`}
-        style={{ maxWidth: tab === 'chat' ? undefined : 1150, width: '100%' }}
+        /* Every tab but the conversation takes the page's one content width (--ds-content, 1150px). */
+        className={`gw-bd${tab === 'chat' ? ' gwui-ci-tab-body' : ' ds-page-in'}`}
       >
 
         {/* OVERVIEW */}
@@ -1941,9 +1941,15 @@ export function GroundAdminPage() {
           <MyWorkPage
             groundId={id!}
             onAllYourReports={() => goTab('report')}
-            rest={
+            /* Everyone this page draws My work for (the lead, or a party on the page that runs it) had these two links before the
+               rebuild: a party through YourWork, the lead who does not check in as a row of her own. Both get them here. */
+            onEveryCheckIn={() => goTab('report')}
+            onWhoHasAnswered={() => goTab('checkins')}
+            rest={(part, self) => (
               <>
-                {viewerIsAParty && (
+                {/* Every check-in and Who has answered are the lead's, drawn by MyWorkPage in the Your check-ins card. */}
+                {(part === 'expected' || part === 'all') && <ContextPage ground={ground} role={isInitiator ? 'lead' : canRunThisGround ? 'admin' : 'party'} viewerUserId={user?.id} only="what-moved-to-my-work" />}
+                {self && <>{viewerIsAParty && (
           <YourWork
             groundId={id!}
             ground={ground}
@@ -1966,22 +1972,12 @@ export function GroundAdminPage() {
               .filter((p: any) => p.userId !== user?.id)
               .map((p: any) => ({ id: p.id, name: personLabel(p), email: p.email }))}
             aTeamReportComes={!!(ground as any)?.aTeamReportComes}
-            /* Both quiet links at the foot: this page's own "report" and "checkins" tabs, unchanged,
-               reached without a visible sub-tab. See the notes on these props in YourWork.tsx. */
-            onSeeEverySession={() => goTab('report')}
-            onSeeRoster={() => goTab('checkins')}
             asTheRestOfMyWork
+            part={part}
           />
-                )}
-                {isInitiator && !viewerIsAParty && (
-                  <div className="gwui-button-row">
-                    <button type="button" className="gwui-plain-link" onClick={() => goTab('report')}>Every check-in</button>
-                    <button type="button" className="gwui-plain-link" onClick={() => goTab('checkins')}>Who has answered</button>
-                  </div>
-                )}
-                <ContextPage ground={ground} role={isInitiator ? 'lead' : canRunThisGround ? 'admin' : 'party'} viewerUserId={user?.id} only="what-moved-to-my-work" />
+                )}</>}
               </>
-            }
+            )}
           />
         )}
 
@@ -2757,6 +2753,11 @@ export function GroundAdminPage() {
           <CheckInPeopleAndSetup
             ground={ground}
             user={user}
+            /* Each person's card, with the lead's note and "Change this in the chat", and what people are down as doing: moved here
+               from My work, where a member's page repeated the whole team (Hafsah, 24 November 2026). Whoever runs the check-in reads them. */
+            eachPerson={isInitiator || canRunThisGround
+              ? <ContextPage ground={ground} role={isInitiator ? 'lead' : 'admin'} viewerUserId={user?.id} only="each-person" />
+              : undefined}
             id={id!}
             navigate={navigate}
             isInitiator={isInitiator}
