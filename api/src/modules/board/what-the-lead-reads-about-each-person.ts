@@ -31,8 +31,13 @@ export type AKindOfCheckIn = 'sales' | 'collections' | 'matter';
  * or worse. On what they said (proof, a figure that changed), one check-in since is enough, because the lead's numbers rest on it; on
  * anything else, two, because one late or vague check-in is still Groundwork's to coach.
  */
+/*
+ * NOT FOR BLOCKERS (Fatima's office, 25 January 2027). Chinedu's three blockers were the Ministry not answering on a waiver; coached to say what he had
+ * tried first, the board then said "Chinedu needs a hard conversation about raising blockers with nothing tried first". Being held up by somebody
+ * outside is not a person failing, so a blocker stays coaching and never becomes a hard conversation.
+ */
 export function theCoachingThatDidNotWork(coaching: readonly ACoaching[]): ACoaching | null {
-  return [...coaching].reverse().find((c) => !c.done && !!c.since && (c.outcome === 'the same' || c.outcome === 'worse')
+  return [...coaching].reverse().find((c) => !c.done && !!c.since && c.about !== 'blockers' && (c.outcome === 'the same' || c.outcome === 'worse')
     && (c.about === 'proof' || c.about === 'changes' || (c.since.sessions?.length ?? 0) >= 2)) ?? null;
 }
 

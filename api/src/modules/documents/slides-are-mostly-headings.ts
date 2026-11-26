@@ -16,8 +16,6 @@
  * downstream knows they are looking at slide text and not at prose somebody wrote to be read.
  */
 
-/** Where PowerPoint keeps a slide. Ordered numerically, because zip order is not slide order. */
-const SLIDE_PATH = /^ppt\/slides\/slide(\d+)\.xml$/;
 
 /**
  * Said at the top of every deck this reads.
@@ -55,20 +53,7 @@ export function textFromOneSlide(xml: string): string {
   return runs.join(' ').replace(/\s+/g, ' ').trim();
 }
 
-/**
- * Slide files in the order a person would see them, each carrying its own number.
- *
- * THE NUMBER TRAVELS WITH THE FILE, and that is not tidiness. Numbering by position in the array
- * put "Slide 4" on slide ten, because a slide of pictures earlier in the deck produced no text and
- * dropped out - so every number after it pointed at the wrong slide. Seen by reading the output of
- * a real deck; the code looked correct.
- */
-export function slidesInOrder(names: string[]): { name: string; number: number }[] {
-  return names
-    .map((name) => ({ name, number: Number(SLIDE_PATH.exec(name)?.[1] ?? NaN) }))
-    .filter((x) => Number.isFinite(x.number))
-    .sort((a, b) => a.number - b.number);
-}
+/* Which slide is which, in the deck's own order, is read by documents/a-file-as-cells.ts slidesOfADeck. */
 
 /** Assembles what gets stored. Slide numbers are the deck's own, so a question can point at one. */
 export function deckToText(slides: { number: number; text: string }[]): string {

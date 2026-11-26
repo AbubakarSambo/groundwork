@@ -9585,6 +9585,8 @@ model PaymentTrackerLine {
   /// A hash of the file's bytes and the row, so a second reading of the same sheet is refused by the database.
   lineKey           String   @map("line_key")
   fileName          String   @map("file_name")
+  /// The sheet the row is on, by its own name. Null on rows kept before sheets were read.
+  sheet             String?
   rowNumber         Int      @map("row_number")
   /// The payee and the reference (or the due date) the same payment is known by, lower case.
   paymentKey        String   @map("payment_key")

@@ -19,7 +19,8 @@ import { ConversationService } from '../conversation/conversation.service';
 import { originFromTheFile, looksGeneratedByAModel, type DocumentOrigin } from './what-kind-of-thing-a-document-is';
 import { DOCUMENT_ORIGIN_PROMPT, DOCUMENT_ORIGIN_SCHEMA, DESCRIPTION_CHECK_PROMPT, DESCRIPTION_CHECK_SCHEMA } from '../conversation/prompt-library';
 import { CheckInStatus, DocumentVisibility, RecordEntryType } from '@prisma/client';
-import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
+import { textFromOneSlide, deckToText } from './slides-are-mostly-headings';
+import { slidesOfADeck } from './a-file-as-cells';
 import { looksLikeAConversation, THE_ASSUMPTION_WHEN_UPLOADING } from './a-conversation-belongs-to-the-people-in-it';
 import { aReceiptOrAnInvoice } from './a-receipt-is-not-a-conversation';
 import { weCouldNotReadIt } from './a-document-we-could-not-read-is-not-a-source';
@@ -252,8 +253,10 @@ export class DocumentsService {
     } catch {
       throw new BadRequestException('That presentation could not be opened. If it is an older .ppt, save it as .pptx and try again.');
     }
+    /* In the order the deck shows them (presentation.xml), numbered by that order, so "Slide 4" is the fourth slide a person sees even after
+       slides were moved (Dangote brief, change 1: a change is cited by its slide). */
     const slides = await Promise.all(
-      slidesInOrder(Object.keys(zip.files)).map(async ({ name, number }) => ({
+      (await slidesOfADeck(zip)).map(async ({ name, number }) => ({
         number,
         text: textFromOneSlide((await zip.file(name)!.async('string')) ?? ''),
       })),
@@ -509,6 +512,18 @@ export class DocumentsService {
      *
      * Timed, because "it feels slow" is not a measurement and neither is "it feels faster".
      */
+    /*
+     * THE SAME FILE TWICE IS ONE FILE (Fatima's Dangote office, 23 November 2026). Chinedu sent the May demurrage tracker twice and Ibrahim the
+     * March report twice; each was filed again and read back as new, so a month could be counted twice. The same words from the same person on
+     * the same check-in are the copy already kept: nothing is stored again, and the caller is told so (`alreadyHad`, with the day it came).
+     */
+    if (content.trim()) {
+      const same = await Promise.resolve().then(() => this.prisma.groundDocument.findFirst({
+        where: { groundId, participantId: participant.id, content },
+        select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, uploaderNote: true, visibility: true, participantId: true, holds: true, content: true },
+      })).catch(() => null);
+      if (same && (same as any).content === content) { const { content: _kept, ...shape } = same as any; return { ...shape, alreadyHad: true, firstSentAt: same.createdAt }; }
+    }
     /* The only one that is cheap and decides a column the row is created with. */
     const origin = await this.decideOrigin(file, content, isConversation);
 

@@ -71,11 +71,13 @@ export function withTheNamedAdded(now: string, prefilled: string[]): string {
    */
   const words = (l: string) => l.split(',')[0].split(/\s+/).filter((w) => w && !w.includes('@') && !/^\+?[\d()-]{6,}$/.test(w)).map((w) => w.toLowerCase())
   const sameName = (a: string[], b: string[]) => !!a.length && !!b.length && (a.length <= b.length ? a : b).every((w, i) => w === (a.length <= b.length ? b : a)[i])
-  const partsOf = (l: string) => l.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean)
+  /* Word by word, not part by part: the conversation's "Catherine" is in "Catherine Mwangi, catherine@x.com, +254 711 000 001" (an evaluation lead,
+     23 November 2026: she gave the three emails in the chat and nobody was invited, because "catherine" was compared with "catherine mwangi"). */
+  const tokensOf = (l: string) => l.split(/[\s,]+/).map((x) => x.trim().toLowerCase()).filter(Boolean)
   const lines = now.split('\n').map((l) => l.trim()).filter(Boolean)
   const kept = lines.map((l) => {
     const fuller = prefilled.find((p) => sameName(words(p), words(l)))
-    return fuller && partsOf(l).every((x) => partsOf(fuller).includes(x)) ? fuller : l
+    return fuller && tokensOf(l).every((x) => tokensOf(fuller).includes(x)) ? fuller : l
   })
   const have = lines.map(words)
   return [...kept, ...prefilled.filter((p) => !have.some((h) => sameName(h, words(p))))].join('\n')

@@ -353,7 +353,7 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   },
   {
     key: 'what_is_due',
-    does: 'What is due on your own commitments and to-dos, soonest first, and how many requests wait for your decision',
+    does: 'What is due on your own commitments and to-dos, soonest first, and how many requests wait for your decision. Not bills before a legislature, and not what the team reported',
     writes: 'nothing',
     ordered: 'Above what_next, which names one thing; this lists what has a date.',
     owns: ['what is due?', 'what is due this week', 'what is overdue', 'what deadlines do I have'],
@@ -597,7 +597,7 @@ export const THE_GUIDE: Guide[] = [
     onScreen: 'On your Today page, press See everything waiting for you to decide. Press Approve, or press Decline and say why.',
     askCanDoIt: true,
   },
-  { key: 'what_is_due', section: 2, who: ['member'], does: 'ask what is due', example: 'What is due this week?' },
+  { key: 'what_is_due', section: 2, who: ['member'], does: 'ask what is due on your own commitments and to-dos, not bills before a legislature or what the team reported', example: 'What is due this week?' },
   { key: 'who_is_away', section: 4, who: ['member'], does: 'ask who is off', example: 'Who is off next week?' },
   {
     key: 'add_a_to_do', doneByTellingMe: true, section: 2, who: ['member'], does: 'put something on your own to-do list', example: 'Remind me to book the room on Friday.',

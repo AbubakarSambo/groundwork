@@ -11,6 +11,7 @@
  * Reuses what is already there: the sheet is read to text by the one reader uploads use; the approval is the spend request (`spend_requests`) and the
  * correspondence she forwarded; the obligations on her check-ins (`obligations`) are linked by the payee; a question is recorded as a gap so a reply closes it.
  */
+import { readTheCells } from '../documents/a-file-as-cells';
 import { sayMoney, sayTotals, totalsByCurrency, toDecimalText, fromDecimal } from './the-money';
 import { lineKeyOf, payeeKey, readTheTrackerReadingItsHeadings, referenceKey, type AHeadingReader, type ATrackerLine } from './the-payments-tracker';
 import { hasProof, isPaidWithProof, SOUNDS_LIKE_AN_APPROVAL, SOUNDS_LIKE_PROOF, theDiscrepancies, type ADiscrepancy, type ALineOnRecord, type ALinks, type ARef } from './the-payments-reconcile';
@@ -96,18 +97,20 @@ export interface ThePaymentsPorts {
 const lineOnRecord = (r: any): ALineOnRecord => ({
   id: r.id, paymentKey: r.paymentKey, payee: r.payee, reference: r.reference ?? null, amount: fromDecimal(r.amount, r.currency ?? null), owner: r.owner ?? null,
   dueOn: r.dueOn ? new Date(r.dueOn) : null, statedStatus: r.statedStatus ?? null, statedApproval: r.statedApproval ?? null, evidence: r.evidence ?? null, confirmation: r.confirmation ?? null,
-  fileName: r.fileName, rowNumber: r.rowNumber, receivedAt: new Date(r.receivedAt), sentByUserId: r.sentByUserId ?? null,
+  fileName: r.fileName, sheet: r.sheet ?? null, rowNumber: r.rowNumber, receivedAt: new Date(r.receivedAt), sentByUserId: r.sentByUserId ?? null,
 });
 
 /** Keeps the lines of one sheet. A line already kept (the same sheet read again) is not kept twice. Returns the keys of the payments it touched. */
 export async function keepTheLines(prisma: any, a: { organizationId: string; principalUserId: string; item: AMaterialItem; sentByUserId: string | null; now: Date; readHeadings?: AHeadingReader | null }): Promise<{ read: ATrackerLine[]; unreadable: { rowNumber: number; because: string }[]; fresh: number }> {
-  const { lines, unreadable } = await readTheTrackerReadingItsHeadings(a.item.text, a.readHeadings);
+  /* The workbook's own cells where its bytes are kept, so a row is cited by its sheet and its Excel row (documents/a-file-as-cells.ts). */
+  const cells = a.item.bytes ? await readTheCells(a.item.bytes, a.item.fileName, a.item.mimeType) : null;
+  const { lines, unreadable } = await readTheTrackerReadingItsHeadings(a.item.text, a.readHeadings, cells);
   let fresh = 0;
   for (const l of lines) {
     try {
       await prisma.paymentTrackerLine.create({
         data: {
-          organizationId: a.organizationId, principalUserId: a.principalUserId, lineKey: lineKeyOf(a.item.hash, a.item.fileName, l.rowNumber), fileName: a.item.fileName, rowNumber: l.rowNumber,
+          organizationId: a.organizationId, principalUserId: a.principalUserId, lineKey: lineKeyOf(a.item.hash, a.item.fileName, l.rowNumber, l.sheet), fileName: a.item.fileName, sheet: l.sheet ?? null, rowNumber: l.rowNumber,
           paymentKey: l.paymentKey, payee: l.payee, reference: l.reference, description: l.description, amount: l.amount ? toDecimalText(l.amount.minor) : null, currency: l.amount?.currency ?? null,
           owner: l.owner, dueOn: l.dueOn, statedStatus: l.statedStatus, statedApproval: l.statedApproval, evidence: l.evidence, confirmation: l.confirmation, rawRow: l.raw as any, sentByUserId: a.sentByUserId, receivedAt: a.item.receivedAt,
         },

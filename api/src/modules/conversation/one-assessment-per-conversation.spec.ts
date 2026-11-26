@@ -117,7 +117,9 @@ describe('the assessment of a check-in', () => {
     const stored = theAssessmentIn(w.writes[0].data.sessionReport)!;
     expect(stored).toMatchObject({ kind: 'assessment', version: 1, about: { who: 'Amani Wekesa', sessionNumber: 2, howItEnded: 'finished by the person' } });
     expect(whatTheyPromisedThemselves(stored)).toEqual([{ action: 'I will call Westgate on Friday', clear: null, outcome: null, when: 'on Friday' }]);
-    expect(whatTheyAreWaitingOn(stored)).toEqual([{ what: 'the price list', onName: 'Grace', onLabel: null, status: 'WAITING', then: null, triedSaid: null, takenFurther: null, dueSaid: null, sinceDay: null, namedTheThing: true }]);
+    /* With the item's own id since 24 November 2026, so a wait the next assessment links to it carries the same row on (the-same-wait-is-one-row). */
+    expect(whatTheyAreWaitingOn(stored)).toEqual([expect.objectContaining({ what: 'the price list', onName: 'Grace', onLabel: null, status: 'WAITING', then: null, triedSaid: null, takenFurther: null, dueSaid: null, sinceDay: null, namedTheThing: true })]);
+    expect(Object.keys(whatTheyAreWaitingOn(stored)[0]).filter((k) => !['what', 'onName', 'onLabel', 'status', 'then', 'triedSaid', 'takenFurther', 'dueSaid', 'sinceDay', 'namedTheThing', 'id', 'previousItem'].includes(k))).toEqual([]);
   });
 
   /* Assessment test, 2 November: every second session was a missed Thursday, so "last time" was an empty assessment and no run of

@@ -193,7 +193,45 @@ describe('what one person forwards is never in another person\'s check-in', () =
   });
 });
 
+describe('their own reply, with nothing attached', () => {
+  it('a new mail with a check-in open is a message to Ask, not an answer in the check-in', async () => {
+    const w = world();
+    const ask: any = { ask: jest.fn(async () => ({ blocks: [{ type: 'text', body: 'Three payments are overdue.' }], composedBy: 'model', lane: 'question' })) };
+    (w.service as any).ask = ask;
+    w.conversation.sendMessage = jest.fn();
+    expect(await w.service.handle(mail({}, { subject: 'Payments', text: 'Which payments are overdue?' }))).toBe('ask');
+    expect(w.conversation.sendMessage).not.toHaveBeenCalled();
+    expect(w.sent[0].text).toContain('Three payments are overdue.');
+  });
+
+  it('is their answer in the check-in, as a WhatsApp message is, and is not filed as a document', async () => {
+    const w = world();
+    w.conversation.open = jest.fn(async (id: string) => ({ checkInId: id }));
+    w.conversation.sendMessage = jest.fn(async () => ({ reply: 'Thank you. When will the transporter confirm the count?' }));
+    expect(await w.service.handle(mail({}, { subject: 'Re: Your check-in', text: 'We are recounting with the transporter.\n\nOn Mon, 23 Nov 2026, Groundwork wrote:\n> What is the plan?' }))).toBe('kept');
+    expect(w.conversation.sendMessage).toHaveBeenCalledWith('ci-amina', 'u-amina', 'We are recounting with the transporter.');
+    expect(w.uploads).toHaveLength(0);
+    expect(w.sent[0].text).toContain('When will the transporter confirm the count?');
+  });
+});
+
 describe('with no check-in open', () => {
+  it('answers their own words through Ask, as WhatsApp does, and still keeps a forward as material', async () => {
+    const w = world({ open: {} });
+    const assistant: any = { respondOnWhatsApp: jest.fn(async () => ({ blocks: [{ type: 'text', body: 'I can set that up. Shall I ask Eric each month?' }], composedBy: 'model', lane: 'setup' })) };
+    (w.service as any).assistant = assistant;
+    expect(await w.service.handle(mail({}, { subject: 'Payments', text: 'Please get monthly payment updates from Eric.\n\nOn Mon, 9 Nov 2026, Assistant wrote:\n> earlier' }))).toBe('ask');
+    expect(assistant.respondOnWhatsApp).toHaveBeenCalledWith('org-1', 'p-amina', 'Please get monthly payment updates from Eric.');
+    expect(w.sent[0].text).toContain('Shall I ask Eric each month?');
+    expect(await w.service.handle(mail({}, { email_id: 'em-2' }))).toBe('nothing open');
+  });
+  it('asks through the same door as the panel when they sign in, so a lead with no roster entry is still answered', async () => {
+    const w = world({ open: {} });
+    const ask: any = { ask: jest.fn(async () => ({ blocks: [{ type: 'text', body: 'Shall I set it up?' }], composedBy: 'model', lane: 'setup' })) };
+    (w.service as any).ask = ask;
+    expect(await w.service.handle(mail({}, { subject: 'Payments', text: 'Get updates from Eric.' }))).toBe('ask');
+    expect(ask.ask).toHaveBeenCalledWith({ userId: 'u-amina', email: 'amina@example.com', organizationId: 'org-1' }, { message: 'Get updates from Eric.' });
+  });
   it('keeps the original, says so, and files it when the same thing is sent again once one is open', async () => {
     const w = world({ open: {} });
     expect(await w.service.handle(mail())).toBe('nothing open');

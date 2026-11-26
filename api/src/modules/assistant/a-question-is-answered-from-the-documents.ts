@@ -31,6 +31,7 @@ import { isOneOfThem, sayThePeopleTheyLead, thePeopleTheAskerIsResponsibleFor, t
 import { theGoalChangesOn, theChangeThatMadeThisGoal, theChangeAsASentence } from '../grounds/a-goal-changed-by-its-lead';
 import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
 import { whichRoundIsOpen, inTheTeamsNumbering } from '../board/which-round-is-open';
+import { whoStillOwesAnAnswer, type SomebodyToFollowUp } from './follow-up-with-whoever-has-not-answered';
 
 /** Whether a message asks something, rather than tells something. Read by its shape, never by a model. */
 const STARTS_A_QUESTION = /^\s*(?:(?:and|so|but|also|please|ok|okay)[\s,]+)?(?:what|what's|whats|when|where|which|who|whom|whose|why|how|is|are|was|were|does|do|did|can|could|will|would|should|has|have|according to|tell me|do you know)\b/i;
@@ -60,6 +61,9 @@ Rules:
 - Write plain, full sentences that a person with basic English understands. Speak to the person as "you". No lists, no headings, no colons joining pieces.
 - A senior person's year-end record says how sure each line is in square brackets. Only a line marked PROVEN is achieved. A line marked SAID, DISPUTED, what a forwarded note SAYS, or a RECOLLECTION is not proven: say whose word it is and what would prove it, and never state it as done. When two records are about the same matter, say how they fit together, with the day of each ("Brian said in March it was signed, and the contract dated 2 April shows it").
 - When asked which claims are weak, or what leadership will challenge, those are the lines only said, disputed or open, and the decisions waiting. When asked what was achieved, those are only the PROVEN lines.
+- Give where things stand now: when a later line or file says something changed (an invoice now paid, a dispute resolved, a new figure), give the latest and say it changed and when; never give an older figure or status as the current one.
+- When asked whether something was counted twice, look for the same item (the same invoice, case, bill, delay or figure) reported in more than one month, file or person, say which you found and how each was counted, and say plainly if nothing was counted twice.
+- A promise to send something ("I will send our trackers") is kept when that person's "Files ... sent here" line, or a later line, shows it arrived: never call it outstanding then.
 - When asked how somebody is doing, or anything that compares or judges the people on a team, in any words (who to fire, let go or exit, who engaged and who did not, who was creative, who earned a reward, who is best or worst, what a person has failed to deliver): if the people it is about are named in "THE PEOPLE YOU ARE RESPONSIBLE FOR", answer it, the way a sharp, fair manager would, from the record and nothing else.
   - For each person, name their check-ins with the day of each, say in your own words what they said, and say what the proof shows. People forget, exaggerate and are biased, the person asking included, so trust only what is proven: a claim with nothing to show it is their word, so say plainly that it has no proof, and never count it as done.
   - Saying nothing, missing check-ins, or answering without anything specific is a pattern too: name each time it happened, with the day. A session the record says is still open is not missed. One miss is one instance, not a pattern.
@@ -114,6 +118,8 @@ export interface ADocumentToAnswerFrom {
   content: string;
   /** What may stand in quotation marks from it, where that is not the whole of it: from the record, only what was said word for word. */
   mayBeQuoted?: string[];
+  /** The day it was sent, so an older file is never given as the latest word (Fatima's office, January 2027). */
+  sentOn?: Date | null;
 }
 
 /** The documents this person may open: on the named check-in, or on every check-in they are in. */
@@ -136,13 +142,13 @@ export async function theDocumentsTheyMayOpen(
     const docs = ((await prisma.groundDocument?.findMany?.({
       where: documentWhereFor(g.id, reader, contextEnabled),
       orderBy: { createdAt: 'desc' },
-      select: { fileName: true, content: true, isConversation: true, ...WITH_ITS_READING },
-    }).catch?.(() => [])) ?? []) as { fileName: string; content: string | null; synthesis?: string | null; isConversation?: boolean }[];
+      select: { fileName: true, content: true, isConversation: true, createdAt: true, ...WITH_ITS_READING },
+    }).catch?.(() => [])) ?? []) as { fileName: string; content: string | null; synthesis?: string | null; isConversation?: boolean; createdAt?: Date }[];
     for (const d of docs) {
       if (d.isConversation || !(d.content ?? '').trim()) continue;
       /* The whole of it, or the reading of the whole of a long one; a quotation from a reading is checked against the document's own words. */
       const words = theWordsToRead(d);
-      out.push({ fileName: d.fileName, content: words, ...(words !== d.content ? { mayBeQuoted: [String(d.content)] } : {}) });
+      out.push({ fileName: d.fileName, content: words, sentOn: d.createdAt ?? null, ...(words !== d.content ? { mayBeQuoted: [String(d.content)] } : {}) });
     }
   }
   return out;
@@ -181,6 +187,8 @@ export async function theRecordTheyMayRead(
   })).catch(() => [])) ?? []) as { id: string; label: string; initiatorId: string | null; kindOfWork?: unknown; workStages?: unknown; cadence?: string | null; cadenceDays?: number[] | null; cadenceAnchorDay?: number | null; workingDays?: number[] | null; groundAuditLog?: unknown }[];
   const out: ADocumentToAnswerFrom[] = [];
   const judgements = await thePersonJudgementsAreOn(prisma, input.organizationId);
+  /* Who has not answered what is open, on the check-ins this reader runs: the one count the follow-up uses (Fatima's "Who hasn't sent their reports?" named only the aide). */
+  const owing: SomebodyToFollowUp[] = await whoStillOwesAnAnswer(prisma, input.organizationId, input.userId).catch(() => [] as SomebodyToFollowUp[]);
   for (const g of grounds) {
     const isLead = g.initiatorId === input.userId;
     const people = ((await Promise.resolve(prisma.groundParticipant?.findMany?.({
@@ -203,6 +211,10 @@ export async function theRecordTheyMayRead(
        said: Ask told a lead "the team checks in every Monday" of a check-in set to Monday and Thursday (assessment test, 2 November). */
     /* What day it is, so a goal set this morning and a session that opened today are read as new (release test, 22 November 2026, N5). */
     const lines: string[] = [...(g.cadence ? [`HOW OFTEN PEOPLE CHECK IN: ${howOftenItRuns(g)}.`] : []), `TODAY IS ${DAY_SAID(now)}.`];
+    if (isLead) {
+      const here = owing.filter((o) => o.groundId === g.id).map((o) => o.name);
+      lines.push(here.length ? `WHO HAS NOT ANSWERED WHAT IS OPEN NOW: ${here.join(', ')}.` : 'WHO HAS NOT ANSWERED WHAT IS OPEN NOW: nobody.');
+    }
     const whoSaid = (participantId: string, said?: string) => { const p = people.find((x) => x.id === participantId); return !p ? said || 'somebody' : p.userId === input.userId ? 'you' : nameOf(p); };
     /* What the lead said in setup first: it frames the check-in, and it is short, so the team's record never pushes it out (assessment
        test, 2 November: "What rules did I set for the team?" read "the documents do not say"). The one reader decides who reads it. */
@@ -250,8 +262,13 @@ export async function theRecordTheyMayRead(
       /* What is still open first and whole, then the newest of the rest. */
       const open = theirs.filter((f) => STILL_OPEN.has(f.section));
       const rest = theirs.filter((f) => !STILL_OPEN.has(f.section)).slice(-MOST_FACTS_FOR_ONE);
+      /* The files they sent here, by name and day: sending the reports is answering, before any conversation closes (Fatima's office: Finance
+         sent four reconciliations and Ask said nobody in Finance had responded). Who may open each file is decided where the files are read. */
+      const files: any[] = (await Promise.resolve(prisma.groundDocument?.findMany?.({ where: { groundId: g.id, participantId: p.id, isConversation: false, ...(p.userId === input.userId ? {} : { visibility: { not: 'OWN' } }) }, select: { fileName: true, createdAt: true }, orderBy: { createdAt: 'asc' } })).catch(() => [])) ?? [];
+      /* Above their promises, so a promise to send something is read against what arrived ("I will send our trackers", and eleven trackers sent). */
+      if (files.length) lines.push(`- Files ${p.userId === input.userId ? 'you' : nameOf(p)} sent here, which keep any promise to send them: ${files.map((d) => `${d.fileName} (${DAY_SAID(d.createdAt)})`).join(', ')}.`);
       for (const f of [...open, ...rest]) lines.push(aFactAsALine(f, DAY_SAID, whoSaid(f.participantId, f.who)));
-      if (!theirs.length) lines.push('- Nothing on record yet.');
+      if (!theirs.length && !files.length) lines.push('- Nothing on record yet.');
     }
     const items = ((await Promise.resolve(prisma.workItem?.findMany?.({
       where: { groundId: g.id, ...(isLead ? {} : { ownerParticipantId: { in: people.map((p) => p.id) } }) },
@@ -411,7 +428,7 @@ export async function answerFromTheDocuments(
   }
   const ask = (also = '') => deps.engine.extract(
     ANSWER_FROM_THE_DOCUMENTS_PROMPT,
-    [{ role: 'user', content: `${given.map((d) => `DOCUMENT "${d.fileName}":\n${quotedAsData(d.content)}`).join('\n\n')}\n\nQUESTION: ${input.question.trim()}${also}` }],
+    [{ role: 'user', content: `${given.map((d) => `DOCUMENT "${d.fileName}"${d.sentOn ? `, sent ${DAY_SAID(d.sentOn)}` : ''}:\n${quotedAsData(d.content)}`).join('\n\n')}\n\nQUESTION: ${input.question.trim()}${also}` }],
     ANSWER_SCHEMA,
     /*
      * ON THE MODEL ASK TALKS WITH, GIVEN ROOM TO WORK OUT A SUM (3 November 2026). It ran on the report model with its own thinking and

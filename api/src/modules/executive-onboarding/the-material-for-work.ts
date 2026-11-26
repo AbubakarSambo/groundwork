@@ -7,10 +7,10 @@
 import { CONTACT_PREFIX } from './a-team-members-reply';
 import { QUIET_FOR_MS } from './the-intake';
 
-export interface AMaterialItem { id: string; kind: string; fileName: string; mimeType: string; text: string | null; state: string; unsure: string[]; insideArchive: string | null; receivedAt: Date; hash: string | null }
+export interface AMaterialItem { id: string; kind: string; fileName: string; mimeType: string; text: string | null; state: string; unsure: string[]; insideArchive: string | null; receivedAt: Date; hash: string | null; /** The file itself, where it is kept, so a workbook can be read as its cells (documents/a-file-as-cells.ts). */ bytes?: Buffer | null }
 export interface ABatchForWork { id: string; organizationId: string; principalUserId: string; fromUserId: string; fromAddress: string; channel: 'email' | 'whatsapp'; sender: { kind: 'principal' | 'delegate' | 'contact'; contactId: string | null }; items: AMaterialItem[] }
 
-const asItem = (r: any): AMaterialItem => ({ id: r.id, kind: r.kind, fileName: r.fileName, mimeType: r.mimeType, text: r.text ?? null, state: r.state, unsure: Array.isArray(r.unsure) ? r.unsure : [], insideArchive: r.insideArchive ?? null, receivedAt: new Date(r.receivedAt), hash: r.hash ?? null });
+const asItem = (r: any): AMaterialItem => ({ id: r.id, kind: r.kind, fileName: r.fileName, mimeType: r.mimeType, text: r.text ?? null, state: r.state, unsure: Array.isArray(r.unsure) ? r.unsure : [], insideArchive: r.insideArchive ?? null, receivedAt: new Date(r.receivedAt), hash: r.hash ?? null, bytes: r.bytes ? Buffer.from(r.bytes) : null });
 
 /** The batches that have gone quiet and have not been answered, with what each holds. The same test as the first picture uses, so the two agree on "quiet". */
 export async function quietBatchesForWork(prisma: any, now: Date): Promise<ABatchForWork[]> {

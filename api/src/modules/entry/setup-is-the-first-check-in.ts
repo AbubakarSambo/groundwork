@@ -20,6 +20,7 @@ export const THE_FIRST_UPDATE_TOO = [
   'Ask for that once you know what the work is, unless they have already told you, in these words or close to them: "Where do things stand today, as far as you know? If your team knows better, say so and their first check-in will ask them."',
   'If they say the details are their team\'s, or they do not know, that is their answer: their team\'s check-ins will ask for those details, so say that in a few words and move on.',
   'What they set this up to find out is never asked of them: when they want to know what is owed, what is about to slip or who is on what, that is what their team\'s check-ins will find, so do not ask them for the list.',
+  'When they set this up to hear from their team what is happening ("tell me what\'s happening and what needs my attention"), where things stand is exactly what they want to find out: do not ask them it at all.',
   'Never ask what they have already said.',
 ].join(' ');
 

@@ -137,6 +137,11 @@ export function whatWeSayWhenItWasKept(first: string, checkIn: string, files: st
   return lines.join('\n');
 }
 
+/** Their reply was an answer in the check-in, as a WhatsApp message is: the check-in's own reply, and how to carry on. */
+export function whatWeSayToTheirAnswer(first: string, reply: string): string {
+  return [hello(first), '', reply.trim(), '', 'You can just reply to this email.'].join('\n');
+}
+
 /** Several check-ins are open, so nothing is added until the person says which. What they sent is kept. */
 export function whatWeSayWhenWeNeedToKnowWhich(first: string, labels: string[]): string {
   return [

@@ -15,7 +15,7 @@ import { sameAmount, sayMoney, type AMoney } from './the-money';
 export interface ARef { id: string; fileName: string }
 export interface ALineOnRecord {
   id: string; paymentKey: string; payee: string; reference: string | null; amount: AMoney | null; owner: string | null; dueOn: Date | null;
-  statedStatus: string | null; statedApproval: string | null; evidence: string | null; confirmation?: string | null; fileName: string; rowNumber: number; receivedAt: Date; sentByUserId: string | null;
+  statedStatus: string | null; statedApproval: string | null; evidence: string | null; confirmation?: string | null; fileName: string; sheet?: string | null; rowNumber: number; receivedAt: Date; sentByUserId: string | null;
 }
 export interface ASpendOnRecord { id: string; amount: AMoney; status: string; paidOn: Date | null; evidenceGiven: string[] }
 /** What the record holds against one payment. `confirmation` is the bank's own confirmation the sheet gives for its latest line. */
@@ -42,7 +42,7 @@ export const hasApproval = (l: ALinks): boolean => l.spend?.status === 'approved
 export const isPaidWithProof = (latest: ALineOnRecord, l: ALinks): boolean => latest.statedStatus === 'paid' && hasProof(l);
 
 const amountKey = (m: AMoney | null) => (m ? `${m.minor}${m.currency ? m.currency : ''}` : 'none');
-const inFile = (l: ALineOnRecord) => `${l.fileName}, row ${l.rowNumber}`;
+const inFile = (l: ALineOnRecord) => `${l.fileName}, ${l.sheet ? `sheet ${l.sheet}, ` : ''}row ${l.rowNumber}`;
 const whereIt = (l: ALineOnRecord) => `(${inFile(l)})`;
 
 export function groupByPayment(lines: ALineOnRecord[]): Map<string, ALineOnRecord[]> {

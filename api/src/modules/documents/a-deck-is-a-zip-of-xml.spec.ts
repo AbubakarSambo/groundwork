@@ -1,4 +1,5 @@
-import { slidesInOrder, textFromOneSlide, deckToText, WHAT_A_DECK_IS } from './slides-are-mostly-headings';
+import { textFromOneSlide, deckToText, WHAT_A_DECK_IS } from './slides-are-mostly-headings';
+import { slidesOfADeck } from './a-file-as-cells';
 const JSZip = require('jszip') as typeof import('jszip');
 
 /** A real .pptx, built here, so this tests a zip of XML and not a fixture of my own assumptions. */
@@ -16,7 +17,7 @@ async function deck(slides: Record<number, string[]>): Promise<Buffer> {
 async function read(buf: Buffer): Promise<string> {
   const zip = await JSZip.loadAsync(buf);
   const slides = await Promise.all(
-    slidesInOrder(Object.keys(zip.files)).map(async ({ name, number }) => ({
+    (await slidesOfADeck(zip)).map(async ({ name, number }) => ({
       number,
       text: textFromOneSlide(await zip.file(name)!.async('string')),
     })),
@@ -73,7 +74,19 @@ describe('a deck is a zip of xml', () => {
   });
 
   it('ignores everything in the zip that is not a slide', async () => {
-    expect(slidesInOrder(['ppt/slides/slide1.xml', 'docProps/app.xml', 'ppt/notesSlides/notesSlide1.xml']))
-      .toEqual([{ name: 'ppt/slides/slide1.xml', number: 1 }]);
+    const zip = new JSZip();
+    for (const n of ['ppt/slides/slide1.xml', 'docProps/app.xml', 'ppt/notesSlides/notesSlide1.xml']) zip.file(n, '<x/>');
+    expect(await slidesOfADeck(zip)).toEqual([{ name: 'ppt/slides/slide1.xml', number: 1 }]);
+  });
+
+  it('numbers slides in the order the deck shows them, not by their file names (a slide moved to the front is slide 1)', async () => {
+    const zip = new JSZip();
+    zip.file('ppt/presentation.xml', '<p:presentation xmlns:p="y" xmlns:r="r"><p:sldIdLst><p:sldId id="256" r:id="rId3"/><p:sldId id="257" r:id="rId2"/></p:sldIdLst></p:presentation>');
+    zip.file('ppt/_rels/presentation.xml.rels', '<Relationships><Relationship Id="rId2" Target="slides/slide1.xml"/><Relationship Id="rId3" Target="slides/slide2.xml"/></Relationships>');
+    zip.file('ppt/slides/slide1.xml', '<p:sld xmlns:a="x" xmlns:p="y"><a:t>Made first, now second</a:t></p:sld>');
+    zip.file('ppt/slides/slide2.xml', '<p:sld xmlns:a="x" xmlns:p="y"><a:t>Moved to the front</a:t></p:sld>');
+    const out = await read(await zip.generateAsync({ type: 'nodebuffer' }));
+    expect(out).toContain('Slide 1: Moved to the front');
+    expect(out).toContain('Slide 2: Made first, now second');
   });
 });

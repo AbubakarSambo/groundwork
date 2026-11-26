@@ -65,6 +65,8 @@ export function looksLikeAConversation(fileName: string, content: string): boole
   const opening = (content ?? '').slice(0, 2_000).split('\n').filter((l) => l.trim());
   if (opening.length < 6) return false;
   /* "Total:" and "VAT:" are the fields of a receipt, not people speaking. */
-  const speakerLines = opening.filter((l) => /^\s*[A-Z][\w .'-]{1,30}\s*:/.test(l) && !A_FIELD_OF_A_RECEIPT.test(l)).length;
+  /* A speaker is a name, and a name has no digits: "Week of 5 January:" opens a line of a weekly report, and eleven National Assembly and mill
+     reports were kept as conversations and left out of every answer (Fatima's office, 23 November 2026). */
+  const speakerLines = opening.filter((l) => /^\s*[A-Z][A-Za-z .'-]{1,30}\s*:/.test(l) && !A_FIELD_OF_A_RECEIPT.test(l)).length;
   return speakerLines / opening.length >= 0.5;
 }

@@ -804,9 +804,12 @@ export function thePreviousWithItsCorrections(previous: TheAssessment, correctio
 const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
 
 /** The waits, in the shape the waits writer (extractDependencies) always took. */
-export function whatTheyAreWaitingOn(a: TheAssessment | null): { what: string; onName: string | null; onLabel: string | null; status: string; then: string | null; triedSaid: string | null; takenFurther: boolean | null; dueSaid: string | null; sinceDay: string | null; namedTheThing?: boolean }[] {
+export function whatTheyAreWaitingOn(a: TheAssessment | null): { what: string; onName: string | null; onLabel: string | null; status: string; then: string | null; triedSaid: string | null; takenFurther: boolean | null; dueSaid: string | null; sinceDay: string | null; namedTheThing?: boolean; id?: string | null; previousItem?: string | null }[] {
   return (a?.blockers ?? []).map((b) => ({
     what: text(b.what) ?? text(b.words) ?? '',
+    /* The model's own reading that this is the same wait as one last time, so the writer carries that wait on instead of starting another. */
+    ...(text((b as any).id) ? { id: text((b as any).id) } : {}),
+    ...(text((b as any).previousItem) ? { previousItem: text((b as any).previousItem) } : {}),
     onName: text(b.onName), onLabel: text(b.onLabel),
     status: text(b.status) ?? 'WAITING',
     then: text(b.then), triedSaid: text(b.triedSaid), takenFurther: typeof b.takenFurther === 'boolean' ? b.takenFurther : null, dueSaid: text(b.dueSaid),

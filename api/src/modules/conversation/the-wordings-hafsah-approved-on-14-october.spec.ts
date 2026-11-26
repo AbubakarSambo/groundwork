@@ -14,7 +14,8 @@ const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
 
 describe('the first question for each situation, as Hafsah approved it', () => {
   it.each([
-    ['TEAM_UPDATES', 'What is the one thing you want to ask them? They will answer exactly what you write.'],
+    /* Changed 23 November 2026 by Hafsah's evaluation brief ("suggests relevant reporting areas without requiring configuration"; fail if the lead must write the questions). */
+    ['TEAM_UPDATES', 'I will ask each of them what moved this week against what they own, what changed, what is in their way, and what needs your attention. Is that right, or is there something else you want to hear each week?'],
     ['CONTRACT_REVIEW', 'What are you about to sign, and who is it with?'],
     ['WORKPLAN_BUDGET', 'What is the plan for, and what money and people do you actually have for it?'],
     ['BOARD_STRATEGY', 'Who is on the leadership team, and what is the big question you have to decide?'],

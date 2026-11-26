@@ -18,9 +18,11 @@ describe('the opening clause has a shape', () => {
     expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).toMatch(/the question itself, with nothing in front of it/);
   });
 
-  it('and shows four turns doing it', () => {
+  it('and shows three turns doing it', () => {
     const turns = OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE.match(/They: "/g) ?? [];
-    expect(turns.length).toBe(4);
+    /* Three since 24 November 2026: the Kano restock turn was said word for word to Nafiu, whose work was in Kano, as its earlier form was to Hassan. */
+    expect(turns.length).toBe(3);
+    expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).not.toContain('How many shops ran out before the last restock came?');
     /* Each one answers a line from the conversation this was written from. */
     expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).toContain('Telling them is the part that makes those real.');
     /* The fourth turn used to answer "Honestly I do not know" with "That is a real answer and it goes down as it is."

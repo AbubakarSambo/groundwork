@@ -1,3 +1,4 @@
+import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { theQuietHoursNow } from '../../common/the-clock';
 import { pauseThoseNotLetInWithinAWeek } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
@@ -233,6 +234,9 @@ export class GroundsCron implements OnApplicationBootstrap {
 
       for (const p of due) {
         try {
+          /* The link lasts from the day it is sent, not the day the lead set it up: Fatima set up 2027's weekly check-ins on 22 November and
+             every invitation of 4 January arrived already expired (her office, 23 November 2026). Same token, a fresh expiry. */
+          await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { inviteTokenExpiresAt: inviteExpiryFrom(now) } });
           await this.email.sendTheInviteThisGroundSends(
             p.ground,
             p.email,

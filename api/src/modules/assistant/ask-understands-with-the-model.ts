@@ -16,7 +16,7 @@
  * the one reader of the assessments (a-question-is-answered-from-the-documents.ts).
  */
 
-export type WhatTheyMean = 'question' | 'correction' | 'update' | 'agreement' | 'greeting' | 'thanks' | 'finished' | 'delegate' | 'help' | 'how_to' | 'wants' | 'report' | 'arrangement' | 'other';
+export type WhatTheyMean = 'question' | 'correction' | 'update' | 'agreement' | 'greeting' | 'thanks' | 'finished' | 'delegate' | 'help' | 'how_to' | 'wants' | 'report' | 'follow_up' | 'arrangement' | 'other';
 
 export interface TheMessageUnderstood {
   kind: WhatTheyMean;
@@ -46,6 +46,7 @@ Say which kind it is:
 - how_to: they ask how to do something in Groundwork itself, the product: where to find it, which button to press, or how to get it done here ("how do I add someone?", "where do I change my number?", "how can I share the report with my team?"). A question about the organisation's own rules or ways of working ("how do we handle expenses?", "what is our leave policy?") is a question, not this.
 - wants: they want one of the things in the list below done for them now, in any words, however short ("I want to apply for leave", "can I get 3 days off?", "get me updates from my team", "my list", "make the Q4 one fortnightly"). Saying they have a question for somebody else, or want to ask somebody something, is wants, because Groundwork is to ask that person ("I have a question for Amina about her leave request"). A question about something they already asked for, or how many days they have left, is a question.
 - report: they ask Groundwork to put together, write or prepare a report for them, on their departments, teams, check-ins or work, from what it holds and what they can give it, or ask for a report it wrote for them before, or ask to see or change the outline of a report or add a section to it ("Can you prepare a report on my departments?", "I need a quarterly report for operations for the board, can you draft it", "can u send me a report on my departments for the quarter", "can you show me the outline first and add a section on what is blocking us", "whats the outline of the report"). A question about how the quarter or the year went, asked to be answered now ("what did we get done this quarter?"), is a question, not a report.
+- follow_up: they ask Groundwork to follow up with, chase, remind or nudge the people who have not answered or not sent what was asked, now ("Please follow up with the people who haven't responded", "chase the finance team for their reports", "remind whoever hasn't sent theirs"). A question about who has not answered is a question. When the same message asks for this and says something more ("Please follow up with the people who haven't responded. But don't wait for everyone before starting the report."), it is follow_up.
 - arrangement: they set how their organisation is arranged for other people: who reports to whom or who manages whom ("Amina reports to Joseph", "Joseph manages Amina and Brian"), or a number that differs for some people by job title, team or person, such as days of leave a year, hours a week, or how much a manager approves on their own ("managers get 25 days, field agents 18", "people in Sales give 45 hours"). Not their own leave, hours or spending, and not a question.
 - other: anything else.
 
@@ -53,7 +54,7 @@ For who, only when the kind is delegate, give the name as they wrote it and the 
 
 For about, give the person, deal, client, matter or topic it is about, in a few of their own words, or leave it empty.
 
-For guide, when it is how_to, wants, or a question that one of the things below answers, give the key of the thing below that they ask how to do, or leave it empty when none of them fits.
+For guide, when it is how_to, wants, or a question that one of the things below answers, give the key of the thing below that they ask how to do, or leave it empty when none of them fits. A question about the team's work, what people reported, bills before a legislature, hearings, figures or reports has no guide: leave it empty, so it is answered from the record.
 
 For parts, say how many separate things a question asks for. "What did I say I would do tomorrow, and who still owes us money?" asks for two. "When is my next check-in?" asks for one. Anything that is not a question is one.`;
 
@@ -63,7 +64,7 @@ export const UNDERSTAND_SCHEMA = {
   input_schema: {
     type: 'object',
     properties: {
-      kind: { type: 'string', enum: ['question', 'correction', 'update', 'agreement', 'greeting', 'thanks', 'finished', 'delegate', 'help', 'how_to', 'wants', 'report', 'arrangement', 'other'] },
+      kind: { type: 'string', enum: ['question', 'correction', 'update', 'agreement', 'greeting', 'thanks', 'finished', 'delegate', 'help', 'how_to', 'wants', 'report', 'follow_up', 'arrangement', 'other'] },
       about: { type: 'string' },
       who: { type: 'object', properties: { name: { type: 'string' }, email: { type: 'string' } } },
       guide: { type: 'string', description: 'For how_to or wants: the key of the thing they ask how to do, from the list given, or empty.' },
@@ -80,7 +81,8 @@ export const UNDERSTAND_SCHEMA = {
  */
 export function whatTheModelSaid(raw: any, guideKeys?: Set<string>): TheMessageUnderstood | null {
   if (!raw || typeof raw !== 'object') return null;
-  const kinds: WhatTheyMean[] = ['question', 'correction', 'update', 'agreement', 'greeting', 'thanks', 'finished', 'delegate', 'help', 'how_to', 'wants', 'report', 'arrangement', 'other'];
+  /* The kinds are the schema's own list, one source: a kind added there and not here was read as "other" (follow_up, 23 November 2026). */
+  const kinds = UNDERSTAND_SCHEMA.input_schema.properties.kind.enum as WhatTheyMean[];
   let kind = kinds.includes(raw.kind) ? (raw.kind as WhatTheyMean) : 'other';
   const guide = guideKeys && typeof raw.guide === 'string' && guideKeys.has(raw.guide.trim()) ? raw.guide.trim() : undefined;
   if (kind === 'help' && !guideKeys) kind = 'question';

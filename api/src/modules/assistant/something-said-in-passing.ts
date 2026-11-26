@@ -78,7 +78,8 @@ export function catchCommitment(message: string): Caught | null {
  */
 export type Resolution = 'accept' | 'decline' | 'drop';
 
-const YES = /^(?:y|ye|yes|yep|yeah|yup|ok|okay|sure|please do|go ahead|do it|correct|that'?s right)\b[.!]?$/i;
+/* A polite yes is a yes: "Yes please." by email left a check-in unopened (evaluation, 23 November). */
+const YES = /^(?:y|ye|yes|yep|yeah|yup|ok|okay|sure|please do|go ahead|do it|correct|that'?s right)\b(?:,?\s+(?:please|thanks|thank you))?\s*[.!]?$/i;
 const NO = /^(?:n|no|nope|nah|don'?t|do not|no thanks|leave it|cancel|not that)\b[.!]?$/i;
 
 export function resolveConfirmation(message: string): Resolution {

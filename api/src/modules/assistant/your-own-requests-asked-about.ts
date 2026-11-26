@@ -46,11 +46,12 @@ export const WHO_APPROVES_PATTERNS: RegExp[] = [
   /\bwho\s+(?:approves|signs\s+off)\s+(?:it|this|that|them|mine|my)\b/i,
 ];
 
+/* Only when the message IS that question. "Get monthly updates from Eric and tell me what is overdue" asks for a check-in, and the model reads it (evaluation, 23 November). */
 export const WHAT_IS_DUE_PATTERNS: RegExp[] = [
-  /\bwhat(?:'s|\s+is|\s+are)\s+(?:due|overdue|coming\s+due|due\s+soon)\b/i,
-  /\bwhat\s+do\s+i\s+have\s+due\b/i,
-  /\bwhat\s+deadlines?\s+do\s+i\s+have\b/i,
-  /\bwhat\s+(?:is|are)\s+(?:my\s+)?(?:deadlines?|due\s+dates?)\b/i,
+  /^\s*what(?:'s|\s+is|\s+are)\s+(?:due|overdue|coming\s+due|due\s+soon)\b/i,
+  /^\s*what\s+do\s+i\s+have\s+due\b/i,
+  /^\s*what\s+deadlines?\s+do\s+i\s+have\b/i,
+  /^\s*what\s+(?:is|are)\s+(?:my\s+)?(?:deadlines?|due\s+dates?)\b/i,
 ];
 
 /** Who is away. A group captures what follows, so "next week" travels as the subject. */

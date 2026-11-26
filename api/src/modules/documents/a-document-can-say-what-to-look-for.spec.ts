@@ -42,7 +42,7 @@ describe('a document can say what to look for in it', () => {
     /* A long document read first is a long document read without knowing what to look for. */
     const head = ASSEMBLY.slice(ASSEMBLY.indexOf('const head ='));
     expect(head.slice(0, 200)).toContain('${asked}');
-    expect(ASSEMBLY).toContain('${head}${d.content}');
+    expect(ASSEMBLY).toContain('${head}${quotedAsData(d.content)}');
   });
 
   it('says nothing at all when nobody asked for anything', () => {
