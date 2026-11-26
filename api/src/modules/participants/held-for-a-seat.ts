@@ -49,6 +49,26 @@ export async function aPersonWhoWasRemoved(
 export const HELD_FOR_A_SEAT = 'This check-in cannot start for you yet, because there is no seat for you on the plan. You will get your invitation as soon as there is one.';
 
 /**
+ * IN, WITH NO SEAT YET, WAITING FOR AN ADMIN'S YES (Hafsah, 26 November 2026). Somebody new here, or a guest, added to a check-in by
+ * somebody who is not an admin, checks in at once and has a week for an admin to let them in. Their own check-in only: the board, the
+ * reports and what colleagues said open once they are let in (privacy row 5, kept by her choice). The fact is their membership here,
+ * held for a seat, with their request still waiting. A lookup that fails says they are waiting: the more private answer.
+ */
+export const WAITING_FOR_AN_ADMINS_YES = 'An admin has not let you into this organisation yet, so the board and the reports open once they do. You can do your own check-in in the meantime.';
+export async function waitingForAnAdminsYes(prisma: any, groundId: string | null | undefined, userId: string | null | undefined): Promise<boolean> {
+  if (!groundId || !userId || !prisma?.organizationMembership?.findUnique || !prisma?.membershipRequest?.findFirst || !prisma?.ground?.findUnique) return false;
+  try {
+    const ground = await prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } });
+    if (!ground) return false;
+    const here = await prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId: ground.organizationId } }, select: { heldForASeat: true } });
+    if (!here?.heldForASeat) return false;
+    return !!(await prisma.membershipRequest.findFirst({ where: { userId, organizationId: ground.organizationId, status: 'PENDING' }, select: { id: true } }));
+  } catch {
+    return true;
+  }
+}
+
+/**
  * NOBODY HELD FOR A SEAT READS ANYTHING OF THE CHECK-IN (privacy sweep, 5 October 2026, finding 3; privacy row 5, kept by decision 93).
  *
  * The schema promises it for `awaitingSeat`: "Nothing reaches the person until then." Only the invitation page kept it. Someone held for
@@ -69,6 +89,7 @@ export async function refuseSomeoneHeldForASeat(
     .catch(() => ({ awaitingSeat: true }));
   if (row?.leftAt) throw new ForbiddenException(REMOVED_FROM_THE_CHECK_IN);
   if (row?.awaitingSeat === true) throw new ForbiddenException(HELD_FOR_A_SEAT);
+  if (await waitingForAnAdminsYes(prisma, groundId, userId)) throw new ForbiddenException(WAITING_FOR_AN_ADMINS_YES);
 }
 
 /**
@@ -151,22 +172,23 @@ export async function theHeldPersonWhoHasAnswered(
   prisma: { groundParticipant?: { findFirst?: (args: any) => unknown }; checkIn?: { findFirst?: (args: any) => unknown } } | null | undefined,
   groundId: string | null | undefined,
   userId: string | null | undefined,
-): Promise<boolean> {
+): Promise<false | 'held' | 'waiting'> {
   const find = prisma?.groundParticipant?.findFirst;
   if (!find || !groundId || !userId) return false;
   const row: any = await Promise.resolve(find.call(prisma!.groundParticipant, { where: { groundId, userId }, select: { id: true, awaitingSeat: true } }))
     .catch(() => ({ awaitingSeat: true }));
-  if (row?.awaitingSeat !== true) return false;
+  /* In their week, waiting for an admin's yes: their own page, and they may answer (Hafsah, 26 November 2026). */
+  if (row?.awaitingSeat !== true) return (await waitingForAnAdminsYes(prisma, groundId, userId)) ? 'waiting' : false;
   const findAnswer = prisma?.checkIn?.findFirst;
   if (!findAnswer || !row?.id) throw new ForbiddenException(HELD_FOR_A_SEAT);
   const answered: any = await Promise.resolve(findAnswer.call(prisma!.checkIn, { where: { groundId, participantId: row.id, completedAt: { not: null }, isSetup: false }, select: { id: true } }))
     .catch(() => null);
   if (!answered) throw new ForbiddenException(HELD_FOR_A_SEAT);
-  return true;
+  return 'held';
 }
 
 /** The page of somebody held for a seat who has answered: only what is theirs, and plainly says why a new session is not open to them. */
-export function whatSomeoneHeldForASeatReads(page: Record<string, any>, userId: string): Record<string, any> {
+export function whatSomeoneHeldForASeatReads(page: Record<string, any>, userId: string, why: 'held' | 'waiting' = 'held'): Record<string, any> {
   const mine = (Array.isArray(page.participants) ? page.participants : []).filter((p: any) => p?.userId === userId);
   const myIds = new Set(mine.map((p: any) => p.id));
   return {
@@ -194,7 +216,7 @@ export function whatSomeoneHeldForASeatReads(page: Record<string, any>, userId: 
     viewerIsInitiator: false,
     viewerRunsThisGround: false,
     mayChangeSetup: false,
-    heldForASeat: true,
-    saying: HELD_BUT_KEEPS_WHAT_THEY_SAID,
+    heldForASeat: why === 'held',
+    saying: why === 'held' ? HELD_BUT_KEEPS_WHAT_THEY_SAID : WAITING_FOR_AN_ADMINS_YES,
   };
 }

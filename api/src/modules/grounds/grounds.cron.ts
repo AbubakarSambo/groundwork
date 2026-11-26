@@ -1,4 +1,5 @@
 import { theQuietHoursNow } from '../../common/the-clock';
+import { pauseThoseNotLetInWithinAWeek } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { aTeamMembersOpeningFor } from '../conversation/the-one-thing-today';
 import { theSameWordsAgain, rememberTheWords, writeDownTheSkip } from '../engagement/never-the-same-words-twice';
@@ -332,6 +333,13 @@ export class GroundsCron implements OnApplicationBootstrap {
    * THE ANCHOR'S MONTH END (decision 121, item 2). Half an hour after the stall sweep, so a check-in that has just been stalled is
    * caught the same night. Writes the event once for each anchor check-in whose month is over, and only while the anchor switch is on.
    */
+  /* A week with no admin's yes pauses the check-ins of somebody a lead added (Hafsah, 26 November 2026). Hourly, so the week is a week. */
+  @Cron('40 * * * *', { timeZone: 'UTC' })
+  async pauseThoseNotLetInWithinAWeek() {
+    const paused = await pauseThoseNotLetInWithinAWeek(this.prisma, new Date()).catch((err: any) => { this.logger.warn(`Pausing people not let in within a week failed: ${err?.message}`); return 0; });
+    if (paused) this.logger.log(`Paused ${paused} check-in place(s) of people no admin let in within a week.`);
+  }
+
   @Cron('30 3 * * *', { timeZone: 'UTC' })
   async endTheAnchorMonths() {
     await onceAcrossCopies(this.prisma, 'anchor-month-end', theDay(), () => this.endTheAnchorMonthsInner());

@@ -1,3 +1,4 @@
+import { WaitingForYouToConfirm } from '@/components/gw/ThePlanPage'
 import { AnAdminDecidesWhetherItStarts } from './an-admin-decides-whether-it-starts'
 import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
 import { scrollToId } from '@/lib/scroll-to'
@@ -1658,6 +1659,10 @@ export function GroundAdminPage() {
             })()}
           />
         )}
+        {/* WHAT NEEDS THE LEAD, AT THE TOP OF HER CHECK-IN (Rhea call, 25 November 2026: Clinton and Leah could not find where to approve
+            their targets). The targets read from a plan or her own check-in wait for her yes in one list, which no tab drew any more. Nothing
+            is drawn when nothing waits. */}
+        {isInitiator && tab !== 'chat' && <WaitingForYouToConfirm groundId={id!} heading="Needs you" />}
         {(ground as any).status === 'AWAITING_APPROVAL' && !(isOrgAdmin && !isInitiator) && (
           <Callout tone="warning" title="Waiting for an admin to accept this check-in">
             You can keep editing it, and nobody can be invited until it is accepted, so nobody

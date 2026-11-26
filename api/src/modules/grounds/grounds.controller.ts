@@ -750,6 +750,14 @@ export class GroundsController {
     return this.grounds.deleteWhileItIsStillATest(id, userId);
   }
 
+  /* Who approving it gives a seat to, and what that adds to the bill, for the admin's approval box (Hafsah, 26 November 2026). */
+  @Get(':id/approving-gives')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Who approving this check-in gives a seat to, and what it costs' })
+  async approvingGives(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return { says: await this.grounds.whatApprovingGives(id, user.organizationId) };
+  }
+
   @Post(':id/approve')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Accept a ground so its people can be invited' })

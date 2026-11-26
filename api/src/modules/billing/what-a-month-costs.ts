@@ -152,6 +152,26 @@ export interface WhatAddingIsAsked {
  * prices Plan and billing reads (`pricing_plans`, through PricingService), so the two always agree. A price is only ever said when
  * it will be charged.
  */
+/**
+ * WHAT APPROVING A CHECK-IN GIVES, AND COSTS (Hafsah, 26 November 2026: "they see who takes the seat and approve and pay if
+ * needed"). Everybody named on a check-in an admin approves takes a seat at that yes, so the approval says who, and what it adds
+ * to the bill, from the same figures as the line beside an invitation. Null when nobody on it needs a new seat.
+ */
+export function whatApprovingSays(a: Omit<WhatAddingIsAsked, 'name' | 'whatsapp'> & { names: string[] }): string | null {
+  const n = a.names.length;
+  if (!n) return null;
+  const who = n === 1 ? a.names[0] : `${a.names.slice(0, -1).join(', ')} and ${a.names[n - 1]}`;
+  const gives = `Approving it gives ${n === 1 ? 'a seat' : 'seats'} to ${who}, ${n === 1 ? 'who is' : 'who are'} new here.`;
+  if (!a.charged) return `${gives} ${whatAddingSomebodySays(a).line}`;
+  if (a.included === null) return `${gives} This does not change your bill.`;
+  const fit = Math.max(0, a.included - a.taken);
+  if (fit >= n) return `${gives} Your plan’s seats cover ${n === 1 ? 'them' : 'all of them'}, so your bill doesn’t change.`;
+  const over = n - fit;
+  const fits = fit === 0 ? 'Your plan’s seats are all taken.' : `Your plan’s seats cover ${fit} of them.`;
+  if (a.extraSeatCents === null) return `${gives} ${fits} The other ${over === 1 ? 'person waits' : `${over} wait`} for a seat until you make room, and ${over === 1 ? 'is' : 'are'} not invited until then.`;
+  return `${gives} ${fits} The other ${over === 1 ? 'person needs a new seat' : `${over} need new seats`}, which adds ${dollarsOf(a.extraSeatCents * over)} a month from today.`;
+}
+
 export function whatAddingSomebodySays(a: WhatAddingIsAsked): { line: string; needsAYes: boolean; whatsappLine: string | null } {
   if (!a.charged) {
     return { line: a.whyFree === 'not paying' ? 'Nothing is charged, because your organisation is not on a paid plan.' : 'Nothing is charged during your free trial.', needsAYes: false, whatsappLine: null };

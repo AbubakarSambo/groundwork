@@ -62,6 +62,9 @@ export interface AWaitingRequest {
   thing: string;
 }
 
+/** What waits for a decision in Ask: a suite's request, or somebody waiting for an admin to let them in ('seat', Ask and People only, never a suite's message). */
+export type AWaitingDecision = AWaitingRequest | (Omit<AWaitingRequest, 'kind'> & { kind: 'seat' });
+
 export function aLeaveRequest(ref: string, personUserId: string | null, firstName: string, startsOn: string, endsOn: string): AWaitingRequest {
   const what = leaveInWords(startsOn, endsOn);
   return { kind: 'leave', ref, personUserId, firstName, what, thing: `${whose(firstName)} ${what}` };
@@ -78,6 +81,11 @@ export function anHoursRequest(personUserId: string, weekOf: string, firstName: 
   };
 }
 
+/** Somebody a lead added, waiting for an admin to let them in, which gives them a seat (Hafsah, 26 November 2026: "approve them in People or Ask"). */
+export function aSeatRequest(ref: string, personUserId: string | null, firstName: string, organisationName: string): AWaitingDecision {
+  return { kind: 'seat', ref, personUserId, firstName, what: `a place at ${organisationName}`, thing: `${whose(firstName)} place at ${organisationName}, which gives them a seat` };
+}
+
 export function aSpendRequest(ref: string, personUserId: string | null, firstName: string, amount: number, currency: string | null, what: string): AWaitingRequest {
   const said = spendInWords(amount, currency, what);
   return { kind: 'spend', ref, personUserId, firstName, what: said, thing: `${whose(firstName)} request to spend ${said}` };
@@ -87,7 +95,7 @@ export function aSpendRequest(ref: string, personUserId: string | null, firstNam
  * What the approver is deciding, said back before anything happens: "You are approving Amina's leave
  * from Tuesday 6 October to Saturday 10 October. Is that right?"
  */
-export function aDecisionSaidBack(r: AWaitingRequest, outcome: 'approved' | 'declined'): string {
+export function aDecisionSaidBack(r: AWaitingDecision, outcome: 'approved' | 'declined'): string {
   return `You are ${outcome === 'approved' ? 'approving' : 'declining'} ${r.thing}. Is that right?`;
 }
 
@@ -96,7 +104,7 @@ export function aDecisionSaidBack(r: AWaitingRequest, outcome: 'approved' | 'dec
  * was only one step and the request goes on to somebody else (build step 4): "You approved Amina's
  * leave from .... It now waits for Omar in finance."
  */
-export function aDecisionDone(r: AWaitingRequest, outcome: 'approved' | 'declined', nowWaitsFor?: string | null): string {
+export function aDecisionDone(r: AWaitingDecision, outcome: 'approved' | 'declined', nowWaitsFor?: string | null): string {
   if (outcome === 'approved' && nowWaitsFor) return `You approved ${r.thing}. ${r.kind === 'hours' ? 'They now wait' : 'It now waits'} for ${nowWaitsFor}.`;
   const thing = `${r.thing.charAt(0).toUpperCase()}${r.thing.slice(1)}`;
   return `${thing} ${r.kind === 'hours' ? 'are' : 'is'} ${outcome} now. I have let ${r.firstName} know.`;
@@ -148,7 +156,7 @@ export function whereItIsOnTheBoard(s: WhereItStands, plural = false): string {
 }
 
 /** After a no: nothing changed. */
-export function aDecisionNotMade(r: AWaitingRequest): string {
+export function aDecisionNotMade(r: AWaitingDecision): string {
   const thing = `${r.thing.charAt(0).toUpperCase()}${r.thing.slice(1)}`;
   return `I have not changed anything. ${thing} ${r.kind === 'hours' ? 'are' : 'is'} still waiting for you.`;
 }
@@ -177,7 +185,7 @@ const NUMBERS = ['no', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'E
 export const MOST_NAMED_AT_ONCE = 5;
 
 /** More than one waiting, and the reply did not say which. */
-export function whichDecision(rs: AWaitingRequest[]): string {
+export function whichDecision(rs: AWaitingDecision[]): string {
   const count = rs.length <= 10 ? NUMBERS[rs.length] : String(rs.length);
   const example = `${whose(rs[0].firstName)} ${rs[0].kind === 'spend' ? 'spending' : rs[0].kind}`;
   if (rs.length > MOST_NAMED_AT_ONCE) {

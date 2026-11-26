@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { groundsApi } from '@/api/grounds'
 import { Button } from '@/components/gw/kit'
@@ -18,8 +18,10 @@ export function AnAdminDecidesWhetherItStarts({ groundId, setUpBy }: { groundId:
   const [declining, setDeclining] = useState(false)
   const [reason, setReason] = useState('')
   const refresh = () => {
-    for (const key of [['ground', groundId], ['grounds'], ['today'], ['awaiting-approval']]) void qc.invalidateQueries({ queryKey: key })
+    for (const key of [['ground', groundId], ['grounds'], ['today'], ['awaiting-approval'], ['org-members'], ['billing-status-people']]) void qc.invalidateQueries({ queryKey: key })
   }
+  /* Everybody named on it takes a seat at this yes, so the box says who, and what it adds to the bill, before Approve (Hafsah, 26 November 2026). */
+  const gives = useQuery({ queryKey: ['approving-gives', groundId], queryFn: () => groundsApi.approvingGives(groundId), retry: false })
   const approve = useMutation({
     mutationFn: () => groundsApi.approve(groundId),
     onSuccess: () => { refresh(); toast.success('Approved. The people involved can be invited now.') },
@@ -36,6 +38,7 @@ export function AnAdminDecidesWhetherItStarts({ groundId, setUpBy }: { groundId:
       <p className="gw-t-small">
         {setUpBy ? `${setUpBy} set it up. ` : ''}Nobody has been invited to it yet. Nothing goes out until you say so.
       </p>
+      {gives.data?.says && <p className="gw-t-small">{gives.data.says}</p>}
       {declining ? (
         <div className="gw-ci-waiting-acts">
           <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2}

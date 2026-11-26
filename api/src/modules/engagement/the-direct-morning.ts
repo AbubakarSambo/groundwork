@@ -1,3 +1,5 @@
+import { theWeekEnds } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
+import { isAnAdminOf, howTheyStandIn } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { A_SESSION_OF_THEIRS } from '../grounds/the-sessions-done';
 import { namesToCallAmong } from '../../common/names-that-tell-people-apart';
 import { withoutTheOldEnding } from '../reports/what-people-said-differently-about';
@@ -982,7 +984,64 @@ export function theSubject(firstName: string | null | undefined, mornings: TheDi
  * switch is off for the organisation or where the reader does not run it. A sales check-in reads its deals, a "collect what's owed"
  * one its bills, and any other check-in what waits on the lead, what is due and who has not checked in.
  */
+/**
+ * PEOPLE ON THIS CHECK-IN WAITING FOR AN ADMIN'S YES, IN THE MORNING (Hafsah, 26 November 2026: the admin is reminded in the morning
+ * summary and on Today). To a lead who is an admin, it needs her: let them in, before the week runs out. To a lead who is not, it is
+ * said on the board only, since only an admin can answer it and a mail she cannot act on would change how often she is written to.
+ */
+export async function theyWaitForAYesLines(prisma: any, ground: { id: string; organizationId: string }, leadUserId: string, now: Date): Promise<AMorningLine[]> {
+  const rows: any[] = ((await Promise.resolve(prisma?.membershipRequest?.findMany?.({
+    where: { groundId: ground.id, organizationId: ground.organizationId, status: 'PENDING' },
+    orderBy: { createdAt: 'asc' },
+    select: { createdAt: true, email: true, user: { select: { firstName: true, lastName: true } } },
+  })).catch(() => [])) ?? []) as any[];
+  if (!rows.length) return [];
+  const anAdmin = isAnAdminOf(ground.organizationId, await howTheyStandIn(prisma, leadUserId, ground.organizationId).catch(() => null));
+  return rows.map((r) => {
+    const who = [r.user?.firstName, r.user?.lastName].filter(Boolean).join(' ').trim() || r.email;
+    const ends = theWeekEnds(r.createdAt);
+    const day = ends.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Lagos' });
+    if (ends.getTime() <= now.getTime()) {
+      return anAdmin
+        ? { text: `${who}'s check-ins are paused, because nobody let them in within a week. Let them in on People to start them again.`, rank: 3 }
+        : { text: `${who}'s check-ins are paused, because no admin let them in within a week.`, rank: 9, boardOnly: true };
+    }
+    return anAdmin
+      ? { text: `${who} is waiting for you to let them in. They can check in until ${day}, and after that their check-ins pause.`, rank: 3 }
+      : { text: `${who} is waiting for an admin to let them in, and can check in until ${day}.`, rank: 9, boardOnly: true };
+  });
+}
+
+/** The same lines put into a morning's "Needs you today", in place of "Nothing needs you today." when that is all it said. */
+function withTheWaitingSaid(m: TheDirectMorning, lines: AMorningLine[]): TheDirectMorning {
+  if (!lines.length) return m;
+  const at = m.parts.findIndex((p) => p.key === 'needsYou');
+  const inTheMessage = lines.some((l) => !l.boardOnly);
+  const parts = at < 0
+    ? [...m.parts.slice(0, 1), { key: 'needsYou' as AMorningPartKey, heading: 'What needs you today', lead: 'Needs you today:', lines }, ...m.parts.slice(1)]
+    : m.parts.map((p, i) => {
+      if (i !== at) return p;
+      const kept = inTheMessage ? p.lines.filter((l) => l.text !== NOTHING_NEEDS_YOU) : p.lines;
+      return { ...p, lead: inTheMessage ? 'Needs you today:' : p.lead, lines: [...kept, ...lines] };
+    });
+  return { ...m, parts };
+}
+
 export async function theDirectMorningFor(
+  prisma: any,
+  opts: { groundId: string; leadUserId: string; board: any; now?: Date },
+): Promise<TheDirectMorning | null> {
+  const m = await theDirectMorningWithoutTheWaiting(prisma, opts);
+  if (!m) return m;
+  const ground = await Promise.resolve(prisma?.ground?.findUnique?.({ where: { id: opts.groundId }, select: { id: true, organizationId: true } })).catch(() => null);
+  if (!ground) return m;
+  /* And what she has to confirm before it goes on record (Rhea call, 25 November 2026), said the way Today says it. */
+  const toConfirm = await Promise.resolve(prisma?.planProposal?.count?.({ where: { groundId: ground.id, status: 'PENDING' } })).catch(() => 0) ?? 0;
+  const confirm: AMorningLine[] = toConfirm ? [{ text: toConfirm === 1 ? 'One thing is waiting for you to confirm on the check-in. Nothing goes on record until you do.' : `${toConfirm} things are waiting for you to confirm on the check-in. Nothing goes on record until you do.`, rank: 3 }] : [];
+  return withTheWaitingSaid(m, [...confirm, ...(await theyWaitForAYesLines(prisma, ground, opts.leadUserId, opts.now ?? new Date()))]);
+}
+
+async function theDirectMorningWithoutTheWaiting(
   prisma: any,
   opts: { groundId: string; leadUserId: string; board: any; now?: Date },
 ): Promise<TheDirectMorning | null> {

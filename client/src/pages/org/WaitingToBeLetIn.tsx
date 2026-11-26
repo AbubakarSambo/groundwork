@@ -18,7 +18,7 @@ import { A_FAILURE } from './people-here'
  * own 4px amber edge, 17px bold name and email, a 15px sentence under it, and "Don't let them in" /
  * "Let them in" on the right, both 44px tall).
  */
-interface Waiting { id: string; email: string; name: string | null; addedBy: string | null; forCheckIn: string | null; waitingSince?: string; onTheOrganisationsOwnAddress?: boolean }
+interface Waiting { id: string; email: string; name: string | null; addedBy: string | null; forCheckIn: string | null; waitingSince?: string; onTheOrganisationsOwnAddress?: boolean; saying?: string | null }
 
 function whenAsked(at: string | undefined, now = new Date()): string {
   if (!at) return ''
@@ -46,7 +46,8 @@ export function whoAskedForThem(p: Waiting, seatsFree: number | null, now = new 
     : seatsFree === null
     ? 'Letting them in takes a seat.'
     : `Letting them in takes a seat, and you have ${seatsFree === 0 ? 'none' : seatsFree} free.`
-  return `${by} invited them${to}${when ? `, ${when}` : ''}. ${seat}`
+  /* The week an admin has, in the server's one sentence (Hafsah, 26 November 2026). */
+  return `${by} invited them${to}${when ? `, ${when}` : ''}. ${seat}${p.saying ? ` ${p.saying}` : ''}`
 }
 
 export function WaitingToBeLetIn({ orgName }: { orgName: string }) {
