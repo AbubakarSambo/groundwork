@@ -330,7 +330,7 @@ export class ReportsOnRequestService {
     const files = await theReportFiles(written, on);
     let emailedTo: string | null = null;
     if (who?.email && this.email) {
-      const outcome = await (this.email as any).sendTheReportYouAskedFor(who.email, written.title, theReportInTheChat(written, { on, documents: written.sources.length, emailedTo: null, channel: 'email' }), files, `report-on-request:${open.id}`).catch(() => null);
+      const outcome = await this.email.sendTheYearEndFiles(who.email, written.title, theReportInTheChat(written, { on, documents: written.sources.length, emailedTo: null, channel: 'email' }), files, `report-on-request:${open.id}`, undefined, true).catch(() => null);
       if (outcome === 'sent' || outcome === 'held') emailedTo = who.email;
     }
     const text = theReportInTheChat(written, { on, documents: chosen.filter((s) => s.kind === 'material').length || chosen.length, emailedTo, channel });

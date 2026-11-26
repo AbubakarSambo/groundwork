@@ -1709,14 +1709,6 @@ export class EmailService implements OnModuleInit {
     return context.outcome ?? 'sent';
   }
 
-  /** THE REPORT SOMEBODY ASKED FOR, WITH ITS WORD AND EXCEL FILES, to the person who asked and nobody else (reports-on-request). Asked for, so never held as routine. */
-  async sendTheReportYouAskedFor(to: string, subject: string, text: string, files: AnAttachment[], sendKey: string): Promise<'sent' | 'held' | 'suppressed'> {
-    const context: DeliveryContext = { kind: 'OTHER', sendKey, answeringNow: true };
-    const html = this.layout(text.split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join(''));
-    await this.sendEmail({ to, subject, html, text, attachments: files }, context, 'sendTheReportYouAskedFor');
-    return context.outcome ?? 'sent';
-  }
-
   /**
    * AN INTRODUCTION FROM GROUNDWORK TO SOMEBODY AN ADMIN OR A SENIOR PERSON NAMED (executive-onboarding). Plain words, the organisation's
    * assistant address as the Reply-To so that answering it comes back to the right workspace, and a send key so it goes once. Held for the

@@ -29,7 +29,8 @@ describe('every sender', () => {
   it('asks the one rule, and a refused mail is written down with its moment rather than dropped', () => {
     /* Changed 18 October (Drop Access run 1, item 12): a mail somebody asked for is held in the night too ("Joseph Kariuki has checked in" went at 2:30am in Nairobi). Only the way back in and the running of the product go at any hour. */
     /* Changed 2 November (the four weeks after a free trial): the mail about paying, split out of "asked for" so a pause never stops it, is held in the night exactly as it was. */
-    expect(service).toMatch(/if \(sender && \(whatThisMailIs\(sender\) === 'we decided to send it' \|\| whatThisMailIs\(sender\) === 'asked for' \|\| whatThisMailIs\(sender\) === 'about paying'\)\) \{\s*const held = await this\.holdForTheMorning\(/);
+    /* Changed 26 November: a mail that answers what somebody asked this very moment (answeringNow: a report they just asked for, the year-end files they just asked for) goes at once, as staging already does. */
+    expect(service).toMatch(/if \(!context\?\.answeringNow && sender && \(whatThisMailIs\(sender\) === 'we decided to send it' \|\| whatThisMailIs\(sender\) === 'asked for' \|\| whatThisMailIs\(sender\) === 'about paying'\)\) \{\s*const held = await this\.holdForTheMorning\(/);
     expect(service).toMatch(/scheduledEmail\.create\(\{\s*data: \{ toAddress: options\.to, subject: options\.subject, html: options\.html, sender, context: [^,]+, notBefore(?:, \.\.\.this\.heldCopyOfTheFiles\(options\))? \}/);
   });
   it('and the sweep sends what is due, once, under its own lock', () => {

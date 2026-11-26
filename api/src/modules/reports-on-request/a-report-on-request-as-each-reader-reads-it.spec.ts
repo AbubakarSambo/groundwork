@@ -171,7 +171,7 @@ const documents: any = { textOutOf: async (f: any) => (String(f.originalname).en
 
 function aService(w = aWorld(), m = aModel()) {
   const mailed: { to: string; subject: string; text: string; files: { filename: string }[] }[] = [];
-  const email: any = { sendTheReportYouAskedFor: async (to: string, subject: string, text: string, files: any[]) => { mailed.push({ to, subject, text, files }); return 'sent'; } };
+  const email: any = { sendTheYearEndFiles: async (to: string, subject: string, text: string, files: any[]) => { mailed.push({ to, subject, text, files }); return 'sent'; } };
   return { w, m, mailed, svc: new ReportsOnRequestService(w.prisma, documents, m.engine as any, { getActive: async () => null } as any, null as any, email) };
 }
 
