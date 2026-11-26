@@ -455,7 +455,8 @@ export function AddPeopleForm({ isOrgAdmin, colleagues, participants, seats, sea
 
   return (
       <div className="panel pad">
-        <ThisAddsASeat />
+        {/* Only an admin's additions take a seat now; a lead's new people wait for an admin's yes, as the note below says (26 November 2026). */}
+        {isOrgAdmin && <ThisAddsASeat />}
         {seatsFull && (
           <div className="gwui-note gwui-note-error" role="alert">
             Your plan covers {seats.cap} people, including you, and all {seats.cap} are taken. Move to a

@@ -41,3 +41,30 @@ export function GroundGone() {
     </Page>
   )
 }
+
+/**
+ * SOMEBODY IN THEIR WEEK, WAITING FOR AN ADMIN'S YES (Hafsah, 26 November 2026). They are on the check-in and may do their own check-in;
+ * the board and the reports open once an admin lets them in. The server sends this one sentence only to them (held-for-a-seat.ts,
+ * WAITING_FOR_AN_ADMINS_YES), never to a stranger holding a link, so saying it tells a stranger nothing (GW-PRI-04 holds). Every other
+ * refusal still reads as GroundGone. Kept word for word with the server's (a-board-says-why-to-somebody-in-their-week.spec.ts).
+ */
+export const WAITING_FOR_AN_ADMINS_YES = 'An admin has not let you into this organisation yet, so the board and the reports open once they do. You can do your own check-in in the meantime.'
+
+export function TheBoardOpensOnceLetIn({ groundId }: { groundId: string }) {
+  return (
+    <Page narrow>
+      <Empty
+        title="The board opens once you are let in"
+        action={
+          <div className="gwui-button-row">
+            <Button kind="secondary" to={`/grounds/${groundId}?tab=chat`}>Go to your check-in</Button>
+            <Button kind="quiet" to="/you">Open my work</Button>
+          </div>
+        }
+      >
+        {WAITING_FOR_AN_ADMINS_YES}
+      </Empty>
+    </Page>
+  )
+}
+

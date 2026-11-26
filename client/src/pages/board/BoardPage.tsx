@@ -32,7 +32,7 @@ import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { OutcomeFeedback } from '@/components/gw/OutcomeFeedback'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
-import { GroundGone } from '@/components/gw/GroundGone'
+import { GroundGone, TheBoardOpensOnceLetIn, WAITING_FOR_AN_ADMINS_YES } from '@/components/gw/GroundGone'
 import { TheJudgement } from '@/components/gw/TheJudgement'
 import { WhatTheRecordShows } from '@/components/gw/WhatTheRecordShows'
 import { WhatTheNetworkSaid } from '@/components/gw/WhatTheNetworkSaid'
@@ -439,7 +439,8 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
               />
             )}
             {emailError && <Text size="13" ink="red">{emailError}</Text>}
-            {isInitiator && <ThisAddsASeat />}
+            {/* An admin's addition takes a seat; a lead's waits for an admin's yes (26 November 2026). */}
+            {isInitiator && useAuthStore.getState().user?.role === 'ADMIN' && <ThisAddsASeat />}
             <FlexRow gap={6}>
               <UIButton
                 kind="secondary"
@@ -1223,6 +1224,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
        apart. This branch used to fall through to `why.say`'s 403 sentence instead, which does
        exactly that ("This record belongs to a check-in you are not part of."). Same screen,
        both codes. */
+    /* Somebody in their week reads why, and the way to their own check-in: the server sends this sentence to nobody else (26 November 2026). */
+    if (what.status === 403 && what.message === WAITING_FOR_AN_ADMINS_YES && groundId) return <TheBoardOpensOnceLetIn groundId={groundId} />
     if (what.status === 404 || what.status === 403) return <GroundGone />
     /* The prototype's connection words only when it was the connection: no answer came back at all.
        A server error keeps its own true sentence, with Try again still offered (U.20 review). */
