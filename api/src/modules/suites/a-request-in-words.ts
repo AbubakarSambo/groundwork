@@ -83,7 +83,7 @@ export function anHoursRequest(personUserId: string, weekOf: string, firstName: 
 
 /** Somebody a lead added, waiting for an admin to let them in, which gives them a seat (Hafsah, 26 November 2026: "approve them in People or Ask"). */
 export function aSeatRequest(ref: string, personUserId: string | null, firstName: string, organisationName: string): AWaitingDecision {
-  return { kind: 'seat', ref, personUserId, firstName, what: `a place at ${organisationName}`, thing: `${whose(firstName)} place at ${organisationName}, which gives them a seat` };
+  return { kind: 'seat', ref, personUserId, firstName, what: `a seat at ${organisationName}`, thing: `${whose(firstName)} seat at ${organisationName}` };
 }
 
 export function aSpendRequest(ref: string, personUserId: string | null, firstName: string, amount: number, currency: string | null, what: string): AWaitingRequest {

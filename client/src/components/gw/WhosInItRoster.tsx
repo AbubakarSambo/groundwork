@@ -427,7 +427,9 @@ export function AddPeopleForm({ isOrgAdmin, colleagues, participants, seats, sea
           }
         } catch (e: any) {
           left.push(p)
-          toast.error(aPersonsSentenceForAServerError(e, `${p.name ?? p.email} could not be added. Check the email and try again.`))
+          /* The server's sentence, never the error itself: passing the error blanked the whole page when one line could not be added (found 26 November 2026). */
+          const why = e?.response?.data?.message
+          toast.error(aPersonsSentenceForAServerError(why ? `${p.name ?? p.email} could not be added. ${why}` : undefined, `${p.name ?? p.email} could not be added. Check the email and try again.`))
         }
       }
       if (fromTheOrganisation.length) { await addManyParticipants(fromTheOrganisation); added += fromTheOrganisation.length }
@@ -474,7 +476,7 @@ export function AddPeopleForm({ isOrgAdmin, colleagues, participants, seats, sea
         <p className="gwui-note">
           {isOrgAdmin
             ? 'Anybody you add can check in straight away. Somebody from outside your organisation also appears on your People page, where you can take them off again.'
-            : 'Somebody from outside your organisation is invited straight away, and an admin here has to let them in before they can check in. They are told the same thing, and you can see it beside their name below.'}
+            : 'Somebody from outside your organisation is invited straight away and can check in at once. An admin here has a week to let them in and give them a seat, or their check-ins pause until they do. They are told the same thing.'}
         </p>
         {onShareCode && <Button kind="quiet" onClick={onShareCode}>Or share an access code instead</Button>}
       </div>

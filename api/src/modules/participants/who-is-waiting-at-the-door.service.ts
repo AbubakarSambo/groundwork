@@ -43,8 +43,10 @@ export class WhoIsWaitingAtTheDoorService {
    * admin who has been one longest. "Remind" reaches that same person.
    */
   async myOwnRequest(userId: string) {
+    /* Only a request that keeps them out: an account still waiting at the door, or a join by the organisation's link. Somebody a lead
+       added checks in during the admin's week, so their request is the admin's to answer and never a wall in front of them (26 November 2026). */
     const request = await this.prisma.membershipRequest.findFirst({
-      where: { userId, status: MembershipRequestStatus.PENDING },
+      where: { userId, status: MembershipRequestStatus.PENDING, OR: [{ groundId: null }, { user: { awaitingOrgApproval: true } }] },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true, email: true, createdAt: true, lastRemindedAt: true, viaInvitation: true, organizationId: true, requestedByUserId: true,

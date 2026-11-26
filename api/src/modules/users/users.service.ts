@@ -584,7 +584,11 @@ export class UsersService {
     const overThePlan = typeof (this.billing as any)?.whoIsOverThePlan === 'function'
       ? await this.billing.whoIsOverThePlan(organizationId).catch(() => ({ over: 0, held: new Set<string>(), saying: null as string | null }))
       : { over: 0, held: new Set<string>(), saying: null as string | null };
-    const users = rows.map((r) => ({ ...r.user, role: r.role as string, heldForASeat: !!r.heldForASeat || overThePlan.held.has(r.user.id) }));
+    /* Somebody a lead added, in their week for an admin's yes, reads "Waiting to be let in", not "No seat on your plan": nobody ran out of seats (26 November 2026). */
+    const askedFor = new Set(((await Promise.resolve((this.prisma as any).membershipRequest?.findMany?.({ where: { organizationId, status: { in: ['PENDING', 'DECLINED'] }, groundId: { not: null }, userId: { in: rows.filter((r) => r.heldForASeat).map((r) => r.user.id) } }, select: { userId: true } })).catch(() => [])) ?? []).map((r: any) => r.userId));
+    const users = rows.map((r) => askedFor.has(r.user.id)
+      ? { ...r.user, role: r.role as string, awaitingOrgApproval: true, heldForASeat: false }
+      : { ...r.user, role: r.role as string, heldForASeat: !!r.heldForASeat || overThePlan.held.has(r.user.id) });
 
     /*
      * WHERE EACH PERSON ACTUALLY GOT TO, which is the only question an admin has at any scale
