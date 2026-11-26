@@ -36,8 +36,8 @@ import {
   aReadingForTheModel, aReadingMadeSafe, isAWorkbook, theReadingAsked, theSizeSaid, theWorkbookAsFiles, type TheReading,
 } from './reading-a-document';
 import {
-  READ_ACROSS_KEY, READ_ACROSS_PROMPT, READ_ACROSS_SCHEMA, WRITE_THE_REPORT_KEY, WRITE_THE_REPORT_PROMPT, WRITE_THE_REPORT_SCHEMA,
-  aWrittenReportFromTheReadings, shortIdsFor, theAcrossAsked, theAcrossMadeSafe, theWritingAsked, type TheWrittenReport,
+  READ_ACROSS_KEY, READ_ACROSS_PROMPT, READ_ACROSS_SCHEMA, WRITE_A_SECTION_KEY, WRITE_A_SECTION_PROMPT, WRITE_A_SECTION_SCHEMA, FRAME_THE_REPORT_KEY, FRAME_THE_REPORT_PROMPT, FRAME_THE_REPORT_SCHEMA,
+  aWrittenReportFromTheReadings, shortIdsFor, theAcrossAsked, theAcrossMadeSafe, aSectionAsked, theFrameAsked, theReportPutTogether, type TheWrittenReport,
 } from './writing-the-report';
 import { beforeTheFinal, theReportFiles, theReportInTheChat } from './the-report-files';
 
@@ -254,6 +254,13 @@ export class ReportsOnRequestService {
     }
     if (means === 'add') return a.channel === 'chat' ? { said: ADD_IT_HERE, upload: true } : { said: howToAddMore(a.channel, await this.address(a.organizationId)) };
     if (means === 'approve' && open.status === 'outline' && kept.sections?.length) return { said: await this.write(open, kept, a.channel) };
+    /* A change and a go-ahead in one message: the outline is changed in their words, then written from it. */
+    if (means === 'changeThenWrite' && open.status === 'outline') {
+      const changed = await this.anOutline(open, kept, sources, a.message, a.userId);
+      const now = await this.openRequestOf(a.organizationId, a.userId);
+      const after = (now?.outline ?? null) as TheOutlineKept | null;
+      return { said: now?.status === 'outline' && after?.sections?.length ? await this.write(now, after, a.channel) : changed };
+    }
     /* Ready, a change, or a yes before there is an outline: the outline is made, or changed, in their words. */
     return { said: await this.anOutline(open, kept, sources, a.message, a.userId) };
   }
@@ -317,11 +324,21 @@ export class ReportsOnRequestService {
   async writeItNow(open: any, kept: TheOutlineKept, chosen: ASource[], channel: TheChannel): Promise<TheWrittenReport | null> {
     const extract = this.extractor()!;
     const index = shortIdsFor(chosen);
-    const readings = index.map(({ short, source }) => (source.reading ? aReadingForTheModel(short, source.name, source.reading) : `SOURCE ${short}: ${source.label}\n${source.text}`));
+    const readingOf = ({ short, source }: (typeof index)[number]) => (source.reading ? aReadingForTheModel(short, source.name, source.reading) : `SOURCE ${short}: ${source.label}\n${source.text}`);
+    const readings = index.map(readingOf);
     const pa = await this.prompt(READ_ACROSS_KEY, READ_ACROSS_PROMPT);
     const across = theAcrossMadeSafe(await extract(pa.content, [{ role: 'user', content: theAcrossAsked({ asked: open.asked, readings }) }], READ_ACROSS_SCHEMA, { long: true }).catch(() => null), index);
-    const p = await this.prompt(WRITE_THE_REPORT_KEY, WRITE_THE_REPORT_PROMPT);
-    const raw = await extract(p.content, [{ role: 'user', content: theWritingAsked({ asked: open.asked, outline: kept.sections!, readings, across, index }) }], WRITE_THE_REPORT_SCHEMA, { long: true }).catch(() => null);
+    /* Each section from the readings of its own documents, one after another so the model is not asked for them all at once; then the frame. */
+    const ps = await this.prompt(WRITE_A_SECTION_KEY, WRITE_A_SECTION_PROMPT);
+    const sections: { heading: string; raw: any }[] = [];
+    for (const section of kept.sections!) {
+      const own = index.filter((x) => section.sourceIds.includes(x.source.id));
+      const asked = aSectionAsked({ asked: open.asked, outline: kept.sections!, heading: section.heading, readings: (own.length ? own : index).map(readingOf), across, index });
+      sections.push({ heading: section.heading, raw: await extract(ps.content, [{ role: 'user', content: asked }], WRITE_A_SECTION_SCHEMA, { long: true }).catch(() => null) });
+    }
+    const p = await this.prompt(FRAME_THE_REPORT_KEY, FRAME_THE_REPORT_PROMPT);
+    const frame = await extract(p.content, [{ role: 'user', content: theFrameAsked({ asked: open.asked, sections, across, index }) }], FRAME_THE_REPORT_SCHEMA, { long: true }).catch(() => null);
+    const raw = theReportPutTogether(frame, sections);
     const evidence = index.flatMap(({ source }) => (source.reading?.figures ?? []).filter((f) => f.working).map((f) => ({ figure: f.what, value: f.value, where: f.where, working: f.working ?? '', source: source.name })));
     const written = aWrittenReportFromTheReadings(raw, index, evidence);
     if (!written) throw new Error('the model wrote nothing that could be kept');

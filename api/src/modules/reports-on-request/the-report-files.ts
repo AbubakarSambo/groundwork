@@ -13,7 +13,7 @@ import { docxOf, type Block } from '../year-end/the-year-end-files';
 import type { AnAttachment } from '../email/attachments';
 import type { ALine, TheWrittenReport, AGapWritten } from './writing-the-report';
 import type { ASource, TheChannel } from './the-report-on-request';
-import { aList } from './the-report-on-request';
+import { aList, aFew } from './the-report-on-request';
 
 const XLSX = require('xlsx') as typeof import('xlsx');
 
@@ -29,9 +29,7 @@ const aLineSaid = (l: ALine) => (l.sources.length ? sentence(l.text) : `${senten
 /** A finding with the documents it rests on: up to three by name, the rest counted. */
 const withItsSources = (text: string, sources: ASource[]) => {
   if (!sources.length) return `${sentence(text)} ${UNVERIFIED}`;
-  const names = sources.map(nameOf);
-  const named = names.length <= 3 ? aList(names) : `${names.slice(0, 2).join(', ')} and ${names.length - 2} other documents`;
-  return `${sentence(text)} This is from ${named}.`;
+  return `${sentence(text)} This is from ${aFew(sources.map(nameOf), 'other documents')}.`;
 };
 
 /* ------------------------------------------------------------------ the chat */

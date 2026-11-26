@@ -111,6 +111,7 @@ function aWorld() {
 /** A stand-in for Gemini that reads the way a model would, and remembers what it was sent. */
 function aModel() {
   const sent: { schema: string; content: string }[] = [];
+  const seen = new Map<string, string>();
   const engine = {
     extract: async (_system: string, history: any[], schema: any) => {
       const content = String(history[0]?.content ?? '');
@@ -144,9 +145,19 @@ function aModel() {
           openMatters: [], notes: [], problems: [] };
       }
       if (schema.name === 'read_across') return { patterns: [{ text: 'The Ikeja van is late every week the reports cover.', sourceIds: ['C1'] }], disagreements: [], missing: [], gaps: [] };
-      if (schema.name === 'the_report_from_the_readings') {
-        /* The short ids the writer was given, in the order given: check-ins are C, documents D. */
-        const short = (name: string) => new RegExp(`(?:SOURCE|DOCUMENT) ([CD]\\d+): [^\\n]*${name}`).exec(content)?.[1] ?? 'none';
+      /* The short ids the model was given, gathered from every request so far: check-ins are C, documents D. */
+      for (const x of content.matchAll(/(?:SOURCE|DOCUMENT) ([CD]\d+): ([^\n]*)/g)) seen.set(x[2], x[1]);
+      const short = (name: string) => [...seen.entries()].find(([line]) => line.includes(name))?.[1] ?? 'none';
+      if (schema.name === 'a_section_from_the_readings') {
+        /* Each section is written from its own documents' readings only. */
+        if (!/(?:SOURCE|DOCUMENT) [CD]\d+: [^\n]*Dispatch weekly/.test(content)) return { blocks: [{ kind: 'line', text: 'March deliveries were 412, up from 380 in February', sourceIds: [short('March')] }], register: [], gaps: [] };
+        return {
+          blocks: [{ kind: 'line', text: 'The Ikeja van is late twice a week', sourceIds: [short('Dispatch weekly')] }],
+          register: [{ action: 'Log every late van before noon', owner: 'Dispatch lead', due: '30 November', priority: 'High', sourceIds: [short('Dispatch weekly')] }],
+          gaps: [{ gap: 'No fuel costs were given', limits: 'The cost of the late van', recordsNeeded: 'The fuel receipts for March', who: 'Dispatch', beforeFinal: true, sourceIds: [] }],
+        };
+      }
+      if (schema.name === 'the_report_framed') {
         return {
           title: 'How my departments are doing',
           summary: [{ text: 'Deliveries are up and the van is still late', sourceIds: [short('Warehouse daily'), short('Dispatch weekly'), short('March')] }],
@@ -156,8 +167,6 @@ function aModel() {
             { text: 'The new route will save money', sourceIds: ['checkin:g-finance'] },
           ],
           patterns: [], decisions: [{ text: 'Decide whether to replace the Ikeja van', when: 'this month', sourceIds: [short('Dispatch weekly')] }],
-          sections: [{ heading: 'How the warehouse and dispatch are doing', blocks: [{ kind: 'line', text: 'The Ikeja van is late twice a week', sourceIds: [short('Dispatch weekly')] }] }],
-          register: [{ id: 'A1', action: 'Log every late van before noon', owner: 'Dispatch lead', due: '30 November', priority: 'High', sourceIds: [short('Dispatch weekly')] }],
           gaps: [{ gap: 'No fuel costs were given', limits: 'The cost of the late van', recordsNeeded: 'The fuel receipts for March', who: 'Dispatch', beforeFinal: true, sourceIds: [] }],
         };
       }
@@ -257,7 +266,8 @@ describe('a report on request, as each reader reads it', () => {
     expect(mailed[0].to).toBe('fatima@acme.test');
     expect(mailed[0].files.map((f) => f.filename)).toEqual(['How my departments are doing.docx', 'How my departments are doing - actions register and evidence.xlsx']);
     /* Only the chosen sources were sent to the model: not the Desk she dropped, nor Finance. */
-    const toTheWriter = m.sent.find((s) => s.schema === 'the_report_from_the_readings')!.content;
+    const toTheWriter = m.sent.filter((s) => s.schema === 'a_section_from_the_readings' || s.schema === 'the_report_framed').map((s) => s.content).join('\n');
+    expect(m.sent.filter((s) => s.schema === 'a_section_from_the_readings')).toHaveLength(2);
     expect(toTheWriter).not.toMatch(/month-end close|Ship the Lagos hub|missed three routes/);
     expect(w.requests[0].status).toBe('built');
     expect(w.proposals.find((p) => p.kind === REPORT_ON_REQUEST_KIND)!.state).toBe('ACCEPTED');
