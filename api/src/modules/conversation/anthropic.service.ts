@@ -238,6 +238,8 @@ export const A_BACKGROUND_CALL_WAITS = 60_000;
  * genuinely should give up at a minute: a slow two-party synthesis is a symptom, not a size.
  */
 export const A_HUNDRED_ACCOUNTS_WAIT = 240_000;
+/** A workbook worked out with code: the model writes and runs several programs over thousands of rows, with nobody waiting on a composer. */
+export const A_WORKBOOK_WAITS = 480_000;
 /** How long the chat waits for a stream to open before saying it could not. */
 export const OPENING_A_STREAM_WAITS = 20_000;
 /** And how long it waits between chunks once one has opened. */
@@ -637,6 +639,46 @@ export class AnthropicService implements OnApplicationBootstrap {
     return houseStyle(text);
   }
 
+  /** How long an answer may be: a whole report from a year of documents needs the model's full room, a report its patient room, anything else a turn's. */
+  private theRoomToAnswer(o: { patient?: boolean; long?: boolean }): number { return o.long ? 65536 : o.patient ? 32768 : 8192; }
+
+  /**
+   * WORK IT OUT, DON'T GUESS IT (the documents test of 24 November 2026). A workbook's value is in its arithmetic: a summary that misses
+   * rows, a figure typed in that is in no ledger, a line over its budget. A model reading a sheet as words can only guess at those, so here
+   * it is given the sheets as files and Gemini's own code execution, and it decides what to add up and check. What it ran and what came
+   * back are returned with its words, so every figure keeps its working. It can cause nothing outside the sandbox the provider runs.
+   */
+  async workItOut(systemPrompt: string, question: string, files: { name: string; mimeType: string; text: string }[]): Promise<{ said: string; workings: string[] }> {
+    if (this.standIn) return { said: '', workings: [] };
+    let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
+    try {
+      res = await tryAgainIfItIsJustBusy(
+        () => withADeadline(
+          this.client.models.generateContent({
+            model: this.model,
+            contents: [{ role: 'user', parts: [...files.map((f) => ({ inlineData: { mimeType: f.mimeType, data: Buffer.from(f.text, 'utf8').toString('base64') } })), { text: question }] }],
+            config: { systemInstruction: systemPrompt, maxOutputTokens: 32768, tools: [{ codeExecution: {} }] },
+          }),
+          A_WORKBOOK_WAITS,
+          'Gemini workItOut() timed out',
+        ),
+        (n, err) => this.logger.warn(`workItOut() busy (${err?.message ?? err}); retry ${n}`),
+      );
+    } catch (err: any) {
+      this.logger.error(`workItOut() Gemini call failed: ${err.message}`);
+      this.noteFailure('extract', err);
+      throw engineUnavailable(err);
+    }
+    const parts: any[] = res.candidates?.[0]?.content?.parts ?? [];
+    const said = parts.map((p) => p.text ?? '').join('').trim();
+    const workings: string[] = [];
+    for (const p of parts) {
+      if (p.executableCode?.code) workings.push(`Ran:\n${String(p.executableCode.code).trim()}`);
+      if (p.codeExecutionResult?.output) workings.push(`Got:\n${String(p.codeExecutionResult.output).trim()}`);
+    }
+    return { said, workings };
+  }
+
   /**
    * `thinkingBudget` is for the small, live extractions: the Setup turn pulls a handful of typed
    * fields out of a short conversation while a person waits, and with the model's default budget
@@ -652,7 +694,7 @@ export class AnthropicService implements OnApplicationBootstrap {
     systemPrompt: string,
     history: ChatTurn[],
     tool: { name: string; description: string; input_schema: any },
-    options: { thinkingBudget?: number; fast?: boolean; patient?: boolean; temperature?: number; seed?: number } = {},
+    options: { thinkingBudget?: number; fast?: boolean; patient?: boolean; long?: boolean; temperature?: number; seed?: number } = {},
   ): Promise<T | null> {
     /* The stand-in finds nothing, as a model that found nothing would. */
     if (this.standIn) return null;
@@ -680,7 +722,7 @@ export class AnthropicService implements OnApplicationBootstrap {
           systemInstruction: systemPrompt,
           /* A patient read is a big one: eight thousand tokens is not a hundred organisations laid
              out in ten sections, and a truncated tool call comes back as an empty object. */
-          maxOutputTokens: options.patient ? 32768 : 8192,
+          maxOutputTokens: this.theRoomToAnswer(options),
           /*
            * TEMPERATURE, WHICH NO CALLER SETS, AND THE MEASUREMENT THAT SAYS SO.
            *
@@ -717,7 +759,7 @@ export class AnthropicService implements OnApplicationBootstrap {
             },
           },
         },
-      }), options.patient ? A_HUNDRED_ACCOUNTS_WAIT : options.fast ? A_CALL_WAITS : A_BACKGROUND_CALL_WAITS, 'Gemini extract() timed out'), (n, err) => this.logger.warn(`extract() busy (${err?.message ?? err}); retry ${n}`));
+      }), options.long ? A_WORKBOOK_WAITS : options.patient ? A_HUNDRED_ACCOUNTS_WAIT : options.fast ? A_CALL_WAITS : A_BACKGROUND_CALL_WAITS, 'Gemini extract() timed out'), (n, err) => this.logger.warn(`extract() busy (${err?.message ?? err}); retry ${n}`));
     } catch (err: any) {
       /* Named by its tool and its size: a refusal of the request itself ("Request contains an invalid argument") says nothing of which of the
          twenty-six reads it was, and for a month the only trace of the assessment's was the provider's own sentence. */
@@ -756,7 +798,8 @@ export class AnthropicService implements OnApplicationBootstrap {
           contents,
           config: {
             systemInstruction: systemPrompt,
-            maxOutputTokens: 8192,
+            /* The same room as the first try: a long report retried at 8,192 tokens came back cut off. */
+            maxOutputTokens: this.theRoomToAnswer(options),
             tools: [{ functionDeclarations: [this.convertTool(tool)] }],
             toolConfig: {
               functionCallingConfig: {
