@@ -1,5 +1,5 @@
 /**
- * WHAT A MAIL MAY CARRY, SAID ONCE (Fatima, increment 4).
+ * WHAT A MAIL MAY CARRY, SAID ONCE (Ebele, increment 4).
  *
  * The one door (email.service.ts, throughTheDoor) is the only place a mail reaches the mail service, so it is
  * also the only place attachments are checked and handed on. A held mail keeps its attachments in

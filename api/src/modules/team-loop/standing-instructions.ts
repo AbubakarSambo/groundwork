@@ -1,5 +1,5 @@
 /**
- * STANDING INSTRUCTIONS, BY PLAIN WORDS (Fatima, increment 6a; plan 11, 19 and 31).
+ * STANDING INSTRUCTIONS, BY PLAIN WORDS (Ebele, increment 6a; plan 11, 19 and 31).
  *
  *   "Get everyone's updates and email me Friday."
  *   "Handle this with the team and come back when ready."
@@ -156,7 +156,7 @@ async function proposeIt(prisma: any, a: { organizationId: string; now: Date }, 
 /**
  * Asks each person once for this cycle. Returns how many were asked now. A person already asked for this key is not asked again. Somebody who cannot be
  * written to today (howTheyCanBeWrittenToToday, the same owner the say-back read) is not tried, and has no row: the next day's run asks them, and the update
- * for her names them until it has (Dangote rerun, N1). Each door gets its own claim, because a door that could not take the message gives its claim back.
+ * for her names them until it has (Halden rerun, N1). Each door gets its own claim, because a door that could not take the message gives its claim back.
  */
 async function askTheTeam(prisma: any, ports: TheStandingPorts, job: any, contacts: any[], key: string, principalFirst: string, now: Date): Promise<number> {
   let asked = 0;
@@ -165,7 +165,7 @@ async function askTheTeam(prisma: any, ports: TheStandingPorts, job: any, contac
     if (await prisma.informationGap.findFirst({ where: { principalUserId: job.principalUserId, gapKey: key, askedOfEmail: c.contactKey } })) continue;
     const how = await howTheyCanBeWrittenToToday(prisma, c, now);
     if (!how) continue;
-    /* Claimed as waiting before it goes; it becomes asked only when the gate or the door says the message went (Dangote stress test, D4). */
+    /* Claimed as waiting before it goes; it becomes asked only when the gate or the door says the message went (Halden stress test, D4). */
     const claimed = await claim(c);
     if (!claimed) continue;
     /* Somebody already asked for their work in the last three days, and who has not written since, is not asked a second time for the same thing in a second message: the earlier ask stands, and this one was asked when it was. A matter she named is a different thing from "what are you working on", so it is always asked. */

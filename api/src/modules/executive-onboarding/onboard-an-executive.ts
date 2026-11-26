@@ -1,5 +1,5 @@
 /**
- * ADDING A SENIOR PERSON WHO NEVER REGISTERS (Fatima, increment 5; plan section 3 and acceptance tests 1 to 3).
+ * ADDING A SENIOR PERSON WHO NEVER REGISTERS (Ebele, increment 5; plan section 3 and acceptance tests 1 to 3).
  *
  * An administrator of the organisation gives her name, her email address, her WhatsApp number and the starting brief. That one act:
  *   1. makes her identity, from the admin's word (the address and the number are the admin's; she proves them by writing back);

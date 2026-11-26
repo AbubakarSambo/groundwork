@@ -258,7 +258,7 @@ export function theChosenSources(outline: ASection[], sources: ASource[]): ASour
 
 /**
  * A long report sent on WhatsApp goes in parts, each whole paragraphs, so nothing is cut off. A paragraph longer than one part is split between
- * its sentences (Dangote rerun, N2: a 9,000-character say-back was one paragraph, and everything after 3,800 characters was dropped mid-sentence).
+ * its sentences (Halden rerun, N2: a 9,000-character say-back was one paragraph, and everything after 3,800 characters was dropped mid-sentence).
  */
 export function inParts(text: string, most = 3800): string[] {
   const parts: string[] = [];

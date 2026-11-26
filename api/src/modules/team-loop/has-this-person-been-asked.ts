@@ -1,5 +1,5 @@
 /**
- * HAS THIS PERSON BEEN ASKED, AND HAVE THEY ANSWERED (Fatima round 2, C4: each team member got two ask mails with two subjects, the introduction's "What are you
+ * HAS THIS PERSON BEEN ASKED, AND HAVE THEY ANSWERED (Ebele round 2, C4: each team member got two ask mails with two subjects, the introduction's "What are you
  * currently working on?" and the standing instruction's "Your update for Rakiya", within the same day).
  *
  * One owner for the question. A person who was asked for their work in the last three days, by the introduction (the delivery that really went) or by any
@@ -35,7 +35,7 @@ export async function whenWereTheyLastAsked(prisma: any, a: { principalUserId: s
 }
 
 /**
- * HOW, AND WHETHER, THEY CAN BE WRITTEN TO TODAY (Dangote rerun, N1). Fatima read that 64 people would be written to. Three of them had already had the day's one routine
+ * HOW, AND WHETHER, THEY CAN BE WRITTEN TO TODAY (Halden rerun, N1). Ebele read that 64 people would be written to. Three of them had already had the day's one routine
  * message (the year-end mail at seven), WhatsApp could not take the ask outside the 24 hours, the email was held back by the day's count, and the ask was
  * dropped with nothing on the record to tell her; and 55 she was told would get WhatsApp got an email. One owner now answers before anything is promised: the
  * say-back reads it, and so does the ask. Null is "not today".

@@ -88,7 +88,7 @@ const monthWords = (keys: string[]) => {
 
 /** One job, recomputed from the record. Returns what was written, for the tests and the logs. */
 /**
- * WHAT THE RECORD COVERS, FROM ONE PLACE (Fatima round 3). The two jobs, the first picture and the draft all read it here: the register's sources and what she
+ * WHAT THE RECORD COVERS, FROM ONE PLACE (Ebele round 3). The two jobs, the first picture and the draft all read it here: the register's sources and what she
  * forwarded, each month read from what the document says it is about (the-months-a-document-covers.ts). The first picture used to read the register alone and told
  * her the record did not cover months whose notes she had just forwarded.
  */

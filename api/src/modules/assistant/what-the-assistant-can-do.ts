@@ -146,7 +146,7 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     does: 'What is still outstanding, with who has it, the date it is due and what it waits on, read from the outstanding register. A delegate reads the same for the person they act for. A reader with no register is given the onboarding checklist instead.',
     writes: 'nothing',
     ordered: 'Above where_am_i_up_to, whose "what is outstanding" is the onboarding checklist.',
-    owns: ['What is outstanding?', 'what is still outstanding', 'what matters are outstanding for Fatima'],
+    owns: ['What is outstanding?', 'what is still outstanding', 'what matters are outstanding for Ebele'],
     refuses: ['what needs my decision?', 'which items can the team close this week?', 'what is on my list?'],
   },
   {
@@ -516,7 +516,7 @@ export interface TheReader {
   isAnAdmin?: boolean;
   /** They look after HR, as the admin named them under who holds each duty. */
   looksAfterHr?: boolean;
-  /** A senior person an admin added, and the person who acts for one (Fatima's setup). Absent reads as no. */
+  /** A senior person an admin added, and the person who acts for one (Ebele's setup). Absent reads as no. */
   isAPrincipal?: boolean;
   actsForSomebody?: boolean;
   leaveIsOn: boolean;

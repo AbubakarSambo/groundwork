@@ -1,5 +1,5 @@
 /**
- * A TEAM MEMBER'S REPLY IS THEIR PARTICIPATION (Fatima, increment 5; plan 6 and 26.1): no sign-up, no link, no login.
+ * A TEAM MEMBER'S REPLY IS THEIR PARTICIPATION (Ebele, increment 5; plan 6 and 26.1): no sign-up, no link, no login.
  *
  * Somebody she named, and said yes to, who writes back (a reply to the email, a forward, a message, a voice note) has their words and files kept as
  * material for her work, exactly as hers are, and answered once for the batch. Writing back from the address or number they were given verifies

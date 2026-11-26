@@ -38,7 +38,7 @@ export function theOutboxKey(m: { channel: AChannel; to: string; kind?: string |
   if (AN_APOLOGY.test(text)) return `${m.channel}|${to}|apology|${bucket(at, 30 * 60_000)}`;
   const kind = String(m.kind ?? '').trim();
   if (!kind || /^reply$/i.test(kind)) return `${m.channel}|${to}|reply|${hash(`${m.answering ?? ''}|${text}`)}|${bucket(at, 60_000)}`;
-  /* A reply is to something somebody said: two replies to two messages are two replies, even in the same words (Fatima typed her list twice and was told nothing the second time, Fatima round 1, I-16). `answering` is the id of what is being answered. */
+  /* A reply is to something somebody said: two replies to two messages are two replies, even in the same words (Ebele typed her list twice and was told nothing the second time, Ebele round 1, I-16). `answering` is the id of what is being answered. */
   /* The year-end files go once for one job, version and person, however many days later it is asked: the key carries no day. */
   if (kind === 'year-end-files' && m.about) return `${m.channel}|${to}|year-end-files|${m.about}`;
   if (AN_INVITATION.test(kind)) return `${m.channel}|${to}|invitation|${bucket(at, DAY)}`;

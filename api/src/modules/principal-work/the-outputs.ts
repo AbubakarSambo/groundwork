@@ -1,5 +1,5 @@
 /**
- * THE DAILY BRIEFING AND THE WEEKLY WORKSTREAM UPDATE (Fatima, increment 6b; plan section 15). Both are written from what is already kept (the outstanding
+ * THE DAILY BRIEFING AND THE WEEKLY WORKSTREAM UPDATE (Ebele, increment 6b; plan section 15). Both are written from what is already kept (the outstanding
  * register, the payments tracker as it stands against the record, and the weekly reports kept), on request ("Give me my day"), and, only when she has set it
  * as a standing preference, on schedule. They are short plain text for WhatsApp and fuller for email, and a scheduled one is sent only when there is something
  * meaningful in it. Nothing in them comes from a private coaching conversation: the register is built from commitments, dependencies, obligations and requests,
@@ -10,6 +10,10 @@
 import { asATask } from '../outstanding/a-promise-as-a-task';
 import { buildTheRegister, type AWaitingForThePrincipal, type TheRegisterRow } from '../outstanding/the-outstanding-register';
 import { dayWords } from '../year-end/the-year-end-content';
+import { pdfOf, type Block } from '../year-end/the-year-end-files';
+import type { AnAttachment } from '../email/attachments';
+import { aChangeSaid, type AChange } from './the-deck-changes';
+import { theQuestionsAndAnswers } from '../executive-onboarding/information-gaps';
 import { sayMoney } from './the-money';
 import { isPaidWithProof } from './the-payments-reconcile';
 import { thePaymentCounts, thePaymentsNow } from './the-payments-work';
@@ -20,7 +24,7 @@ export const THE_FULLER_ONE_WENT_BY_EMAIL = 'I have emailed you the fuller versi
 export interface TheOutput { subject: string; short: string; full: string; meaningful: boolean; snapshot: Record<string, string> }
 
 const DAY = 86_400_000;
-const SAYS_STATUS: Record<string, string> = {
+export const SAYS_STATUS: Record<string, string> = {
   open: 'open', 'in progress': 'in progress', blocked: 'blocked', 'awaiting decision': 'waiting for a decision', 'awaiting external party': 'waiting for somebody outside the office',
   completed: 'done', cancelled: 'cancelled', unverified: 'said to be done, with nothing shown yet',
 };
@@ -35,7 +39,6 @@ const decisionLine = (r: TheRegisterRow, forName?: string | null) => {
   const q = forName ? r.decision!.question.replace(/^Did you\b/i, `Did ${forName}`).replace(/\byou\b/gi, forName).replace(/\byour\b/gi, `${forName}'s`) : r.decision!.question;
   return q.toLowerCase().includes(plain(r.item).toLowerCase()) ? q : `${q} (${plain(r.item)})`;
 };
-const lowerFirst = (s: string) => `${s[0]?.toLowerCase() ?? ''}${s.slice(1)}`;
 const startOf = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 const ORDER = ['awaiting decision', 'blocked', 'awaiting external party', 'in progress', 'open'];
 
@@ -105,16 +108,54 @@ export async function theDay(prisma: any, a: { organizationId: string; principal
   };
 }
 
+/**
+ * WHICH OF HER THREE BUCKETS AN ITEM IS IN (change 5: "Needs your attention, For monitoring, For information").
+ *   attention    a decision waiting for her; a flag past the office's threshold whose owner has answered, has been silent two days or more, or
+ *                nobody has asked yet (so nothing that costs money or a relationship sits unseen)
+ *   monitoring   a flag that is not past its threshold, or whose owner was asked less than two days ago; anything stuck, waiting on somebody
+ *                outside, said done with nothing shown, or due within the week
+ *   information  everything else still open
+ * Where she has put an item herself ("not urgent", "this needs me"), it stays where she put it.
+ */
+export type ABucket = 'attention' | 'monitoring' | 'information';
+export function theBucketOf(r: TheRegisterRow, now: Date): ABucket {
+  if (r.herBucket) return r.herBucket;
+  if (r.flag?.standing) return 'monitoring';
+  if (r.status === 'awaiting decision' && r.decision) return 'attention';
+  const f = r.flag;
+  if (f?.due) {
+    const waitingForTheirAnswer = !!f.askedOn && !f.answeredOn && now.getTime() - f.askedOn.getTime() < 2 * DAY;
+    return waitingForTheirAnswer ? 'monitoring' : 'attention';
+  }
+  if (f || ['blocked', 'awaiting external party', 'unverified'].includes(r.status) || due(r, startOf(now), 7)) return 'monitoring';
+  return 'information';
+}
+
+const daysSince = (d: Date, now: Date) => Math.max(0, Math.floor((now.getTime() - d.getTime()) / DAY));
+const daysSaid = (n: number) => (n === 1 ? 'one day' : `${n} days`);
+/** One line of the brief: what it is, where it stands, how long it has been open, what its owner said or that they have not, and where it comes from. */
+export function aBriefLine(r: TheRegisterRow, now: Date): string {
+  const first = r.sources.reduce<Date | null>((m, s) => (!m || s.at < m ? new Date(s.at) : m), null);
+  const where = r.flag?.where ?? r.sources[r.sources.length - 1]?.from ?? null;
+  const stands = r.flag ? r.flag.says : r.status === 'awaiting decision' && r.decision ? decisionLine(r) : `It is ${SAYS_STATUS[r.status] ?? r.status}.`;
+  const open = first ? `Open for ${daysSaid(daysSince(first, now))}.` : '';
+  const f = r.flag;
+  const theirs = !f ? '' : f.answeredOn
+    ? `${f.askedOf ?? 'The owner'} answered on ${dayWords(f.answeredOn)}${f.answer ? `: "${f.answer}"` : '.'}`
+    : f.askedOn ? `I asked ${f.askedOf} on ${dayWords(f.askedOn)} and have had no answer for ${daysSaid(daysSince(f.askedOn, now))}.`
+      : f.due ? 'Nobody on your team has been asked about it yet.' : '';
+  return [`${theItem(r)}.`, stands, open, theirs.replace(/([^.!?"])$/, '$1.'), where ? `(${where})` : ''].filter(Boolean).join(' ');
+}
+
 export async function theWeek(prisma: any, a: { organizationId: string; principalUserId: string; first: string; forName?: string | null; forADelegate: boolean; now: Date; waiting?: AWaitingForThePrincipal[] }): Promise<TheOutput> {
   const rows = await theRows(prisma, a);
   const weekAgo = a.now.getTime() - 7 * DAY;
+  const live = rows.filter((r) => r.status !== 'completed' && r.status !== 'cancelled');
+  const inBucket = (b: ABucket) => live.filter((r) => theBucketOf(r, a.now) === b);
+  const attention = inBucket('attention');
+  const monitoring = inBucket('monitoring');
+  const information = inBucket('information');
   const done = rows.filter((r) => r.status === 'completed' && new Date(r.lastVerifiedAt).getTime() >= weekAgo);
-  const stuck = rows.filter((r) => r.status === 'blocked' || r.status === 'awaiting external party').map((r) => `${theItem(r)}. It is ${r.dependency ? lowerFirst(plain(r.dependency)) : SAYS_STATUS[r.status]}.`);
-  const waiting = rows.filter((r) => r.status === 'awaiting decision' && r.decision).map((r) => decisionLine(r, a.forName));
-  const unclear = rows.filter((r) => r.status === 'unverified').map((r) => `${asATaskCapital(plain(r.item))}.`);
-  const moving = rows.filter((r) => r.status === 'in progress' || r.status === 'open').length;
-  const byWorkstream = new Map<string, number>();
-  for (const r of rows.filter((r) => ORDER.includes(r.status))) byWorkstream.set(r.workstream ?? 'Other work', (byWorkstream.get(r.workstream ?? 'Other work') ?? 0) + 1);
   const pay = await thePaymentsNow(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId });
   const counts = thePaymentCounts(pay);
   const { payments: nPay, paidWithProof: paidCount, saidPaidNoProof: saidPaid } = counts;
@@ -126,18 +167,71 @@ export async function theWeek(prisma: any, a: { organizationId: string; principa
   ].filter(Boolean).join(' ')] : [];
   const digests: any[] = ((await prisma.weeklyDigest?.findMany?.({ where: { principalUserId: a.principalUserId } }).catch(() => [])) ?? []).filter((d: any) => new Date(d.updatedAt ?? d.createdAt).getTime() >= weekAgo);
   const assembly = digests.map((d) => `The ${d.institution} report for the week ${d.weekKey.replace('-W', ', week ')} was kept, with ${(d.developments as any[]).length} ${(d.developments as any[]).length === 1 ? 'development' : 'developments'} in it.`);
-  const section = (title: string, lines: string[]) => (lines.length ? [title, ...bullets(lines)].join('\n') : null);
+  const decks = await whatChangedThisWeek(prisma, { principalUserId: a.principalUserId, since: new Date(weekAgo) });
+  const silences = await whoHasNotAnswered(prisma, { principalUserId: a.principalUserId, now: a.now });
+  const section = (title: string, lines: string[], max = 99) => (lines.length ? [title, ...bullets(lines.slice(0, max)), ...(lines.length > max ? [`- And ${lines.length - max} more. Ask me "what is open" for all of them.`] : [])].join('\n') : null);
+  const forYou = a.forName ? `${a.forName}'s` : 'your';
   const parts = [
-    section('What moved this week', done.map((r) => `${theItem(r)}. It is done, and the record shows it.`)),
-    byWorkstream.size ? ['What is still in progress', ...bullets([...byWorkstream.entries()].map(([w, n]) => `${w}: ${n === 1 ? 'one item' : `${n} items`}.`))].join('\n') : null,
-    section('What is stuck, and what would help', stuck),
-    section('What waits for your decision', waiting),
-    section('Said to be done, with nothing shown yet', unclear),
-    section('Payments', payments),
-    section('National Assembly', assembly),
+    section(`Needs ${a.forName ? `${a.forName}'s` : 'your'} attention`, attention.map((r) => aBriefLine(r, a.now))),
+    section('For monitoring', [...monitoring.map((r) => aBriefLine(r, a.now)), ...silences], 25),
+    section('For information', [
+      ...done.map((r) => `${theItem(r)}. It is done, and the record shows it.`),
+      ...information.map((r) => aBriefLine(r, a.now)),
+      ...decks,
+      ...payments,
+      ...assembly,
+    ], 30),
   ].filter(Boolean) as string[];
-  const heading = `Here is the update on ${a.forName ? `${a.forName}'s` : 'the'} work for the week to ${dayWords(a.now)}, ${a.first}.`;
-  const meaningful = done.length + stuck.length + waiting.length + assembly.length > 0 || moving > 0;
-  const short = [heading, `${done.length ? `${done.length === 1 ? 'One thing' : `${done.length} things`} moved and the record shows it. ` : 'Nothing was shown as done this week. '}${stuck.length ? `${stuck.length === 1 ? 'One thing is' : `${stuck.length} things are`} stuck. ` : ''}${waiting.length ? `${waiting.length === 1 ? 'One decision waits' : `${waiting.length} decisions wait`} for you.` : ''}`.trim()].join('\n\n');
-  return { subject: `The week's update, ${dayWords(a.now)}`, meaningful, full: parts.length ? [heading, ...parts].join('\n\n') : `There is nothing to report on the work this week, ${a.first}.`, short, snapshot: snapshotOf(rows) };
+  const heading = `Here is ${forYou} week to ${dayWords(a.now)}, ${a.first}.`;
+  const meaningful = attention.length + monitoring.length + information.length + done.length + assembly.length + decks.length > 0;
+  const info = information.length + done.length;
+  /* The WhatsApp line is counts only, with no figures in it: the page with the items goes by email. */
+  const short = `${heading} ${attention.length === 1 ? 'One item needs' : `${attention.length} items need`} ${a.forName ? `${a.forName}'s` : 'your'} attention, ${monitoring.length === 1 ? 'one is' : `${monitoring.length} are`} for monitoring, and ${info === 1 ? 'one is' : `${info} are`} for information.`;
+  return { subject: `Your week, ${dayWords(a.now)}`, meaningful, full: parts.length ? [heading, ...parts].join('\n\n') : `There is nothing to report on the work this week, ${a.first}.`, short, snapshot: snapshotOf(rows) };
+}
+
+/** The weekly brief as a one-page PDF, the same words as the mail: its heading, its three buckets and their lines. */
+export async function theBriefAsAPdf(out: TheOutput): Promise<AnAttachment> {
+  const blocks: Block[] = [];
+  out.full.split('\n\n').forEach((part, i) => {
+    const [first, ...rest] = part.split('\n');
+    if (i === 0) { blocks.push({ t: 'h1', text: out.subject }, { t: 'p', text: first }); return; }
+    blocks.push({ t: 'h2', text: first });
+    for (const l of rest) blocks.push({ t: 'li', text: l.replace(/^- /, '') });
+  });
+  return { filename: `${out.subject.replace(/[^A-Za-z0-9 ,-]+/g, '').trim()}.pdf`, contentType: 'application/pdf', content: await pdfOf(blocks, out.subject) };
+}
+
+/** The reports that changed this week against their last version (the-deck-changes.ts), each change said, and what the sender said about them. */
+async function whatChangedThisWeek(prisma: any, a: { principalUserId: string; since: Date }): Promise<string[]> {
+  const kept: any[] = (await Promise.resolve(prisma.yearEndLog?.findMany?.({ where: { principalUserId: a.principalUserId, kind: 'told', subject: { startsWith: 'deck-changes:' } } })).catch(() => [])) ?? [];
+  const gaps = await theQuestionsAndAnswers(prisma, a.principalUserId, 'row:deck-');
+  const out: string[] = [];
+  for (const k of kept.filter((x) => new Date(x.at).getTime() >= a.since.getTime())) {
+    const d = k.data ?? {};
+    const changes: AChange[] = Array.isArray(d.changes) ? d.changes : [];
+    const gap = gaps.find((g) => g.gapKey === `row:deck-${String(k.subject).slice('deck-changes:'.length)}`);
+    const said = gap?.answeredAt ? ` ${gap.askedOfName ?? 'The sender'} answered on ${dayWords(new Date(gap.answeredAt))}.` : gap?.askedAt ? ` I asked ${gap.askedOfName} what is behind them on ${dayWords(new Date(gap.askedAt))}, with no answer yet.` : '';
+    out.push(`${d.file} changed in ${changes.length === 1 ? 'one place' : `${changes.length} places`} since ${d.earlier}.${said} ${changes.slice(0, 5).map(aChangeSaid).join(' ')}${changes.length > 5 ? ` And ${changes.length - 5} more.` : ''}`);
+  }
+  return out;
+}
+
+/**
+ * HOW EACH OWNER ANSWERS (change 8, patterns: "every item has an owner; outcomes feed that owner's pattern"). From the questions put about the reports in
+ * the last thirty days: who has left two or more without an answer for two days or more, with each one named and its day. A pattern of what was asked
+ * and what came back, never a judgement of the person, and never what anybody said to the coach.
+ */
+async function whoHasNotAnswered(prisma: any, a: { principalUserId: string; now: Date }): Promise<string[]> {
+  const asked = (await theQuestionsAndAnswers(prisma, a.principalUserId, 'row:')).filter((g) => g.askedAt && a.now.getTime() - g.askedAt.getTime() <= 30 * DAY);
+  const byPerson = new Map<string, typeof asked>();
+  for (const g of asked) { const who = g.askedOfName ?? g.askedOfEmail ?? ''; if (who) byPerson.set(who, [...(byPerson.get(who) ?? []), g]); }
+  const out: string[] = [];
+  for (const [who, gs] of byPerson) {
+    const silent = gs.filter((g) => !g.answeredAt && a.now.getTime() - g.askedAt!.getTime() >= 2 * DAY);
+    if (silent.length < 2) continue;
+    const days = silent.map((g) => dayWords(g.askedAt!)).join(', ');
+    out.push(`${who} has not answered ${silent.length} of the ${gs.length} questions I put about the reports in the last thirty days, asked on ${days}.`);
+  }
+  return out;
 }

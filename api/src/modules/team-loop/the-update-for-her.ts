@@ -1,5 +1,5 @@
 /**
- * WHAT FATIMA IS TOLD ABOUT HER TEAM'S WORK: THE EMAIL SHE ASKED FOR (Fatima, increment 6a; plan 11, 15 and 31).
+ * WHAT EBELE IS TOLD ABOUT HER TEAM'S WORK: THE EMAIL SHE ASKED FOR (Ebele, increment 6a; plan 11, 15 and 31).
  *
  * Built from the record only: each person's promises, what each waits on, and what was shown. Every sentence says where it came from ("in a message on
  * 12 November", "which shows it was done") or says plainly that it is not verified. It never reads what anybody said to the coach (the help in
@@ -29,13 +29,13 @@ export interface TheUpdateArgs {
 }
 
 /**
- * WHO HAS NOT ANSWERED, FROM THE SAME RECORD AS WHO HAS (Dangote stress test, D12: Ruth and Oluwaseun wrote corrections that afternoon and were told as silent; Bilkisu was
+ * WHO HAS NOT ANSWERED, FROM THE SAME RECORD AS WHO HAS (Halden stress test, D12: Ruth and Oluwaseun wrote corrections that afternoon and were told as silent; Bilkisu was
  * in both lists). One reading: a person whose ask went and who has sent nothing since is quiet; a person whose message has not gone yet was not asked at all.
  */
 export async function theAsksStillWaiting(prisma: any, a: { principalUserId: string; contacts: any[]; asks: TheUpdateArgs['asks'] }): Promise<{ quiet: string[]; notGone: string[] }> {
   const quiet: string[] = [];
   const notGone: string[] = [];
-  /* Somebody this cycle has not written to at all (they could not be written to that day, Dangote rerun N1) is named with the ones whose message is still waiting. */
+  /* Somebody this cycle has not written to at all (they could not be written to that day, Halden rerun N1) is named with the ones whose message is still waiting. */
   for (const c of a.contacts) if (c.name && !a.asks.some((g) => String(g.askedOfEmail ?? '').toLowerCase() === String(c.contactKey ?? '').toLowerCase())) notGone.push(c.name);
   for (const g of a.asks) {
     if (g.state === 'queued') { if (g.askedOfName) notGone.push(g.askedOfName); continue; }

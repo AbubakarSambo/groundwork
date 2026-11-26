@@ -8,7 +8,7 @@
  *
  * So the first name is the first word that is not a title. Titles are the ones people here really
  * carry, written with or without a full stop: Dr, Prof, Eng, Engr, Hon, Mr, Mrs, Ms, Miss, Sir, Madam,
- * Dame, Chief, Alhaji, Alhaja, Hajiya, Rev, Pastor, Barr, Arc, Justice and the rest below, and more
+ * Dame, Chief, Alhaji, Alhaja, Mrs, Rev, Pastor, Barr, Arc, Justice and the rest below, and more
  * than one of them in a row ("Rt. Hon.", "Chief Dr").
  *
  * WHAT A TITLE LEAVES BEHIND DECIDES WHAT THE SHORT NAME IS:
@@ -20,7 +20,7 @@
 
 const TITLES = new Set([
   'dr', 'doctor', 'prof', 'professor', 'eng', 'engr', 'engnr', 'hon', 'honourable', 'honorable', 'rt',
-  'mr', 'mrs', 'ms', 'miss', 'mx', 'sir', 'madam', 'dame', 'chief', 'alhaji', 'alhaja', 'hajiya', 'hajia',
+  'mr', 'mrs', 'ms', 'miss', 'mx', 'sir', 'madam', 'dame', 'chief', 'alhaji', 'alhaja', 'mrs', 'hajia',
   'mallam', 'malam', 'rev', 'revd', 'reverend', 'pastor', 'pst', 'bishop', 'imam', 'apostle',
   'evangelist', 'deacon', 'deaconess', 'barr', 'barrister', 'arc', 'arch', 'justice', 'sen', 'senator',
   'amb', 'ambassador', 'oba', 'sheikh', 'gen', 'col', 'capt', 'maj', 'lt', 'sgt', 'cdr', 'pharm',

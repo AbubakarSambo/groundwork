@@ -1,5 +1,5 @@
 /**
- * THE TEAM LOOP, JOINED TO NEST AND TO THE CHANNELS (Fatima, increment 6a). The decisions are in the plain files next to this one, each tested with
+ * THE TEAM LOOP, JOINED TO NEST AND TO THE CHANNELS (Ebele, increment 6a). The decisions are in the plain files next to this one, each tested with
  * local fakes. This class gives them the real prisma, the one mail door and the one WhatsApp gate, the model seam, and the schedule.
  *
  * Mail goes through EmailService and WhatsApp through WhatsAppService.sendFor, whose own rules (the window and the template, quiet hours, STOP, the
@@ -78,7 +78,7 @@ export class TeamLoopService {
     const batch: any = await this.db.intakeBatch.findFirst({ where: { id: a.batchId } });
     const everything: any[] = (await this.db.principalMaterial.findMany({ where: { principalUserId: a.principalUserId, batchId: a.batchId } })) ?? [];
     const duplicates = everything.filter((r: any) => r.state === 'duplicate').length;
-    /* A copy this person sent before, in this or an earlier message, is "exactly as you sent it". A copy only a colleague sent is only "already held": whose it was is never said (Fatima round 4, untrue line 10). */
+    /* A copy this person sent before, in this or an earlier message, is "exactly as you sent it". A copy only a colleague sent is only "already held": whose it was is never said (Ebele round 4, untrue line 10). */
     let duplicatesOfTheirOwn = 0;
     for (const r of everything.filter((x: any) => x.state === 'duplicate' && x.hash)) {
       const mine: any = await this.db.principalMaterial.findFirst({ where: { principalUserId: a.principalUserId, hash: r.hash, fromUserId: `${CONTACT_PREFIX}${a.contact?.id}`, id: { not: r.id }, batchId: { not: a.batchId } } }).catch(() => null);
@@ -88,7 +88,7 @@ export class TeamLoopService {
     const files = everything.filter((r: any) => (r.kind === 'file' || r.kind === 'archive') && !r.insideArchive).map((r: any) => ({ name: String(r.fileName), how: r.state === 'duplicate' ? 'already held' : r.state === 'kept' && r.text ? 'read' : r.state === 'kept' ? 'kept, but it has no words to read' : 'could not be read' }));
     const rows: any[] = everything.filter((r: any) => r.state === 'kept' && !!r.text && !isATable(r));
     if (!rows.length) return null;
-    /* Words a voice note's transcriber was not sure of are read as heard, never as fact, and the one question back is whether they were heard right (Dangote rerun, N4: "Oked Events" for Orchid). */
+    /* Words a voice note's transcriber was not sure of are read as heard, never as fact, and the one question back is whether they were heard right (Halden rerun, N4: "Oked Events" for Orchid). */
     const inDoubt: string[] = [...new Set<string>(rows.filter((r) => r.kind === 'voice' && Array.isArray(r.unsure)).flatMap((r) => r.unsure.map(String)))];
     const asHeard = (r: any) => (r.kind === 'voice' && Array.isArray(r.unsure) ? r.unsure.reduce((t: string, w: any) => t.split(String(w)).join(`${w} (as I heard it, not sure)`), String(r.text)) : String(r.text));
     const items = rows.map((r) => ({ materialId: r.id as string, text: asHeard(r), isDocument: r.kind === 'file' || r.kind === 'archive', at: r.receivedAt ? new Date(r.receivedAt) : undefined }));
@@ -118,7 +118,7 @@ export class TeamLoopService {
     const mustSay: string[] = [];
     if (a.done.asked && !a.duplicates) mustSay.push(`Ask them exactly this one thing, in your own words and using their own words: ${a.done.asked}`);
     else mustSay.push('Code requires no question. You may ask one precise question of your own only if something they promised has no firm day, or a name or a number is missing.');
-    /* What was really recorded from this reply is handed to the reply as content it must say, so a team member sees what Groundwork did with what they sent and not only a thank-you (Fatima round 8). Only what code wrote is named. */
+    /* What was really recorded from this reply is handed to the reply as content it must say, so a team member sees what Groundwork did with what they sent and not only a thank-you (Ebele round 8). Only what code wrote is named. */
     const recorded = readings.flatMap((r) => r.commitments.map((c) => theThingOf(c.text) + (c.whenSaid ? ` (${c.whenSaid})` : '')));
     if (recorded.length) mustSay.push(`Code has put ${recorded.length === 1 ? 'this' : 'these'} on their list from what they sent: ${recorded.slice(0, 3).join('; ')}. Say so in one plain sentence, in their words ("I have put ... on your list"), and say you will check with them if it has not moved. Promise nothing else. Ask nothing more unless the day or the name that the item needs is missing from what they wrote.`);
     mustSay.push('You cannot attach, send or forward any file or message in this reply. Never say that anything is attached or sent.');
@@ -133,7 +133,7 @@ export class TeamLoopService {
       /* Whoever owns something that waits on an approval is never asked to chase the approver: Groundwork asks the approver (a-nudge-that-helps.ts), and the owner is told so. */
       const waitingOn = readings.flatMap((r) => r.blockers.map((b) => b.waitingOn).filter((x): x is string => !!x));
       const contacts: any[] = (await this.db.outreachContact.findMany({ where: { principalUserId: a.contact.principalUserId, state: 'introduced', kind: 'team' } }).catch(() => [])) ?? [];
-      const principalFirst = (await this.db.user?.findUnique?.({ where: { id: a.contact.principalUserId }, select: { firstName: true } }).catch(() => null))?.firstName ?? 'Fatima';
+      const principalFirst = (await this.db.user?.findUnique?.({ where: { id: a.contact.principalUserId }, select: { firstName: true } }).catch(() => null))?.firstName ?? 'Ebele';
       const who = waitingOn.map((w) => theApproverNamed(w, contacts, principalFirst, a.contact)).find((x) => x && x !== 'her');
       mustSay.push(`They say something is stuck. Say plainly what it waits on. Never ask them to follow it up with, chase, remind or contact the person or office it waits on: that is not theirs to do. ${who ? `Say that you will ask ${String(who.name).split(' ')[0]} about it yourself, so they do not need to.` : 'Say that you have noted what it waits on.'}`);
     }

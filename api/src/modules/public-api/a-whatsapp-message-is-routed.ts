@@ -286,7 +286,7 @@ export const A_NO = /^\s*(no|nope|n|no thanks|keep it|keep it in the check-?in)\
 
 /** The one sentence that says the words, said when a check-in starts on WhatsApp. */
 export const THE_WORDS = (ask: string = askName(null)) => `You can write "ask" at any time to talk to ${ask}, "back" to come back to your check-in, and "switch" to choose another check-in.`;
-/* Somebody from outside the organisation (a guest, an aide, a partner) is offered only what they may ask about: their own check-ins (Fatima's aide, 25 January 2027, was offered "anything about the company"). */
+/* Somebody from outside the organisation (a guest, an aide, a partner) is offered only what they may ask about: their own check-ins (Ebele's aide, 25 January 2027, was offered "anything about the company"). */
 export const NOW_ASKING = (ask: string = askName(null), fromOutside = false) => fromOutside
   ? `You are now talking to ${ask}. Ask me about your own check-ins and what you have sent. Write "back" to return to your check-in.`
   : `You are now talking to ${ask}. Ask me anything about the company, your work or your check-ins. Write "back" to return to your check-in.`;

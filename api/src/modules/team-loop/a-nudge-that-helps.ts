@@ -1,5 +1,5 @@
 /**
- * A NUDGE THAT HELPS, OR NO NUDGE (Fatima, increment 6a; plan 6.3, 10 and 11).
+ * A NUDGE THAT HELPS, OR NO NUDGE (Ebele, increment 6a; plan 6.3, 10 and 11).
  *
  *   Dependency-aware   Something that waits on an approval is not chased from its owner. The approver is told, once, with the context, and only when the
  *                      approver is somebody she has already let Groundwork write to. Something that waits on her, or on somebody outside, moves nobody.
@@ -53,7 +53,7 @@ const firstOf = (name: string) => String(name ?? '').split(/\s+/)[0] || 'there';
 /** Who a "waiting on" names among the people she has introduced Groundwork to. Null for her, for outsiders, and for names that match nobody or more than one. */
 export function theApproverNamed(waitingOn: string, contacts: any[], principalFirst: string, self: any): any | 'her' | null {
   const said = ` ${String(waitingOn).toLowerCase().replace(/[^\p{L}\s]/gu, ' ').replace(/\s+/g, ' ')} `;
-  if (new RegExp(`\\b(?:you|${principalFirst.toLowerCase()})\\b`).test(said) || /\bmrs?\.?\s+fatima\b/.test(said)) return 'her';
+  if (new RegExp(`\\b(?:you|${principalFirst.toLowerCase()})\\b`).test(said) || /\bmrs?\.?\s+ebele\b/.test(said)) return 'her';
   const hits = contacts.filter((c) => c.id !== self.id && String(c.name).toLowerCase().split(/\s+/).filter((p) => p.length > 2).some((p) => said.includes(` ${p} `)));
   return hits.length === 1 ? hits[0] : null;
 }
@@ -100,7 +100,7 @@ export async function nudgeWhereItHelps(prisma: any, ports: TheNudgePorts, now: 
     for (const c of contacts) {
       const person = await thePersonBehind(prisma, c);
       if (!person) continue;
-      /* A claim somebody has marked as not backed up is nobody's task: the person who said so is not asked whether it has moved (Fatima round 6, Adaeze). */
+      /* A claim somebody has marked as not backed up is nobody's task: the person who said so is not asked whether it has moved (Ebele round 6, Adaeze). */
       const open: any[] = ((await prisma.commitment.findMany({ where: { organizationId: setup.organizationId, personExternalId: person.externalId, source: SOURCE, state: 'OPEN' } })) ?? []).filter((m: any) => !String(m.provenBy ?? '').startsWith('disputed:')).sort((a: any, b: any) => new Date(a.statedAt ?? a.createdAt).getTime() - new Date(b.statedAt ?? b.createdAt).getTime());
       if (!open.length) continue;
       const items = open.filter((m) => !m.lastFollowedUpAt || now.getTime() - new Date(m.lastFollowedUpAt).getTime() >= QUIET_FOR_A_PROMISE);
@@ -113,7 +113,7 @@ export async function nudgeWhereItHelps(prisma: any, ports: TheNudgePorts, now: 
        */
       const byApprover = new Map<string, { approver: any; lines: any[] }>();
       for (const m of items.filter((x) => x.waitingOn)) {
-        const approver = theApproverNamed(m.waitingOn, contacts, principal?.firstName ?? 'Fatima', c);
+        const approver = theApproverNamed(m.waitingOn, contacts, principal?.firstName ?? 'Ebele', c);
         if (approver === 'her' || !approver) { run.left.push({ who: c.name, why: approver === 'her' ? `“${theThingOf(m.text)}” waits on ${principal?.firstName ?? 'the executive'}, so nobody is chased` : `“${theThingOf(m.text)}” waits on somebody Groundwork may not write to` }); continue; }
         byApprover.set(approver.id, { approver, lines: [...(byApprover.get(approver.id)?.lines ?? []), m] });
       }

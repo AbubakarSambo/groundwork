@@ -373,7 +373,7 @@ export class WhatNeedsYouService {
       told.needs = [...asNeeds, ...told.needs];
       told.count = told.needs.length;
     }
-    /* What they act on for each person they act for, first, with a plain line saying whose it is (Fatima round 2, D3). Nobody else has these rows. */
+    /* What they act on for each person they act for, first, with a plain line saying whose it is (Ebele round 2, D3). Nobody else has these rows. */
     const actsFor = [
       ...(await herOwnDecisions(this.prisma as any, { organizationId, userId, now: theQuietHoursNow() }).catch(() => [] as Need[])),
       ...(await theMattersSheActsOn(this.prisma as any, { organizationId, userId, now: theQuietHoursNow() }).catch(() => [] as Need[])),

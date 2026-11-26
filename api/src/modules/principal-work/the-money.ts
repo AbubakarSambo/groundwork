@@ -1,5 +1,5 @@
 /**
- * MONEY, DONE IN CODE (Fatima, increment 6b; plan section 12: "All financial arithmetic must be deterministic").
+ * MONEY, DONE IN CODE (Ebele, increment 6b; plan section 12: "All financial arithmetic must be deterministic").
  * An amount is read once into whole minor units (kobo, cents), every sum is a sum of those whole numbers, and a total is only ever added within one
  * currency. No model reads, adds or compares an amount.
  */

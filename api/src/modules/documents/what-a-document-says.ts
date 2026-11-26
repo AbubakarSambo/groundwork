@@ -1,5 +1,5 @@
 /**
- * WHAT A DOCUMENT SAYS, READ WHOLE (Hafsah, 22 November 2026, before the Dangote demo).
+ * WHAT A DOCUMENT SAYS, READ WHOLE (Hafsah, 22 November 2026, before the Halden demo).
  *
  * She added a long document to a check-in and needed it understood, and the reply spoke about its first two pages. The text was taken out
  * whole and kept, but every reader took only the start of it, each with its own number (6,000 characters here, 12,000 there, 40,000 in

@@ -70,7 +70,7 @@ import { YourRequests } from './YourRequests'
  *  (you-board-daniel.txt/kwame.txt vs you-board-miriam.txt/wairimu.txt). One check-in or none reads
  *  as the shorter, plainer sentence; more than one names the scope, as the prototype does. */
 export function theYouSubtitle(checkIns: YourCheckIn[]): string {
-  /* What the page holds, and no privacy note (the standards forbid them on screens; Dangote rerun, N13). Only you may read it: that is the backend's rule. */
+  /* What the page holds, and no privacy note (the standards forbid them on screens; Halden rerun, N13). Only you may read it: that is the backend's rule. */
   if (checkIns.length <= 1) return 'What’s yours, across your check-ins.'
   const scope = checkIns.some(c => c.youRunIt) ? `all ${checkIns.length} check-ins` : 'every check-in you’re in'
   return `What’s yours across ${scope}: what you said you’d do, your own reports, and what keeps coming up about your part.`

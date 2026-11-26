@@ -1,5 +1,5 @@
 /**
- * HER YES OR NO, UNDERSTOOD BY WHAT SHE MEANS (Fatima round 1, issue I-02; "understand, don't match").
+ * HER YES OR NO, UNDERSTOOD BY WHAT SHE MEANS (Ebele round 1, issue I-02; "understand, don't match").
  *
  * "Yes please." was a yes and "Yes, go ahead." was not, because each place that waits for an answer had its own written list of yes words. Now one
  * place reads it. A plain "yes" or "no" is taken at once, with no model asked. Anything else that is short is read by the model for what it means,

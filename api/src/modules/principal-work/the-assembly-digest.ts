@@ -1,5 +1,5 @@
 /**
- * THE WEEKLY REPORT FROM THE NATIONAL ASSEMBLY, READ AND SAID (Fatima, increment 6b; plan section 13): what the report says, with its source and date;
+ * THE WEEKLY REPORT FROM THE NATIONAL ASSEMBLY, READ AND SAID (Ebele, increment 6b; plan section 13): what the report says, with its source and date;
  * how it compares with the weeks before; what it touches in the work already on the record; and what is suggested, which stays a suggestion until she
  * confirms it. Three things are kept apart in the words: what the REPORT says, what the OFFICE has done (only ever read from the record), and what is PROPOSED.
  * This file is the rules and the words, with no database and no model.
@@ -143,7 +143,7 @@ function thePlaces(b: TheBriefingIn): string[] {
   b.developments.forEach((d, i) => {
     const c = b.comparison.each[i];
     if (c?.kind === 'again') {
-      /* Said as what changed, in the report's own words, and not only that the matter was there before (Fatima round 6: the hearing date had moved, and the line said it was "also in the report"). */
+      /* Said as what changed, in the report's own words, and not only that the matter was there before (Ebele round 6: the hearing date had moved, and the line said it was "also in the report"). */
       const then = norm(c.was ?? ''); const now = norm(d.quote);
       const clip = (t: string) => (t.length > 170 ? `${t.slice(0, 169).replace(/\s+\S*$/, '')}…` : t);
       lines.push(!c.was || then === now

@@ -1,5 +1,5 @@
 /**
- * WHERE THE TRACKER'S CLAIMS ARE HELD UP AGAINST THE RECORD (Fatima, increment 6b; plan section 12), in code, with no model.
+ * WHERE THE TRACKER'S CLAIMS ARE HELD UP AGAINST THE RECORD (Ebele, increment 6b; plan section 12), in code, with no model.
  *
  * The tracker says things. The record holds the spend request (the approval workflow's own row), the correspondence she forwarded, and the proof. A
  * payment is "paid" here only when the record holds proof: a spend request finance marked paid with evidence, a document she was sent that is a receipt
@@ -83,7 +83,7 @@ export function theDiscrepancies(lines: ALineOnRecord[], linksOf: (paymentKey: s
     if (latest.statedStatus === 'paid' && !hasProof(links)) out.push({ ...base, id: `proof:${paymentKey}`, kind: 'no proof', versions: [] });
 
     /* Paid or scheduled with no approval anywhere: not in the office's own sheet, and not on the record. A line the sheet marks Approved has its approval written
-       down where the office keeps them, and is not a question for anybody (Dangote stress test, D5). */
+       down where the office keeps them, and is not a question for anybody (Halden stress test, D5). */
     if (['paid', 'scheduled'].includes(latest.statedStatus ?? '') && latest.statedApproval !== 'approved' && !hasApproval(links)) out.push({ ...base, id: `approval:${paymentKey}`, kind: 'approval missing', versions: [] });
   }
   return out;

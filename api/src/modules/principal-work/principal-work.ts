@@ -1,5 +1,5 @@
 /**
- * WHAT A SENIOR PERSON'S ASSISTANT DOES WITH THE PAYMENTS, THE ASSEMBLY, THE VOICE AND THE DAY (Fatima, increment 6b). One class joins the pieces in this
+ * WHAT A SENIOR PERSON'S ASSISTANT DOES WITH THE PAYMENTS, THE ASSEMBLY, THE VOICE AND THE DAY (Ebele, increment 6b). One class joins the pieces in this
  * folder to the channels and to the record. It is built by the onboarding service from what that service already holds (the database, the one mail
  * door, the one WhatsApp gate, the year-end words), so nothing here reaches a provider another way, and it is not a second place that decides who may
  * do what: the speaker is worked out once in executive-onboarding/her-words.ts and passed in.
@@ -11,7 +11,7 @@
  *   sendWhatIsDue       the daily and weekly notes she has set as standing, only when there is something in them
  */
 import { mightBeAnAnswer, understandHerAnswer } from '../executive-onboarding/her-answer';
-import { answeredByTheWork, quietBatchesForWork, theContactWhoWrote, theTeamSheNamed, type ABatchForWork, type AMaterialItem } from '../executive-onboarding/the-material-for-work';
+import { answeredByTheWork, quietBatchesForWork, theContactWhoWrote, theEarlierVersionOf, theTeamSheNamed, type ABatchForWork, type AMaterialItem } from '../executive-onboarding/the-material-for-work';
 import { isHeldByHer } from '../executive-onboarding/her-preferences';
 import { buildTheRegister, type AWaitingForThePrincipal } from '../outstanding/the-outstanding-register';
 import { whoIsTheReader } from '../outstanding/a-delegate-acts-for-a-principal';
@@ -24,16 +24,27 @@ import { readTheTrackersInABatch, type ThePerson } from './the-payments-work';
 import { readTheAssemblyReports, type TheEngagementRow } from './the-assembly-work';
 import { answerTheRecipient, hearARecipient, hearTheAddress, theQuestionWaiting, NOTHING_WAITING_TO_ADD } from './the-recipient-by-chat';
 import { aVoiceChangeWaiting, answerAVoiceCheck, hearAVoiceNote, NO_VOICE_CHANGE_WAITING, type TheDraftWords } from './the-voice-revisions';
-import { rememberTheOutput, THE_FULLER_ONE_WENT_BY_EMAIL, theDay, theWeek, type TheOutput } from './the-outputs';
+import { rememberTheOutput, SAYS_STATUS, THE_FULLER_ONE_WENT_BY_EMAIL, theBriefAsAPdf, theDay, theWeek, type TheOutput } from './the-outputs';
+import type { AnAttachment } from '../email/attachments';
 import { answerTheOffer, NO_SUMMARY_WAITING, theOfferIfEarned, theOfferWaiting } from './the-performance-view';
 import { mightBeAWeeklyReport, mightBeARequest, type TheWorkReader } from './the-work-reader';
+import { itemsFromRows, keepTheRows, rowKeyId, whereTheRowIs } from './the-rows-in-a-report';
+import { aChangeSaid, whatChanged } from './the-deck-changes';
+import type { TheCells } from '../documents/a-file-as-cells';
+import { askAboutTheReports, THE_ROW_ASK_HEADING, theNamedOwner, theQuestionFor } from './the-row-asks';
+import { theFlags, theThresholds } from './the-row-rules';
+import { theWordsThatMatter, type TheRegisterRow } from '../outstanding/the-outstanding-register';
+import { anAskKey, giveTheAskBack, queueTheAsk } from '../executive-onboarding/information-gaps';
+import { dayWords } from '../year-end/the-year-end-content';
+import type { AnItemAct } from './the-work-reader';
+import { readTheCells } from '../documents/a-file-as-cells';
 
 export interface TheWorkPorts {
   email: {
     /** An answer to something she sent or asked for: never counted as the day's routine message. */
     reply(a: { organizationId: string; to: string; subject: string; text: string; replyTo: string }): Promise<'sent' | 'held' | 'suppressed'>;
     /** A message of Groundwork's own accord, counted as routine. */
-    ask(a: { organizationId: string; to: string; name: string; subject: string; text: string; /** The questions it carries: asked only when the mail goes. */ askKey?: string }): Promise<'sent' | 'held' | 'suppressed'>;
+    ask(a: { organizationId: string; to: string; name: string; subject: string; text: string; /** The questions it carries: asked only when the mail goes. */ askKey?: string; /** A file it carries: the weekly brief as a PDF. */ attachments?: AnAttachment[] }): Promise<'sent' | 'held' | 'suppressed'>;
   };
   whatsapp: { send(a: { organizationId: string; phone: string; text: string; kind: string }): Promise<{ sent: boolean; error?: string }> };
 }
@@ -48,6 +59,14 @@ export interface TheWorkDeps {
   waitingForHer?(organizationId: string, principalUserId: string): Promise<AWaitingForThePrincipal[]>;
 }
 export type AChannel = 'chat' | 'email' | 'whatsapp';
+
+/** Each kind of flag, as she would say it after "every item where". */
+const QUIET_KIND_SAID: Record<string, string> = {
+  'approved, not paid': 'something was approved and is not shown paid',
+  'awaiting approval': 'an approval is awaited',
+  'colour and words': "a row's colour and its words disagree",
+  overdue: 'something has waited past the overdue point',
+};
 
 export const STANDING_IS_HERS = (first: string) => `Only ${first} can set up a regular briefing. I have not changed anything.`;
 export const aStandingNote = (what: 'day' | 'week', on: boolean, hour: number | null, weekday: number | null): string => {
@@ -83,6 +102,7 @@ export class PrincipalWork {
     let answer: 'yes' | 'no' | null = null;
     const waiting = [
       await (async () => { const p = await theQuestionWaiting(this.db, a.principalUserId, a.now); return p && p.kind === 'say' ? { at: p.at, question: `Shall I send the year-end files to ${p.data?.name ?? 'the person you named'}${p.data?.email ? ` (${p.data.email})` : ''} too?`, say: () => answerTheRecipient(this.db, { ...base, answer: answer!, pending: p }) } : null; })(),
+      await (async () => { const q = await this.aQuietRuleWaiting(a.organizationId, a.principalUserId); return q ? { at: q.at, question: `Shall I put every item where ${QUIET_KIND_SAID[q.kind] ?? q.kind} under monitoring from now on?`, say: () => this.answerTheQuietRule(a.organizationId, a.principalUserId, q.kind, answer!) } : null; })(),
       await (async () => { const p = await theOfferWaiting(this.db, a.principalUserId); return p ? { at: p.at, question: 'Would you like a summary of how the team is doing, made from the record as it is now?', say: () => answerTheOffer(this.db, { organizationId: a.organizationId, principalUserId: a.principalUserId, first: a.principalFirst, speakerIsPrincipal: a.speaker.isPrincipal, answer: answer!, now: a.now }) } : null; })(),
       await (async () => { const p = this.d.yearEnd ? await aVoiceChangeWaiting(this.db, { principalUserId: a.principalUserId, userId: a.speaker.userId, now: a.now }) : null; return p ? { at: p.at, question: 'Did I hear the change you asked for to the draft correctly, and shall I make it?', say: () => answerAVoiceCheck(this.db, this.d.yearEnd!, { organizationId: a.organizationId, principalUserId: a.principalUserId, userId: a.speaker.userId, answer: answer!, waiting: p, now: a.now }) } : null; })(),
     ].filter(Boolean) as { at: Date; question: string; say: () => Promise<string | null> }[];
@@ -104,6 +124,7 @@ export class PrincipalWork {
     if (!request) return null;
     if (request.kind === 'add_recipient') return hearARecipient(this.db, { ...base, who: request.who, email: request.email });
     if (request.kind === 'standing') return this.setStanding(a, request);
+    if (request.kind === 'about_an_item') return this.aboutAnItem(a, request.act, request.about);
     const channel = a.channel ?? 'chat';
     const whatWaits = await this.waiting(a.organizationId, a.principalUserId);
     const out = await (request.kind === 'my_day' ? theDay : theWeek)(this.db, { waiting: whatWaits, organizationId: a.organizationId, principalUserId: a.principalUserId, first: a.speaker.isPrincipal ? a.principalFirst : await this.firstNameOf(a.speaker.userId), forName: a.speaker.isPrincipal ? null : a.principalFirst, forADelegate: !a.speaker.isPrincipal, now: a.now });
@@ -115,6 +136,156 @@ export class PrincipalWork {
     /* On WhatsApp the short one is the answer, and the fuller one goes by email where there is an address. */
     const emailed = out.full !== out.short ? await this.emailTheFullerOne(a, out) : false;
     return withOffer(emailed ? `${out.short}\n\n${THE_FULLER_ONE_WENT_BY_EMAIL}` : out.short);
+  }
+
+  /**
+   * WHAT SHE SAYS ABOUT ONE ITEM (change 5, A6 to A11): "chase the waiver", "the site report is not urgent", "this needs me", "what happened with the
+   * refund?", "who is on the permits?". The item is found on her own register by its words; when none fits, she is asked to say it as the report does.
+   * Where she puts an item stays put: it is written on the item's own note, which every brief reads.
+   */
+  private async aboutAnItem(a: { organizationId: string; principalUserId: string; principalFirst: string; speaker: { userId: string; isPrincipal: boolean }; now: Date }, act: AnItemAct, about: string): Promise<string> {
+    const reg = await buildTheRegister(this.db, { organizationId: a.organizationId, principalUserId: a.principalUserId, now: a.now, forADelegate: !a.speaker.isPrincipal });
+    const want = theWordsThatMatter(about);
+    const scored = reg.rows.map((r) => { const have = theWordsThatMatter(r.item); const hit = [...want].filter((w) => have.has(w)).length; return { r, score: want.size ? hit / want.size : 0 }; }).filter((x) => x.score >= 0.5).sort((x, y) => y.score - x.score);
+    if (!scored.length || (scored.length > 1 && scored[0].score === scored[1].score && scored[0].r.key !== scored[1].r.key)) {
+      return scored.length ? `I found more than one item that could be "${about}": ${scored.slice(0, 3).map((x) => `"${x.r.item}"`).join(', ')}. Which one do you mean?` : `I could not find "${about}" on the record. Say a few words of it as the report writes it, and I will look again.`;
+    }
+    const r = scored[0].r;
+    if (act === 'not_urgent' || act === 'needs_me') {
+      if (!a.speaker.isPrincipal) return `Only ${a.principalFirst} can say where an item goes in her brief. I have not changed anything.`;
+      const bucket = act === 'not_urgent' ? 'monitoring' : 'attention';
+      for (const s of r.sources) {
+        const where = { principalUserId_sourceKind_sourceId: { principalUserId: a.principalUserId, sourceKind: s.kind, sourceId: s.id } };
+        await this.db.registerNote.upsert({ where, create: { organizationId: a.organizationId, principalUserId: a.principalUserId, sourceKind: s.kind, sourceId: s.id, herBucket: bucket }, update: { herBucket: bucket } });
+      }
+      if (act === 'needs_me') return `"${r.item}" is now under what needs your attention, and it stays there until you tell me otherwise.`;
+      const said = `I have put "${r.item}" under monitoring. It stays there, and I will not raise it as needing you until you tell me otherwise.`;
+      /* The third of one kind she has put there: she is asked once whether that kind always belongs there (change 5, acceptance case 10). */
+      const kind = r.flag?.kind;
+      if (!kind) return said;
+      const after = await buildTheRegister(this.db, { organizationId: a.organizationId, principalUserId: a.principalUserId, now: a.now, forADelegate: false });
+      const ofThisKind = after.rows.filter((x) => x.flag?.kind === kind && x.herBucket === 'monitoring').length;
+      const setup: any = await this.db.principalSetup.findFirst({ where: { organizationId: a.organizationId, principalUserId: a.principalUserId } });
+      const prefs = setup?.preferences ?? {};
+      if (!setup || ofThisKind < 3 || (prefs.quietKindsAsked ?? []).includes(kind)) return said;
+      await this.db.principalSetup.update({ where: { id: setup.id }, data: { preferences: { ...prefs, quietKindsAsked: [...(prefs.quietKindsAsked ?? []), kind], quietRuleWaiting: { kind, at: a.now.toISOString() } } } });
+      return `${said}\n\nThat is the third item where ${QUIET_KIND_SAID[kind] ?? kind} that you have put there. Shall I put every one like it under monitoring from now on?`;
+    }
+    if (act === 'who') {
+      const f = r.flag;
+      const has = r.owner === 'unconfirmed' ? 'Nobody is named for it on the record.' : `${r.owner} has it.`;
+      const asked = f?.answeredOn ? ` ${f.askedOf} answered on ${dayWords(f.answeredOn)}.` : f?.askedOn ? ` I asked ${f.askedOf} about it on ${dayWords(f.askedOn)} and have had no answer yet.` : '';
+      return `${r.item}. ${has}${asked}`;
+    }
+    if (act === 'history') return this.whatHappenedWith(a, r);
+    return this.chase(a, r);
+  }
+
+  private async aQuietRuleWaiting(organizationId: string, principalUserId: string): Promise<{ kind: string; at: Date } | null> {
+    const setup: any = await this.db.principalSetup.findFirst({ where: { organizationId, principalUserId } }).catch(() => null);
+    const w = setup?.preferences?.quietRuleWaiting;
+    return w?.kind ? { kind: w.kind, at: new Date(w.at) } : null;
+  }
+
+  /** Her yes makes it a standing rule she can undo by saying so; her no leaves each item where she puts it. Asked once either way. */
+  private async answerTheQuietRule(organizationId: string, principalUserId: string, kind: string, answer: 'yes' | 'no'): Promise<string> {
+    const setup: any = await this.db.principalSetup.findFirst({ where: { organizationId, principalUserId } });
+    const { quietRuleWaiting, ...prefs } = setup?.preferences ?? {};
+    const quietKinds = answer === 'yes' ? [...new Set([...(prefs.quietKinds ?? []), kind])] : prefs.quietKinds ?? [];
+    await this.db.principalSetup.update({ where: { id: setup.id }, data: { preferences: { ...prefs, quietKinds } } });
+    return answer === 'yes'
+      ? `From now on, every item where ${QUIET_KIND_SAID[kind] ?? kind} goes under monitoring. Tell me if one of them needs you, and it will.`
+      : `I will leave each one where it comes, and you can tell me item by item.`;
+  }
+
+  /** What happened with one item, from the record, each step with its day and where it is written. */
+  private async whatHappenedWith(a: { organizationId: string; principalUserId: string }, r: TheRegisterRow): Promise<string> {
+    const lines: string[] = [];
+    const rowIds = new Set(r.sources.filter((s) => s.kind === 'row').map((s) => s.id));
+    if (rowIds.size) {
+      const rows: any[] = (await Promise.resolve(this.db.reportRow?.findMany?.({ where: { organizationId: a.organizationId, principalUserId: a.principalUserId } })).catch(() => [])) ?? [];
+      for (const it of itemsFromRows(rows.filter((x) => rowIds.has(rowKeyId(x.rowKey))))) {
+        const versions = rows.filter((x) => x.rowKey === it.rowKey).sort((x, y) => new Date(x.receivedAt).getTime() - new Date(y.receivedAt).getTime());
+        let last = '';
+        for (const v of versions) {
+          const said = [v.status, v.note].filter(Boolean).join('. ');
+          if (said === last) continue;
+          last = said;
+          lines.push(`On ${dayWords(new Date(v.receivedAt))}, the report said ${said ? `"${said}"` : 'nothing about where it stands'} (${whereTheRowIs(v)}).`);
+        }
+      }
+    }
+    for (const s of r.sources.filter((x) => x.kind !== 'row')) lines.push(`On ${dayWords(new Date(s.at))}, ${s.from} said "${s.said}".`);
+    const f = r.flag;
+    if (f?.askedOn) lines.push(f.answeredOn ? `I asked ${f.askedOf} on ${dayWords(f.askedOn)}, and they answered on ${dayWords(f.answeredOn)}${f.answer ? `: "${f.answer}"` : '.'}` : `I asked ${f.askedOf} on ${dayWords(f.askedOn)}, and they have not answered.`);
+    return [`Here is what the record holds on "${r.item}".`, ...lines.map((l) => `- ${l}`), `It is ${SAYS_STATUS[r.status] ?? r.status} now.`].join('\n');
+  }
+
+  /** "Chase it": the person who can answer is asked now, once, with the row it rests on. */
+  private async chase(a: { organizationId: string; principalUserId: string; principalFirst: string; now: Date }, r: TheRegisterRow): Promise<string> {
+    const rowIds = new Set(r.sources.filter((s) => s.kind === 'row').map((s) => s.id));
+    const rows: any[] = rowIds.size ? ((await Promise.resolve(this.db.reportRow?.findMany?.({ where: { organizationId: a.organizationId, principalUserId: a.principalUserId } })).catch(() => [])) ?? []).filter((x: any) => rowIds.has(rowKeyId(x.rowKey))) : [];
+    const latest = rows.sort((x, y) => new Date(y.receivedAt).getTime() - new Date(x.receivedAt).getTime())[0];
+    if (!latest) return `"${r.item}" is not from the office reports, so I cannot chase it from here. ${r.owner === 'unconfirmed' ? '' : `${r.owner} has it.`}`.trim();
+    const team = await theTeamSheNamed(this.db, a.organizationId, a.principalUserId);
+    const named = theNamedOwner(latest.owner ?? null, team);
+    const sentFrom = String(latest.sentFrom ?? '').toLowerCase();
+    const me: any = await this.db.user.findUnique({ where: { id: a.principalUserId }, select: { email: true } }).catch(() => null);
+    const who = named ?? (/@/.test(sentFrom) && sentFrom !== String(me?.email ?? '').toLowerCase() ? { name: team.find((t) => t.email === sentFrom)?.name ?? sentFrom.split('@')[0], email: sentFrom } : null);
+    if (!who) return `There is nobody on your team with an address I can ask about "${r.item}". Tell me who has it and I will ask them.`;
+    const f = theFlags(rows, { now: a.now, thresholds: theThresholds(null) })[0];
+    const question = f ? theQuestionFor(f) : `${latest.item} (${whereTheRowIs(latest)}). What is happening with it now, and what is the next step?`;
+    const gapKey = `row:${rowKeyId(latest.rowKey)}:chase-${a.now.toISOString().slice(0, 10)}`;
+    if (!(await queueTheAsk(this.db, { organizationId: a.organizationId, principalUserId: a.principalUserId, gapKey, what: question, askedOfEmail: who.email, askedOfName: who.name }))) return `I have already asked ${who.name} about "${r.item}" today. I will tell you what they say.`;
+    const askKey = anAskKey(a.principalUserId, 'rows', who.email);
+    const outcome = await this.d.ports.email.ask({ organizationId: a.organizationId, to: who.email, name: who.name, subject: THE_ROW_ASK_HEADING, text: [`${who.name.split(' ')[0]}, ${a.principalFirst} asked me to follow this up with you.`, question, 'Please reply to this message. What you say goes to her with the item, in your words.'].join('\n\n'), askKey }).catch(() => 'suppressed' as const);
+    if (outcome === 'suppressed') { await giveTheAskBack(this.db, askKey); return `I could not send the question to ${who.name}. Nothing was sent.`; }
+    return outcome === 'held' ? `I will ask ${who.name} about "${r.item}" first thing in the morning, and tell you what they say.` : `I have asked ${who.name} about "${r.item}", and I will tell you what they say.`;
+  }
+
+  /**
+   * A DECK OR SHEET THAT REPEATS WEEK TO WEEK, COMPARED WITH ITS LAST VERSION (the-deck-changes.ts). The changes are kept with the file, and whoever sent it
+   * is asked once what is behind them, with each change said in full; her weekly brief reads them, with their answer when it comes.
+   */
+  private async whatChangedSinceLastTime(batch: ABatchForWork, item: AMaterialItem, cells: TheCells, sentFrom: string | null, now: Date): Promise<void> {
+    /* Decks only: a register that grows every quarter is followed row by row instead (the-rows-in-a-report.ts). */
+    if (cells.kind !== 'deck') return;
+    const earlier = await theEarlierVersionOf(this.db, item, batch.principalUserId);
+    if (!earlier?.bytes) return;
+    const changes = whatChanged(await readTheCells(earlier.bytes, earlier.fileName, earlier.mimeType), cells);
+    if (!changes.length) return;
+    const kept = await writeItOnce(this.db, { organizationId: batch.organizationId, principalUserId: batch.principalUserId, kind: 'told', subject: `deck-changes:${item.id}`, data: { file: item.fileName, earlier: earlier.fileName, earlierOn: earlier.receivedAt.toISOString(), changes } as any, at: now });
+    const principal: any = await this.db.user.findUnique({ where: { id: batch.principalUserId }, select: { firstName: true, email: true } }).catch(() => null);
+    const to = String(sentFrom ?? '').toLowerCase();
+    if (!kept || !/@/.test(to) || to === String(principal?.email ?? '').toLowerCase()) return;
+    const team = await theTeamSheNamed(this.db, batch.organizationId, batch.principalUserId);
+    const name = team.find((t) => t.email === to)?.name ?? to.split('@')[0];
+    const what = `${item.fileName}, compared with ${earlier.fileName}: ${changes.length === 1 ? 'one change' : `${changes.length} changes`}.`;
+    if (!(await queueTheAsk(this.db, { organizationId: batch.organizationId, principalUserId: batch.principalUserId, gapKey: `row:deck-${item.id}`, what, askedOfEmail: to, askedOfName: name }))) return;
+    const shown = changes.slice(0, 12).map((c) => `- ${aChangeSaid(c)}`);
+    const text = [`${name.split(' ')[0]}, I compared ${item.fileName} with the version of ${dayWords(earlier.receivedAt)}, for ${principal?.firstName ?? 'the director'}. These are what changed.`, [...shown, ...(changes.length > 12 ? [`- And ${changes.length - 12} more.`] : [])].join('\n'), 'What is behind these changes? Please reply to this message. What you say goes to her with the changes, in your words.'].join('\n\n');
+    const askKey = anAskKey(batch.principalUserId, 'rows', to);
+    const outcome = await this.d.ports.email.ask({ organizationId: batch.organizationId, to, name, subject: 'What changed in your report', text, askKey }).catch(() => 'suppressed' as const);
+    if (outcome === 'suppressed') await giveTheAskBack(this.db, askKey);
+  }
+
+  /** Each day, each flag past its threshold is put once to whoever can answer it (the-row-asks.ts), in the office's working hours. */
+  async askAboutTheReports(now: Date): Promise<number> {
+    if (now.getUTCMinutes() % 30 !== 0) return 0;
+    const setups: any[] = (await this.db.principalSetup.findMany({ where: {} })) ?? [];
+    let went = 0;
+    for (const s of setups) {
+      try {
+        const zone = await theOrganisationsZone(this.db, s.organizationId, now.getTime()).catch(() => null);
+        const local = localParts(now, zone);
+        if (local.weekday === 0 || local.weekday === 6 || local.hour < 9 || local.hour >= 16) continue;
+        const me: any = await this.db.user.findUnique({ where: { id: s.principalUserId }, select: { firstName: true } }).catch(() => null);
+        went += await askAboutTheReports(this.db, { askByEmail: (x) => this.d.ports.email.ask(x) }, { organizationId: s.organizationId, principalUserId: s.principalUserId, principalFirst: me?.firstName ?? 'the director', preferences: s.preferences ?? {}, now, day: local.date });
+      } catch {
+        /* The next look reads the same record and tries again. */
+      }
+    }
+    return went;
   }
 
   private async waiting(organizationId: string, principalUserId: string): Promise<AWaitingForThePrincipal[]> {
@@ -195,8 +366,17 @@ export class PrincipalWork {
         const trackers = items.filter((i) => i.kind === 'file' && isAPaymentTracker(i.text));
         const reports = items.filter((i) => i.kind !== 'voice' && i.kind !== 'archive' && !trackers.includes(i) && mightBeAWeeklyReport(i.text ?? ''));
         const voices = items.filter((i) => i.kind === 'voice');
-        if (!trackers.length && !reports.length && !voices.length) continue;
+        /* Every other Office file is read as its cells, and its tables' rows are kept on the record (the-rows-in-a-report.ts). Nothing is said for it:
+           the rows reach her through the register, with where each one is. */
+        const tabled = (await Promise.all(items.filter((i) => i.kind === 'file' && i.bytes && !trackers.includes(i)).map(async (i) => ({ i, cells: await readTheCells(i.bytes, i.fileName, i.mimeType) })))).filter((x) => x.cells);
+        if (!trackers.length && !reports.length && !voices.length && !tabled.length) continue;
         if (!(await writeItOnce(this.db, { organizationId: batch.organizationId, principalUserId: batch.principalUserId, kind: 'told', subject: `work-batch:${batch.id}`, at: now }))) continue;
+        const sentFrom = tabled.length ? (batch.channel === 'email' ? batch.fromAddress : await this.senderEmail(batch).catch(() => null)) : null;
+        for (const t of tabled) {
+          await keepTheRows(this.db, { organizationId: batch.organizationId, principalUserId: batch.principalUserId, materialId: t.i.id, fileName: t.i.fileName, receivedAt: t.i.receivedAt, sentFrom, cells: t.cells }).catch(() => 0);
+          await this.whatChangedSinceLastTime(batch, t.i, t.cells!, sentFrom, now).catch(() => undefined);
+        }
+        if (!trackers.length && !reports.length && !voices.length) { handled++; continue; }
         const around = await this.peopleAround(batch);
         const toTheSender = (x: { organizationId: string; batch: ABatchForWork; subject: string; text: string; short?: string }) => this.toTheSender(x);
         let answered = 0;
@@ -259,7 +439,11 @@ export class PrincipalWork {
     if (!claimed) return false;
     const give = () => this.db.yearEndLog.deleteMany({ where: { principalUserId: s.principalUserId, kind: 'told', subject: `briefing-scheduled:${kind}:${date}` } }).catch(() => undefined);
     let went = false;
-    if (kind === 'week' && me?.email) went = (await this.d.ports.email.ask({ organizationId: s.organizationId, to: me.email, name: me.firstName ?? '', subject: out.subject, text: out.full }).catch(() => 'suppressed' as const)) !== 'suppressed';
+    /* The week goes as the page in the mail and the same page as a PDF she can keep or forward (change 5: "the one-page view, by email"). */
+    if (kind === 'week' && me?.email) {
+      const pdf = await theBriefAsAPdf(out).catch(() => null);
+      went = (await this.d.ports.email.ask({ organizationId: s.organizationId, to: me.email, name: me.firstName ?? '', subject: out.subject, text: out.full, ...(pdf ? { attachments: [pdf] } : {}) }).catch(() => 'suppressed' as const)) !== 'suppressed';
+    }
     if (phone) went = !!(await this.d.ports.whatsapp.send({ organizationId: s.organizationId, phone, text: out.short, kind: 'briefing' }).catch(() => ({ sent: false }))).sent || went;
     if (!went && kind === 'day' && me?.email) went = (await this.d.ports.email.ask({ organizationId: s.organizationId, to: me.email, name: me.firstName ?? '', subject: out.subject, text: out.full }).catch(() => 'suppressed' as const)) !== 'suppressed';
     if (!went) { await give(); return false; }

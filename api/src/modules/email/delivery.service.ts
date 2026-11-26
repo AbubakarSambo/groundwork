@@ -12,7 +12,7 @@ import { GroundworkEvents, InviteBouncedEvent } from '../../common/events';
  * participant/ground. Optional everywhere - sends without context are still
  * logged (kind OTHER) but never touch participant state. */
 export interface DeliveryContext {
-  /** The person has just asked for exactly this and is waiting: it goes now, in quiet hours too (Fatima round 5, Hafsah's judgement). */
+  /** The person has just asked for exactly this and is waiting: it goes now, in quiet hours too (Ebele round 5, Hafsah's judgement). */
   answeringNow?: boolean;
   kind: 'PARTICIPANT_INVITE' | 'LEAD_INVITE' | 'MAGIC_LINK' | 'REMINDER' | 'OTHER';
   participantId?: string;

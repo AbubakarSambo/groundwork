@@ -9,7 +9,7 @@ import { theAssistantsAddress } from '../email/the-assistants-address';
  * A LOCAL-ONLY WAY TO PLAY A TEAM MEMBER FORWARDING A MAIL. It builds the same body Resend would post and hands it to the same handler the
  * real webhook reaches (DeliveryService.applyEvent), skipping only the signature, which a local run has no secret for. It does not exist in
  * production: NODE_ENV=production answers 404, and anywhere else it must be switched on with ALLOW_LOCAL_INBOUND_MAIL=true.
- * See docs/fatima-local-testing.md.
+ * See docs/ebele-local-testing.md.
  */
 @Controller('dev')
 export class LocalInboundMailController {

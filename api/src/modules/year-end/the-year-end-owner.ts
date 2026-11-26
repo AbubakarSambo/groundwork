@@ -1,5 +1,5 @@
 /**
- * THE TWO JOBS ACT (Fatima, increment 4; spec 30.4 and 31).
+ * THE TWO JOBS ACT (Ebele, increment 4; spec 30.4 and 31).
  *
  * Every night, after the jobs are recomputed from the record (outstanding/the-persistent-jobs.ts), this reads them for each principal and does
  * at most one of these for her, and otherwise stays silent:
@@ -83,7 +83,7 @@ const A_YEAR_END_ASK = /^(?:owner|match|gap):/;
 type AQuestion = { key: string; what: string; question: string | null; month: string | null };
 
 /**
- * The people who can fill a gap are asked, and she is not. ONE MESSAGE FOR ONE PERSON IN ONE PASS (Dangote stress test, D4: 1,713 mails to Maryam in one night,
+ * The people who can fill a gap are asked, and she is not. ONE MESSAGE FOR ONE PERSON IN ONE PASS (Halden stress test, D4: 1,713 mails to Maryam in one night,
  * one for each pair of lines). Every question for a person is gathered first, and goes in one message with at most a few questions, the rest counted. Somebody
  * who still has an earlier question waiting (not yet gone, or gone and not answered) is sent nothing new: the earlier message stands. Each question is claimed
  * as waiting before the message goes, and becomes asked only when the door says the message really went. Returns whose message was handed to the door.

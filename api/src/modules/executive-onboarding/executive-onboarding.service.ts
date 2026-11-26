@@ -1,5 +1,5 @@
 /**
- * THE REAL SEAMS BEHIND ONBOARDING WITHOUT REGISTRATION (Fatima, increment 5). Mail goes through the one mail door (EmailService), WhatsApp through the
+ * THE REAL SEAMS BEHIND ONBOARDING WITHOUT REGISTRATION (Ebele, increment 5). Mail goes through the one mail door (EmailService), WhatsApp through the
  * one gate (WhatsAppService.sendFor: the 24-hour window, the approved templates, the night, the day's one message, STOP), and files are read by the
  * same code an upload is (DocumentsService.readForMaterial). Nothing here reaches either provider another way.
  *
@@ -102,7 +102,7 @@ export class ExecutiveOnboardingService {
       ports: {
         email: {
           reply: (a) => this.email.sendTheAssistantsReply(a.to, a.subject, a.text, a.replyTo),
-          ask: async (a) => this.email.sendTheRoutineMessageByEmail(a.to, a.subject, a.text, null, null, undefined, (await theAddressForHer(this.db, a.organizationId).catch(() => undefined)) ?? undefined, a.askKey),
+          ask: async (a) => this.email.sendTheRoutineMessageByEmail(a.to, a.subject, a.text, null, null, undefined, (await theAddressForHer(this.db, a.organizationId).catch(() => undefined)) ?? undefined, a.askKey, a.attachments),
         },
         whatsapp: { send: async (a) => { const r = await this.whatsapp.sendFor(a.organizationId, a.phone, a.text, { kind: a.kind as any }); return { sent: !!r.sent, error: r.error }; } },
       },
@@ -186,7 +186,7 @@ export class ExecutiveOnboardingService {
       const helped = !files.length && a.body && this.teamLoop ? await this.teamLoop.hearATeamMember({ organizationId: a.organizationId, contact, text: a.body, keep }).catch(() => null) : null;
       /* A request for help is private and is never kept (help-the-team-member.ts). */
       if (helped && !keep.it) return { became: 'kept for a team member', reply: helped };
-      /* A CORRECTION IS ON THE RECORD TOO (Dangote stress test, D10 and D12: Ruth's "use 5, not 7" and Oluwaseun's correction were answered and never kept, so the next
+      /* A CORRECTION IS ON THE RECORD TOO (Halden stress test, D10 and D12: Ruth's "use 5, not 7" and Oluwaseun's correction were answered and never kept, so the next
          version left them out and her team summary said they had sent nothing). Answered here, its batch is marked answered so it is not answered twice. */
       const kept = await keepATeamMembersReply(this.db, this.intakePorts(), { organizationId: a.organizationId, contact, fromAddress: a.fromAddress, channel: 'email', providerId: a.providerId, subject: a.subject, body: a.body, receivedAt: a.receivedAt, files, beyondTheLimit: a.beyondTheLimit, now });
       if (helped) { await answeredByTheWork(this.db, kept.batchId, now).catch(() => undefined); return { became: 'kept for a team member', reply: helped }; }
@@ -214,7 +214,7 @@ export class ExecutiveOnboardingService {
     let files: { fileName: string; mimeType: string; bytes: Buffer | null }[] = [];
     if (a.arrived.kind === 'media') {
       const got = await a.fetchMedia(a.arrived.mediaId).catch(() => null);
-      /* A voice note that could not be fetched is said so, and asked for again: never kept in silence (Fatima round 3, the senior person gets an answer to every voice note). */
+      /* A voice note that could not be fetched is said so, and asked for again: never kept in silence (Ebele round 3, the senior person gets an answer to every voice note). */
       if (a.arrived.what === 'recording' && !got && speaking) return { reply: COULD_NOT_FETCH_THE_VOICE_NOTE };
       if (a.arrived.what === 'recording' && got) {
         const heard = await this.transcriber.transcribe({ buffer: got.buffer, mimeType: got.mimeType || a.arrived.mimeType, fileName: a.arrived.fileName, names: await theNamesThisOrganisationUses(this.db, a.organizationId) }).catch(() => ({ ok: false as const }));
@@ -239,11 +239,11 @@ export class ExecutiveOnboardingService {
       if (a.arrived.kind === 'text') {
         const said = await this.herWordsOnWhatsApp({ organizationId: a.organizationId, userId: a.userId, message: a.arrived.text, now });
         if (said) return { reply: said };
-        /* Her first words to this number are what let her introduction go, and the introduction is the answer to them: a second hello from the chat, seconds later, answers nothing more (Fatima round 4, N26). */
+        /* Her first words to this number are what let her introduction go, and the introduction is the answer to them: a second hello from the chat, seconds later, answers nothing more (Ebele round 4, N26). */
         return introductionsReleased > 0 && speaking.speaker.isPrincipal ? { reply: null } : null;
       }
       await keepWhatWasForwarded(this.db, this.intakePorts(), { organizationId: a.organizationId, principalUserId: speaking.principalUserId, fromUserId: speaking.speaker.userId, fromAddress: phone, channel: 'whatsapp', providerId: null, subject: null, body: text, receivedAt: now, files, beyondTheLimit: 0, now });
-      /* A voice note is answered at once, with when the rest follows: she is not left wondering for three minutes whether it was heard (Fatima round 5). */
+      /* A voice note is answered at once, with when the rest follows: she is not left wondering for three minutes whether it was heard (Ebele round 5). */
       return { reply: a.arrived.what === 'recording' ? 'I have your voice note and I am listening to it now. I will tell you what I made of it in a few minutes.' : null };
     }
     const keep = { it: false };
@@ -272,6 +272,7 @@ export class ExecutiveOnboardingService {
       /* The sheets, the weekly report and the voice notes in what she forwarded are read first, so a batch that is only those is answered by what was done with it. */
       const worked = await this.work().readTheQuietBatches(theQuietHoursNow()).catch((err) => { this.logger.warn(`Reading the batches failed: ${err?.message}`); return 0; });
       await this.work().sendWhatIsDue(theQuietHoursNow()).catch((err) => { this.logger.warn(`Sending the standing notes failed: ${err?.message}`); return 0; });
+      await this.work().askAboutTheReports(theQuietHoursNow()).catch((err) => { this.logger.warn(`Asking about the reports failed: ${err?.message}`); return 0; });
       const answered = await answerTheQuietBatches(this.db, this.acknowledgementPorts(), theQuietHoursNow(), replyTo).catch((err) => { this.logger.warn(`Answering the batches failed: ${err?.message}`); return []; });
       const retried = await retryTheHeldIntroductions(this.db, this.ports(), theQuietHoursNow()).catch((err) => { this.logger.warn(`Retrying the introductions failed: ${err?.message}`); return 0; });
       if (answered.length || retried || worked) this.logger.log(`Answered ${answered.length} batch(es), read ${worked} for work, and sent ${retried} held introduction(s).`);

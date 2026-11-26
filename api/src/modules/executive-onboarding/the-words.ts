@@ -1,5 +1,5 @@
 /**
- * WHAT A PERSON READS, FROM THE FIRST DAY (Fatima, increment 5). The four introductions are in the-introductions.ts and are the customer's own.
+ * WHAT A PERSON READS, FROM THE FIRST DAY (Ebele, increment 5). The four introductions are in the-introductions.ts and are the customer's own.
  * Everything else here is written for a senior person who hates hassle: short, plain sentences, her name, no jargon, nothing that sounds like
  * software, no mention of a dashboard or of signing up, and never a label on a person. It is the product's words, never a model's, so a name or a
  * count cannot change on the way.
@@ -58,7 +58,7 @@ export const OK_I_AM_BACK = (first: string) => `Thank you, ${first}. I am back t
 /* ---- The acknowledgement and the first picture ---- */
 export interface ThePicture {
   first: string;
-  /** Whose material this is, when somebody acts for her: said as "Fatima's" and never as "your". */
+  /** Whose material this is, when somebody acts for her: said as "Ebele's" and never as "your". */
   forName: string | null;
   messages: number;
   files: number;
@@ -89,7 +89,7 @@ export interface ThePicture {
   onlyAFewWords?: boolean;
   /** One precise question about something she (or the person who forwards for her) handed over without saying who should do it or by when. It replaces the closing question about other people, so a batch ends with one question (round 2, C5). */
   ask?: string;
-  /** She has had a first picture before: what she sends later is thanked and added to, and the whole picture is not told again (Fatima round 3). */
+  /** She has had a first picture before: what she sends later is thanked and added to, and the whole picture is not told again (Ebele round 3). */
   later?: boolean;
   /**
    * What the forward leaves outstanding, put on her own list in its own words, and any instruction inside it to Groundwork, which is never done
@@ -195,7 +195,7 @@ export function theGoAheadQuestion(p: TheProposal): string {
 /** What became of one person's introductions, read from the delivery rows: the state of each channel, or null where there was nothing to send on it. */
 export interface AnIntroductionResult { name: string; email: string | null; whatsapp: string | null }
 /**
- * WHAT SHE IS TOLD ABOUT A SEND COMES FROM THE DELIVERY STATE (Fatima round 1, H1: "I have written to Musa" while his only message was held).
+ * WHAT SHE IS TOLD ABOUT A SEND COMES FROM THE DELIVERY STATE (Ebele round 1, H1: "I have written to Musa" while his only message was held).
  * "Written to" is said only of a person something really went to (state "sent"). A message that is held, refused or failed is said to be
  * held, refused or failed, and a person nothing reached is named as not reached.
  */

@@ -126,7 +126,7 @@ export function targetsFor(
  *
  * A target with nobody's name on it belongs to the whole check-in, which is what every board target
  * was and is still the common case. But a lead who has just typed ten targets called "Bala",
- * "Fatima", "Musa" and assigned none of them has ten per-person numbers that everybody can read,
+ * "Ebele", "Musa" and assigned none of them has ten per-person numbers that everybody can read,
  * with the privacy setting on and doing nothing.
  *
  * Nothing guesses here - a name in a target's text is not an owner, and inferring one would attach

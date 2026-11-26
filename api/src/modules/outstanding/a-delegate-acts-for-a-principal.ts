@@ -12,7 +12,7 @@
  * a wider reading and then takes pieces away. Somebody whose grant was revoked is nobody's delegate, so
  * the next question they ask reads only what they could read before.
  *
- * EVERY THING A DELEGATE DOES IS WRITTEN DOWN as "Amina Yusuf for Fatima", and stays when the grant ends.
+ * EVERY THING A DELEGATE DOES IS WRITTEN DOWN as "Amina Yusuf for Ebele", and stays when the grant ends.
  */
 
 export interface TheDelegateGrant {

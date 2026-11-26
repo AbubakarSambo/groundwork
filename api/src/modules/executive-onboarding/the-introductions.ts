@@ -1,5 +1,5 @@
 /**
- * THE FOUR INTRODUCTIONS, WORD FOR WORD FROM THE PLAN (Fatima, increment 5; plan sections 4.1, 4.2, 6.1 and 6.2).
+ * THE FOUR INTRODUCTIONS, WORD FOR WORD FROM THE PLAN (Ebele, increment 5; plan sections 4.1, 4.2, 6.1 and 6.2).
  *
  * These are the customer's own scripts and they are kept exactly, including the colon in "whatever you have: emails" and the dash in the
  * team subject; the plain-words rule bends to them, as the brief says. Only three things change, and only where the script has a blank:
@@ -77,6 +77,6 @@ export function emailToATeamMember(principalFirst: string, office: string, first
 export const theOffice = (name: string | null | undefined): string => {
   const n = (name ?? '').trim();
   if (!n) return 'the office';
-  /* A name that already says whose it is takes no "the": "Fatima's office", never "the Fatima's office" (D20). */
+  /* A name that already says whose it is takes no "the": "Ebele's office", never "the Ebele's office" (D20). */
   return /^the\s/i.test(n) || /^\S+['’]s?(?:\s|$)/i.test(n) ? n : `the ${n}`;
 };

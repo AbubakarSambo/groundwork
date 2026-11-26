@@ -1,5 +1,5 @@
 /**
- * THE TEAM PERFORMANCE VIEW, OFFERED ONLY AFTER VALUE, AND ONLY IF SHE SAYS YES (Fatima, increment 6b; plan section 16).
+ * THE TEAM PERFORMANCE VIEW, OFFERED ONLY AFTER VALUE, AND ONLY IF SHE SAYS YES (Ebele, increment 6b; plan section 16).
  *
  * WHEN IT MAY BE OFFERED (decided in code from the record, because it is about what she sees of her people):
  *   - at least FIVE outcomes documented, which means register rows that are done and shown (settled by proof or confirmed by the other side), not said;

@@ -1017,7 +1017,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   const onlyYours = section.state !== 'not-known' ? section.onlyYours ?? undefined : undefined
   const note = (isDealGrid && kindOfWork && dealGroups?.length ? DEAL_GRID_NOTE[kindOfWork] : undefined)
     ?? (section.section === 'Themes' && kindOfWork ? THEMES_NOTE[kindOfWork] : undefined)
-  /* "Only yours." is not drawn as a note (the standards forbid privacy notes on screens; Dangote rerun, N13). It still says the section is narrowed, for the sentence below. */
+  /* "Only yours." is not drawn as a note (the standards forbid privacy notes on screens; Halden rerun, N13). It still says the section is narrowed, for the sentence below. */
 
   /* ON A REBUILT PAGE, A PART GROUNDWORK DOES NOT KEEP IS NOT DRAWN (journey 3, 23 November 2026): a heading over a sentence saying
      there is nothing is an empty section (design guide, rule 10). Elsewhere it reads as it did. */
@@ -1300,7 +1300,7 @@ export function YourOwnRecordsSections({ groundId, kindOfWork, sections, myParti
   myParticipantId: string | null
   leadFirstName: string | null
 }) {
-  /* No "Only yours." note (the standards; Dangote rerun, N13). Which rows are hers is the backend's rule. */
+  /* No "Only yours." note (the standards; Halden rerun, N13). Which rows are hers is the backend's rule. */
   if (!sections?.length || !myParticipantId) return null
   const itemNoun = (kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item').toLowerCase()
   const heading = (kindOfWork ? YOUR_OWN_HEADING[kindOfWork] : undefined) ?? `Your own ${itemNoun}s, day by day`

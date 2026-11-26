@@ -34,7 +34,7 @@ import { Section } from './ui'
  * participant, and this renders what it is given. A lead who is also a party gets their own.
  */
 export function WhatToWalkInWith({ guide }: { guide: { openingLine?: string; questionToCarry?: string; toAcknowledge?: string } }) {
-  /* No privacy note (the standards; Dangote rerun, N13). Who is served it is the backend's rule. */
+  /* No privacy note (the standards; Halden rerun, N13). Who is served it is the backend's rule. */
   const rows = [
     { h: 'A way to open', text: guide.openingLine },
     { h: 'A question worth carrying in', text: guide.questionToCarry },

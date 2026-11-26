@@ -1,5 +1,5 @@
 /**
- * THE REAL SEAMS BEHIND THE YEAR-END WORK'S PORTS (Fatima, increment 4). Mail goes through EmailService (the one door), and WhatsApp through
+ * THE REAL SEAMS BEHIND THE YEAR-END WORK'S PORTS (Ebele, increment 4). Mail goes through EmailService (the one door), and WhatsApp through
  * WhatsAppService.sendFor (the window and template gate, the night, the day's one message, STOP). Nothing here reaches either provider
  * by another way. A WhatsApp message held for the night counts as taken, because it will go in the morning from the held queue; one the gate
  * refused does not, so the caller tries another day and the record never says it went.
@@ -22,7 +22,7 @@ export function theRealPorts(email: EmailService, whatsapp: WhatsAppService, pri
       },
     },
     progressEmail: (to, subject, text) => email.sendTheYearEndProgress(to, subject, text),
-    /* A question mailed to somebody can be answered by replying: it carries the assistant's address (Fatima round 1, H5). */
+    /* A question mailed to somebody can be answered by replying: it carries the assistant's address (Ebele round 1, H5). */
     askByEmail: async (a) => email.sendTheRoutineMessageByEmail(a.to, a.subject, a.text, null, null, undefined, prisma ? await theAddressForHer(prisma, a.organizationId).catch(() => undefined) : undefined, a.askKey),
   };
 }

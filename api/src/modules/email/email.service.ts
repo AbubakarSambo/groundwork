@@ -655,7 +655,7 @@ export class EmailService implements OnModuleInit {
     if (sender === 'sendTheYearEndFiles' && context?.sendKey) return theOutboxKey({ channel: 'email', to: options.to, kind: 'year-end-files', about: context.sendKey });
     /* An introduction goes once for one person on one channel, whatever the day: the key is the send key the caller made (executive-onboarding/the-introduction-delivery.ts). */
     if (sender === 'sendTheIntroduction' && context?.sendKey) return theOutboxKey({ channel: 'email', to: options.to, kind: 'introduction', about: context.sendKey });
-    /* WHAT IS SAID IN ANSWER TO SOMEBODY IS KEYED ON WHAT IT SAYS, NOT ON ITS SUBJECT (Fatima round 1, I-03): the picture of her first forward was dropped because a short thank-you with the same subject had gone that day, and the batch was marked answered. Two different mails with one subject are two mails; the very same words twice within a minute are one. */
+    /* WHAT IS SAID IN ANSWER TO SOMEBODY IS KEYED ON WHAT IT SAYS, NOT ON ITS SUBJECT (Ebele round 1, I-03): the picture of her first forward was dropped because a short thank-you with the same subject had gone that day, and the batch was marked answered. Two different mails with one subject are two mails; the very same words twice within a minute are one. */
     const theWords = `${options.subject}\n${options.text ?? plainTextOf(options.html)}`;
     if (sender && /^(?:sendTheAssistantsReply|sendTheAnswerByEmail|sendTheMessageByEmail)$/.test(sender)) return theOutboxKey({ channel: 'email', to: options.to, kind: 'reply', text: theWords });
     const family = /^(?:sendRoundDigest|sendParticipantCheckedIn)$/.test(sender ?? '') ? 'session-news'
@@ -1461,7 +1461,7 @@ export class EmailService implements OnModuleInit {
       return this.sendTheAnchorInvitation(email, leadName, theCheckIn.label, this.buildInviteUrl(token), context);
     }
     /* The one line is what the brief says before the lead's own setup answers: a team update set up by talking keeps those answers in its brief, and they
-       reached the team word for word ("When asked why this matters now, the answer was taken to mean this. ..."; Fatima's office, 23 November 2026). */
+       reached the team word for word ("When asked why this matters now, the answer was taken to mean this. ..."; Ebele's office, 23 November 2026). */
     const theOneLine = theCheckIn.scenario === 'TEAM_UPDATES' ? withoutTheSetupAnswers(theCheckIn.brief) : '';
     if (!theOneLine) return this.sendParticipantInvite(email, leadName, theCheckIn.label, token, note, context);
     /* The trial line is carried on the note, which is where the setup form puts her sentence. */
@@ -1686,10 +1686,10 @@ export class EmailService implements OnModuleInit {
     return paragraphs.map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
   }
 
-  async sendTheRoutineMessageByEmail(email: string, subject: string, text: string, linkLabel: string | null, linkUrl: string | null, participantId?: string, replyTo?: string, /** The questions it carries (information-gaps.ts anAskKey): marked asked by this door only when the mail really goes. */ askKey?: string): Promise<'sent' | 'held' | 'suppressed'> {
+  async sendTheRoutineMessageByEmail(email: string, subject: string, text: string, linkLabel: string | null, linkUrl: string | null, participantId?: string, replyTo?: string, /** The questions it carries (information-gaps.ts anAskKey): marked asked by this door only when the mail really goes. */ askKey?: string, /** A file the message carries, such as the weekly brief as a PDF. */ attachments?: AnAttachment[]): Promise<'sent' | 'held' | 'suppressed'> {
     const context: DeliveryContext = { kind: 'OTHER', ...(participantId ? { participantId } : {}), ...(askKey ? { sendKey: askKey } : {}) };
-    /* A mail that asks somebody a question carries the assistant's address as its Reply-To, so a plain reply reaches the assistant (Fatima round 1, H5: the team's asks had none and went to noreply). */
-    await this.sendEmail({ to: email, subject, html: this.layout(this.whatWhatsAppCouldNotTake(text) + (linkUrl ? `<p><a href="${linkUrl}">${escapeHtml(linkLabel || 'Open Groundwork')}</a></p>` : '')), ...(replyTo ? { replyTo } : {}) }, context, 'sendTheRoutineMessageByEmail');
+    /* A mail that asks somebody a question carries the assistant's address as its Reply-To, so a plain reply reaches the assistant (Ebele round 1, H5: the team's asks had none and went to noreply). */
+    await this.sendEmail({ to: email, subject, html: this.layout(this.whatWhatsAppCouldNotTake(text) + (linkUrl ? `<p><a href="${linkUrl}">${escapeHtml(linkLabel || 'Open Groundwork')}</a></p>` : '')), ...(replyTo ? { replyTo } : {}), ...(attachments?.length ? { attachments } : {}) }, context, 'sendTheRoutineMessageByEmail');
     return context.outcome ?? 'sent';
   }
 
@@ -1700,7 +1700,7 @@ export class EmailService implements OnModuleInit {
   }
 
   /**
-   * THE YEAR-END FILES, WITH THEIR WORDS (Fatima, increment 4; the-year-end-delivery.ts decides who may get them and writes the states).
+   * THE YEAR-END FILES, WITH THEIR WORDS (Ebele, increment 4; the-year-end-delivery.ts decides who may get them and writes the states).
    * Asked for, so never counted as the day's routine message; held for quiet hours like any mail we decided to send, with its files kept in the
    * held row. The send key is one per job, version and person, so the same files never go twice. Says what became of it, and the one door
    * records "sent" itself, at the moment the mail service takes it.

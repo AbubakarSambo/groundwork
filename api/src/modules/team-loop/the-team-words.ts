@@ -1,5 +1,5 @@
 /**
- * WHAT A TEAM MEMBER, AND FATIMA, READ FROM THE TEAM LOOP (Fatima, increment 6a). Plain, full sentences. No colons that join pieces, no labels on
+ * WHAT A TEAM MEMBER, AND EBELE, READ FROM THE TEAM LOOP (Ebele, increment 6a). Plain, full sentences. No colons that join pieces, no labels on
  * anybody, no scores. Every sentence about what somebody did names where it came from, or says it is not verified.
  */
 
@@ -27,7 +27,7 @@ export const ONE_MORE_THING_IS_ENOUGH = 'I have asked about this once, so I will
 /* ---- Help for the team member. Private to them. ---- */
 export const HELP_NEEDS_MORE = (first: string) => `${first}, I can help with that. Tell me who it is for and what you want it to achieve, and I will write a first version for you to change.`;
 export const NOTHING_ABOUT_OTHERS = (first: string) => `${first}, I do not tell anybody what somebody else has sent me, and I do not say how anyone is doing. I can tell you what I have noted from you, or help with your own work.`;
-export const HELP_IS_PRIVATE = 'What you ask me for help with stays between you and me. Fatima only sees the work you have documented and the updates you choose to share.';
+export const HELP_IS_PRIVATE = 'What you ask me for help with stays between you and me. Ebele only sees the work you have documented and the updates you choose to share.';
 export const HELP_CANNOT_NOW = (first: string) => `${first}, I could not write that just now. Please ask me again in a little while, and I will help you with it then.`;
 
 /* ---- Nudges. ---- */
@@ -59,7 +59,7 @@ export const NO_ONE_TO_ASK = (first: string, a: { notIntroducedYet: number; name
     : a.notIntroducedYet
       ? `${first}, I would do that, but I have not been able to introduce myself to anybody in your team yet, so there is nobody I can write to. I will tell you as soon as I can.`
       : `${first}, I would do that, but you have not given me anybody in your team to write to yet. Send me their names with a phone number or an email address, and I will introduce myself to them first.`;
-/** Her own name, never a fixed one (it read "Only Fatima" in every organisation). */
+/** Her own name, never a fixed one (it read "Only Ebele" in every organisation). */
 export const ONLY_SHE_CAN_GIVE_ONE = (principalFirst: string) => `Only ${principalFirst} can give me an instruction like that.`;
 
 const aThing = (t: string) => `“${String(t ?? '').replace(/\s+/g, ' ').trim().replace(/[.!?]+$/, '').slice(0, 120)}”`;
@@ -84,7 +84,7 @@ export const THE_ASK_FOR_AN_UPDATE = (first: string, forName: string, matter: st
  * WHO WILL BE WRITTEN TO, HOW, AND ABOUT WHAT (Batch D, R5, D2). Said back before anything goes, from the people on her record: she is never asked who her
  * team is. The people are named by how they are reached, and each is asked about what is still open with them (the ask itself names it).
  *
- * WHAT SHE IS TOLD IS WHAT WILL HAPPEN (Dangote rerun, N1 and N2). Whether a person can be written to today is read from one owner (has-this-person-been-asked.ts,
+ * WHAT SHE IS TOLD IS WHAT WILL HAPPEN (Halden rerun, N1 and N2). Whether a person can be written to today is read from one owner (has-this-person-been-asked.ts,
  * howTheyCanBeWrittenToToday), and anybody who cannot is named, with when they will be. It was one sentence per person (9,024 characters for 64 people), which
  * no phone could take in one message.
  */

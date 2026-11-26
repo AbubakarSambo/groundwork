@@ -627,11 +627,11 @@ function theDoorsTheirTurnsCameThrough(svc: any, checkInId: string | null): any 
 const WHAT_CARRIES_ON: ReadonlySet<string> = new Set(['workUpdates', 'promises', 'blockers', 'decisions', 'compared.promisesDue', 'compared.blockers', 'compared.workMoved']);
 
 /**
- * A REPORT THEY POINT TO IS ASKED FOR (Fatima's Dangote office, 23 November 2026). Musa wrote "We were at 70% capacity because of raw material
+ * A REPORT THEY POINT TO IS ASKED FOR (Ebele's Halden office, 23 November 2026). Musa wrote "We were at 70% capacity because of raw material
  * shortages. The October report has the details." and was asked which mill he meant; the October report was never asked for. Said to the model each
  * turn: what they point to is what the record needs, unless it is already among the documents this session can read.
  */
-const A_REPORT_THEY_POINT_TO = 'WHEN THEY POINT TO A REPORT, FILE OR EMAIL FOR THE DETAILS ("the October report has the details", "it is in the spreadsheet I sent Fatima"), and it is not among the documents this session can read, ask them to send it here, naming it in their words, once. If it is among them, use what it says. WHEN THEY SAY THEY ALREADY SENT IT TO SOMEBODY ("I already sent this to Fatima"), thank them and ask them kindly to send the same file here too, so it is on the record and nobody asks again; never move on as if it had been sent here.';
+const A_REPORT_THEY_POINT_TO = 'WHEN THEY POINT TO A REPORT, FILE OR EMAIL FOR THE DETAILS ("the October report has the details", "it is in the spreadsheet I sent Ebele"), and it is not among the documents this session can read, ask them to send it here, naming it in their words, once. If it is among them, use what it says. WHEN THEY SAY THEY ALREADY SENT IT TO SOMEBODY ("I already sent this to Ebele"), thank them and ask them kindly to send the same file here too, so it is on the record and nobody asks again; never move on as if it had been sent here.';
 
 @Injectable()
 export class ConversationService {

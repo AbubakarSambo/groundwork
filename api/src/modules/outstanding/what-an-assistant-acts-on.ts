@@ -1,5 +1,5 @@
 /**
- * WHAT SOMEBODY WHO ACTS FOR A SENIOR PERSON CAN ACT ON, as Today reads it (Fatima round 2, D3). The assistant's web screens showed nothing about the people she acts
+ * WHAT SOMEBODY WHO ACTS FOR A SENIOR PERSON CAN ACT ON, as Today reads it (Ebele round 2, D3). The assistant's web screens showed nothing about the people she acts
  * for, so a delegate who signed in saw her own empty Today. For each principal she acts for, there is one row: whose it is, how many matters are outstanding, what
  * waits for the principal's decision, and where the year-end draft stands.
  *
@@ -50,12 +50,12 @@ export async function theMattersSheActsOn(prisma: any, a: { organizationId: stri
     const waiting = register.rows.filter((r) => r.status === 'awaiting decision' && r.decision).length;
     const decisions = register.rows.some((r) => r.status === 'awaiting decision' && r.decision) ? whatNeedsTheDecisionSaid(register, view).split('\n').slice(0, 2) : [];
     const draft = await latestDraft(prisma, { organizationId: a.organizationId, principalUserId: g.principalUserId, year: a.now.getUTCFullYear() }).catch(() => null);
-    /* A person with nothing open and no draft is not a row of her own: they are named together in one line after the others (Fatima round 11). */
+    /* A person with nothing open and no draft is not a row of her own: they are named together in one line after the others (Ebele round 11). */
     if (!register.rows.some((r) => r.status !== 'completed' && r.status !== 'cancelled') && !draft) { quiet.push({ name, first, groundId: g.principalUserId }); continue; }
     out.push({
       key: `acts-for-${g.principalUserId}`,
       kind: decisions.length ? 'decide' : 'look',
-      /* One short line for each person: how many matters are open, how many wait for the decision, and where the draft stands. The list itself is one question away, in Ask (Fatima round 13). */
+      /* One short line for each person: how many matters are open, how many wait for the decision, and where the draft stands. The list itself is one question away, in Ask (Ebele round 13). */
       title: `You act for ${name}.`,
       detail: `${count(open, 'matter is', 'matters are')} open${waiting ? `, ${waiting} ${waiting === 1 ? 'needs' : 'need'} ${first}'s decision,` : ''}${draft ? ` and ${theDraftIsAtShort(first, draft)}` : ''}.`.replace(/,\.$/, '.').replace(/ open,? and /, ' open and '),
       action: { label: `Ask about ${first}'s matters`, to: '/chat' },
@@ -75,7 +75,7 @@ export async function theMattersSheActsOn(prisma: any, a: { organizationId: stri
 }
 
 /**
- * HER OWN DECISIONS ON HER OWN TODAY (Dangote stress test, D5: Ask said "150 things need your decision", her assistant's Today said 141, and her own Today said
+ * HER OWN DECISIONS ON HER OWN TODAY (Halden stress test, D5: Ask said "150 things need your decision", her assistant's Today said 141, and her own Today said
  * "Nothing needs you right now"). For somebody whose work Groundwork keeps (she has a year-end job), the decisions are read from the same register and the same
  * words as Ask's "What needs my decision?", so the number cannot differ. Nothing for anybody else, and nothing when there is no decision.
  */

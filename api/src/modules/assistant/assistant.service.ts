@@ -611,7 +611,7 @@ export class AssistantService {
     /* A yes or "nothing is wrong" with nothing waiting for it is agreement, not words to file (round 2, C19, C27): it is met as a colleague would meet it. */
     if (shrugged && understood?.kind === 'agreement') reply = rules('an_agreement', text(NOTHING_NEEDS_CHANGING));
     else if (shrugged && askedOnWhatsApp() && understood?.kind === 'update') reply = rules('an_update', text(NO_CHECK_IN_OPEN_SO_NOT_ADDED));
-    /* A question no lane could answer is read against the record and the files, never met with a menu (Fatima, 25 January 2027: "Who is responsible for the unresolved issues?" was taken as a person to look up, found nobody, and said it could not answer). */
+    /* A question no lane could answer is read against the record and the files, never met with a menu (Ebele, 25 January 2027: "Who is responsible for the unresolved issues?" was taken as a person to look up, found nobody, and said it could not answer). */
     else if (shrugged && userId && isAQuestion(message)) reply = await this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, groundId ?? null, message);
     const waitingNamed = shrugged && userId ? aWaitingRequestNamed(message, await this.waitingForYouToDecide(organizationId, userId).catch(() => [])) : null;
     if (waitingNamed) reply = rules('decide_a_request', text(stillWaitingSaid(waitingNamed)));
@@ -5572,7 +5572,7 @@ export class AssistantService {
   }
 
 
-  /* ---------------------------------------------------------------- acting for a senior person (Fatima, increment 3) */
+  /* ---------------------------------------------------------------- acting for a senior person (Ebele, increment 3) */
 
   /**
    * "MY EA IS AMINA, AMINA CAN DO THINGS FOR ME." Said back first, and written only on a yes. Only somebody

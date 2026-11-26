@@ -1,5 +1,5 @@
 /**
- * HANDING THE FILES OVER, AND SAYING ONLY WHAT HAPPENED (Fatima, increment 4).
+ * HANDING THE FILES OVER, AND SAYING ONLY WHAT HAPPENED (Ebele, increment 4).
  *
  * WHO MAY RECEIVE THEM. The draft goes to the principal only. The final goes to the principal and to anybody she has named and confirmed
  * (`year_end_recipients`). Somebody who acts for her may prepare and revise but is never a recipient unless she named them herself, and
@@ -153,7 +153,7 @@ export async function deliverTheFinal(prisma: any, ports: ThePorts, a: { organiz
 }
 
 /** "Send the outstanding list": the editable register and its readable summary, from the newest version, to her only. Once a day for one version. */
-export async function sendTheRegister(prisma: any, ports: ThePorts, a: { organizationId: string; principalUserId: string; row: TheDraftRow; now: Date; /** Who it goes to, as the reader is told: "you" for her, her first name for somebody who acts for her (D15: Maryam read "I already emailed you" of a mail that went to Fatima). */ toName?: string }): Promise<{ said: string }> {
+export async function sendTheRegister(prisma: any, ports: ThePorts, a: { organizationId: string; principalUserId: string; row: TheDraftRow; now: Date; /** Who it goes to, as the reader is told: "you" for her, her first name for somebody who acts for her (D15: Maryam read "I already emailed you" of a mail that went to Ebele). */ toName?: string }): Promise<{ said: string }> {
   const to = await recipientsFor(prisma, { ...a, kind: 'draft' });
   const c = a.row.content;
   const files = [await oneFile('register_xlsx', c, { version: a.row.version, status: a.row.status }), await oneFile('register_pdf', c, { version: a.row.version, status: a.row.status })];

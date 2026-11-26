@@ -9257,7 +9257,7 @@ model MemoryFile {
 }
 
 // ---------------------------------------------------------------------------
-// Fatima, increment 3: a person who acts for a senior person, two standing jobs, and what the
+// Ebele, increment 3: a person who acts for a senior person, two standing jobs, and what the
 // outstanding register keeps that the commitments it reads do not.
 // ---------------------------------------------------------------------------
 
@@ -9288,7 +9288,7 @@ model Delegate {
   @@map("delegates")
 }
 
-/// What a delegate did, as "Amina Yusuf for Fatima". Never removed when the grant is revoked.
+/// What a delegate did, as "Amina Yusuf for Ebele". Never removed when the grant is revoked.
 model DelegateAction {
   id              String   @id @default(uuid())
   organizationId  String   @map("organization_id")
@@ -9353,6 +9353,8 @@ model RegisterNote {
   lastVerifiedAt   DateTime? @map("last_verified_at")
   /// Rows somebody was asked about and said are not the same thing, so they are never asked again.
   notTheSameAs     String[]  @default([]) @map("not_the_same_as")
+  /// Where the principal put this item in her brief, in her own words ("not urgent", "this needs me"): attention, monitoring or information. It stays put.
+  herBucket        String?   @map("her_bucket")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
@@ -9362,7 +9364,7 @@ model RegisterNote {
 }
 
 
-/// ONE VERSION OF THE YEAR-END WORK (Fatima, increment 4). One row per version, never changed once approved: a later change is a new row
+/// ONE VERSION OF THE YEAR-END WORK (Ebele, increment 4). One row per version, never changed once approved: a later change is a new row
 /// whose parent is this one. `content` is everything the report, the presentation, the register and the evidence index are written from,
 /// so a change made once is in all of them. `edits` are what the principal asked for, replayed over the record whenever the draft is
 /// rebuilt from newer evidence. status: draft | revised | approved | final.
@@ -9420,7 +9422,7 @@ model YearEndRecipient {
 }
 
 
-/// A SENIOR PERSON ADDED BY AN ADMIN, WHO NEVER REGISTERS (Fatima, increment 5). One row per person. Her identity is the admin's act:
+/// A SENIOR PERSON ADDED BY AN ADMIN, WHO NEVER REGISTERS (Ebele, increment 5). One row per person. Her identity is the admin's act:
 /// the admin gave her address and number, and `verifiedVia` says so until she writes back. `preferences` and `permissions` are
 /// recorded with sensible defaults that she can change by saying so. `permissions` is the client's approval for the four things the
 /// work needs: data handling, team outreach, confidential information and messaging, with who confirmed them and when.
@@ -9575,7 +9577,7 @@ model PrincipalMaterial {
   @@map("principal_material")
 }
 
-/// WHAT A PAYMENT TRACKER SAID, ONE ROW PER ROW OF THE SHEET (Fatima, increment 6b; plan section 12). Not a ledger: it keeps what the tracker claimed, so a
+/// WHAT A PAYMENT TRACKER SAID, ONE ROW PER ROW OF THE SHEET (Ebele, increment 6b; plan section 12). Not a ledger: it keeps what the tracker claimed, so a
 /// claim can be held up against the record (the spend request, the correspondence, the proof). Whether a payment is paid is never a column here: "paid" is
 /// worked out each time from the proof, in `principal-work/the-payments-reconcile.ts`. `lineKey` is unique per principal, so the same sheet read twice adds nothing.
 model PaymentTrackerLine {
@@ -9614,7 +9616,7 @@ model PaymentTrackerLine {
   @@map("payment_tracker_lines")
 }
 
-/// ONE INSTITUTION'S WEEKLY REPORT, KEPT BY WEEK (Fatima, increment 6b; plan section 13): the developments it reported, each with its source and date, the
+/// ONE INSTITUTION'S WEEKLY REPORT, KEPT BY WEEK (Ebele, increment 6b; plan section 13): the developments it reported, each with its source and date, the
 /// links to what the office already has, and the follow-ups, which stay PROPOSED until she confirms them. Unique per principal, institution and week, so
 /// the same week forwarded twice is one row (a changed report for the same week is a new revision of it).
 model WeeklyDigest {
@@ -9725,4 +9727,41 @@ model EmergencyContact {
 
   @@unique([organizationId, userId])
   @@map("emergency_contacts")
+}
+
+/// ONE ROW OF A TABLE IN A REPORT SOMEBODY FORWARDED, AS THAT VERSION OF THE REPORT SAID IT (principal-work/the-rows-in-a-report.ts). Every version is
+/// kept, so an item's history is its rows in order: first seen is when it entered the record, the latest says where it stands. Rows sharing a
+/// `rowKey` are one item; a reworded row is joined by the register's own matching, never here. Nothing here is a fact: a row saying "done" is a claim.
+model ReportRow {
+  id              String    @id @default(uuid())
+  organizationId  String    @map("organization_id")
+  principalUserId String    @map("principal_user_id")
+  /// The forwarded file it was read from (principal_materials.id).
+  materialId      String    @map("material_id")
+  fileName        String    @map("file_name")
+  /// Where the table is: "sheet 2026", "Table 1", "Slide 3, table 1".
+  tableName       String    @map("table_name")
+  /// The row as the file numbers it: Excel's row, or the table's row.
+  row             Int
+  /// The same item in every version: its reference where the table has one, else its words, lower case.
+  rowKey          String    @map("row_key")
+  item            String    @db.Text
+  owner           String?
+  /// What the row says about where it stands, as written.
+  status          String?
+  /// The row's remarks or notes, as written.
+  note            String?   @db.Text
+  dueOn           DateTime? @map("due_on") @db.Date
+  /// The row's fill, by name ("yellow"), where the row is coloured. What a colour means is the stream's own rule.
+  fill            String?
+  /// Every heading and its value, as written.
+  fields          Json
+  /// The address the report came from, when it came by email: who can be asked about its rows when no owner on the team is named.
+  sentFrom        String?   @map("sent_from")
+  receivedAt      DateTime  @map("received_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@unique([materialId, tableName, row])
+  @@index([principalUserId, rowKey])
+  @@map("report_rows")
 }

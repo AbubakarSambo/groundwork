@@ -659,7 +659,7 @@ export class WhatsAppService implements OnModuleInit {
         },
       })
       .catch((err: any) => this.logger.warn(`Could not record a WhatsApp send to ${phone}: ${err?.message}`));
-    /* WHAT A MESSAGE ASKED IS ASKED ONLY WHEN IT WENT (Dangote stress test, D4). Held for the night, it stays waiting and is marked when the morning sends it; refused, its questions are let go of. */
+    /* WHAT A MESSAGE ASKED IS ASKED ONLY WHEN IT WENT (Halden stress test, D4). Held for the night, it stays waiting and is marked when the morning sends it; refused, its questions are let go of. */
     if (context.sendKey) {
       if (result.sent) await theAskWent(this.prisma, context.sendKey, theQuietHoursNow());
       else if (!String(result.error ?? '').startsWith(QUIET_HOURS_HELD(new Date(0)).split(';')[0])) await giveTheAskBack(this.prisma, context.sendKey);

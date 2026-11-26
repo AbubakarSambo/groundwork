@@ -119,7 +119,7 @@ export class ReportsOnRequestService {
     let size = theSizeSaid({ words: m.text });
     let words: string = m.text;
     if (m.bytes && isAWorkbook(m.name, m.mimeType) && (this.engine as any)?.workItOut) {
-      const book = theWorkbookAsFiles(Buffer.from(m.bytes));
+      const book = await theWorkbookAsFiles(Buffer.from(m.bytes), m.name);
       size = theSizeSaid({ sheets: book.sheets });
       const p = await this.prompt(WORK_A_WORKBOOK_OUT_KEY, WORK_A_WORKBOOK_OUT_PROMPT);
       const question = `Load every attached file with pandas and work this workbook out with code before you answer.\nThe workbook: ${m.name}\nThe files, in order:\n${book.guide}\nWhat the person asked for: ${request?.asked ?? ''}`;

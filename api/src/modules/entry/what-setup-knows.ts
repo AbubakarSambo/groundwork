@@ -146,7 +146,7 @@ function onePerson(name: string, k: WhatSetupKnows): string {
 }
 
 /**
- * WHAT SAVING THIS MAKES, AND WHO "YOU" IS (Fatima's Dangote office, 23 November 2026). Setup told her "You have set up four collections ...
+ * WHAT SAVING THIS MAKES, AND WHO "YOU" IS (Ebele's Halden office, 23 November 2026). Setup told her "You have set up four collections ...
  * from January until now, and then weekly from 2027", and saved one weekly check-in. And "follow up with him yourself, not through me" was
  * said back, in four setups, as "you will follow up with him directly". Both are facts about the product, not judgements, so they are told
  * to the model here, the one block every setup turn reads, rather than matched in its words afterwards.
