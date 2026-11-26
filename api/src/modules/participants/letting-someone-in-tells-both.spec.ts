@@ -9,7 +9,10 @@ import { WhoIsWaitingAtTheDoorService } from './who-is-waiting-at-the-door.servi
 function aDoor(request: any) {
   const sent: { to: string; what: string; args: any[] }[] = [];
   const prisma: any = {
-    membershipRequest: { findUnique: jest.fn(async () => request), update: jest.fn(async () => ({})) },
+    membershipRequest: { findUnique: jest.fn(async () => request), update: jest.fn(async () => ({})), updateMany: jest.fn(async () => ({ count: 1 })) },
+    /* Letting somebody in gives them their seat and starts any paused check-in (Hafsah, 26 November 2026). */
+    organizationMembership: { updateMany: jest.fn(async () => ({ count: 1 })) },
+    groundParticipant: { updateMany: jest.fn(async () => ({ count: 0 })) },
     user: {
       update: jest.fn(async () => ({})),
       findUnique: jest.fn(async ({ where }: any) => (where.id === 'wairimu'
@@ -23,7 +26,9 @@ function aDoor(request: any) {
     sendYouAreInNow: jest.fn(async (to: string, ...args: any[]) => { sent.push({ to, what: 'you are in', args }); }),
     sendTheyAreInNow: jest.fn(async (to: string, ...args: any[]) => { sent.push({ to, what: 'they are in', args }); }),
   };
-  const door = new (WhoIsWaitingAtTheDoorService as any)(prisma, email);
+  /* Letting somebody in now asks for room on the plan for every request, so the service is given its billing (Hafsah, 26 November 2026). */
+  const billing: any = { canInviteMember: jest.fn(async () => ({ allowed: true })), seatsMayHaveChanged: jest.fn() };
+  const door = new (WhoIsWaitingAtTheDoorService as any)(prisma, email, billing);
   return { door, sent };
 }
 const flush = () => new Promise((r) => setImmediate(r));

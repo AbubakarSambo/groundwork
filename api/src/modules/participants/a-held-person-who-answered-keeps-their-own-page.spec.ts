@@ -16,7 +16,7 @@ describe('whether a held person keeps their page', () => {
     expect(await theHeldPersonWhoHasAnswered(prismaFor({ id: 'p1', awaitingSeat: false }, true), 'g1', 'u1')).toBe(false);
   });
   it('somebody held who has answered is served their own page, narrowed', async () => {
-    expect(await theHeldPersonWhoHasAnswered(prismaFor({ id: 'p1', awaitingSeat: true }, true), 'g1', 'u1')).toBe(true);
+    expect(await theHeldPersonWhoHasAnswered(prismaFor({ id: 'p1', awaitingSeat: true }, true), 'g1', 'u1')).toBe('held'); /* It says why now: held for a seat, or waiting for an admin's yes (26 November 2026). */
   });
   it('somebody held who never answered is refused with the sentence the invitation page gives', async () => {
     await expect(theHeldPersonWhoHasAnswered(prismaFor({ id: 'p1', awaitingSeat: true }, false), 'g1', 'u1')).rejects.toThrow(new ForbiddenException(HELD_FOR_A_SEAT));

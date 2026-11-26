@@ -76,7 +76,8 @@ describe('a held guest is offered no check-in', () => {
 
   it('and adding writes the guest held exactly when there is no seat, and releasing clears it', () => {
     const grounds = strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.service.ts'), 'utf8'));
-    expect(grounds).toContain('await aGuestHereIfTheyAreFromElsewhere(this.prisma as any, ground.organizationId, dto.email, !waitingForASeat.room);');
+    /* One place now writes where somebody stands once added, a guest included (theirPlaceHereOnceAdded, 26 November 2026). */
+    expect(grounds).toContain('await theirPlaceHereOnceAdded(this.prisma as any, ground.organizationId, dto.email, { name: colleagueName ?? dto.displayName ?? null, held: !waitingForASeat.room,');
     expect(grounds).toMatch(/where: \{ organizationId, heldForASeat: true, user: \{ email: w\.email\.toLowerCase\(\) \} \},\s*data: \{ heldForASeat: false \},/);
   });
 });
