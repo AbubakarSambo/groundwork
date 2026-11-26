@@ -63,7 +63,7 @@ export interface AWaitingRequest {
 }
 
 /** What waits for a decision in Ask: a suite's request, or somebody waiting for an admin to let them in ('seat', Ask and People only, never a suite's message). */
-export type AWaitingDecision = AWaitingRequest | (Omit<AWaitingRequest, 'kind'> & { kind: 'seat' });
+export type AWaitingDecision = AWaitingRequest | (Omit<AWaitingRequest, 'kind'> & { kind: 'seat' | 'check_in' });
 
 export function aLeaveRequest(ref: string, personUserId: string | null, firstName: string, startsOn: string, endsOn: string): AWaitingRequest {
   const what = leaveInWords(startsOn, endsOn);
@@ -84,6 +84,11 @@ export function anHoursRequest(personUserId: string, weekOf: string, firstName: 
 /** Somebody a lead added, waiting for an admin to let them in, which gives them a seat (Hafsah, 26 November 2026: "approve them in People or Ask"). */
 export function aSeatRequest(ref: string, personUserId: string | null, firstName: string, organisationName: string): AWaitingDecision {
   return { kind: 'seat', ref, personUserId, firstName, what: `a seat at ${organisationName}`, thing: `${whose(firstName)} seat at ${organisationName}` };
+}
+
+/** A check-in a lead set up that waits for an admin to approve it ("approve it", Rhea call, 25 November 2026: chat is king). `firstName` is who set it up. */
+export function aCheckInToApprove(ref: string, firstName: string, label: string): AWaitingDecision {
+  return { kind: 'check_in', ref, personUserId: null, firstName, what: `the check-in "${label}"`, thing: `the check-in "${label}"` };
 }
 
 export function aSpendRequest(ref: string, personUserId: string | null, firstName: string, amount: number, currency: string | null, what: string): AWaitingRequest {
@@ -187,7 +192,7 @@ export const MOST_NAMED_AT_ONCE = 5;
 /** More than one waiting, and the reply did not say which. */
 export function whichDecision(rs: AWaitingDecision[]): string {
   const count = rs.length <= 10 ? NUMBERS[rs.length] : String(rs.length);
-  const example = `${whose(rs[0].firstName)} ${rs[0].kind === 'spend' ? 'spending' : rs[0].kind}`;
+  const example = rs[0].kind === 'check_in' ? rs[0].thing : `${whose(rs[0].firstName)} ${rs[0].kind === 'spend' ? 'spending' : rs[0].kind}`;
   if (rs.length > MOST_NAMED_AT_ONCE) {
     const first = rs.slice(0, MOST_NAMED_AT_ONCE).map((r) => r.thing);
     const more = rs.length - MOST_NAMED_AT_ONCE;

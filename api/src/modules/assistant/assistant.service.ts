@@ -5230,7 +5230,14 @@ export class AssistantService {
         return { organisationName: org?.name ?? 'the organisation', waiting: (await this.door!.waiting(reader.organizationId)).filter((w: any) => w.kind === 'MEMBERSHIP') };
       },
     } : undefined;
-    return whatWaitsForYouToDecide({ userId, organizationId }, { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending as any, door });
+    /* And check-ins a lead set up that wait for an admin's yes: "approve it" in Ask, as on the check-in (Rhea call, 25 November 2026). */
+    const checkIns = {
+      waitingFor: async (reader: { userId: string; organizationId: string }) => {
+        const standing = await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId: reader.userId, organizationId: reader.organizationId } }, select: { role: true } });
+        return standing?.role === 'ADMIN' ? (await this.grounds.listAwaitingApproval(reader.organizationId, reader.userId)).map((g: any) => ({ id: g.id, label: g.label, createdBy: g.createdBy ?? null })) : [];
+      },
+    };
+    return whatWaitsForYouToDecide({ userId, organizationId }, { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending as any, door, checkIns });
   }
 
   /**
@@ -6010,7 +6017,7 @@ export class AssistantService {
     /* "peters leave" names Peter as well as "Peter's leave" does. */
     const byName = all.filter((r) => r.firstName && new RegExp(`\\b${r.firstName.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:['\u2019]?s)?\\b`).test(said));
     const named = byName.length ? byName : all;
-    const kinds = { leave: /\b(leave|time off|days? off)\b/, hours: /\b(hours?|time ?sheets?)\b/, spend: /\b(spend|spending|money|budget|expense)\b/, seat: /\b(seats?|let (?:\w+ )?in|place|join(?:ing)?|them)\b/ };
+    const kinds = { leave: /\b(leave|time off|days? off)\b/, hours: /\b(hours?|time ?sheets?)\b/, spend: /\b(spend|spending|money|budget|expense)\b/, seat: /\b(seats?|let (?:\w+ )?in|place|join(?:ing)?|them)\b/, check_in: /\b(check[\s-]?ins?|it)\b/ };
     const byKind = named.filter((r) => kinds[r.kind].test(said));
     let left = byKind.length ? byKind : named;
     /* Which one is meant, where the words do not say it to the rules ("ok approve peters fuel"), is read by the model from the list, and must be in it (round 2, T1). */
@@ -6030,7 +6037,10 @@ export class AssistantService {
     if (r.kind === 'hours' && outcome === 'declined') return rules('decide_a_request', text(HOURS_ARE_NOT_DECLINED(r.firstName)));
     /* A reason given with a declined leave ("because ...") is said back, and told to the person (decision 85, build step 7). */
     const reason = outcome === 'declined' && (r.kind === 'leave' || r.kind === 'spend') ? aReasonIn(message) : null;
-    const say = reason ? aDeclineWithAReasonSaidBack(r.thing, r.firstName, reason) : aDecisionSaidBack(r, outcome);
+    /* Approving a check-in gives each new person on it a seat: said before the yes, in the approval box's own sentence (26 November 2026). */
+    const seats = r.kind === 'check_in' && outcome === 'approved' ? await this.grounds.whatApprovingGives(r.ref, organizationId).catch(() => null) : null;
+    const saidBackHere = reason ? aDeclineWithAReasonSaidBack(r.thing, r.firstName, reason) : aDecisionSaidBack(r, outcome);
+    const say = seats ? saidBackHere.replace(/ Is that right\?$/, ` ${seats} Is that right?`) : saidBackHere;
     const row = await this.prisma.assistantProposal.create({
       data: { organizationId, personExternalId: who, kind: 'request_decision', summary: say, payload: { request: r, outcome, ...(reason ? { reason } : {}) } as never },
       select: { id: true },
@@ -6124,7 +6134,11 @@ export class AssistantService {
       const reader = { userId: me.linkedUserId, organizationId };
       /* An approval at a step that is not the last sends it on (decision 85, build step 4): say to whom. */
       let nowWaitsFor: string | null = null;
-      if (request.kind === 'seat') {
+      if (request.kind === 'check_in') {
+        /* The same two calls as the check-in's own Approve and Not this one: who it gives a seat to is said back before the yes. */
+        if (outcome === 'approved') await this.grounds.approve(request.ref, organizationId, me.linkedUserId);
+        else await this.grounds.declineGround(request.ref, organizationId, me.linkedUserId, reason);
+      } else if (request.kind === 'seat') {
         /* The same two calls as People's "Let them in" and "Don't let them in", which check again that it is still waiting here. */
         if (!this.door) throw new Error(NOTHING_TO_DECIDE);
         if (outcome === 'approved') await this.door.approve(organizationId, request.ref, me.linkedUserId);
