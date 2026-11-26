@@ -164,7 +164,7 @@ import {
 } from './the-role-interview';
 import {
   saidAsAList,
-  ASKS_FOR_A_NEW_ONE_BY_SAYING_SO,
+  ASKS_FOR_A_NEW_ONE_BY_SAYING_SO, ASKS_TO_SET_ONE_UP,
 } from './what-a-new-check-in-would-be';
 import { WhatIsTrueService } from './what-is-true.service';
 import { EmailService } from '../email/email.service';
@@ -2718,7 +2718,7 @@ export class AssistantService {
      * It is better for the person too — nobody should have to know whether the thing they want
      * already exists.
      */
-    if (truth.sessions.value.length === 0 || ASKS_FOR_A_NEW_ONE_BY_SAYING_SO.test(message)) {
+    if (truth.sessions.value.length === 0 || ASKS_FOR_A_NEW_ONE_BY_SAYING_SO.test(message) || ASKS_TO_SET_ONE_UP.test(message)) {
       return this.offerToOpenOne(organizationId, personId, truth.person.externalId, message);
     }
 
@@ -2779,7 +2779,13 @@ export class AssistantService {
     const said = message.trim() ? [...so.said, { words: message, asked }] : so.said;
     let next: TheSetupSoFar = { ...(read?.so ?? so), said, asked: 'talking' };
     let says = read?.reply || whatToSayWithNoModel(next);
-    if (readyToSayBack(next)) {
+    /* What is in it, to tell a change from a doubt: "not sure" at the say-back changes nothing, and was answered with the whole say-back again. */
+    const whatItHolds = (x: TheSetupSoFar) => JSON.stringify([x.updatesOn ?? '', x.cadence ?? '', (x.people ?? []).map((p) => [p.name, p.email ?? '', p.phone ?? ''])]);
+    const unchangedAtTheSayBack = kept.asked === 'confirm' && !!read?.reply && whatItHolds(kept) === whatItHolds(next);
+    if (unchangedAtTheSayBack) {
+      /* Nothing changed: her doubt or question is answered in the model's words (what she can change, and that nothing opens until her yes), and the yes still opens it. */
+      next = { ...kept, said, asked: 'confirm' };
+    } else if (readyToSayBack(next)) {
       /* The say-back is the product's own words, before anything is opened or sent. The situation and the kind of work are read from her words, so what is said back is what is opened. */
       next = { ...next, ...(await this.theSituationAndKindSheMeans(next)), asked: 'confirm' };
       says = saidBack(next);
@@ -3513,7 +3519,7 @@ export class AssistantService {
      * document's question is handled above, before the yes/no reading would misread it.
      */
     if (parked.kind === 'which_context_check_in') {
-      return this.resolveParkedWhichCheckIn(organizationId, who, parked, message);
+      return this.resolveParkedWhichCheckIn(organizationId, who, parked, message, personId, where);
     }
     /* A report on request: its steps are read by meaning there; words about something else let the step go and are answered as themselves (S8). */
     if (parked.kind === REPORT_ON_REQUEST_KIND && this.reportsOnRequest) {
@@ -4401,7 +4407,7 @@ export class AssistantService {
    * an older parked row (or in a test that predates this), which reads as `'setup'`, the only purpose
    * that existed before items 8, 9 and 17 were added, so nothing already parked breaks.
    */
-  private async resolveParkedWhichCheckIn(organizationId: string, who: string, parked: any, message: string): Promise<Reply> {
+  private async resolveParkedWhichCheckIn(organizationId: string, who: string, parked: any, message: string, personId = '', where?: { groundId?: string; userId?: string | null }): Promise<Reply> {
     const payload = parked.payload as {
       candidates: { groundId: string; label: string }[];
       said: string;
@@ -4412,15 +4418,14 @@ export class AssistantService {
     const byName = payload.candidates.filter((c) => said.toLowerCase().includes(c.label.toLowerCase()));
     const found = byKey ?? (byName.length === 1 ? byName[0] : undefined);
 
+    /*
+     * NOT ONE OF THEM (Hafsah's own chat, 23 November 2026: "cancel" was taken as another try, and the question came back for ever). A no
+     * stops it. Anything else is not an answer to which check-in, so the question is let go and the message is answered as itself.
+     */
     if (!found) {
-      return {
-        lane: 'add_context',
-        composedBy: 'rules',
-        blocks: [
-          text(`I still cannot tell which check-in you mean. Say one of: ${payload.candidates.map((c) => c.label).join(', ')}.`),
-          picker(payload.candidates.map((c) => ({ key: c.groundId, label: c.label }))),
-        ],
-      };
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: resolveConfirmation(said) === 'decline' ? 'DECLINED' : 'DROPPED', resolvedAt: new Date() } });
+      if (resolveConfirmation(said) === 'decline') return rules('add_context', text('All right. I have not added anything.'));
+      return this.answer(organizationId, personId, who, message, true, where?.groundId, where?.userId);
     }
 
     await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });

@@ -70,7 +70,7 @@ Give back:
 - brief: what the check-in is for, in one or two plain sentences made from what they said, written for the people in it to read, in full sentences with no colons, for example "Each week you tell me how deals, payments and visits went, and what is stuck." Leave out anything rude or private. Write it from what they have said; never ask them for more to write it with.
 - people: everybody who should be in it so far, the whole list, keeping the people already gathered unless they take somebody out. For somebody on the list of people, give their id. A first name means the person on the list with that first name. Put the whole team in, the people marked as reporting to them, only when they ask for the whole team; "I want updates from my team" said before they name anybody is a general wish, and once they name people, it is those people. "He is under my team" says where he is; it adds nobody. For somebody who is not on the list, give the name they used, and an email address or a phone number only if they typed it. Never make up a name, an address or a number. A sentence is never a name: "He is under my team" tells you where to look for him, it is not a person.
 - cadence: how often, if they said: DAILY, WEEKLY, FORTNIGHTLY or MONTHLY.
-- stops: true only when they ask to stop or cancel setting it up. Being unsure is not stopping: say what they can change, and that nothing opens until they say yes.
+- stops: true only when they ask to stop or cancel setting it up. Being unsure is not stopping: say in a sentence or two what they can change (what it is about, who is in it, how often), that nothing opens until they say yes, and ask whether to open it.
 - somethingElse: true only when the message is plainly about something else, not this set-up, for example "how is Kito doing?". Asking whether they can set it up here, asking how it works, being annoyed, or correcting you is about this set-up.
 - reply: what Groundwork says to them next.
 
@@ -81,7 +81,7 @@ How to write the reply:
 - When you looked for somebody on the list and could not find them, say who you looked for, and ask who they mean or for their email address. When more than one person fits, name them and ask which. When somebody has no email address on file, say so and ask for it.
 - If they are annoyed, acknowledge it in a few words, without repeating what they said, and get on with it.
 - Never repeat their words back as if they were somebody's name.
-- Never say the check-in is open or that anybody is invited. When nothing is missing, Groundwork says the whole check-in back instead of your reply, and asks for their yes.`;
+- Never say the check-in is open or that anybody is invited. When nothing is missing, Groundwork says the whole check-in back instead of your reply, and asks for their yes. So while anything is still missing, never say "here is the check-in" or that you will open it once they say yes: ask for what is missing.`;
 
 export const CHECK_IN_SETUP_SCHEMA = {
   name: 'the_check_in_set_up',
@@ -180,7 +180,11 @@ export function theModelsTurn(raw: any, s: TheSetupSoFar, roster: OnTheRosterFor
     const people: APerson[] = [];
     for (const p of raw.people) {
       if (!p || typeof p.name !== 'string' || !p.name.trim()) continue;
-      const onRoster = typeof p.id === 'string' ? roster.find((r) => r.externalId === p.id && r.externalId !== me && r.displayName) : undefined;
+      /* By the id the model gives, or else by the name exactly as the roster writes it, when only one person has it: the model put Wairimu's
+         whole team in by name with no ids, and each was asked for an email address the roster already holds (local run, 27 November 2026). */
+      const byName = roster.filter((r) => r.externalId !== me && r.displayName && r.displayName.trim().toLowerCase() === p.name.trim().toLowerCase());
+      const onRoster = (typeof p.id === 'string' ? roster.find((r) => r.externalId === p.id && r.externalId !== me && r.displayName) : undefined)
+        ?? (byName.length === 1 ? byName[0] : undefined);
       const email = theEmail(p.email) ?? onRoster?.email?.toLowerCase() ?? undefined;
       const phone = thePhone(p.phone);
       const name = onRoster?.displayName ?? p.name.trim().slice(0, 120);

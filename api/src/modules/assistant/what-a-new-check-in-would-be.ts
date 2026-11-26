@@ -142,4 +142,11 @@ export function whyItCannotBeOpened(input: { label: string | null; people: numbe
  * SAYING "GET UPDATES FROM MY TEAM ON ..." IS ASKING FOR A NEW CHECK-IN, even for somebody who already has one going (chat is king, step 2).
  * Without this the sentence was answered only for a person with no check-in at all.
  */
+/**
+ * "SET UP A CHECK-IN" IS ASKING FOR A NEW ONE, NOT TO START THE ONE THAT IS OPEN (Hafsah's own chat, 23 November 2026; local run, 27 November).
+ * Wairimu, with her own check-in open, typed "set up a checkin" and was told "Your check-in on Sales team, Q4 is open". Starting, beginning or
+ * opening "my" check-in is the one already there; setting one up, creating, making, or a new or another one is a new one.
+ */
+export const ASKS_TO_SET_ONE_UP = /\b(?:set\s*up|setup|create|make)\s+(?:a\s+|an\s+|one\s+|another\s+|new\s+)*(?:new\s+)?check[\s-]?ins?\b|\b(?:a\s+new|another)\s+check[\s-]?in\b/i;
+
 export const ASKS_FOR_A_NEW_ONE_BY_SAYING_SO = /^\s*(?:please\s+|can\s+you\s+)?(?:get|collect|gather|have)\s+(?:me\s+)?(?:updates?|reports?)\s+from\s+(?:my|our|the)\s+(?:team|people|staff)\b/i;
