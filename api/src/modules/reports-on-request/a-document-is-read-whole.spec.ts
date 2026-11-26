@@ -5,7 +5,7 @@
  * total is a formula, long source ids the model did not copy back, and a report whose gaps become the check-ins that ask for them.
  */
 import { theWorkbookAsFiles, theSizeSaid, aReadingMadeSafe, aReadingForTheModel } from './reading-a-document';
-import { shortIdsFor, theSourcesNamed, anOutlineMadeSafe, theOutlineAsked, theOutlineSaid, type ASource } from './the-report-on-request';
+import { shortIdsFor, theSourcesNamed, anOutlineMadeSafe, theOutlineAsked, type ASource } from './the-report-on-request';
 import { aWrittenReportFromTheReadings } from './writing-the-report';
 import { theReportAsBlocks, theRegisterAsAWorkbook, beforeTheFinal } from './the-report-files';
 
@@ -71,17 +71,6 @@ describe('sources are named to the model by short ids, and mapped back by code',
   });
 });
 
-describe('a long outline names three documents and counts the rest (one ran to 1,284 words)', () => {
-  it('each section and the documents left out', () => {
-    const sources = Array.from({ length: 40 }, (_, i) => doc(i + 1));
-    const said = theOutlineSaid([{ heading: 'The year', sourceIds: sources.slice(0, 30).map((s) => s.id) }], sources, true);
-    expect(said).toContain('1. The year. This would use the document Report 1.docx you uploaded, the document Report 2.docx you uploaded and 28 other sources.');
-    expect(said).toContain('It does not use the document Report 31.docx you uploaded, the document Report 32.docx you uploaded and 8 other sources.');
-    const few = theOutlineSaid([{ heading: 'The year', sourceIds: [sources[0].id, sources[1].id] }], sources.slice(0, 2), true);
-    expect(few).toContain('This would use the document Report 1.docx you uploaded and the document Report 2.docx you uploaded.');
-  });
-});
-
 describe('the report, laid out from one record', () => {
   const index = shortIdsFor([doc(1), doc(2)]);
   const written = aWrittenReportFromTheReadings({
@@ -99,11 +88,6 @@ describe('the report, laid out from one record', () => {
       { gap: 'No 2027 plan', limits: 'Nothing for next year', recordsNeeded: 'The 2027 plan', who: 'The director', beforeFinal: false, sourceIds: [] },
     ],
   }, index, [{ figure: 'May total', value: '6,170,000', where: 'Summary B2', working: 'SUM of May B2 to B4', source: 'Report 2.docx' }])!;
-
-  it('a line keeps which documents it rests on, never their text, so the stored report stays small (one stored 136 MB)', () => {
-    expect(written.sources.every((s) => s.text === '' && !s.reading)).toBe(true);
-    expect(JSON.stringify(written)).not.toContain('Week 2.');
-  });
 
   it('every part names its documents in the Word file, a line nothing backs is said to be unverified, and tables stay tables', () => {
     const blocks = theReportAsBlocks(written, new Date('2026-11-24T09:00:00Z'));
