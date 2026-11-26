@@ -1,5 +1,5 @@
 /**
- * THE PAYMENTS TRACKER, FROM THE FORWARD TO THE QUESTIONS (Fatima, increment 6b; plan section 12).
+ * THE PAYMENTS TRACKER, FROM THE FORWARD TO THE QUESTIONS (Ebele, increment 6b; plan section 12).
  *
  * She, or the person who keeps the payments for her, forwards the tracker (an Excel or CSV sheet, with the approval email beside it). This reads it, keeps what
  * it said, holds it against the record, and:
@@ -160,7 +160,7 @@ export async function thePaymentsNow(prisma: any, a: { organizationId: string; p
 }
 
 /**
- * THE ONE COUNT OF HER PAYMENTS (Fatima round 2, C2: "5 payments ... 9 things do not agree" in one message, "2 payments ... 5 things" in another, "6 and 6" in a
+ * THE ONE COUNT OF HER PAYMENTS (Ebele round 2, C2: "5 payments ... 9 things do not agree" in one message, "2 payments ... 5 things" in another, "6 and 6" in a
  * third, each counting its own sheet). Every message that gives a number about her payments reads it from here: the latest line for each payment, from every sheet
  * kept, held against the record as it is now.
  */
@@ -185,7 +185,7 @@ const sameName = (a: string, b: string) => { const x = a.trim().toLowerCase(); c
 
 /**
  * THE PERSON WHO CAN ANSWER. An approval is the approver's, and she is the approver; it is asked only of a line paid with no approval anywhere, since a line the
- * office's own sheet marks Approved has its approval written down (the-payments-reconcile.ts; Dangote stress test, D5). A missing proof or a disagreement
+ * office's own sheet marks Approved has its approval written down (the-payments-reconcile.ts; Halden stress test, D5). A missing proof or a disagreement
  * between two figures is for whoever owns the line (named in the sheet) if she has named and introduced them, else the person who acts for her, else her. Never somebody who only forwarded the sheet. A payee or any outsider is never asked.
  */
 export function whoCanAnswer(d: ADiscrepancy, c: { principal: ThePerson; sender: ThePerson | null; team: ThePerson[]; delegates: ThePerson[] }): ThePerson {
@@ -221,7 +221,7 @@ export async function askAboutThePayments(prisma: any, ports: ThePaymentsPorts, 
     if (!give.length) continue;
     const held = fresh.slice(MOST_IN_ONE_MESSAGE);
     const first = person.name.split(' ')[0];
-    /* One question for one payment, however many ways the sheets disagree about it (Fatima round 3: the same two rows were asked about as two amounts and again as two statuses). */
+    /* One question for one payment, however many ways the sheets disagree about it (Ebele round 3: the same two rows were asked about as two amounts and again as two statuses). */
     const told = theQuestionsForThePayments(give, person.isPrincipal);
     /* Whoever sent the sheet is answered in the same message, so what they are asked is in front of them with what was read. They are asked when that reply goes (readTheTrackersInABatch). */
     if (a.theSender?.email === person.email) {

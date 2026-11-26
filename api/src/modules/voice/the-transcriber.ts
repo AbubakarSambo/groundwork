@@ -14,7 +14,7 @@ export interface AnAudioFile {
   buffer: Buffer;
   mimeType: string;
   fileName: string;
-  /** The names this organisation uses, spelled as it spells them (D16: "Dangote" was heard as "Dango"). Given to the transcriber as how to spell, never as words that were said. */
+  /** The names this organisation uses, spelled as it spells them (D16: "Halden" was heard as "Dango"). Given to the transcriber as how to spell, never as words that were said. */
   names?: string[];
 }
 
@@ -26,7 +26,7 @@ export async function theNamesThisOrganisationUses(prisma: any, organizationId: 
   if (!organizationId) return [];
   const org: any = await Promise.resolve(prisma?.organization?.findUnique?.({ where: { id: organizationId }, select: { name: true } })).catch(() => null);
   const people: any[] = (await Promise.resolve(prisma?.person?.findMany?.({ where: { organizationId }, select: { displayName: true, givenName: true, familyName: true }, take: 300 })).catch(() => [])) ?? [];
-  /* The payees on the office's payment sheets are names it uses too (Dangote rerun, N4: "Orchid Events" was heard as "Oked Events"). */
+  /* The payees on the office's payment sheets are names it uses too (Halden rerun, N4: "Orchid Events" was heard as "Oked Events"). */
   const payees: any[] = (await Promise.resolve(prisma?.paymentTrackerLine?.findMany?.({ where: { organizationId }, select: { payee: true }, distinct: ['payee'], take: 200 })).catch(() => [])) ?? [];
   const names = [String(org?.name ?? '').replace(/\s*\([^)]*\)\s*$/, '').trim(), ...people.map((p) => String(p.displayName || [p.givenName, p.familyName].filter(Boolean).join(' ')).trim()), ...payees.map((p) => String(p.payee ?? '').trim())];
   return [...new Set(names.filter((n) => n && n.length <= 80))].slice(0, 300);

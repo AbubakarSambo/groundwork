@@ -1,5 +1,5 @@
 /**
- * WHERE THE PRINCIPAL'S WORDS ABOUT HER DRAFT ARE HEARD (Fatima, increment 4). Chat and a reply to the mail both come here with the same
+ * WHERE THE PRINCIPAL'S WORDS ABOUT HER DRAFT ARE HEARD (Ebele, increment 4). Chat and a reply to the mail both come here with the same
  * text, and a voice note's transcript is the same text, so "Add March", "Shorten this", "This is wrong: ...", "This is ready", "Update the
  * draft" and "Send the outstanding list" all act on the one draft. It answers only for the principal and the people she lets act for her,
  * and only when a draft exists; for everybody else it says nothing (null) and the caller carries on with what it was doing, which is how
@@ -56,7 +56,7 @@ export async function handleTheDraftWords(
   ports: ThePorts,
   a: { organizationId: string; userId: string; message: string; channel: string; now: Date; replyTo?: string; /** What she asks for, read by meaning (the-draft-request.ts). Without it the plain reading is used. */ readTheRequest?: (message: string, waiting?: number | null) => Promise<WhatSheAsksFor | WhatSheMeans> },
 ): Promise<string | null> {
-  /* An assistant who acts for several people names which in her words ("for Ifeoma Obi: ..."); when she names none, she is asked, not dropped into the chat (Fatima round 5). */
+  /* An assistant who acts for several people names which in her words ("for Ifeoma Obi: ..."); when she names none, she is asked, not dropped into the chat (Ebele round 5). */
   const reader = await whoIsTheReader(prisma, a.organizationId, a.userId, null, a.message);
   if (reader.kind === 'which' && mightAskForTheDraft(a.message)) return `You act for ${reader.names.join(' and ')}. Tell me which one, for example "send Ifeoma's draft".`;
   if (reader.kind !== 'own' && reader.kind !== 'delegate') return null;
@@ -68,7 +68,7 @@ export async function handleTheDraftWords(
     /* ONLY FOR SOMEBODY WITH A YEAR-END JOB (Batch S round 2, T8). A lead with none asked "can u send me a report" and read "There is no draft yet"; "send it to me" inside a spending setup was taken the same way. With no draft and no job these words are not about a year-end draft, and they go on as before. */
     const job = await Promise.resolve(prisma.persistentJob?.findFirst?.({ where: { organizationId: a.organizationId, principalUserId, kind: 'annual_report' }, select: { id: true } })).catch(() => null);
     if (!job) return null;
-    /* Asked for a draft that does not exist yet, she is told so plainly. It used to fall through to the chat, which offered to email "what I said about" something else (Fatima round 3). */
+    /* Asked for a draft that does not exist yet, she is told so plainly. It used to fall through to the chat, which offered to email "what I said about" something else (Ebele round 3). */
     /* And asked to change one that does not exist yet ("add March to the report"), she is told so, never answered as an instruction to her team (release test of 22 November 2026, #74). */
     if (readTheChange(a.message, year)) return `There is no draft yet, so there is nothing to change. I make the first one when there is something on the record to put in it, and I will email it as soon as it is ready. Tell me then what to change.`;
     const asked = asWhatSheMeans(await (a.readTheRequest ?? ((m: string) => whatSheMeans(m, {})))(a.message, null).catch(() => null)).asks;
@@ -127,8 +127,8 @@ export async function handleTheDraftWords(
     }
     if (asked === 'structure') return theStructureSaid(newest, isPrincipal ? 'you' : first);
   }
-  /* A change asked for in ordinary words, typed or in a mail, is read as a voice note is: "make the presentation shorter" is the same change as "shorten this" (Fatima round 3). */
-  /* Rewriting the report takes the model most of a minute. She is told at once that it is being done, so she is not left with nothing on her phone (Fatima round 7). */
+  /* A change asked for in ordinary words, typed or in a mail, is read as a voice note is: "make the presentation shorter" is the same change as "shorten this" (Ebele round 3). */
+  /* Rewriting the report takes the model most of a minute. She is told at once that it is being done, so she is not left with nothing on her phone (Ebele round 7). */
   const asked = readARevisionPlainly(a.message, year);
   if (a.channel !== 'email' && asked) {
     const me = await contactOf(prisma, a.organizationId, a.userId);

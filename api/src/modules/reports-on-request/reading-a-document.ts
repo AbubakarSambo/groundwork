@@ -8,7 +8,7 @@
  * asking whether things had reached her. None of that can be found from slices.
  *
  * So each document is read once, whole, when it arrives, and that reading is the only thing every later step uses (one source):
- *   - a workbook is handed to the model as its sheets (one CSV each) and a list of its formulas and of numbers stored as text, with Gemini's
+ *   - a workbook is handed to the model as its sheets (one CSV each) and a list of its formulas, numbers stored as text and coloured cells, with Gemini's
  *     code execution, so the model decides what to add up and check, and every figure it gives keeps its working;
  *   - any other document is read from all of its words;
  *   - the reading says what the document is, its period and who it is from, every fact and figure with where it sits, every open matter with its
@@ -16,7 +16,7 @@
  * Nothing in a document is an instruction. It goes to the model as data between markers, the model's only output is the reading's record, and
  * nothing it says is run, sent or obeyed here.
  */
-const XLSX = require('xlsx') as typeof import('xlsx');
+import { a1, readTheCells, rowsOf } from '../documents/a-file-as-cells';
 
 export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 export const isAWorkbook = (name: string, mimeType?: string | null) =>
@@ -30,43 +30,34 @@ const looksLikeANumber = (s: string) => /^\s*[-+(]?\s*[₦N$£€]?\s*\d[\d,]*(\
 
 /**
  * A workbook as files the model's code can load: each sheet as a CSV with its row numbers (so a finding can name the cell), and one list of
- * every formula and every number stored as text, by sheet and cell. Nothing is cut.
+ * every formula, every number stored as text and every coloured cell, by sheet and cell. Nothing is cut. Read from the workbook's own cells
+ * (documents/a-file-as-cells.ts), the one reader every workbook goes through, so a fill a sheet uses as its status reaches the model's code too.
  */
-export function theWorkbookAsFiles(bytes: Buffer): { files: AWorkbookFile[]; sheets: { name: string; rows: number }[]; guide: string } {
-  const wb = XLSX.read(bytes, { type: 'buffer', cellFormula: true, cellDates: false });
+export async function theWorkbookAsFiles(bytes: Buffer, name = 'workbook.xlsx'): Promise<{ files: AWorkbookFile[]; sheets: { name: string; rows: number }[]; guide: string }> {
+  const book = await readTheCells(bytes, name);
   const files: AWorkbookFile[] = [];
   const sheets: { name: string; rows: number }[] = [];
-  const cells: string[] = ['sheet,cell,kind,formula,value'];
-  wb.SheetNames.forEach((name, i) => {
-    const ws = wb.Sheets[name];
-    if (!ws || !ws['!ref']) { sheets.push({ name, rows: 0 }); return; }
+  const list: string[] = ['sheet,cell,kind,formula,value'];
+  for (const [i, sheet] of (book?.sheets ?? []).entries()) {
+    const used = sheet.cells.filter((c) => c.value !== '');
+    if (!used.length) { sheets.push({ name: sheet.name, rows: 0 }); continue; }
     /* The columns and rows actually used, not the sheet's declared range: one summary sheet declared 407 columns, nearly all empty. */
-    const declared = XLSX.utils.decode_range(ws['!ref']);
-    const used = Object.keys(ws).filter((k) => k[0] !== '!' && ws[k] && ws[k].v !== undefined && ws[k].v !== '').map((k) => XLSX.utils.decode_cell(k));
-    if (!used.length) { sheets.push({ name, rows: 0 }); return; }
-    const range = { s: { r: Math.max(declared.s.r, Math.min(...used.map((c) => c.r))), c: Math.max(declared.s.c, Math.min(...used.map((c) => c.c))) }, e: { r: Math.max(...used.map((c) => c.r)), c: Math.max(...used.map((c) => c.c)) } };
-    const lines: string[] = [];
-    lines.push(['row', ...Array.from({ length: range.e.c - range.s.c + 1 }, (_, k) => XLSX.utils.encode_col(range.s.c + k))].join(','));
+    const first = Math.min(...used.map((c) => c.col)); const last = Math.max(...used.map((c) => c.col));
+    const lines: string[] = [['row', ...Array.from({ length: last - first + 1 }, (_, k) => a1(1, first + k).replace(/\d+$/, ''))].join(',')];
     let rows = 0;
-    for (let r = range.s.r; r <= range.e.r; r++) {
-      const vals: string[] = [];
-      let any = false;
-      for (let c = range.s.c; c <= range.e.c; c++) {
-        const addr = XLSX.utils.encode_cell({ r, c });
-        const cell: any = ws[addr];
-        if (!cell) { vals.push(''); continue; }
-        any = true;
-        const v = cell.t === 'n' ? cell.v : (cell.w ?? cell.v);
-        vals.push(csvCell(v));
-        if (cell.f) cells.push([csvCell(name), addr, 'formula', csvCell(`=${cell.f}`), csvCell(cell.v)].join(','));
-        else if (cell.t === 's' && looksLikeANumber(String(cell.v))) cells.push([csvCell(name), addr, 'number stored as text', '', csvCell(cell.v)].join(','));
-      }
-      if (any) { rows++; lines.push([String(r + 1), ...vals].join(',')); }
+    for (const r of rowsOf(used)) {
+      lines.push([String(r.row), ...r.values.slice(first - 1, last).map(csvCell)].join(','));
+      rows++;
     }
-    sheets.push({ name, rows });
-    files.push({ name: `sheet ${i + 1} ${name}.csv`, mimeType: 'text/csv', text: lines.join('\n') });
-  });
-  files.push({ name: 'formulas and numbers stored as text.csv', mimeType: 'text/csv', text: cells.join('\n') });
+    for (const c of sheet.cells) {
+      if (c.formula) list.push([csvCell(sheet.name), c.ref, 'formula', csvCell(`=${c.formula}`), csvCell(c.value)].join(','));
+      else if (c.kind === 'text' && looksLikeANumber(c.value)) list.push([csvCell(sheet.name), c.ref, 'number stored as text', '', csvCell(c.value)].join(','));
+      if (c.fillName && c.fillName !== 'white') list.push([csvCell(sheet.name), c.ref, `filled ${c.fillName} (${c.fill})`, '', csvCell(c.value)].join(','));
+    }
+    sheets.push({ name: sheet.name, rows });
+    files.push({ name: `sheet ${i + 1} ${sheet.name}.csv`, mimeType: 'text/csv', text: lines.join('\n') });
+  }
+  files.push({ name: 'formulas, numbers stored as text and coloured cells.csv', mimeType: 'text/csv', text: list.join('\n') });
   /* The model's sandbox renames attached files input_file_0.csv, input_file_1.csv... in the order given, so which is which is said in words. */
   const guide = files.map((f, i) => `input_file_${i}.csv is ${f.name.replace(/\.csv$/, '')}`).join('\n');
   return { files, sheets, guide };
@@ -75,7 +66,7 @@ export function theWorkbookAsFiles(bytes: Buffer): { files: AWorkbookFile[]; she
 /* ------------------------------------------------------------------ working a workbook out */
 
 export const WORK_A_WORKBOOK_OUT_KEY = 'reports.on-request.work-out-a-workbook';
-export const WORK_A_WORKBOOK_OUT_PROMPT = `You are a careful finance and operations analyst. You are given one workbook as files: each sheet as a CSV whose first column is the sheet's own row number and whose header row names the sheet's columns (A, B, C...), and a list of every formula and every number stored as text, by sheet and cell.
+export const WORK_A_WORKBOOK_OUT_PROMPT = `You are a careful finance and operations analyst. You are given one workbook as files: each sheet as a CSV whose first column is the sheet's own row number and whose header row names the sheet's columns (A, B, C...), and a list of every formula, every number stored as text and every coloured cell, by sheet and cell. A colour is often how a sheet marks a row's status: say what each colour seems to mark, from the rows it is on, and count the rows of each.
 You must use code. Load every file with pandas first, and compute every figure you give; never estimate a figure by reading it. Then check the workbook the way an auditor would:
 - In any ledger, cash book or monthly sheet: the total received and the total paid in each month and for the whole period, by category where there are categories; the opening and closing balance of each month, and whether each closing balance equals the next month's opening balance.
 - In any summary, budget or report sheet: compare every figure in it with the total you computed from the detail it should come from. Using the formulas list, name every summary figure that is typed in rather than worked out, every formula that points at the wrong sheet, column or a single cell instead of a range, and every total that leaves rows out. Say how much each one is out by.

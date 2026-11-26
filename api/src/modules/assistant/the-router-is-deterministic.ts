@@ -153,7 +153,7 @@ const RULES = [
   rule('connect_a_platform', CONNECT_A_PLATFORM_PATTERNS),
   rule('role_map', THE_ROLE_MAP_PATTERNS),
   /*
-   * ACTING FOR A SENIOR PERSON (Fatima, increment 3). Stopping is matched before starting, because "X can no
+   * ACTING FOR A SENIOR PERSON (Ebele, increment 3). Stopping is matched before starting, because "X can no
    * longer act for me" holds the words of "X can act for me". Both sit above the to-do and commitment lanes,
    * whose "for me" and "remind me" shapes would otherwise take a sentence about somebody's access.
    */

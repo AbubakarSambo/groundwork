@@ -1,5 +1,5 @@
 /**
- * THE FRIDAY EMAIL AND THE WEEKLY UPDATE, KEPT SHORT (Fatima round 2, E3). Round 2's email gave every promise, eight lines of "Musa stated on November 12 that...",
+ * THE FRIDAY EMAIL AND THE WEEKLY UPDATE, KEPT SHORT (Ebele round 2, E3). Round 2's email gave every promise, eight lines of "Musa stated on November 12 that...",
  * and left her to find what mattered. This keeps the same facts and the same sources, and decides only how many are told: at most MOST_TOLD, taken so that every person
  * who sent something is in it before anybody is in it twice, with the rest counted by code ("3 more are on the list, and I can read them out if you ask", the same
  * words the outstanding answer uses). The model, when there is one, writes the sentences from the facts it is handed (the-update-for-her.ts); the count is never its.

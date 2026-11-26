@@ -19,7 +19,9 @@
 import { whenTheyMeant } from '../conversation/when-words-mean-a-date';
 import { thePaymentsNow } from '../principal-work/the-payments-work';
 import { sayMoney } from '../principal-work/the-money';
-import { theQuestionsAsked } from '../executive-onboarding/information-gaps';
+import { itemsFromRows, rowKeyId, whereTheRowIs } from '../principal-work/the-rows-in-a-report';
+import { theFlags, theThresholds, type AFlag } from '../principal-work/the-row-rules';
+import { theQuestionsAndAnswers, theQuestionsAsked } from '../executive-onboarding/information-gaps';
 
 const listOf = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
@@ -33,7 +35,7 @@ export type RegisterStatus =
   | 'cancelled'
   | 'unverified';
 
-export type SourceKind = 'commitment' | 'dependency' | 'obligation' | 'todo' | 'request';
+export type SourceKind = 'commitment' | 'dependency' | 'obligation' | 'todo' | 'request' | 'row';
 
 export interface ASource {
   kind: SourceKind;
@@ -70,6 +72,26 @@ export interface TheRegisterRow {
   questionForTheOwner: string | null;
   /** Somebody (the sender, or a reviewer in a document) said the claim is unsupported. It is never counted as done until something independent shows it. */
   disputed?: boolean;
+  /** What a report's rows show needs somebody (principal-work/the-row-rules.ts), and what came of asking its owner. */
+  flag?: TheFlagOnTheRecord;
+  /** Where she put it in her brief, in her own words: it stays there. */
+  herBucket?: 'attention' | 'monitoring' | 'information';
+}
+
+/** A flag from a report's rows, with the owner's side of it: who was asked and when, and their answer or their silence. */
+export interface TheFlagOnTheRecord {
+  kind: AFlag['kind'];
+  says: string;
+  where: string;
+  days: number;
+  due: boolean;
+  askedOf: string | null;
+  askedOn: Date | null;
+  answeredOn: Date | null;
+  /** What they sent, in their words, cut to a few sentences. */
+  answer: string | null;
+  /** She said every flag of this kind belongs under monitoring (a standing rule she confirmed). */
+  standing?: boolean;
 }
 
 /** A pair that might be the same thing, asked about and never merged on a guess. */
@@ -120,6 +142,9 @@ export function statusOfOneSource(s: AStateInput): RegisterStatus {
       return 'open';
     case 'request':
       return s.state === 'waiting' ? 'awaiting decision' : s.state === 'declined' || s.state === 'cancelled' ? 'cancelled' : 'completed';
+    case 'row':
+      /* A row in a report saying "done" is the report's word, never proof (principal-work/the-rows-in-a-report.ts theStateOf). */
+      return s.state === 'done' ? 'unverified' : s.state === 'cancelled' ? 'cancelled' : s.state === 'blocked' ? 'blocked' : s.state === 'waiting' ? 'awaiting external party' : s.state === 'moving' ? 'in progress' : 'open';
   }
 }
 
@@ -193,7 +218,7 @@ export function howAlike(a: { text: string; owner: string }, b: { text: string; 
   const score = shared / Math.min(wa.size, wb.size);
   const sameOwner = a.owner === b.owner || a.owner === 'unconfirmed' || b.owner === 'unconfirmed';
   if (score >= 0.75 && shared >= 2 && sameOwner) return 'same';
-  /* Two people's lines are never asked about as one on shared words (Dangote rerun, N6: 1,705 questions to Maryam, most of them two people's generated lines). */
+  /* Two people's lines are never asked about as one on shared words (Halden rerun, N6: 1,705 questions to Maryam, most of them two people's generated lines). */
   if (score >= 0.5 && shared >= 2 && sameOwner) return 'maybe';
   return 'different';
 }
@@ -219,6 +244,7 @@ interface Raw {
   dependency: string | null;
   decision: { question: string; options: string[] } | null;
   disputed?: boolean;
+  flag?: TheFlagOnTheRecord;
 }
 
 export interface AWaitingForThePrincipal {
@@ -340,7 +366,7 @@ export async function buildTheRegister(prisma: any, a: BuildArgs): Promise<TheRe
   }
 
   /*
-   * HER PAYMENTS ARE ON THE SAME LIST (Fatima round 2, C2), AS A FEW MATTERS, NOT ONE FOR EACH LINE (Dangote stress test, D5: 150 "Did you approve" decisions in Ask,
+   * HER PAYMENTS ARE ON THE SAME LIST (Ebele round 2, C2), AS A FEW MATTERS, NOT ONE FOR EACH LINE (Halden stress test, D5: 150 "Did you approve" decisions in Ask,
    * 141 on her assistant's Today, none on hers). Two figures for one payment are that payment's own open matter, for whoever owns it. Every payment said to be paid
    * with nothing to show it is ONE matter, and so is every payment paid with no approval anywhere; whom they were put to is read from what was really asked
    * (information_gaps, asked only once the message went). None of them is a decision for her: the sheet's word is a claim, and the question is a fact to find out.
@@ -374,6 +400,27 @@ export async function buildTheRegister(prisma: any, a: BuildArgs): Promise<TheRe
   };
   together('no proof', (n) => `${n === 1 ? 'One payment is' : `${n} payments are`} said to be paid with no proof yet.`, 'the bank confirmations');
   together('approval missing', (n) => `${n === 1 ? 'One payment was' : `${n} payments were`} paid or scheduled with no approval in the sheet or on the record.`, 'the approvals');
+
+  /*
+   * THE ROWS OF THE REPORTS SHE WAS SENT (change 2). One item for each row kept across the versions of a report: in the register from the day it was first
+   * seen, standing where its latest version says, and said with where that row is in its file. A row only ever reported finished or cancelled is history
+   * and is not raised; one that was open and is now said to be finished is, as said and not shown, by the register's own rule.
+   */
+  const reportRows: any[] = (await Promise.resolve(prisma.reportRow?.findMany?.({ where: { organizationId: a.organizationId, principalUserId: a.principalUserId } })).catch(() => [])) ?? [];
+  const flags = reportRows.length ? await theFlagsOnTheRecord(prisma, { organizationId: a.organizationId, principalUserId: a.principalUserId, rows: reportRows, now: a.now }) : new Map<string, TheFlagOnTheRecord>();
+  for (const it of itemsFromRows(reportRows)) {
+    if (it.states.every((x) => x === 'done' || x === 'cancelled')) continue;
+    const l = it.latest;
+    const state = it.states[it.states.length - 1];
+    raws.push({
+      sourceKind: 'row', sourceId: rowKeyId(it.rowKey), from: whereTheRowIs(l), text: l.item, action: l.item,
+      owner: l.owner || 'unconfirmed', workstream: null, whenSaid: null, dueGiven: l.dueOn ? new Date(l.dueOn) : null,
+      state, settledBy: null, settledAt: null, at: new Date(it.first.receivedAt), updatedAt: new Date(l.receivedAt),
+      /* The remarks are not what it waits on ("Reminder sent 12 November" read as "It is reminder sent ..."), so they stay in the row, not here. */
+      external: state === 'waiting', dependency: null, decision: null,
+      ...(flags.has(it.rowKey) ? { flag: flags.get(it.rowKey)! } : {}),
+    });
+  }
 
   const notes: any[] = (await prisma.registerNote.findMany({ where: { organizationId: a.organizationId, principalUserId: a.principalUserId } })) ?? [];
   const noteOf = new Map(notes.map((n) => [`${n.sourceKind}:${n.sourceId}`, n]));
@@ -447,7 +494,7 @@ export function assemble(raws: Raw[], noteOf: Map<string, any>, a: Pick<BuildArg
     const decisionNote = noted.find((n) => n.decisionQuestion);
     const fromRequest = ordered.find((r) => r.decision)?.decision ?? null;
     const decision = status === 'awaiting decision' ? (decisionNote ? { question: decisionNote.decisionQuestion, options: decisionNote.decisionOptions ?? [] } : fromRequest) : null;
-    /* A finished item was settled when its first proof came, not when somebody last mentioned it (Dangote rerun, N12: "I sent it on 11 September", said on 20 November, moved Ibese to 20 November). */
+    /* A finished item was settled when its first proof came, not when somebody last mentioned it (Halden rerun, N12: "I sent it on 11 September", said on 20 November, moved Ibese to 20 November). */
     const proofs = parts.filter((p) => p.status === 'completed').map((p) => (p.settledAt ?? p.at).getTime());
     const verifiedAt = status === 'completed' && proofs.length ? new Date(Math.min(...proofs)) : new Date(Math.max(...ordered.map((r) => (r.settledAt ?? r.updatedAt).getTime()), ...noted.map((n) => (n.lastVerifiedAt ? new Date(n.lastVerifiedAt).getTime() : 0))));
     const flagged = noted.find((n) => n.carryForward !== null && n.carryForward !== undefined)?.carryForward;
@@ -471,10 +518,38 @@ export function assemble(raws: Raw[], noteOf: Map<string, any>, a: Pick<BuildArg
       settledBy: ordered.find((r) => r.settledBy)?.settledBy ?? null,
       questionForTheOwner: status === 'unverified' && !ordered.some((r) => r.disputed) ? theOneQuestion(lead.text, owner) : null,
       ...(ordered.some((r) => r.disputed) ? { disputed: true } : {}),
+      ...(ordered.find((r) => r.flag) ? { flag: ordered.find((r) => r.flag)!.flag } : {}),
+      ...(noted.find((n) => n.herBucket) ? { herBucket: noted.find((n) => n.herBucket)!.herBucket } : {}),
     });
   }
   rows.sort((p, q) => (p.dueOn?.getTime() ?? Infinity) - (q.dueOn?.getTime() ?? Infinity) || p.item.localeCompare(q.item));
   return { rows, toAsk };
+}
+
+/**
+ * THE FLAGS ON A REPORT'S ROWS, WITH THE OWNER'S SIDE (changes 3 and 4). One flag for each item, the one that matters most: a flag past the office's
+ * threshold before one that is not. Its question to the owner is the one on record (information_gaps, key "row:<item>:<kind>"), asked only once its
+ * message went, and their answer is what they sent after it, read from what was kept.
+ */
+async function theFlagsOnTheRecord(prisma: any, a: { organizationId: string; principalUserId: string; rows: any[]; now: Date }): Promise<Map<string, TheFlagOnTheRecord>> {
+  const setup: any = await Promise.resolve(prisma.principalSetup?.findFirst?.({ where: { organizationId: a.organizationId, principalUserId: a.principalUserId } })).catch(() => null);
+  const all = theFlags(a.rows, { now: a.now, thresholds: theThresholds(setup?.preferences) });
+  const gaps = await theQuestionsAndAnswers(prisma, a.principalUserId, 'row:');
+  const out = new Map<string, TheFlagOnTheRecord>();
+  for (const f of [...all].sort((x, y) => Number(y.due) - Number(x.due) || y.days - x.days)) {
+    if (out.has(f.rowKey)) continue;
+    const gap = gaps.filter((g) => String(g.gapKey).startsWith(`row:${rowKeyId(f.rowKey)}:`) && g.state !== 'queued').sort((x, y) => new Date(y.askedAt ?? 0).getTime() - new Date(x.askedAt ?? 0).getTime())[0];
+    const from = /^material:(.+)$/.exec(String(gap?.answeredFrom ?? ''))?.[1];
+    const material: any = from ? await Promise.resolve(prisma.principalMaterial?.findUnique?.({ where: { id: from }, select: { text: true } })).catch(() => null) : null;
+    out.set(f.rowKey, {
+      kind: f.kind, says: f.says, where: f.where, days: f.days, due: f.due,
+      askedOf: gap?.askedOfName ?? gap?.askedOfEmail ?? null, askedOn: gap?.askedAt ? new Date(gap.askedAt) : null,
+      answeredOn: gap?.answeredAt ? new Date(gap.answeredAt) : null,
+      answer: material?.text ? String(material.text).replace(/\s+/g, ' ').trim().slice(0, 400) : null,
+      ...((setup?.preferences?.quietKinds ?? []).includes(f.kind) ? { standing: true } : {}),
+    });
+  }
+  return out;
 }
 
 /** Somebody said two lines are the same thing, or are not. Written once, never asked again. */

@@ -118,7 +118,7 @@ export interface ADocumentToAnswerFrom {
   content: string;
   /** What may stand in quotation marks from it, where that is not the whole of it: from the record, only what was said word for word. */
   mayBeQuoted?: string[];
-  /** The day it was sent, so an older file is never given as the latest word (Fatima's office, January 2027). */
+  /** The day it was sent, so an older file is never given as the latest word (Ebele's office, January 2027). */
   sentOn?: Date | null;
 }
 
@@ -187,7 +187,7 @@ export async function theRecordTheyMayRead(
   })).catch(() => [])) ?? []) as { id: string; label: string; initiatorId: string | null; kindOfWork?: unknown; workStages?: unknown; cadence?: string | null; cadenceDays?: number[] | null; cadenceAnchorDay?: number | null; workingDays?: number[] | null; groundAuditLog?: unknown }[];
   const out: ADocumentToAnswerFrom[] = [];
   const judgements = await thePersonJudgementsAreOn(prisma, input.organizationId);
-  /* Who has not answered what is open, on the check-ins this reader runs: the one count the follow-up uses (Fatima's "Who hasn't sent their reports?" named only the aide). */
+  /* Who has not answered what is open, on the check-ins this reader runs: the one count the follow-up uses (Ebele's "Who hasn't sent their reports?" named only the aide). */
   const owing: SomebodyToFollowUp[] = await whoStillOwesAnAnswer(prisma, input.organizationId, input.userId).catch(() => [] as SomebodyToFollowUp[]);
   for (const g of grounds) {
     const isLead = g.initiatorId === input.userId;
@@ -262,7 +262,7 @@ export async function theRecordTheyMayRead(
       /* What is still open first and whole, then the newest of the rest. */
       const open = theirs.filter((f) => STILL_OPEN.has(f.section));
       const rest = theirs.filter((f) => !STILL_OPEN.has(f.section)).slice(-MOST_FACTS_FOR_ONE);
-      /* The files they sent here, by name and day: sending the reports is answering, before any conversation closes (Fatima's office: Finance
+      /* The files they sent here, by name and day: sending the reports is answering, before any conversation closes (Ebele's office: Finance
          sent four reconciliations and Ask said nobody in Finance had responded). Who may open each file is decided where the files are read. */
       const files: any[] = (await Promise.resolve(prisma.groundDocument?.findMany?.({ where: { groundId: g.id, participantId: p.id, isConversation: false, ...(p.userId === input.userId ? {} : { visibility: { not: 'OWN' } }) }, select: { fileName: true, createdAt: true }, orderBy: { createdAt: 'asc' } })).catch(() => [])) ?? [];
       /* Above their promises, so a promise to send something is read against what arrived ("I will send our trackers", and eleven trackers sent). */
@@ -474,7 +474,7 @@ export async function answerFromTheDocuments(
 }
 
 /**
- * THE ANSWER IN A FIXED SHAPE THAT CODE CHECKS (Batch F, F3; Dangote: the ultimate test came back at 4,095 characters, opening with the version and the slide count,
+ * THE ANSWER IN A FIXED SHAPE THAT CODE CHECKS (Batch F, F3; Halden: the ultimate test came back at 4,095 characters, opening with the version and the slide count,
  * and prompt rules alone never kept it short). The model picks and writes a lead, at most five points and one offer; code keeps the lead to one sentence, each
  * point to two short sentences, at most five points and a fixed length in all, and drops the offer when there is nothing more to go into. Hafsah's standard: "a
  * concise, defensible answer straight away". An answer given as one string (an older reader) is kept to the same length, cut at a sentence.

@@ -1,5 +1,5 @@
 /**
- * WHAT A PERSON READS ABOUT THE YEAR-END WORK (Fatima, increment 4). The words are the product's, never a model's, so a name, a number or
+ * WHAT A PERSON READS ABOUT THE YEAR-END WORK (Ebele, increment 4). The words are the product's, never a model's, so a name, a number or
  * a month cannot change on the way. The draft-ready WhatsApp line and the draft-ready email are Hafsah's wording from the brief
  * (plan 14.1 and 14.2); the rest follows the same voice.
  *
@@ -90,7 +90,7 @@ export const ASK_ABOUT_MONTHS = (name: string, principalFirst: string, months: s
 export const ASK_THE_OWNER = (name: string, question: string) => `Hello ${name}, one question for the year-end report. ${question}`;
 
 /**
- * EVERYTHING ONE PERSON IS ASKED IN ONE PASS, IN ONE MESSAGE (Dangote stress test, D4). One question reads as it always did, and so does a list of months
+ * EVERYTHING ONE PERSON IS ASKED IN ONE PASS, IN ONE MESSAGE (Halden stress test, D4). One question reads as it always did, and so does a list of months
  * alone. Several are numbered in one message, with how many more are waiting, so nobody is sent one mail for each question.
  */
 export function THE_QUESTIONS_FOR_ONE_PERSON(name: string, principalFirst: string, a: { questions: string[]; months: string[]; more: number }): AMessage {

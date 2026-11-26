@@ -1,5 +1,5 @@
 /**
- * HOW HER WORDS AND THE REPORTS SHE FORWARDS ARE UNDERSTOOD (Fatima, increment 6b). The meaning is read by the model: "can you make the presentation a
+ * HOW HER WORDS AND THE REPORTS SHE FORWARDS ARE UNDERSTOOD (Ebele, increment 6b). The meaning is read by the model: "can you make the presentation a
  * bit shorter", "send it to the Managing Director too", "give me my day" are not matched to a list of phrases. Code decides only what happens next
  * (what is sent, approved or added), and checks what the model returned: a month must be a month, a key must be a real key, a quotation must be in the
  * document. When no model is available the plain readings below stand in, so the product still answers. They are the fallback, not the way it works.
@@ -16,7 +16,10 @@ export type AWorkRequest =
   | { kind: 'add_recipient'; who: string; email: string | null }
   | { kind: 'my_day' }
   | { kind: 'weekly_update' }
-  | { kind: 'standing'; what: 'day' | 'week'; on: boolean; hour: number | null; weekday: number | null };
+  | { kind: 'standing'; what: 'day' | 'week'; on: boolean; hour: number | null; weekday: number | null }
+  /** Something she says about one item on her record: chase it, it is not urgent, it needs her, what happened with it, who has it (change 5). */
+  | { kind: 'about_an_item'; act: AnItemAct; about: string };
+export type AnItemAct = 'chase' | 'not_urgent' | 'needs_me' | 'history' | 'who';
 
 export interface ADevelopmentRead { title: string; said: string; quote: string; date: string | null; relatedKeys: string[] }
 export interface AReportRead { isWeeklyReport: boolean; institution: string | null; reportDate: string | null; developments: ADevelopmentRead[]; followUps: { text: string; about: number | null }[] }
@@ -37,7 +40,7 @@ export const WORK_READER = 'WORK_READER';
 /* ------------------------------------------------------------------ the cheap look, before any model is asked */
 
 export const mightBeARevision = (m: string) => /\b(shorter|shorten|short|trim|cut|add|include|wrong|incorrect|not right|mistake|presentation|report|draft|change)\b/i.test(m);
-export const mightBeARequest = (m: string) => /\b(?:send|share|forward|copy|cc|email|add|include|loop)\b|\b(?:my|[a-z]+['’]s)\s+day\b|\bbrief(?:ing| me)?\b|\bweekly\b|\b(?:every|each)\s+(?:morning|day|week|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bwhat(?:'s| is) (?:on|happening)\b|\bupdate\b|\btoday\b/i.test(m);
+export const mightBeARequest = (m: string) => /\b(?:chase|follow(?:ing)? up|not urgent|can wait|needs? me|escalate|what happened|who(?:'s| is) (?:on|handling|dealing)|who has)\b|\b(?:send|share|forward|copy|cc|email|add|include|loop)\b|\b(?:my|[a-z]+['’]s)\s+day\b|\bbrief(?:ing| me)?\b|\bweekly\b|\b(?:every|each)\s+(?:morning|day|week|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bwhat(?:'s| is) (?:on|happening)\b|\bupdate\b|\btoday\b/i.test(m);
 export const mightBeAWeeklyReport = (text: string) => /\b(?:national assembly|senate|house of representatives|plenary|committee|legislat|parliament)\b/i.test(text) && /\bweek(?:ly)?\b|\bweek ending\b|\bweek of\b/i.test(text);
 
 /* ------------------------------------------------------------------ the plain readings that stand in when there is no model */
@@ -59,6 +62,11 @@ export function readARequestPlainly(text: string): AWorkRequest | null {
     const week = !daily && (weekday >= 0 || w === 'week' || /\b(?:weekly|update|summary)\b/i.test(m));
     return { kind: 'standing', what: week ? 'week' : 'day', on: true, hour, weekday: weekday >= 0 ? weekday : null };
   }
+  const item = (re: RegExp, act: AnItemAct) => { const x = re.exec(m); const about = x?.[1]?.replace(/[.?!]+$/, '').trim(); return about && about.length >= 3 ? { kind: 'about_an_item' as const, act, about } : null; };
+  const aboutAnItem = item(/\bwhat happened (?:with|to|on|about) (.+)$/i, 'history') ?? item(/\bwho(?:'s| is) (?:on|handling|dealing with) (.+)$/i, 'who') ?? item(/\bwho has (.+)$/i, 'who')
+    ?? item(/\b(?:chase|follow up (?:on|with)) (.+)$/i, 'chase') ?? item(/^(.+?)[,.:\s-]+(?:is )?not urgent\b/i, 'not_urgent') ?? item(/\bnot urgent[,.:\s-]+(.+)$/i, 'not_urgent')
+    ?? item(/^(.+?)[,.:\s-]+(?:needs|need) me\b/i, 'needs_me');
+  if (aboutAnItem) return aboutAnItem;
   if (/\b(?:weekly (?:update|briefing|summary)|update for the week|this week'?s update)\b/i.test(m)) return { kind: 'weekly_update' };
   if (/\b(?:give me my day|my day|(?:give|show|send|tell) me (?:[a-z]+\s+){0,2}[a-z]+['’]s day|daily briefing|brief me|what(?:'s| is) (?:on )?(?:for )?today|what(?:'s| is) on my plate)\b/i.test(m)) return { kind: 'my_day' };
   const add = /\b(?:send|share|forward|copy|cc|email)\b[^.?!]*?\b(?:to|with)\s+(.+?)\s*(?:,?\s*(?:too|as well|also))?\s*[.!]*$/i.exec(m);
@@ -93,7 +101,9 @@ const REQUEST_TOOL = {
   input_schema: {
     type: 'object',
     properties: {
-      kind: { type: 'string', enum: ['none', 'add_recipient', 'my_day', 'weekly_update', 'standing'] },
+      kind: { type: 'string', enum: ['none', 'add_recipient', 'my_day', 'weekly_update', 'standing', 'about_an_item'] },
+      act: { type: 'string', enum: ['chase', 'not_urgent', 'needs_me', 'history', 'who'], description: 'For about_an_item: chase it (ask whoever has it), it is not urgent, it needs her, what happened with it, or who has it.' },
+      about: { type: 'string', description: 'For about_an_item: the item, in her words ("the site request", "the waiver").' },
       who: { type: 'string', description: 'For add_recipient: who she named, in her words ("the Managing Director", "Musa Bello").' },
       email: { type: 'string', description: 'For add_recipient: an email address she wrote, if she wrote one.' },
       what: { type: 'string', enum: ['day', 'week'], description: 'For standing: the daily briefing or the weekly update.' },
@@ -104,7 +114,7 @@ const REQUEST_TOOL = {
     required: ['kind'],
   },
 };
-export const REQUEST_PROMPT = `You read one message from a senior person to her work assistant. Decide whether she is asking for one of these things: (add_recipient) to send the year-end report files to one more person, (my_day) the briefing for today, hers, or the senior person's when the message comes from somebody who acts for her ("give me Folake's day", "Folake Adeyinka's day", "what is on for Folake today", "give me my day" are all my_day), (weekly_update) the weekly update on the work, (standing) to start or stop one of those briefings on a schedule. If it is none of them, return kind none. ${UNTRUSTED}`;
+export const REQUEST_PROMPT = `You read one message from a senior person to her work assistant. Decide whether she is asking for one of these things: (add_recipient) to send the year-end report files to one more person, (my_day) the briefing for today, hers, or the senior person's when the message comes from somebody who acts for her ("give me Folake's day", "Folake Adeyinka's day", "what is on for Folake today", "give me my day" are all my_day), (weekly_update) the weekly update on the work, (standing) to start or stop one of those briefings on a schedule, (about_an_item) something about one item on her record: to chase it ("chase the waiver", "follow up on the refund"), that it is not urgent or can wait, that it needs her, what happened with it, or who has it. If it is none of them, return kind none. ${UNTRUSTED}`;
 
 const REVISION_TOOL = {
   name: 'change_to_the_draft',
@@ -177,6 +187,7 @@ export class ReaderWithAModel implements TheWorkReader {
   async readARequest(text: string): Promise<AWorkRequest | null> {
     const got = await this.ask<any>(REQUEST_PROMPT, `<<<\n${text}\n>>>`, REQUEST_TOOL);
     if (!got) return readARequestPlainly(text);
+    if (got.kind === 'about_an_item' && ['chase', 'not_urgent', 'needs_me', 'history', 'who'].includes(got.act) && typeof got.about === 'string' && got.about.trim().length >= 3) return { kind: 'about_an_item', act: got.act, about: got.about.trim().slice(0, 200) };
     if (got.kind === 'my_day') return { kind: 'my_day' };
     if (got.kind === 'weekly_update') return { kind: 'weekly_update' };
     if (got.kind === 'add_recipient' && (typeof got.who === 'string' && got.who.trim() || typeof got.email === 'string' && EMAIL.test(got.email))) return { kind: 'add_recipient', who: String(got.who ?? got.email).trim(), email: typeof got.email === 'string' && EMAIL.test(got.email) ? got.email.trim().toLowerCase() : null };

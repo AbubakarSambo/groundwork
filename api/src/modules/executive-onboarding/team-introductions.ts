@@ -1,5 +1,5 @@
 /**
- * HER TEAM, BY HER WORD (Fatima, increment 5; plan sections 6 and 19).
+ * HER TEAM, BY HER WORD (Ebele, increment 5; plan sections 6 and 19).
  *
  * She gives names and contacts in a message, a voice note or an email. Groundwork repeats back who it would write to and asks for her go-ahead
  * ONCE, in one question. On yes, each person is sent their own WhatsApp message and their own email, word for word as the plan has them (6.1, 6.2),
@@ -8,7 +8,7 @@
  * introduction, and in this increment nothing at all is sent to them, only her confirmation is kept.
  *
  * Who may say yes. Her, always. Somebody she lets act for her may give names and say yes for people inside her organisation; a person outside it is
- * hers to approve. Every such act is written as "Amina Yusuf for Fatima" and stays when the grant ends.
+ * hers to approve. Every such act is written as "Amina Yusuf for Ebele" and stays when the grant ends.
  *
  * Nobody is written to unless the organisation confirmed team outreach when she was added, and she said yes. A forwarded message cannot name
  * anybody: only her own words do (the-intake.ts herOwnWords).
@@ -159,7 +159,7 @@ export async function proposeThePeople(prisma: any, a: { organizationId: string;
     const existing: any = await prisma.outreachContact.findFirst({ where: { principalUserId: a.principalUserId, contactKey: key } });
     /*
      * A CORRECTION OF A NUMBER IS THE SAME PERSON WITH A NEW NUMBER, never a new person and never somebody outside the office (fix plan 16 November, group 3;
-     * Fatima round 4, issue 1). The contact was found by its number or address, so a corrected number found nobody, was read as a stranger with no address and
+     * Ebele round 4, issue 1). The contact was found by its number or address, so a corrected number found nobody, was read as a stranger with no address and
      * no cue, and was held as "outside your office": nothing was sent, and the person's own messages were refused as an unknown number. Who somebody is, and
      * whether they are on the team, is decided once, from the roster, by address or by number, and a person she has already named by the same name keeps
      * what they were.

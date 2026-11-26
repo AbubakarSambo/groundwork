@@ -1,5 +1,5 @@
 /**
- * READING A PAYMENT TRACKER (Fatima, increment 6b; plan section 12). The sheet has already been turned into text by the one reader every upload uses
+ * READING A PAYMENT TRACKER (Ebele, increment 6b; plan section 12). The sheet has already been turned into text by the one reader every upload uses
  * (documents.service xlsxToText: "--- Sheet: Name ---" then the sheet as CSV). This turns that text into lines, in code: which column is which is found
  * from the headings, every amount is read into whole minor units, and a row that cannot be read is said, never guessed.
  *
@@ -47,7 +47,7 @@ const HEADINGS: Record<string, RegExp> = {
 export const THE_ROLES = Object.keys(HEADINGS);
 export type TheColumns = Record<string, number>;
 /**
- * WHAT THE HEADINGS MEAN, READ BY A MODEL WHEN THERE IS ONE (Dangote stress test, D11: the "Bank confirmation" column was never read, because no list held its
+ * WHAT THE HEADINGS MEAN, READ BY A MODEL WHEN THERE IS ONE (Halden stress test, D11: the "Bank confirmation" column was never read, because no list held its
  * name). Given the first rows of a sheet, it says which row is the heading row and what each column is. Without a model, or with an answer that does not hold
  * a payee or a reference and an amount, the headings are read by their usual names, as before.
  */
@@ -147,7 +147,7 @@ export const paymentKeyOf = (payee: string, reference: string | null, dueOn: Dat
 const sectionsOf = (body: string) => { const xs = body.split(/^--- Sheet: .+? ---$/m).map((x) => x.trim()).filter(Boolean); return xs.length ? xs : [body]; };
 
 /**
- * ONE SHEET AS ROWS, EACH WITH THE ROW NUMBER THE FILE GIVES IT (Dangote brief, change 1). Read from the workbook's own cells where the bytes are
+ * ONE SHEET AS ROWS, EACH WITH THE ROW NUMBER THE FILE GIVES IT (Halden brief, change 1). Read from the workbook's own cells where the bytes are
  * kept (documents/a-file-as-cells.ts): Excel's row, the sheet's own name. From text only where there are no cells, where the number is the CSV
  * line, which is the sheet's row only when its used range starts at row 1.
  */

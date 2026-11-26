@@ -254,7 +254,7 @@ export class DocumentsService {
       throw new BadRequestException('That presentation could not be opened. If it is an older .ppt, save it as .pptx and try again.');
     }
     /* In the order the deck shows them (presentation.xml), numbered by that order, so "Slide 4" is the fourth slide a person sees even after
-       slides were moved (Dangote brief, change 1: a change is cited by its slide). */
+       slides were moved (Halden brief, change 1: a change is cited by its slide). */
     const slides = await Promise.all(
       (await slidesOfADeck(zip)).map(async ({ name, number }) => ({
         number,
@@ -513,7 +513,7 @@ export class DocumentsService {
      * Timed, because "it feels slow" is not a measurement and neither is "it feels faster".
      */
     /*
-     * THE SAME FILE TWICE IS ONE FILE (Fatima's Dangote office, 23 November 2026). Chinedu sent the May demurrage tracker twice and Ibrahim the
+     * THE SAME FILE TWICE IS ONE FILE (Ebele's Halden office, 23 November 2026). Chinedu sent the May demurrage tracker twice and Ibrahim the
      * March report twice; each was filed again and read back as new, so a month could be counted twice. The same words from the same person on
      * the same check-in are the copy already kept: nothing is stored again, and the caller is told so (`alreadyHad`, with the day it came).
      */

@@ -1,5 +1,5 @@
 /**
- * ONE INTRODUCTION, ONE CHANNEL, ONE ROW (Fatima, increment 5; plan 4: "separate real deliveries with delivery-state tracking, correct reply
+ * ONE INTRODUCTION, ONE CHANNEL, ONE ROW (Ebele, increment 5; plan 4: "separate real deliveries with delivery-state tracking, correct reply
  * routing and duplicate-safe retries").
  *
  * The email and the WhatsApp message to the same person are two rows with two states. A row is claimed before anything is sent (its `sendKey`

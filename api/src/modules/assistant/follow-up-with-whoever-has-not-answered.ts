@@ -1,7 +1,7 @@
 import { PartyType } from '@prisma/client';
 
 /**
- * "PLEASE FOLLOW UP WITH THE PEOPLE WHO HAVEN'T RESPONDED" (Fatima's Dangote office, 23 November 2026). She asked it in Ask and was answered with a
+ * "PLEASE FOLLOW UP WITH THE PEOPLE WHO HAVEN'T RESPONDED" (Ebele's Halden office, 23 November 2026). She asked it in Ask and was answered with a
  * report's opening, asking her to forward documents herself: "I don't want to spend my time chasing people." Now the model reads the request
  * (kind `follow_up`), and Groundwork says back who on the check-ins she runs still owes an answer, by check-in, and asks once. Only her yes sends,
  * because a message to somebody is sent only on a person's own yes (Ask's rule; CLAUDE.md rule 4). Each reminder is the board's own nudge
@@ -27,7 +27,7 @@ export async function whoStillOwesAnAnswer(prisma: any, organizationId: string, 
       select: { participantId: true, availableFrom: true },
     }).catch(() => [])) ?? [];
     const now = Date.now();
-    /* Somebody who has said something or sent a file here has answered, even with their conversation still open: Fatima's Finance team sent
+    /* Somebody who has said something or sent a file here has answered, even with their conversation still open: Ebele's Finance team sent
        their reconciliations and was still listed as not having responded. */
     const said: any[] = (await Promise.resolve(prisma.conversationTurn?.findMany?.({ where: { role: 'PERSON', checkIn: { groundId: g.id } }, select: { checkIn: { select: { participantId: true } } }, distinct: ['checkInId'] })).catch(() => [])) ?? [];
     const sent: any[] = (await Promise.resolve(prisma.groundDocument?.findMany?.({ where: { groundId: g.id }, select: { participantId: true }, distinct: ['participantId'] })).catch(() => [])) ?? [];

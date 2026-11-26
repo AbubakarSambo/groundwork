@@ -1,5 +1,5 @@
 /**
- * A PROMISE IN SOMEBODY'S OWN VOICE, AS A TASK ON A LIST (Fatima round 3). The record keeps what people said they would do in their own words ("I will go next week").
+ * A PROMISE IN SOMEBODY'S OWN VOICE, AS A TASK ON A LIST (Ebele round 3). The record keeps what people said they would do in their own words ("I will go next week").
  * Said back to a third person, in a register line, Today, or a year-end report, that reads as the assistant speaking for somebody it cannot speak for. The one place
  * that takes the promise off its "I will" is here; the nudges, the register and the report all read it from here.
  */

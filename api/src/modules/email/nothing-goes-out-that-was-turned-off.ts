@@ -306,7 +306,7 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendTheAnswerByEmail: 'asked for',
   /* The answer to something a team member forwarded to their assistant: they did something, and this is the reply. */
   sendTheAssistantsReply: 'asked for',
-  /* The year-end files: the principal's own work, handed over (Fatima, increment 4). Held for quiet hours, never the day's routine message. */
+  /* The year-end files: the principal's own work, handed over (Ebele, increment 4). Held for quiet hours, never the day's routine message. */
   sendTheYearEndFiles: 'asked for',
   /* An introduction somebody asked for by adding a person or naming a contact, with their go-ahead (executive-onboarding). */
   sendTheIntroduction: 'asked for',

@@ -1,5 +1,5 @@
 /**
- * AN ASSISTANT WHO ACTS FOR SEVERAL SENIOR PEOPLE (Fatima round 2, E2; plan section 7). Somebody who acts for one senior person is that person's assistant, and
+ * AN ASSISTANT WHO ACTS FOR SEVERAL SENIOR PEOPLE (Ebele round 2, E2; plan section 7). Somebody who acts for one senior person is that person's assistant, and
  * what they send is hers. Somebody who acts for two or more cannot be taken to mean any one of them: until now their words and forwards fell through (the
  * speaker was "nobody" to the code that hears a senior person), so nothing was kept and nobody was asked. What they send now is held, ONE question is put to them
  * (which of them it is for), and nothing is done, kept for anyone or told to anyone until they answer.

@@ -1,7 +1,7 @@
 /**
- * A PRINCIPAL'S REPORT HAS ONE OWNER, AND ASK READS IT (Batch D, R1 and R2; the Dangote stress test of 20 November 2026).
+ * A PRINCIPAL'S REPORT HAS ONE OWNER, AND ASK READS IT (Batch D, R1 and R2; the Halden stress test of 20 November 2026).
  *
- * Fatima's "Give me the structure of the report", "Send me the draft" and "Please contact my office ..." all fell into "a report on request" and read
+ * Ebele's "Give me the structure of the report", "Send me the draft" and "Please contact my office ..." all fell into "a report on request" and read
  * "Here is the outline with your changes. It has 0 sections." Two things owned her report. Now one does: for somebody with a year-end job, a year-end
  * draft or a senior person's setup, and for the person who acts for her, the report is the year-end draft (`theirReportIsTheYearEndDraft`), and "a
  * report on request" never opens for them.
@@ -167,7 +167,7 @@ export async function herYearEndRecordForAsk(prisma: any, a: { organizationId: s
 }
 
 /**
- * HER PAYMENTS, AS TODAY AND THE REPORT COUNT THEM (Dangote rerun, N9: Ask said nothing on record showed whether the August payments were paid, while the sheets
+ * HER PAYMENTS, AS TODAY AND THE REPORT COUNT THEM (Halden rerun, N9: Ask said nothing on record showed whether the August payments were paid, while the sheets
  * and their bank confirmations were on the record). One line for each payment, from the one count (principal-work/the-payments-work.ts): the payee, the
  * reference, the amount, the day it was due, what the sheet says, and whether a bank confirmation or a document shows it.
  */

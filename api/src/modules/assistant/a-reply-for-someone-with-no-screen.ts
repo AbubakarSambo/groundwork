@@ -2,7 +2,7 @@ import { rules, text, type Reply } from './a-reply-is-a-payload-not-a-string';
 import { askCouldNotFindIt } from './a-question-is-answered-from-the-documents';
 
 /**
- * WHEN ASK DOES NOT KNOW WHAT WAS MEANT, ON A PHONE (Fatima round 1, issue I-01).
+ * WHEN ASK DOES NOT KNOW WHAT WAS MEANT, ON A PHONE (Ebele round 1, issue I-01).
  *
  * Ask's last answer was written for the web page: "There are no documents here that you can open yet ... Add one with Choose a file", and a menu of four
  * buttons ("What am I on?"). On WhatsApp there is no page and no button. A woman who wrote "Hello, I got your email. Is this you?" was told to choose

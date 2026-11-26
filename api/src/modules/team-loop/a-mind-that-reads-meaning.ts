@@ -1,11 +1,11 @@
 /**
- * A STAND-IN FOR THE MODEL THAT READS WHAT PEOPLE MEAN, FOR TESTS ONLY (Fatima round 1, groups A, B and G).
+ * A STAND-IN FOR THE MODEL THAT READS WHAT PEOPLE MEAN, FOR TESTS ONLY (Ebele round 1, groups A, B and G).
  *
  * It is not the product and it is not the model. It is a deterministic reader that works out meaning from the words as a person would, so that the
  * tests can show what the rest of the product does once the meaning is read: it sits behind the same seam as the model (the-team-mind.ts), so the
  * code that decides what is sent, approved or recorded runs for real. It is deliberately more general than a list of phrases: it looks at whether the
  * person agrees, refuses, adds a condition or asks something, reads names, jobs and contacts by their place in a sentence, and reads who wants what and
- * when. The real model is run separately on a sample (api/journey/fatima-fix-a-sanity-with-the-real-model.ts).
+ * when. The real model is run separately on a sample (api/journey/ebele-fix-a-sanity-with-the-real-model.ts).
  */
 import type { APersonNamed, TheInstruction, TheReplyBasis, TheTeamMind, WhatTheySaid } from './the-team-mind';
 import type { AnAnswer } from '../executive-onboarding/her-answer';

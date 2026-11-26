@@ -1,5 +1,5 @@
 /**
- * THE LIFE OF THE YEAR-END DRAFT: draft, revised, approved, final (Fatima, increment 4; spec 14, 14.3, 30.4).
+ * THE LIFE OF THE YEAR-END DRAFT: draft, revised, approved, final (Ebele, increment 4; spec 14, 14.3, 30.4).
  *
  * ONE DRAFT, MANY VERSIONS. "Add March", "Shorten this" and "This is wrong: ..." revise the same draft, by chat, by a reply to the mail or
  * from a voice transcript (the words are the same once they are text). Each change is a new row, version 2, 3 and so on, whose parent is the
@@ -74,7 +74,7 @@ export async function loadTheRecord(prisma: any, a: { organizationId: string; pr
 
 /**
  * Who the gaps were put to, read from what was really asked: a question whose message went and is not answered yet (information_gaps, state "asked"). A
- * question still waiting to go is not "being asked" (Dangote stress test, D4: the final report said 23 times "Maryam Sule is being asked which is right" of
+ * question still waiting to go is not "being asked" (Halden stress test, D4: the final report said 23 times "Maryam Sule is being asked which is right" of
  * mails that never went). A person who acts for her is named; anybody else is "a member of the team", because the team's names are not read here. Two lines
  * put to her herself as a decision are hers. Null when nobody has been asked, which the report says plainly.
  */
@@ -206,7 +206,7 @@ export async function refreshTheDraft(prisma: any, a: { organizationId: string; 
 
 /**
  * What she is told the moment she asks for a change, before the new version is ready (it can take a minute). A correction says what is being done with her line, so she is not
- * left to wonder until the version arrives: it goes beside the line it is about, and the line stays as the record has it (Fatima round 4, N35).
+ * left to wonder until the version arrives: it goes beside the line it is about, and the line stays as the record has it (Ebele round 4, N35).
  */
 export const theAckBeforeTheRevision = (kind: TheChange['kind'], version: number): string =>
   kind === 'wrong'

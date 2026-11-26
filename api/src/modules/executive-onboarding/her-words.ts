@@ -1,5 +1,5 @@
 /**
- * WHERE HER WORDS ARE HEARD, ON ANY CHANNEL (Fatima, increment 5). Chat, a reply to the mail, a WhatsApp message and a voice note's words all come
+ * WHERE HER WORDS ARE HEARD, ON ANY CHANNEL (Ebele, increment 5). Chat, a reply to the mail, a WhatsApp message and a voice note's words all come
  * here with the same text. It answers only for a senior person who was added by an admin (a `principal_setups` row) and for the people she lets act
  * for her, and says nothing (null) for everybody else, so the caller carries on with what it was doing.
  *

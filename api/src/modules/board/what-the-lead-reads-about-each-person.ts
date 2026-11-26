@@ -32,7 +32,7 @@ export type AKindOfCheckIn = 'sales' | 'collections' | 'matter';
  * anything else, two, because one late or vague check-in is still Groundwork's to coach.
  */
 /*
- * NOT FOR BLOCKERS (Fatima's office, 25 January 2027). Chinedu's three blockers were the Ministry not answering on a waiver; coached to say what he had
+ * NOT FOR BLOCKERS (Ebele's office, 25 January 2027). Chinedu's three blockers were the Ministry not answering on a waiver; coached to say what he had
  * tried first, the board then said "Chinedu needs a hard conversation about raising blockers with nothing tried first". Being held up by somebody
  * outside is not a person failing, so a blocker stays coaching and never becomes a hard conversation.
  */

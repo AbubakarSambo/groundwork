@@ -1,7 +1,7 @@
 /**
  * A HELLO FROM HER IS MET BY AN ASSISTANT THAT KNOWS HER OFFICE (Batch D, R7, D6).
  *
- * Fatima's first words on the web, "Good morning. Kabiru said you will help my office this year.", read "I cannot answer that one yet. Here is what I
+ * Ebele's first words on the web, "Good morning. Kabiru said you will help my office this year.", read "I cannot answer that one yet. Here is what I
  * can do with ...", and the old menu. An assistant her administrator set up for her knows who set it up, for which office, what it is keeping for her,
  * who acts for her and how many of her people it may write to. That is what she is told, from the record of her setup, in plain sentences. Whether her
  * words are a hello is the model's reading in Ask; this only writes what is true. No model is run here, and nothing is sent or written.

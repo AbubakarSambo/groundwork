@@ -1,5 +1,5 @@
 /**
- * THE MODEL BEHIND THE YEAR-END NARRATIVE (Fatima round 2, E1). It does one thing: given the forwarded notes as untrusted data, it returns the record in
+ * THE MODEL BEHIND THE YEAR-END NARRATIVE (Ebele round 2, E1). It does one thing: given the forwarded notes as untrusted data, it returns the record in
  * `YEAR_END_NARRATIVE_SCHEMA`. It has no prisma, no mail and no WhatsApp, and the model is given no tool but that schema, so nothing it says can cause an
  * action. The words that run are the version stored under `year-end.write-the-narrative` (PromptVersion, served by /prompts) when one is active, and the file's
  * words otherwise; the id of the one that ran is handed back, and the draft keeps it (`content.narrative.promptVersionId`).

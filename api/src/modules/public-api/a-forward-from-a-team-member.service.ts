@@ -28,7 +28,7 @@ export type WhatBecameOfAForward = 'ignored' | 'already seen' | 'not matched' | 
 const THE_QUESTION_STANDS_FOR_MS = 3 * 24 * 60 * 60 * 1000;
 
 /**
- * A TEAM MEMBER'S FORWARDED MAIL IS THEIR CHECK-IN (Fatima, increment 1).
+ * A TEAM MEMBER'S FORWARDED MAIL IS THEIR CHECK-IN (Ebele, increment 1).
  *
  * Mail to assistant+<slug>@myground.work from an address that belongs to exactly one person on that organisation's roster (or one verified
  * account) is read as that person's own. Its words and files go to their open check-in as DOCUMENTS, through the same upload their WhatsApp

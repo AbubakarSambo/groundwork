@@ -1,5 +1,5 @@
 /**
- * THE ONE SOURCE THE YEAR-END FILES ARE WRITTEN FROM (Fatima, increment 4; spec 14.3, 30, 30.1).
+ * THE ONE SOURCE THE YEAR-END FILES ARE WRITTEN FROM (Ebele, increment 4; spec 14.3, 30, 30.1).
  *
  * The report, the presentation, the outstanding register, its readable copy and the evidence index are all
  * written from one `YearEndContent`, which is built from the outstanding register (increment 3: the
@@ -159,7 +159,7 @@ export function whatANoteSays(text: string | null | undefined): { title: string 
   const first = lines[0] ?? '';
   const heading = lines.length > 1 && first.length <= 100 && !HEADER.test(first) && !/[.!?:]$/.test(first) && !/^[-_=]{3,}/.test(first) ? first : null;
   const title = heading ?? (email ? subject?.replace(/^(?:(?:re|fw|fwd)\s*:\s*)+/i, '') ?? null : null);
-  /* A row of a table (three or more cells split by commas, tabs or bars) is not a sentence: joined, a sheet's rows read as one long "sentence" in the report and the deck (Dangote rerun, N8: "The note for February says: Engagement,Committee,Planned,Held,Status,Notes ..."). */
+  /* A row of a table (three or more cells split by commas, tabs or bars) is not a sentence: joined, a sheet's rows read as one long "sentence" in the report and the deck (Halden rerun, N8: "The note for February says: Engagement,Committee,Planned,Held,Status,Notes ..."). */
   const aRowOfCells = (l: string) => l.split(/\s*[,\t|]\s*/).length >= 4 && !/[.!?]\s/.test(l);
   const body = lines.slice(heading ? 1 : 0).filter((l) => !HEADER.test(l) && !/^[-_=]{3,}.*$/.test(l) && !/^on .{5,80} wrote:$/i.test(l) && !aRowOfCells(l));
   const sentences = body.join(' ').split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter((x) => x.split(/\s+/).length >= 2);
@@ -168,7 +168,7 @@ export function whatANoteSays(text: string | null | undefined): { title: string 
 
 /**
  * WHICH MONTH A FORWARDED NOTE IS THE NOTE FOR. One owner, read by the report's month sections, by "what matters most", by the missing months, and by what
- * the first picture says the notes cover (Fatima round 4, untrue lines 2, 3 and 6). Only a forwarded document that says it is about exactly one month and
+ * the first picture says the notes cover (Ebele round 4, untrue lines 2, 3 and 6). Only a forwarded document that says it is about exactly one month and
  * has sentences in it is a monthly note. A payments tracker that is dated across the year, a document with no month, and a month that somebody asked
  * to be added but has no note are not notes, so they never make a month "covered".
  */

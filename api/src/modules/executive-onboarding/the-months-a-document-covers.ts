@@ -1,5 +1,5 @@
 /**
- * WHICH MONTHS A FORWARDED DOCUMENT COVERS (Fatima round 1, I-09). Coverage used to be read from when a record arrived, so ten monthly notes forwarded in
+ * WHICH MONTHS A FORWARDED DOCUMENT COVERS (Ebele round 1, I-09). Coverage used to be read from when a record arrived, so ten monthly notes forwarded in
  * one afternoon in November covered November and nothing else, and the year-end draft waited for months that were already in the record.
  * A note covers the month it says it is about: the date in its words, a month and a year written out, or a file name that carries one. The words are
  * read by plain date reading and never by a model, because what she forwards is read by nothing outside the code that keeps it
@@ -35,7 +35,7 @@ export function theMonthsADocumentCovers(a: { fileName?: string | null; subject?
 }
 
 /**
- * What the principal's kept material covers: one source for each month a document says it is about. A plain email or WhatsApp message counts too (Dangote stress
+ * What the principal's kept material covers: one source for each month a document says it is about. A plain email or WhatsApp message counts too (Halden stress
  * test, D9: 9,400 of the 10,452 items on her record were messages, and none shaped the report): it covers the month it says it is about, or else the month it
  * was written in. A duplicate and an unreadable file add nothing. Read from the record each time, so a restart loses nothing.
  */

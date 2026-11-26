@@ -224,7 +224,7 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
    * takes whatever the latest real worry is.
    */
   /*
-   * AND THE WORRY WITH THE DETAIL IN IT. run-7, the pulse scenario: Fatima's record held "some
+   * AND THE WORRY WITH THE DETAIL IN IT. run-7, the pulse scenario: Ebele's record held "some
    * approvals are stalled", "Four purchase approvals have been sitting since the 9th, waiting for
    * Ahmed's manager" and "Ahmed's manager is on leave until the 28th", all in one session. `latest`
    * keeps the first of equals, so the finding read "some approvals are stalled" and lost the fact

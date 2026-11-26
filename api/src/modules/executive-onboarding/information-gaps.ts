@@ -1,5 +1,5 @@
 /**
- * WHAT IS MISSING, WHO WAS ASKED, AND WHETHER THEY ANSWERED (Fatima, increment 5; plan 6.3 and 7, acceptance test 7).
+ * WHAT IS MISSING, WHO WAS ASKED, AND WHETHER THEY ANSWERED (Ebele, increment 5; plan 6.3 and 7, acceptance test 7).
  *
  * The code that decides to ask somebody claims the gap here before the message goes (queueTheAsk), and the door marks it asked when the message really
  * goes (theAskWent), so there is one record and nothing can ask twice: one row per thing and per person. The person asked is somebody who can fill it (the person who acts for
@@ -22,14 +22,14 @@ export const whatAGapKeyMeans = (key: string, detail?: string | null): string =>
 export const A_TEAM_LOOP_KEY = /^(?:q|nudge|approver|instr):/;
 
 /**
- * ASKED MEANS THE MESSAGE WENT (Dangote stress test, D4: 1,713 questions were written down as asked of Maryam when they were queued, and one mail reached her).
+ * ASKED MEANS THE MESSAGE WENT (Halden stress test, D4: 1,713 questions were written down as asked of Maryam when they were queued, and one mail reached her).
  * A question is claimed as "queued" before its message is handed to the door, which keeps it to one row for each thing and person. It becomes "asked" only
  * when the message carrying it really goes: the one mail door and the one WhatsApp gate call `theAskWent` with the message's key at that moment, whether it
  * went at once or after it was held. A message that does not go gives its questions back (`giveTheAskBack`), so they can be asked another day. Everything
  * that says somebody was asked reads `state: 'asked'`, so nothing can say a question was put that nobody received.
  */
 /** The questions of one kind a message carries: the year-end work's, the team loop's, or a payment's. A message carries only one kind. */
-const FAMILIES = { 'year-end': /^(?:owner|match|gap):/, team: /^(?:nudge|approver|instr):/, payments: /^payments:/ } as const;
+const FAMILIES = { 'year-end': /^(?:owner|match|gap):/, team: /^(?:nudge|approver|instr):/, payments: /^payments:/, rows: /^row:/ } as const;
 export type AnAskFamily = keyof typeof FAMILIES;
 export const anAskKey = (principalUserId: string, family: AnAskFamily, askedOf: string): string => `ask:${principalUserId}:${family}:${String(askedOf).trim().toLowerCase()}`;
 const readAnAskKey = (sendKey: string | null | undefined): { principalUserId: string; family: RegExp; askedOf: string } | null => {
@@ -100,8 +100,14 @@ export async function theGapsStillOpen(prisma: any, principalUserId: string): Pr
 }
 
 /** The questions not answered yet, in the states asked for ("asked" means its message went, "queued" that it is still waiting to go). The one read of this
- * table for the year-end report's "who is being asked" and the outstanding register's payments line (Dangote D4, D5). */
+ * table for the year-end report's "who is being asked" and the outstanding register's payments line (Halden D4, D5). */
 export async function theQuestionsAsked(prisma: any, principalUserId: string, states: ('asked' | 'queued')[] = ['asked']): Promise<{ gapKey: string; askedOfEmail: string | null; askedOfName: string | null; state: string }[]> {
   const rows: any[] = (await prisma.informationGap?.findMany?.({ where: { principalUserId, state: { in: states } } }).catch(() => [])) ?? [];
   return rows.map((g) => ({ gapKey: String(g.gapKey), askedOfEmail: g.askedOfEmail ?? null, askedOfName: g.askedOfName ?? null, state: String(g.state) }));
+}
+
+/** Every question whose key starts so, asked or answered, with when, of whom, and where the answer came from: the one read for a report's rows and its changes (changes 3 to 5). */
+export async function theQuestionsAndAnswers(prisma: any, principalUserId: string, keyStarts: string): Promise<{ gapKey: string; askedOfName: string | null; askedOfEmail: string | null; state: string; askedAt: Date | null; answeredAt: Date | null; answeredFrom: string | null }[]> {
+  const rows: any[] = (await prisma.informationGap?.findMany?.({ where: { principalUserId, gapKey: { startsWith: keyStarts } } }).catch(() => [])) ?? [];
+  return rows.map((g) => ({ gapKey: String(g.gapKey), askedOfName: g.askedOfName ?? null, askedOfEmail: g.askedOfEmail ?? null, state: String(g.state), askedAt: g.askedAt ? new Date(g.askedAt) : null, answeredAt: g.answeredAt ? new Date(g.answeredAt) : null, answeredFrom: g.answeredFrom ?? null }));
 }

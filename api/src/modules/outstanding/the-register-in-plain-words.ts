@@ -70,7 +70,7 @@ function theOneMatchToAsk(register: TheRegister): string | null {
 }
 
 /**
- * "What is outstanding?" The number said is the number of lines on one list, and the lines read out are taken from that same list (Fatima round 1, I-10:
+ * "What is outstanding?" The number said is the number of lines on one list, and the lines read out are taken from that same list (Ebele round 1, I-10:
  * "5 matters" over ten lines). Something said to be done with nothing to show it is not finished, so it is on the list.
  */
 export function whatIsOutstandingSaid(register: TheRegister, v: TheView): string {

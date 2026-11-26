@@ -68,7 +68,7 @@ export function Composer({
   const ds = useTheDesignSystem()
   const ask = variant === 'ask'
   /*
-   * A BOX THAT SHOWS ITS WHOLE PLACEHOLDER (Fatima round 2, D3; the same fault as fault 7 above, fixed at its cause). The field is one row high, so a placeholder
+   * A BOX THAT SHOWS ITS WHOLE PLACEHOLDER (Ebele round 2, D3; the same fault as fault 7 above, fixed at its cause). The field is one row high, so a placeholder
    * longer than the width (Ask's "Ask about the company, your work or your check-ins." at 390px) wrapped onto a line nobody could see and read as a box cut in half.
    * While the box is empty its least height is the height of its placeholder, measured at the width it really has, so every caller's box shows what it says and
    * no caller has to guess a number of rows. Once there are words in it the caller's own growing takes over. The browser measures: nothing is guessed from the

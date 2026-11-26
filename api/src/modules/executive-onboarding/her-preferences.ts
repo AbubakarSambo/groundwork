@@ -1,5 +1,5 @@
 /**
- * "STOP" AND "SLOW DOWN" (Fatima, increment 5; plan section 6 and the brief's item 6). She changes how Groundwork treats her by saying so, in
+ * "STOP" AND "SLOW DOWN" (Ebele, increment 5; plan section 6 and the brief's item 6). She changes how Groundwork treats her by saying so, in
  * her own words on any channel, and what she said holds from then on:
  *
  *   "Stop"        nothing is sent to her by Groundwork until she says "carry on". What she sends is still kept.

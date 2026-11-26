@@ -172,7 +172,7 @@ export class GroundsCron implements OnApplicationBootstrap {
    * thinks it is."
    */
   /**
-   * THE TWO STANDING JOBS EVERY PRINCIPAL HAS (Fatima, increment 3), recomputed from the record each night.
+   * THE TWO STANDING JOBS EVERY PRINCIPAL HAS (Ebele, increment 3), recomputed from the record each night.
    * Nothing is held in the process, so a restart loses nothing, and it runs once across copies of the API.
    * It writes the jobs' own rows, and then the year-end owner decides whether anything is worth saying, and to whom.
    */
@@ -234,7 +234,7 @@ export class GroundsCron implements OnApplicationBootstrap {
 
       for (const p of due) {
         try {
-          /* The link lasts from the day it is sent, not the day the lead set it up: Fatima set up 2027's weekly check-ins on 22 November and
+          /* The link lasts from the day it is sent, not the day the lead set it up: Ebele set up 2027's weekly check-ins on 22 November and
              every invitation of 4 January arrived already expired (her office, 23 November 2026). Same token, a fresh expiry. */
           await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { inviteTokenExpiresAt: inviteExpiryFrom(now) } });
           await this.email.sendTheInviteThisGroundSends(

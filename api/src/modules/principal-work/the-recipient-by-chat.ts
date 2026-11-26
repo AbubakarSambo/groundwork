@@ -1,5 +1,5 @@
 /**
- * "SEND IT TO THE MANAGING DIRECTOR TOO" (Fatima, increment 6b; plan sections 14.3 and 19). She can name one more person who may be sent the final year-end
+ * "SEND IT TO THE MANAGING DIRECTOR TOO" (Ebele, increment 6b; plan sections 14.3 and 19). She can name one more person who may be sent the final year-end
  * files, by saying so in chat, in a message, or in a voice note. The model reads who she means (the-work-reader.ts); what happens next is held by code,
  * because it is about who is sent her files:
  *   - only she can name one, and only she can say yes. The person who acts for her is told that plainly, and nothing is written;

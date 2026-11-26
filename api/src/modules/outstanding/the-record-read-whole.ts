@@ -1,9 +1,9 @@
 /**
- * THE RECORD READ WHOLE, THE WAY A CHIEF OF STAFF WOULD (Batch F, F1; Dangote rerun N7 and D14).
+ * THE RECORD READ WHOLE, THE WAY A CHIEF OF STAFF WOULD (Batch F, F1; Halden rerun N7 and D14).
  *
  * Two things need the whole record and never one message at a time:
  *   - what only she, or leadership, can settle: a position to take before a deadline, whether to escalate a letter that has not come, a delay to raise, a
- *     settlement range before a mediation, a payment to make that was never made. In the Dangote run the team said "That one is stuck", "mediation is on
+ *     settlement range before a mediation, a payment to make that was never made. In the Halden run the team said "That one is stuck", "mediation is on
  *     3 December" and "Treasury cannot find the transfer", and nothing ever put a decision to her, because the only writer read one reply at a time;
  *   - a claim that is only somebody's word and a proven line of the same person that settles it: "that thing we discussed with the commissioner has been
  *     sorted" in April, and the permit granted in May.
@@ -70,7 +70,7 @@ export function theRecordToRead(a: { now: Date; register: TheRegister; recent: T
   const owners = new Set(open.map((r) => r.owner));
   const proven = a.register.rows.filter((r) => r.status === 'completed' && owners.has(r.owner)).sort((x, y) => lastHeard(y) - lastHeard(x)).slice(0, PROVEN_ROWS);
   const fromTeam = a.recent.team.slice(0, MESSAGES);
-  /* Her own words, not what she forwarded: her voice note "what I need Dangote to decide" is what she asked for. */
+  /* Her own words, not what she forwarded: her voice note "what I need Halden to decide" is what she asked for. */
   const hers = a.recent.hers.slice(0, 6);
   const rows = new Map(open.map((r, i) => [`R${i + 1}`, r]));
   const proofs = new Map(proven.map((r, i) => [`P${i + 1}`, r]));

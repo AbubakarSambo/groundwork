@@ -42,11 +42,11 @@ export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
   MISSED_CHECK_INS_KIND,
   /* The lead's own nudge (engagement/the-leads-own-nudge.ts): Groundwork writes it for her, so the 24 hours, the template, quiet hours and STOP hold. */
   'lead-nudge',
-  /* The year-end work (Fatima, increment 4): a short progress line, the draft being ready, and the final being sent. */
+  /* The year-end work (Ebele, increment 4): a short progress line, the draft being ready, and the final being sent. */
   'year-end-progress', 'year-end-draft-ready', 'year-end-final',
   /* An introduction from Groundwork to somebody an admin or a senior person named (executive-onboarding): Groundwork writes first, so the 24 hours, the approved template, the night and STOP all hold. */
   'introduction', 'team-introduction',
-  /* The team loop (Fatima, increment 6a): a nudge that helps one person, and the ask for an update that she gave as a standing instruction. Groundwork writes first, so the 24 hours, the template, the night and STOP hold. */
+  /* The team loop (Ebele, increment 6a): a nudge that helps one person, and the ask for an update that she gave as a standing instruction. Groundwork writes first, so the 24 hours, the template, the night and STOP hold. */
   'team-nudge', 'team-ask',
 ]);
 

@@ -1,5 +1,5 @@
 /**
- * ONE USEFUL ANSWER FOR A WHOLE BATCH (Fatima, increment 5; plan section 5: "acknowledges concisely ... returns a useful first picture ...
+ * ONE USEFUL ANSWER FOR A WHOLE BATCH (Ebele, increment 5; plan section 5: "acknowledges concisely ... returns a useful first picture ...
  * asks whether others are handling related matters").
  *
  * Twenty forwards in a few minutes are one batch, and one message goes when it has been quiet for three minutes (the-intake.ts QUIET_FOR_MS). The

@@ -546,7 +546,7 @@ export class WhatsAppForAnOrganisationService {
       const waiting = await this.invitationWaitingFor(organizationId, who.personId);
       if (waiting) { await say(`You are invited to "${waiting}" and the invitation has not been accepted yet. Open the email, accept it, then reply here and your answers go straight in.`); return; }
       /*
-       * A FILE WITH NOTHING OPEN GOES WITH THEIR LATEST CHECK-IN (Fatima's office, 23 November 2026). Her aide's 2026 collection was finished when he
+       * A FILE WITH NOTHING OPEN GOES WITH THEIR LATEST CHECK-IN (Ebele's office, 23 November 2026). Her aide's 2026 collection was finished when he
        * sent the HB 412 bill; it was asked "what is it for?" and then lost. Their most recent check-in that has started is where their work is, so a
        * file about their work goes there, shared with it as a file sent during a check-in is, and is said so.
        */
@@ -1145,7 +1145,7 @@ export class WhatsAppForAnOrganisationService {
     if (!person?.email) return null;
     const waiting = await this.prisma.groundParticipant.findFirst({
       /* Only a check-in that has started: the aide's 2027 weekly check-in, set up in November, took his file in November and told him to accept an
-         email for it, and the HB 412 bill he sent was lost (Fatima's office, 23 November 2026). Before it starts there is nothing to accept. */
+         email for it, and the HB 412 bill he sent was lost (Ebele's office, 23 November 2026). Before it starts there is nothing to accept. */
       where: { email: person.email, userId: null, OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }], ground: { organizationId, status: { notIn: ['RESOLVED', 'STALLED', 'CLOSED'] }, OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] } },
       select: { ground: { select: { label: true } } },
       orderBy: { createdAt: 'desc' },

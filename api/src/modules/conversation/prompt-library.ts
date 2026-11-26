@@ -15,7 +15,7 @@ import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
 import { SALES_CHECK_IN_GATHERS_KEY, SALES_CHECK_IN_GATHERS_PROMPT } from './what-a-sales-check-in-gathers';
 import { FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT } from './their-role-in-the-first-check-in';
 import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_PROMPT_KEY } from '../patterns/pattern-library';
-import { THE_FATIMA_PROMPT_SEEDS } from './the-fatima-prompt-seeds';
+import { THE_EBELE_PROMPT_SEEDS } from './the-ebele-prompt-seeds';
 import { whereInTheRun } from './where-in-the-run';
 import { theUnitOfARound, timesAWeekInWords } from '../grounds/the-check-ins-own-schedule';
 import { THE_JUDGEMENT_ROOM_KEY, theRoomJudgementTemplate } from '../reports/the-judgement-over-the-answers';
@@ -5089,8 +5089,8 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: THE_JUDGEMENT_ROOM_KEY, content: theRoomJudgementTemplate() },
   /* What a sales check-in gathers for the board (Hafsah, 16 October 2026): the version stored here is the one that runs, and the turn hands its id back. */
   { key: SALES_CHECK_IN_GATHERS_KEY, content: SALES_CHECK_IN_GATHERS_PROMPT },
-  /* The team's reading and writing, the year-end draft request and the year-end narrative (Fatima round 2, E1): seeded, so the version stored is the one that runs. */
-  ...THE_FATIMA_PROMPT_SEEDS,
+  /* The team's reading and writing, the year-end draft request and the year-end narrative (Ebele round 2, E1): seeded, so the version stored is the one that runs. */
+  ...THE_EBELE_PROMPT_SEEDS,
   ...buildPartySeeds(),
 ];
 

@@ -1,5 +1,5 @@
 /**
- * THE WEEKLY REPORT, FROM THE FORWARD TO THE BRIEFING (Fatima, increment 6b; plan section 13). She, or the person who watches the Assembly for her,
+ * THE WEEKLY REPORT, FROM THE FORWARD TO THE BRIEFING (Ebele, increment 6b; plan section 13). She, or the person who watches the Assembly for her,
  * forwards the weekly report. It is read (the model reads it, as untrusted words, and only what it can quote is kept), kept by week and institution, set
  * beside the earlier weeks, linked to the work already on the record, and ONE briefing goes to whoever sent it, with at most one question.
  *

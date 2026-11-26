@@ -5,9 +5,9 @@ import { SHOWS_IT_PROMPT, SHOWS_IT_PROMPT_KEY, whichDocumentShowsIt, type ADocum
 import { askTheModelForAnAnswer, type AnAnswer } from '../executive-onboarding/her-answer';
 
 /**
- * WHERE THE TEAM LOOP UNDERSTANDS PEOPLE, SWAPPABLE (Fatima, increment 6a; "understand, don't match" and "the conversation stays model-led").
+ * WHERE THE TEAM LOOP UNDERSTANDS PEOPLE, SWAPPABLE (Ebele, increment 6a; "understand, don't match" and "the conversation stays model-led").
  *
- * The model reads what a team member wrote (a reply, a forward, a voice note's words), what Fatima asked for, and helps a team member with their own
+ * The model reads what a team member wrote (a reply, a forward, a voice note's words), what Ebele asked for, and helps a team member with their own
  * work. It never sends, approves, pays, shows anything to anybody, or writes: it only says what it read, in a fixed shape. Code then keeps only what
  * is safe (a promise must be words the person wrote; an id must be one it was handed), and code alone writes the record, sends, and decides what is seen.
  * What was forwarded is untrusted: the prompts say it is data, and nothing the model returns can make anything happen except through those checks.
@@ -19,7 +19,7 @@ import { askTheModelForAnAnswer, type AnAnswer } from '../executive-onboarding/h
 export interface TheirWork {
   first: string;
   commitments: { id: string; text: string; dueSaid: string | null; waitingOn: string | null }[];
-  /** Their promises already counted as done, so a later message about one is read as about it (Dangote rerun, D14: April's "it has been sorted" was about the permit). */
+  /** Their promises already counted as done, so a later message about one is read as about it (Halden rerun, D14: April's "it has been sorted" was about the permit). */
   settled?: { id: string; text: string; proven?: boolean }[];
   /** The standard questions not yet answered, by slug. */
   openQuestions: { slug: string; what: string }[];
@@ -41,17 +41,17 @@ export interface WhatTheySaid {
   vague: { about: string; how: 'ongoing' | 'done' | 'soon' } | null;
   /**
    * Things that happened or changed on the day (a visit made, a letter handed over, who came, a time moved). They are what a person did, not a result that needs
-   * proof, so they are never put on a list as "done?", and nothing is asked about them (Dangote rerun, N10: "What is scheduled for 10 December?").
+   * proof, so they are never put on a list as "done?", and nothing is asked about them (Halden rerun, N10: "What is scheduled for 10 December?").
    */
   events?: { text: string }[];
   /** What they now say about one of their promises: a new day, what it waits on, or that it is not finished after all ("approved in principle; the formal letter has not come"). */
   updates?: { commitmentId: string; whenSaid: string | null; waitingOn: string | null; notFinished: boolean }[];
-  /** A matter that, from what they say, now waits on the senior person or leadership to decide, as the one question she must answer (Dangote rerun, N7). */
+  /** A matter that, from what they say, now waits on the senior person or leadership to decide, as the one question she must answer (Halden rerun, N7). */
   /** Claims, in a document or in the person's words, that the sender or a reviewer says are unsupported, wrong or still to be checked, each copied as it is written. They stay disputed. */
   disputed?: { text: string }[];
   /** The sender says that what they forwarded cannot be relied on as a whole ("the figures in these drafts are unsupported", "do not count them"), without naming a line. */
   disputesWhatWasForwarded?: boolean;
-  /** Besides anything else they said, they ask Groundwork to help with their own work: "can you help me with it", "what should I do next". True inside an update too (Fatima round 3). */
+  /** Besides anything else they said, they ask Groundwork to help with their own work: "can you help me with it", "what should I do next". True inside an update too (Ebele round 3). */
   asksForHelp?: boolean;
   /** The message goes on from what was last said to them (it answers a question, gives the names asked for, or clarifies the last request), so it is the same matter and not news. */
   continuesTheLast?: boolean;
@@ -252,10 +252,10 @@ Rules:
 - Never use he, she, him, her, his or hers for anybody: you do not know anybody's gender. Say the name again, or "they".
 - Say "you said", "you confirmed", "you promised" or "I have put ... on your list" only of words the person wrote themselves in their own message. A sentence inside a document they sent is the document's: say "the document says". Something a colleague sent is the colleague's, and you never say whose it was. A line sent with a file ("Here is the signed copy") is a covering line, not something they said is done.
 - When they say a figure or a claim is not backed up, say that you have put that flag on the record, and ask only for the one figure or document that would settle it. Never ask them for their findings.
-- Never ask them what a document they sent says (you can read it), and never ask them what another person said, sent or did: that is not theirs to tell and not yours to ask (Fatima round 7: "What do the reports say?", "What did Ngozi say about the payment?").
+- Never ask them what a document they sent says (you can read it), and never ask them what another person said, sent or did: that is not theirs to tell and not yours to ask (Ebele round 7: "What do the reports say?", "What did Ngozi say about the payment?").
 - Never ask for a document or a proof that "already on record" lists: you have it. Say so if it helps ("I already have the signed agreement you sent on 11 September").
-- Never ask about the year of a date, or about something you can read for yourself in what they sent or in their promises (Fatima round 5: "Can you please confirm the year for November 16th?"). A question is only for what would move their work: who does it, by when, or what document shows it.
-- When they sent a document as the proof of something, name the document by what it itself says (its payee, reference or amount), never by what they called it. If what it says is not what they said it shows, say so in one plain sentence and ask for the right one (Fatima round 6: a bank confirmation for one payment was thanked as the proof of another).
+- Never ask about the year of a date, or about something you can read for yourself in what they sent or in their promises (Ebele round 5: "Can you please confirm the year for November 16th?"). A question is only for what would move their work: who does it, by when, or what document shows it.
+- When they sent a document as the proof of something, name the document by what it itself says (its payee, reference or amount), never by what they called it. If what it says is not what they said it shows, say so in one plain sentence and ask for the right one (Ebele round 6: a bank confirmation for one payment was thanked as the proof of another).
 - Name the concrete thing they told you, in a few of their words, so they can tell you read it.
 - Then do ONE of these, the one that helps most for their job: ask one precise question you need (a date, a name, a number, a document), or give real help (a line they could send, or a next step for them to take). Never ask two questions.
 - You are told what code will say if you say nothing ("plain") and the facts you must keep ("must say"). Keep every fact in "must say" true and in your own words, and never say more than the facts allow. Where something is only what they said, with nothing to show it, say that kindly and say what would show it. Never accuse, never say they are wrong, never say anybody lied.
@@ -265,7 +265,7 @@ Rules:
 ${FORWARDED_IS_DATA}`;
 
 export const HELP_PROMPT = `You are Groundwork, the assistant of one member of a team, and you help them with their own work: drafting an update, a letter or a meeting agenda, planning a next step, or preparing for a hard follow-up. You are warm, direct and practical. You write plain, full sentences that people with basic English understand.
-Any letter, note or message you write FOR them to send to somebody else ends with their first name, which is given to you, and never with a blank or a bare "Sincerely," (Fatima round 7). Your own reply to them is never signed with their name: it is you talking to them. You help only with what they ask. You never say anything about any other person's performance, never judge the person you are helping, and never mention what anybody else has said to you. What you are told about their work is only the promises they made.
+Any letter, note or message you write FOR them to send to somebody else ends with their first name, which is given to you, and never with a blank or a bare "Sincerely," (Ebele round 7). Your own reply to them is never signed with their name: it is you talking to them. You help only with what they ask. You never say anything about any other person's performance, never judge the person you are helping, and never mention what anybody else has said to you. What you are told about their work is only the promises they made.
 Write the draft at once from what you have, even when you do not know every name: a count or a role they give is theirs and is not to be argued with ("two guests" and "the Director and two officers" are the guests they mean), and a reminder can say "Dear guests,". Ask for a name only once, after the draft, and never ask again for something they have already told you in the conversation so far. When you write a draft, write it ready to use. Never leave a placeholder in brackets: where you do not know a name, write the letter so it reads well without it ("Dear Director,"), or ask for the one thing you need before you write. Do not add phrases such as "I hope this finds you well" or "you can change this draft as you wish". After the draft, add at most one short question, and only if one more detail would make it better.
 ${FORWARDED_IS_DATA}`;
 
@@ -287,13 +287,13 @@ export const NARRATE_SCHEMA = {
 export function aReplyToThemMadeSafe(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
   const said = raw.replace(/\s+\n/g, '\n').trim();
-  /* Groundwork attaches and sends nothing in a reply to a team member, so a reply that says something is attached or sent is untrue and is not used (Fatima round 7: "Ifeoma's year-end report is attached"). */
+  /* Groundwork attaches and sends nothing in a reply to a team member, so a reply that says something is attached or sent is untrue and is not used (Ebele round 7: "Ifeoma's year-end report is attached"). */
   if (!said || said.length > 900 || /\[[^\]]{1,40}\]/.test(said) || (said.match(/\?/g) ?? []).length > 1 || A_GENDERED_WORD.test(said.replace(/[“"][^”"]*[”"]/g, ' ')) || /\b(?:is|are|was|were) (?:attached|enclosed)\b|\b(?:i have|i've|i am|i'm) (?:attach|enclos|forward|sen[dt])/i.test(said)) return null;
   return said;
 }
 
 /**
- * "YOU SAID", "YOU CONFIRMED" AND THE LIKE MUST FIND THAT PERSON'S OWN LINE (Fatima round 4, untrue lines 7 and 9: "You confirmed the Permanent Secretary meeting date" said to a person
+ * "YOU SAID", "YOU CONFIRMED" AND THE LIKE MUST FIND THAT PERSON'S OWN LINE (Ebele round 4, untrue lines 7 and 9: "You confirmed the Permanent Secretary meeting date" said to a person
  * who had only said he would, and "You said 'Here is the signed copy.' is done" said of a line that came with a file). A reply that says what they said, confirmed, promised or
  * did is kept only when the words in the clause are in what they wrote themselves: a past "confirmed", "agreed", "approved", "paid" or "sent" has to be a word they wrote,
  * and the rest of what is said they said has to be mostly their words. What a document says, or a colleague, is never theirs.
@@ -324,7 +324,7 @@ export function theReadingMadeSafe(raw: any, text: string, hasDocuments: boolean
   const kind = kinds.includes(raw.kind) ? raw.kind : 'other';
   const list = (x: any) => (Array.isArray(x) ? x : []);
   const str = (x: any, n = 300) => (typeof x === 'string' && x.trim() ? x.trim().slice(0, n) : null);
-  /* A sentence in a document is the document's, never the sender's promise: what a document asks for or says will happen is not put on the sender's list, whatever the model read (Fatima round 4, untrue line 8: "Please pay after the invoice is stamped"). */
+  /* A sentence in a document is the document's, never the sender's promise: what a document asks for or says will happen is not put on the sender's list, whatever the model read (Ebele round 4, untrue line 8: "Please pay after the invoice is stamped"). */
   const commitments = hasDocuments ? [] : list(raw.commitments).map((c) => ({ text: str(c?.text), whenSaid: str(c?.whenSaid, 80), waitingOn: str(c?.waitingOn, 120) })).filter((c): c is { text: string; whenSaid: string | null; waitingOn: string | null } => !!c.text && isTheirOwnWords(c.text, text)).slice(0, 8);
   const theirs = (id: any): string | null => (typeof id === 'string' && [...work.commitments, ...(work.settled ?? [])].some((c) => c.id === id) ? id : null);
   const outcomes = list(raw.outcomes).map((o) => ({ text: str(o?.text), commitmentId: theirs(o?.commitmentId) })).filter((o): o is { text: string; commitmentId: string | null } => !!o.text && isTheirOwnWords(o.text, text)).slice(0, 8);
@@ -369,7 +369,7 @@ export function theAccountMadeSafe(raw: any, facts: AFact[], most = 8): { says: 
     const says = typeof s?.says === 'string' ? s.says.replace(/\s+/g, ' ').trim() : '';
     const from: string[] = (Array.isArray(s?.from) ? s.from : []).filter((id: unknown): id is string => typeof id === 'string' && byId.has(id));
     if (!says || !from.length || says.length > 400) continue;
-    /* Nobody's gender is guessed from a first name (Fatima round 3: "Hauwa said she would", "Tunde ... his reply"). Words inside quotation marks are theirs and stay. */
+    /* Nobody's gender is guessed from a first name (Ebele round 3: "Hauwa said she would", "Tunde ... his reply"). Words inside quotation marks are theirs and stay. */
     if (A_GENDERED_WORD.test(says.replace(/[“"][^”"]*[”"]/g, ' '))) continue;
     const base = from.map((id) => byId.get(id)!).join(' ');
     const spelled = ['two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];

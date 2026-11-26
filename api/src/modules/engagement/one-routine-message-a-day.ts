@@ -27,7 +27,7 @@ export const ROUTINE_EMAILS: ReadonlySet<string> = new Set([
   'sendFreeMonthEndsSoon',
   /* The day's routine WhatsApp message, by email when WhatsApp could not take it (whatsapp/by-email-instead.ts): still the day's one. */
   'sendTheRoutineMessageByEmail',
-  /* The year-end progress note (Fatima, increment 4): only when something meaningful is new, and then still the day's one. */
+  /* The year-end progress note (Ebele, increment 4): only when something meaningful is new, and then still the day's one. */
   'sendTheYearEndProgress',
   /* Not 'sendTimeRunningOut' (Release 1, pull request 5): "runs out in 7 days" is the only warning before a check-in is stalled, and the
      summary's lines can be cut for room, so it stays an email of its own rather than waiting for the summary and folding into it

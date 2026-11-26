@@ -1,5 +1,5 @@
 /**
- * THE YEAR-END FILES, WRITTEN FROM THE ONE CONTENT (Fatima, increment 4).
+ * THE YEAR-END FILES, WRITTEN FROM THE ONE CONTENT (Ebele, increment 4).
  *
  *   report            editable DOCX, and a PDF of the same words
  *   presentation      editable PPTX
@@ -45,7 +45,7 @@ const claimsIn = (c: YearEndContent, id: string) => c.sections.find((x) => x.id 
 const monthSections = (c: YearEndContent) => c.sections.filter((x) => x.id.startsWith('month:') && x.claims.length);
 
 /**
- * WHAT MATTERS MOST, IN A PARAGRAPH AT THE TOP (Fatima round 6; Hafsah's judgement: a short first thing to read before the long report). Written by code from the
+ * WHAT MATTERS MOST, IN A PARAGRAPH AT THE TOP (Ebele round 6; Hafsah's judgement: a short first thing to read before the long report). Written by code from the
  * same content the files are made from: only counts and months the content holds, in plain sentences, with her name, and nothing about any person.
  */
 export function whatMattersMost(c: YearEndContent): string {
@@ -121,7 +121,7 @@ const IN_THE_BRIEFING: Record<string, number> = { achieved: 12, disputed: 8, unv
 const A_MONTH_IN_THE_BRIEFING = 3;
 
 /**
- * THE REPORT IS A BRIEFING (Dangote stress test, D9: 68,559 words, every forwarded note month by month). Outcomes first, then each claim by its standing: proven, said
+ * THE REPORT IS A BRIEFING (Halden stress test, D9: 68,559 words, every forwarded note month by month). Outcomes first, then each claim by its standing: proven, said
  * and not shown, disputed, waiting for a decision, still open. Then the year month by month, a few lines each. Each part reads out its first lines and counts the
  * rest; the full evidence, every statement with its source, is the evidence index that goes with it.
  */
@@ -252,7 +252,7 @@ export async function docxOf(blocks: Block[], title: string): Promise<Buffer> {
 
 /* ------------------------------------------------------------------ PDF */
 
-function pdfOf(blocks: Block[], title: string): Promise<Buffer> {
+export function pdfOf(blocks: Block[], title: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 56, info: { Title: title, Author: 'Groundwork' } });
     const chunks: Buffer[] = [];
@@ -319,7 +319,7 @@ const slideLine = (c: YearEndContent, cl: Claim): string => {
 };
 
 /**
- * THE LEADERSHIP PRESENTATION, SIZED TO THE MATERIAL (Dangote stress test, D8: seven slides for a whole year, "What was achieved" led by routine tasks, and five small
+ * THE LEADERSHIP PRESENTATION, SIZED TO THE MATERIAL (Halden stress test, D8: seven slides for a whole year, "What was achieved" led by routine tasks, and five small
  * payments as "What needs a decision"). It follows the brief's executive briefing: the year in one slide, the outcomes, the year quarter by quarter, the payments, what
  * is only said or disputed, what the record does not cover, what is open and carried into the next year, and what needs a decision. A part with more than a slide
  * holds goes on over more slides, up to a few, so a full year reads in about 15 to 20 slides and a small record in a few. Only proven outcomes are on "What was
@@ -381,7 +381,7 @@ export function slidesOf(c: YearEndContent, v: TheVersion): ASlide[] {
   const openSlides = over(`What is open and carried into ${c.year + 1}`, [openLead, ...stillOpen], 2);
   /* The decision itself is the line: the matter and the question she must answer, not the matter's first sentence alone (Batch E, N7). */
   const decisions = claimsIn(c, 'decision').map((cl) => slideLine(c, cl).replace(clip(firstSentence(cl.text), 150), clip(cl.text, 220)));
-  /* Only what the record says waits on her decision (Dangote rerun, N7: the slide filled itself with "is X the same thing as Y?" questions for Maryam). */
+  /* Only what the record says waits on her decision (Halden rerun, N7: the slide filled itself with "is X the same thing as Y?" questions for Maryam). */
   const decide: ASlide = { title: 'What needs a decision', lines: decisions.length ? [...decisions.slice(0, LINES_ON_A_SLIDE), ...more(Math.min(LINES_ON_A_SLIDE, decisions.length), countIn('decision'))] : [`Nothing is waiting for a decision from ${c.principalFirstName}.`] };
   /* The head, then the body as far as it fits, and always what is open and what needs a decision last. */
   const room = MOST_SLIDES - head.length - openSlides.length - 1;

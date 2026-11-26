@@ -1,5 +1,5 @@
 /**
- * A TEAM MEMBER'S REPLY, FORWARD OR VOICE NOTE IS THEIR CHECK-IN (Fatima, increment 6a; plan 6.3, 26.1 and 31).
+ * A TEAM MEMBER'S REPLY, FORWARD OR VOICE NOTE IS THEIR CHECK-IN (Ebele, increment 6a; plan 6.3, 26.1 and 31).
  *
  * What they send is read once, and what it says goes on the records that already exist, never a second store:
  *   - what they say they will do        a commitment (the one writer, assistant/a-commitment-has-one-writer.ts), the same promise said more fully
@@ -148,7 +148,7 @@ export async function turnTheirReplyIntoTheirCheckIn(prisma: any, mind: TheTeamM
   };
 
   /*
-   * WHAT A PERSON OR A DOCUMENT SAYS HAPPENED IS A CLAIM UNTIL SOMETHING INDEPENDENT SHOWS IT (Fatima round 2, C1). A document that carries a claim is never its own
+   * WHAT A PERSON OR A DOCUMENT SAYS HAPPENED IS A CLAIM UNTIL SOMETHING INDEPENDENT SHOWS IT (Ebele round 2, C1). A document that carries a claim is never its own
    * proof: each outcome is matched to the documents that did NOT carry it. A claim somebody disputes (the sender, or a reviewer in the document) stays disputed.
    * When the sender, in their own message, says the figures in what they forwarded are unsupported, every claim read out of those documents is disputed with it.
    */
@@ -170,9 +170,9 @@ export async function turnTheirReplyIntoTheirCheckIn(prisma: any, mind: TheTeamM
   for (const { item, said } of readings) {
     for (const d of said.disputed ?? []) await keepDisputed(d.text, item);
     for (const c of said.commitments) await put(c.text, c.whenSaid, item.at ?? now, { waitingOn: c.waitingOn });
-    /* A blocker is kept as an open matter when it says who or what it waits on. A fact about the day ("the road was bad") is not a matter on anybody's list (Fatima round 1, I-10). */
+    /* A blocker is kept as an open matter when it says who or what it waits on. A fact about the day ("the road was bad") is not a matter on anybody's list (Ebele round 1, I-10). */
     for (const b of said.blockers) { if (!b.waitingOn) continue; await put(b.text, null, item.at ?? now, { waitingOn: b.waitingOn }); wrote.blockers += 1; }
-    /* Something that happened on the day is never a line on anybody's list, and nothing is asked about it (Dangote rerun, N10). */
+    /* Something that happened on the day is never a line on anybody's list, and nothing is asked about it (Halden rerun, N10). */
     /* What they now say about a promise reaches it: a new day, what it waits on, and "not finished after all" (D10: "approved in principle" was never recorded). A claim only ever goes down on their word: a promise counted as done with no proof is open again, and one a document proves stands. */
     for (const u of said.updates ?? []) {
       const row = (await have()).find((c) => c.id === u.commitmentId);
@@ -209,7 +209,7 @@ export async function turnTheirReplyIntoTheirCheckIn(prisma: any, mind: TheTeamM
     }
   }
 
-  /* Anything they send after an ask Fatima gave as a standing instruction is their answer to it. */
+  /* Anything they send after an ask Ebele gave as a standing instruction is their answer to it. */
   if (a.items.some((i) => i.text.trim())) {
     const asks: any[] = (await prisma.informationGap.findMany({ where: { principalUserId: contact.principalUserId, askedOfEmail: contact.contactKey, state: 'asked', gapKey: { startsWith: 'instr:' } } })) ?? [];
     for (const g of asks) if (g.askedAt && new Date(g.askedAt).getTime() <= now.getTime()) await prisma.informationGap.update({ where: { id: g.id }, data: { state: 'answered', answeredAt: now, answeredFrom: a.items[0].materialId ? `material:${a.items[0].materialId}` : null } });

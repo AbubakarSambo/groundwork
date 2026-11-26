@@ -1,12 +1,14 @@
 /**
- * A FILE READ AS ITS CELLS (Dangote brief, change 1: "code reads colours, does the arithmetic and computes the diffs; the model never does").
+ * A FILE READ AS ITS CELLS (Halden brief, change 1: "code reads colours, does the arithmetic and computes the diffs; the model never does").
  *
  * Every other reader turns a file into words: a workbook becomes values-only CSV (documents.service xlsxToText), a Word table becomes paragraphs
  * (mammoth's raw text), a deck becomes runs of slide text. That is right for reading meaning, and wrong for anything that must be cited or counted:
  * a row's fill colour is gone, the CSV line is not the Excel row (a sheet whose used range starts at row 3 put every row two out), a Word table's
  * columns are gone, and a slide number came from the file name, not the deck's own order.
  *
- * This reads the same zip of XML the other readers already open (JSZip, no new dependency) and keeps each cell with where it is:
+ * This reads the same zip of XML the other readers already open (JSZip, no new dependency) and keeps each cell with where it is. It is the
+ * one place a workbook is read as cells: the report on request's code execution reads its sheets from here too. An old .xls, which is not a
+ * zip, is read with the xlsx library the product already has, values and formulas only, with no fills.
  *
  *   workbook   every sheet by its own name, each cell with its A1 reference, its real row and column, its value, whether it is a date,
  *              its formula, and its fill colour (as #RRGGBB, with a plain name such as "yellow")
@@ -16,6 +18,7 @@
  * It decides nothing. What a colour means, which column is which and what changed are the stream rules' business, in code, reading this.
  */
 import * as JSZip from 'jszip';
+const XLSX = require('xlsx') as typeof import('xlsx');
 
 export interface ACell {
   /** "B7". For a table in a document or a deck: "row 3, column 2". */
@@ -28,6 +31,8 @@ export interface ACell {
   value: string;
   /** True where the value is a day the sheet formats as a date, held as YYYY-MM-DD. */
   isDate?: boolean;
+  /** What the file stores: a number, text (a figure typed as text is text), true or false, a date, or an error. Absent for a table cell. */
+  kind?: 'number' | 'text' | 'bool' | 'date' | 'error';
   /** The formula, without "=", where the cell has one. */
   formula?: string | null;
   /** "#FFFF00", or null where the cell has no fill. */
@@ -209,15 +214,17 @@ async function readAWorkbook(zip: JSZip): Promise<TheCells> {
       const f = /<f(?:\s[^>]*)?>([\s\S]*?)<\/f>/.exec(c)?.[1];
       let value = '';
       let isDate = false;
-      if (t === 's') value = shared[Number(v)] ?? '';
-      else if (t === 'inlineStr') value = [...c.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map((m) => unescapeXml(m[1])).join('');
-      else if (t === 'b') value = v === '1' ? 'TRUE' : v === '0' ? 'FALSE' : '';
+      let kind: ACell['kind'] = 'number';
+      if (t === 's') { value = shared[Number(v)] ?? ''; kind = 'text'; }
+      else if (t === 'inlineStr') { value = [...c.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map((m) => unescapeXml(m[1])).join(''); kind = 'text'; }
+      else if (t === 'b') { value = v === '1' ? 'TRUE' : v === '0' ? 'FALSE' : ''; kind = 'bool'; }
       else if (v !== undefined) {
         value = unescapeXml(v);
-        if (t !== 'str' && t !== 'e' && style.isDate) { const day = serialToDay(Number(value)); if (day) { value = day; isDate = true; } }
+        kind = t === 'str' ? 'text' : t === 'e' ? 'error' : 'number';
+        if (kind === 'number' && style.isDate) { const day = serialToDay(Number(value)); if (day) { value = day; isDate = true; kind = 'date'; } }
       }
       if (!value && !style.fill && !f) continue;
-      cells.push({ ref, row: at.row, col: at.col, value, ...(isDate ? { isDate } : {}), ...(f ? { formula: unescapeXml(f) } : {}), fill: style.fill, fillName: colourName(style.fill) });
+      cells.push({ ref, row: at.row, col: at.col, value, kind, ...(isDate ? { isDate } : {}), ...(f ? { formula: unescapeXml(f) } : {}), fill: style.fill, fillName: colourName(style.fill) });
     }
     sheets.push({ name, cells });
   }
@@ -298,19 +305,41 @@ async function readADeck(zip: JSZip): Promise<TheCells> {
 
 /* ------------------------------------------------------------------ the one way in */
 
-const KIND = (fileName: string, mimeType?: string | null): 'workbook' | 'document' | 'deck' | null => {
+const KIND = (fileName: string, mimeType?: string | null): 'workbook' | 'old workbook' | 'document' | 'deck' | null => {
   const n = fileName.toLowerCase(); const m = (mimeType ?? '').toLowerCase();
   if (n.endsWith('.xlsx') || n.endsWith('.xlsm') || m.includes('spreadsheetml')) return 'workbook';
+  if (n.endsWith('.xls') || m === 'application/vnd.ms-excel') return 'old workbook';
   if (n.endsWith('.docx') || m.includes('wordprocessingml')) return 'document';
   if (n.endsWith('.pptx') || m.includes('presentationml')) return 'deck';
   return null;
 };
+
+/** An old .xls, which is not a zip: its values and formulas through the xlsx library, with no fills (the format keeps them where that library does not read). */
+function readAnOldWorkbook(bytes: Buffer): TheCells {
+  const wb = XLSX.read(bytes, { type: 'buffer', cellFormula: true, cellDates: false });
+  const sheets: ASheet[] = wb.SheetNames.map((name) => {
+    const ws = wb.Sheets[name];
+    const cells: ACell[] = [];
+    for (const ref of Object.keys(ws ?? {})) {
+      if (ref[0] === '!') continue;
+      const c: any = ws[ref];
+      const at = fromA1(ref);
+      if (!at || c == null || (c.v === undefined && !c.f)) continue;
+      const kind: ACell['kind'] = c.t === 'n' ? 'number' : c.t === 'b' ? 'bool' : c.t === 'e' ? 'error' : c.t === 'd' ? 'date' : 'text';
+      const value = c.t === 'b' ? (c.v ? 'TRUE' : 'FALSE') : String(c.v ?? '');
+      cells.push({ ref, row: at.row, col: at.col, value, kind, ...(c.f ? { formula: String(c.f) } : {}), fill: null, fillName: null });
+    }
+    return { name, cells: cells.sort((a, b) => a.row - b.row || a.col - b.col) };
+  });
+  return { kind: 'workbook', sheets, tables: [] };
+}
 
 /** The cells of an Office file, or null for anything else or a file that will not open. Never throws. */
 export async function readTheCells(bytes: Buffer | Uint8Array | null | undefined, fileName: string, mimeType?: string | null): Promise<TheCells | null> {
   const kind = KIND(fileName, mimeType);
   if (!kind || !bytes || !bytes.length) return null;
   try {
+    if (kind === 'old workbook') return readAnOldWorkbook(Buffer.from(bytes));
     const zip = await JSZip.loadAsync(bytes);
     return kind === 'workbook' ? await readAWorkbook(zip) : kind === 'document' ? await readADocument(zip) : await readADeck(zip);
   } catch {

@@ -1,15 +1,15 @@
 /**
- * REAL HELP FOR THE TEAM MEMBER, PRIVATELY (Fatima, increment 6a; plan 6.3, 11, 26.1 and 31: "each team member can ask Groundwork to help draft, plan,
+ * REAL HELP FOR THE TEAM MEMBER, PRIVATELY (Ebele, increment 6a; plan 6.3, 11, 26.1 and 31: "each team member can ask Groundwork to help draft, plan,
  * clarify or follow through on their own work, within permissions").
  *
  * They can ask for an update, a letter, a meeting agenda, a next step, or help preparing for a hard follow-up, in plain words on WhatsApp or email.
- * The model writes it (the-team-mind.ts helpThem), from their own promises and nothing else: no colleague's words, no word from Fatima, no number
+ * The model writes it (the-team-mind.ts helpThem), from their own promises and nothing else: no colleague's words, no word from Ebele, no number
  * of any kind about anybody.
  *
  * PRIVATE, IN THE BACKEND. What they ask and what Groundwork writes back is kept only in the assistant's own private history for that person (the table
  * Ask Groundwork already keeps, `assistant_turns`, which is read only for the person it belongs to), never as material, a commitment, a gap or a
  * report line. Nothing here is read by the register, the year-end work, the first picture, the weekly email or any account of her team, and
- * a test reads each of those to prove it. Fatima only ever sees work that was documented (a promise, a document, an update the person sent as their
+ * a test reads each of those to prove it. Ebele only ever sees work that was documented (a promise, a document, an update the person sent as their
  * own check-in). Bank and card numbers are hidden before anything is kept or read by the model (decision 35).
  */
 import { remember } from './the-conversation-so-far';

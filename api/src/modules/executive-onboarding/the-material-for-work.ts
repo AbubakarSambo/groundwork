@@ -1,5 +1,5 @@
 /**
- * WHAT SHE FORWARDED, HANDED TO THE WORK THAT READS IT (Fatima, increment 6b). Her material is read by nothing outside this folder (see
+ * WHAT SHE FORWARDED, HANDED TO THE WORK THAT READS IT (Ebele, increment 6b). Her material is read by nothing outside this folder (see
  * nothing-forwarded-reaches-a-model-or-a-provider.spec.ts), so the payments tracker, the weekly Assembly report and the voice notes in a batch are
  * given to `principal-work/` from here, as plain data, and what it needs from the rest of her material (a document that mentions a payee) is asked
  * for through these functions. Nothing here runs a model, and nothing here sends anything.
@@ -38,7 +38,7 @@ export async function answeredByTheWork(prisma: any, batchId: string, now: Date)
 /**
  * Her kept material, read once, and a search over it: the correspondence a payment or an approval is held up against (newest first).
  * Duplicates and unreadable files are left out, and so are the sheets being read, so a tracker is never its own evidence. Read once and searched
- * many times (Dangote rerun, N11: it was read again for each of 165 payments, 10,415 rows each time, and Today took 40 to 90 seconds).
+ * many times (Halden rerun, N11: it was read again for each of 165 payments, 10,415 rows each time, and Today took 40 to 90 seconds).
  */
 export async function herMaterialToSearch(prisma: any, a: { principalUserId: string; exceptFiles?: string[] }): Promise<(terms: string[]) => AMaterialItem[]> {
   const rows: any[] = (await prisma.principalMaterial.findMany({ where: { principalUserId: a.principalUserId } })) ?? [];
@@ -55,7 +55,7 @@ export async function herMaterialToSearch(prisma: any, a: { principalUserId: str
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 /**
- * HOW A PERSON READS ONE THING ON HER RECORD (Dangote rerun, N5: "I already have the file “seed:message:bda211c03150b9d1”"). A message and a voice note are kept
+ * HOW A PERSON READS ONE THING ON HER RECORD (Halden rerun, N5: "I already have the file “seed:message:bda211c03150b9d1”"). A message and a voice note are kept
  * with an internal name, so they are named by what they are and the day: "your WhatsApp message of 19 November", "your email “Kilele permit” of 19 November",
  * "your voice note of 19 November". A file is named by its own name. `whose` is "your" for the sender, or a name ("Ahmed's") for anybody else.
  */
@@ -69,6 +69,19 @@ export function aThingOnHerRecord(m: { kind?: string | null; fileName?: string |
     return `${whose} email${subject ? ` “${subject}”` : ''}${day}`;
   }
   return `the file “${m.fileName ?? 'with no name'}”${day ? ` from${day.slice(3)}` : ''}`;
+}
+
+/** A file's name without its dates, numbers and version words: "States deck week 46 v2.pptx" and "States deck week 47.pptx" are one deck. */
+export const theSameFileName = (name: string): string => String(name ?? '').toLowerCase().replace(/\.[a-z0-9]+$/, '').replace(/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b/g, ' ').replace(/\b(?:week|wk|v|version|final|draft|updated|copy|of)\b/g, ' ').replace(/[^a-z]+/g, ' ').trim();
+
+/** The version of this file kept before it: the same name once dates and versions are taken off, received earlier, the latest of those. */
+export async function theEarlierVersionOf(prisma: any, item: AMaterialItem & { principalUserId?: string }, principalUserId: string): Promise<AMaterialItem | null> {
+  const want = theSameFileName(item.fileName);
+  if (!want) return null;
+  const rows: any[] = (await prisma.principalMaterial.findMany({ where: { principalUserId, kind: 'file' } }).catch(() => [])) ?? [];
+  const earlier = rows.filter((r) => r.id !== item.id && r.state === 'kept' && r.bytes && theSameFileName(r.fileName) === want && new Date(r.receivedAt).getTime() < item.receivedAt.getTime())
+    .sort((x, y) => new Date(y.receivedAt).getTime() - new Date(x.receivedAt).getTime());
+  return earlier.length ? asItem(earlier[0]) : null;
 }
 
 /** The people she named and introduced, who can be asked for what is missing. Never the people she only mentioned. */

@@ -1,5 +1,5 @@
 /**
- * A VOICE NOTE THAT CHANGES THE DRAFT (Fatima, increment 6b; plan sections 8 and 14). "Make the presentation shorter", "add March" and "this is wrong: the
+ * A VOICE NOTE THAT CHANGES THE DRAFT (Ebele, increment 6b; plan sections 8 and 14). "Make the presentation shorter", "add March" and "this is wrong: the
  * Kilele date" said aloud, on WhatsApp or as an audio file on a forwarded mail, change the CURRENT year-end draft as a new version and nothing else: no new
  * document, and no task made from the words. The earlier version is kept, as it is for typed words, because the change goes through the same year-end code.
  *

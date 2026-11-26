@@ -1,5 +1,5 @@
 /**
- * THE CONVERSATION SO FAR, FOR THE MODEL (Fatima round 12). A reply read or written with only the latest message cannot tell what "They" is, what "the reminder"
+ * THE CONVERSATION SO FAR, FOR THE MODEL (Ebele round 12). A reply read or written with only the latest message cannot tell what "They" is, what "the reminder"
  * is, or that "here is the signed copy" answers a request for proof: those come from the last few things this person wrote and what Groundwork last said to them.
  * The model is handed that as evidence, instead of one more rule for each case that went wrong.
  *
