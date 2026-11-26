@@ -26,7 +26,16 @@ export function aRealOrganisationName(name?: string | null): string | null {
   return n && !isAMadeUpWorkspaceName(n) ? n : null
 }
 
-export function askNameFor(organisationName?: string | null): string {
-  const name = aRealOrganisationName(organisationName)
-  return name ? `Ask ${name}` : 'Ask Groundwork'
+/**
+ * "[FIRST NAME]'S ASSISTANT" (Hafsah's standards, 2 November 2026; the server's ask-name.ts is the one rule, this is its copy for the
+ * moment before GET /ask answers). In a sentence it is "your assistant"; at the top of the panel, theAssistantsTitle.
+ */
+export function askNameFor(_organisationName?: string | null): string {
+  return 'your assistant'
+}
+
+/** "Wairimu's assistant", or "Your assistant" with no first name. */
+export function theAssistantsTitle(firstName?: string | null): string {
+  const first = (firstName ?? '').trim().split(/\s+/)[0]
+  return first ? `${first}\u2019s assistant` : 'Your assistant'
 }

@@ -2750,7 +2750,10 @@ export class BoardService {
           ? (((await ((this.prisma as any).workItem?.findMany?.({ where: { groundId, kind: 'deal' }, select: { name: true, ownerParticipantId: true } }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[])
           : [];
         /* By first name, and by the whole name where somebody else on the check-in has the same first name (page audit, 24 November, row 11). */
-        const callThem = namesToCallAmong(((ground.participants ?? []) as any[]).map((p) => [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || p?.nameGiven));
+        const theNames = ((ground.participants ?? []) as any[]).map((p) => [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || p?.nameGiven);
+        const shortened = namesToCallAmong(theNames);
+        /* A name on record is shortened to a first name; anything else ("One colleague", for somebody with no name on record) is said whole, never cut to "One" (24 November 2026). */
+        const callThem = (who: string) => (theNames.includes(who) ? shortened(who) : String(who ?? '').trim());
         /* A wait is said once, under Blockers (page audit, 24 November, row 11), never again on the person's line here. */
         out.eachPersonToday = (out.eachPersonToday as any[]).map((row) => (() => {
           const c = today.get(row.participantId);

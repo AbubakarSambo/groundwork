@@ -17,13 +17,34 @@ export function isAMadeUpWorkspaceName(name?: string | null): boolean {
   return /^my workspace$/i.test(n) || /^.+['\u2019]s workspace$/i.test(n);
 }
 
-export function askName(organisationName?: string | null): string {
-  const name = (organisationName ?? '').replace(/\s+/g, ' ').trim();
-  return name && !isAMadeUpWorkspaceName(name) ? `Ask ${name}` : 'Ask Groundwork';
+/**
+ * "[FIRST NAME]'S ASSISTANT" (Hafsah's standards, 2 November 2026, which replace decision 100's "Ask [organisation]"). In a sentence to the
+ * reader it is "your assistant"; at the start of one, "Your assistant" (theAssistant). The organisation is named under it, as the Desk it helps
+ * with (theAssistantsCaption). The argument is kept so every caller reads the one name; the organisation no longer goes into it.
+ */
+export function askName(_organisationName?: string | null): string {
+  return 'your assistant';
 }
 
-/** The caption under the name. */
-export const ASK_CAPTION = 'Ask about the company, your work or your check-ins.';
+/** The same name opening a sentence. */
+export function theAssistant(): string {
+  return 'Your assistant';
+}
+
+/** The name at the top of the panel: "Wairimu's assistant", or "Your assistant" with no first name on record. */
+export function theAssistantsTitle(firstName?: string | null): string {
+  const first = (firstName ?? '').trim().split(/\s+/)[0];
+  return first ? `${first}\u2019s assistant` : 'Your assistant';
+}
+
+/** "Helps you navigate your Msingi Foods Desk" (the standards' own words), or the Desk alone with no real organisation name yet. */
+export function theAssistantsCaption(organisationName?: string | null): string {
+  const name = (organisationName ?? '').replace(/\s+/g, ' ').trim();
+  return name && !isAMadeUpWorkspaceName(name) ? `Helps you navigate your ${name} Desk.` : 'Helps you navigate your Desk.';
+}
+
+/** The caption under the name, where no organisation is known. */
+export const ASK_CAPTION = theAssistantsCaption(null);
 /** The one line under the caption. */
 export const ASK_ADD_LINE = 'You can also add context or documents to your check-ins here.';
 /** The same line for an admin who runs no check-in: their documents are for the whole organisation (fix list, item 3). */
@@ -48,13 +69,13 @@ export function askFirstWelcome(
   /** Which of leave and spending are on here, and whether the reader is a guest: what the welcome says Ask can do is only what is true for them. */
   who: { leaveIsOn?: boolean; spendingIsOn?: boolean; isAGuest?: boolean } = { leaveIsOn: true, spendingIsOn: true },
 ): string {
-  const name = askName(organisationName).replace(/^Ask /, '');
+  const name = organisationName && !isAMadeUpWorkspaceName(organisationName) ? organisationName.trim() : null;
   if (who.isAGuest) {
-    return `This is Ask ${name}. You are a guest here, so I answer you only about your own check-in.`;
+    return `This is your assistant${name ? ` at ${name}` : ''}. You are a guest here, so I answer you only about your own check-in.`;
   }
   const request = who.leaveIsOn && who.spendingIsOn ? 'for leave or to spend money' : who.leaveIsOn ? 'for leave' : who.spendingIsOn ? 'to spend money' : null;
   /* While adding context or a document is hidden at release (`release.contextInAskGroundwork`), the welcome neither offers it nor explains it. */
-  return (`This is Ask ${name}. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. `
+  return (`This is your assistant${name ? ` at ${name}` : ''}. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. `
     + (contextIsHere
       ? `Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here${request ? `, and ask ${request}` : ''}. `
       : `Ask me about the company, about your work, or about your check-ins.${request ? ` You can also ask me ${request}.` : ''} `)

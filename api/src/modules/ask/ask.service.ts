@@ -1,4 +1,4 @@
-import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, ASK_ADD_LINE, ASK_ADMIN_ADD_LINE, askStartersFor } from '../assistant/ask-name';
+import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, theAssistantsTitle, theAssistantsCaption, ASK_ADD_LINE, ASK_ADMIN_ADD_LINE, askStartersFor } from '../assistant/ask-name';
 import { readDuties, whoHolds } from '../suites/who-holds-each-duty';
 import { contextIsInAskGroundwork, theOldContextChatIsOpen } from '../admin/what-is-hidden-at-release';
 import { whatWasSaid } from '../assistant/what-was-said-is-what-is-kept';
@@ -285,7 +285,9 @@ export class AskService {
        questions kept yet, it says what it can do; once they have asked, it does not say it again. */
     let organisationName: string | null = null;
     try { organisationName = (await this.prisma.organization.findUnique({ where: { id: asker.organizationId }, select: { name: true } }))?.name ?? null; } catch { organisationName = null; }
-    const name = askName(organisationName);
+    /* "[First name]'s assistant", with the organisation's Desk under it (the standards, 2 November 2026). */
+    const me = await this.prisma.user.findUnique({ where: { id: asker.userId }, select: { firstName: true } }).catch(() => null);
+    const name = theAssistantsTitle(me?.firstName);
     const contextIsHere = await contextIsInAskGroundwork(this.prisma);
     /* WHAT IS OFFERED IS WHAT THIS READER CAN BE ANSWERED (decision 36 for a guest; the suites that are on; the check-ins they can use). */
     const mine = await this.theirCheckIns(asker);
@@ -315,7 +317,7 @@ export class AskService {
       : [];
     /* Whether the old context chat on the check-in page still answers (release.oldContextChat). The screens stop drawing it when this is false. */
     const oldContextChatIsOpen = await theOldContextChatIsOpen(this.prisma);
-    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: addsContext ? ASK_ADD_LINE : anAdmin && contextIsHere ? ASK_ADMIN_ADD_LINE : null, addsContext, oldContextChatIsOpen, welcome, starters };
+    return { ...shown, askName: name, caption: theAssistantsCaption(organisationName), addLine: addsContext ? ASK_ADD_LINE : anAdmin && contextIsHere ? ASK_ADMIN_ADD_LINE : null, addsContext, oldContextChatIsOpen, welcome, starters };
   }
 
   /**

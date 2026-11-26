@@ -1,6 +1,6 @@
 import { chunk } from '../knowledge/a-document-is-not-a-card';
 import { WHAT_IS_IN_IT_PROMPT, aReadableTitle } from '../knowledge/the-desk';
-import { askName, isAMadeUpWorkspaceName } from './ask-name';
+import { askName, theAssistant, isAMadeUpWorkspaceName } from './ask-name';
 
 /**
  * AN ADMIN OR A LEAD ADDS A DOCUMENT FOR THE WHOLE ORGANISATION THROUGH ASK (S7, 20 November 2026: leads too, and it goes
@@ -94,11 +94,11 @@ export function whatTheDocumentSays(title: string, text: string, name?: string |
       ? `It has ${count} parts. They cover ${inAList(more > 0 ? [...shown, `${more} more`] : shown)}.`
       : `It has ${count} parts.`;
   const inIt = String(whatIsInIt ?? '').replace(/\s+/g, ' ').trim().slice(0, 600);
-  const body = `I have read ${title}. ${inIt ? `${inIt} ` : ''}${parts}\n\nNothing is added yet. If you say yes, it goes on ${itsDesk(name)}, where everyone in ${theOrganisation(name)} can read it. ${askName(name)} answers from it, and check-ins read it when it applies. If you say no, nothing from it is kept.`;
+  const body = `I have read ${title}. ${inIt ? `${inIt} ` : ''}${parts}\n\nNothing is added yet. If you say yes, it goes on ${itsDesk(name)}, where everyone in ${theOrganisation(name)} can read it. ${theAssistant()} answers from it, and check-ins read it when it applies. If you say no, nothing from it is kept.`;
   return { body, summary: `Add ${title} to ${itsDesk(name)}?` };
 }
 
 export const ADDED_TO_THE_DESK = (title: string, parts: number, name?: string | null): string =>
-  `I have added ${title} to ${itsDesk(name)}, ${parts === 1 ? 'as one part' : `in ${parts} parts`}. ${askName(name)} answers from it from now on, and check-ins read it when it applies.`;
+  `I have added ${title} to ${itsDesk(name)}, ${parts === 1 ? 'as one part' : `in ${parts} parts`}. ${theAssistant()} answers from it from now on, and check-ins read it when it applies.`;
 
 export const NOT_ADDED = (title: string): string => `I have not added ${title}. Nothing from it was kept.`;

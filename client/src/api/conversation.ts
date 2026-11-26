@@ -140,7 +140,8 @@ export const conversationApi = {
     apiClient.get<TranscriptResponse>(`/check-ins/${checkInId}/transcript`, { skipForbiddenToast: true, skipNotFoundToast: true } as any).then(r => r.data),
   /** The end card, waited for on the server for as long as it is being built (up to about a minute). Null when no card stands. */
   endCard: (checkInId: string) =>
-    apiClient.get<{ endCard: TheEndCard | null }>(`/check-ins/${checkInId}/end-card`, { timeout: 70_000 }).then(r => r.data?.endCard ?? null),
+    /* Longer than the server can take to answer (two waits of 50 seconds, FINISHING_WAITS_FOR_THE_CARD_MS): at 70 seconds the screen said "I could not load what I wrote down" while the card was still coming (journey 2, 23 November 2026). */
+    apiClient.get<{ endCard: TheEndCard | null }>(`/check-ins/${checkInId}/end-card`, { timeout: 110_000 }).then(r => r.data?.endCard ?? null),
 
   artifact: (checkInId: string) =>
     apiClient.get(`/check-ins/${checkInId}/artifact`, { skipNotFoundToast: true }).then(r => r.data),

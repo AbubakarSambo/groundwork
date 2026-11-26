@@ -767,6 +767,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    and the participant's full-width header (group 3's drift-list review, part 2; replaces the
    gwui-ml-auto/gwui-mr-auto pair on GroundAdminPage.tsx and GroundParticipantPage.tsx). */
 .gwui-centered-column { margin-left: auto; margin-right: auto; }
+/* The 600px reading column, as a class rather than an inline style (design rule 12; journey 4, 23 November 2026). */
+.gwui-reading-column { max-width: 600px; }
 /* The participant's own check-in header row - a muted 13px sentence, with room above and below
    for the badges beside it (a guest check-in's own org, how it ended) (group 3's drift-list
    review, part 2; replaces GroundParticipantPage.tsx's own gwui-fs-13/gwui-ink-muted/gwui-pt-10/

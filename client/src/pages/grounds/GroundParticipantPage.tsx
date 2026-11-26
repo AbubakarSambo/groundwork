@@ -777,8 +777,7 @@ export function GroundParticipantPage() {
       <div
         hidden={tab === 'checkin'}
         /* The wide tabs take the page's one content width (--ds-content, 1150px); the rest keep the 600px reading column. */
-        className={`gw-bd${(tab === 'settings' || tab === 'record' || tab === 'docs') ? ' ds-page-in' : ' gwui-centered-column'}`}
-        style={(tab === 'settings' || tab === 'record' || tab === 'docs') ? undefined : { maxWidth: 600 }}
+        className={`gw-bd${(tab === 'settings' || tab === 'record' || tab === 'docs') ? ' ds-page-in' : ' gwui-centered-column gwui-reading-column'}`}
       >
 
         {/**
