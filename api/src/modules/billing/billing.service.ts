@@ -54,14 +54,14 @@ export function freeSeatLimitMessage(limit: number): string {
 export const NO_PLAN_TO_OPEN = 'Your organisation has no plan yet. Choose one on Plan and billing to open a check-in.';
 export const NO_PLAN_TO_ADD = 'Your organisation has no plan yet. Choose one on Plan and billing to add people.';
 /* The prototype's words (upgrade.txt), for anybody in a check-in whose organisation has no plan. */
-/** "When Baridi Appliances was set up, it had 20 or more people, so it began on a plan." Null when nobody was asked. */
+/** "When Baridi Appliances was set up, it had 20 or more people." Null when nobody was asked. The month is for any size (25 November 2026). */
 export function theSizeItStartedWith(org: { name?: string | null; teamSizeSaid?: string | null; teamSizeLine?: number | null }): { said: 'fewer' | 'more'; line: number; says: string } | null {
   const said = org.teamSizeSaid === 'fewer' || org.teamSizeSaid === 'more' ? org.teamSizeSaid : null;
   const line = Number(org.teamSizeLine);
   if (!said || !Number.isInteger(line) || line < 2) return null;
   const who = (org.name ?? '').trim() || 'your organisation';
   const says = said === 'more'
-    ? `When ${who} was set up, it had ${line} or more people, so it began on a plan.`
+    ? `When ${who} was set up, it had ${line} or more people.`
     : `When ${who} was set up, it had fewer than ${line} people.`;
   return { said, line, says };
 }
@@ -130,12 +130,12 @@ export class BillingService {
   /**
    * THE FREE PLAN IS THE FREE TRIAL, AND EVERY ORGANISATION GETS IT ONCE (Hafsah, 22 November 2026: "free trial is for teams
    * of 20 and there's nothing like 10 free checkins"). An organisation that has never had the trial, made before it was
-   * switched on or not, is given it the first time it needs cover, if its team is under the trial's size. Says whether it
+   * switched on or not, is given it the first time it needs cover, whatever its size (25 November 2026). Says whether it
    * was given now. Never throws.
    */
   private async theTrialIsGivenNow(organizationId: string): Promise<boolean> {
     const trial = this.freeTrial ?? new TheFreeTrialService(this.prisma, this.pricing);
-    const got = await trial.grantIfItApplies(organizationId, 'fewer').catch(() => null);
+    const got = await trial.grantIfItApplies(organizationId).catch(() => null);
     return !!got?.granted;
   }
 
@@ -160,14 +160,28 @@ export class BillingService {
   }
 
   /**
+   * HOW MANY PEOPLE WHAT COVERS THEM HOLDS, the one read for every seat gate and the page that shows it. Null means no limit.
+   * Nothing covering them: the person who made it. The free trial: as many people as they like (Hafsah, 25 November 2026;
+   * Rhea's pilot was held to the trial plan's seats). Otherwise the plan's own seats, a plan of theirs or a free run we gave.
+   */
+  private async theSeatCap(org: Parameters<typeof whatCoversThem>[0] & { freeTrialStartedAt?: Date | string | null }): Promise<number | null> {
+    const covered = whatCoversThem(org as any, new Date(), await this.theGrace());
+    if (covered.covers === 'free tier') return 1;
+    if (covered.covers === 'on the house' && org.freeTrialStartedAt) return null;
+    return covered.plan ? ((await this.pricing.memberCapFor(covered.plan as any)) ?? null) : null;
+  }
+
+  /**
    * EXTRA SEATS (fix list item 6): whether this organisation may go past its plan's included seats, at the plan's
    * extra-seat price. Yes for an organisation on a plan or in its free month, on a plan that sells extra seats, once the
    * new pricing's switch is on (the free trial's, `pricing.freeTrial`, release step 13a). While it is off, the plan's seats
    * are a limit, exactly as before. The free plan always keeps its limit. Null means no extra seats here.
    */
-  private async extraSeatsFor(org: { subscriptionPlan: unknown; subscriptionStatus: string | null; freeUntil?: Date | null; freePlan?: unknown }): Promise<{ plan: SubscriptionPlan; cap: number; extraSeatCents: number } | null> {
+  private async extraSeatsFor(org: { subscriptionPlan: unknown; subscriptionStatus: string | null; freeUntil?: Date | null; freePlan?: unknown; freeTrialStartedAt?: Date | null }): Promise<{ plan: SubscriptionPlan; cap: number; extraSeatCents: number } | null> {
     const covered = whatCoversThem(org as any, new Date(), await this.theGrace());
     if (!covered.plan) return null;
+    /* The free trial has no seat limit, so nobody in it is an extra seat (25 November 2026). */
+    if (covered.covers === 'on the house' && org.freeTrialStartedAt) return null;
     const trial = typeof (this.pricing as any)?.getFreeTrial === 'function' ? await this.pricing.getFreeTrial().catch(() => null) : null;
     if (!trial?.on) return null;
     const row = await (this.prisma.pricingPlan as any)?.findUnique?.({ where: { plan: covered.plan }, select: { memberCap: true, extraSeatCents: true } }).catch(() => null);
@@ -475,8 +489,7 @@ export class BillingService {
     /* Fix list item 6: a plan that can add seats has no limit; each person past it is an extra seat. */
     if (await this.extraSeatsFor(org)) return null;
     /* Whichever covers them today decides the cap: their own plan or the one we gave them. With neither, only the person who created it. */
-    const covered = whatCoversThem(org, new Date(), await this.theGrace());
-    const cap = covered.covers === 'free tier' ? 1 : covered.plan ? await this.pricing.memberCapFor(covered.plan as any) : null;
+    const cap = await this.theSeatCap(org);
     if (cap === null || cap === undefined) return null;
     /* Never negative: an organisation already over its cap has no room, not room owed back. */
     return Math.max(0, cap - (await this.seatsTaken(organizationId)));
@@ -492,9 +505,7 @@ export class BillingService {
   async seatsIncludedFor(organizationId: string): Promise<number | null> {
     const org = await this.theOrgWithItsCover(organizationId);
     if (!org) return null;
-    const covered = whatCoversThem(org, new Date(), await this.theGrace());
-    const cap = covered.covers === 'free tier' ? 1 : covered.plan ? await this.pricing.memberCapFor(covered.plan as any) : null;
-    return cap ?? null;
+    return this.theSeatCap(org);
   }
 
   async canInviteMember(organizationId: string): Promise<{ allowed: boolean; reason?: string; addsASeat?: boolean; says?: string }> {
@@ -511,8 +522,8 @@ export class BillingService {
      */
     if (!subscribed) return count >= 1 ? { allowed: false, reason: NO_PLAN_TO_ADD } : { allowed: true };
 
-    const capPlan = covered.plan ?? org.subscriptionPlan;
-    const cap = capPlan ? await this.pricing.memberCapFor(capPlan as any) : null;
+    const capPlan = (covered.plan ?? org.subscriptionPlan) as SubscriptionPlan;
+    const cap = await this.theSeatCap(org);
     if (cap === null) return { allowed: true };
     /*
      * EXTRA SEATS (fix list item 6): past the included seats, the person is an extra seat at the plan's price, not refused.
@@ -539,8 +550,9 @@ export class BillingService {
        * better than the silence it replaces, and a one-shot marker would need a
        * schema field for a message nobody has ever received.
        */
-      this.warnAboutTheMemberCap(organizationId, org.subscriptionPlan!, count, cap).catch(() => undefined);
-      return { allowed: false, reason: paidSeatLimitMessage(PLAN_LABELS[org.subscriptionPlan as SubscriptionPlan], cap) };
+      /* The plan that covers them, theirs or the free run's: a free run has no plan of its own, which read "Your undefined plan". */
+      this.warnAboutTheMemberCap(organizationId, capPlan, count, cap).catch(() => undefined);
+      return { allowed: false, reason: paidSeatLimitMessage(PLAN_LABELS[capPlan], cap) };
     }
     return { allowed: true };
   }
@@ -996,6 +1008,7 @@ export class BillingService {
     people: number,
     covers: { covers: string; plan: unknown; until: Date | null },
     orgName: string | null | undefined,
+    inTheTrial = false,
   ): Promise<WhatAMonthSays> {
     const plan = (covers.plan as SubscriptionPlan | null) ?? null;
     const { plans, wa, row, whatsappOn, usedIt, free, flatHolds, month } = await this.theMonthOf(organizationId, people, plan);
@@ -1007,7 +1020,10 @@ export class BillingService {
     let included: string | null = null;
     if (month && row) {
       const label = PLAN_LABELS[month.plan];
-      included = month.included === null
+      /* The free trial has no seat limit (25 November 2026), so it is not said as seats. */
+      included = inTheTrial
+        ? `${label}, free for your first month, for as many people as you like`
+        : month.included === null
         ? label
         : `${label}, ${month.included} seats included${month.extraSeats ? `, plus ${month.extraSeats} extra at +${dollarsOf(month.extraSeatCents)} each` : ''}`;
       lines = [{ says: label, amount: dollarsOf(month.planCents) }];
@@ -1035,7 +1051,9 @@ export class BillingService {
       people,
       plan,
       included,
-      peopleSays: `Everyone with a Groundwork account at ${name}. Your plan includes a set number of seats; each extra seat is +${dollarsOf(seatCents ?? 0)} a month. You see the price before an invitation goes.`,
+      peopleSays: inTheTrial
+        ? `Everyone with a Groundwork account at ${name}. During your free month you can add as many people as you like. After it, your plan includes a set number of seats, and each extra seat is +${dollarsOf(seatCents ?? 0)} a month.`
+        : `Everyone with a Groundwork account at ${name}. Your plan includes a set number of seats; each extra seat is +${dollarsOf(seatCents ?? 0)} a month. You see the price before an invitation goes.`,
       lines,
       total,
       free: covers.covers === 'on the house' && covers.until ? `Nothing is charged until your free month ends on ${whenItWasForBilling(covers.until)}.` : null,
@@ -1134,7 +1152,7 @@ export class BillingService {
      */
     const grace = await this.theGrace();
     const covers = whatCoversThem(org, new Date(), grace);
-    const peopleCap = covers.covers === 'free tier' ? 1 : covers.plan ? await this.pricing.memberCapFor(covers.plan as any) : null;
+    const peopleCap = await this.theSeatCap(org as any);
 
     /* Three counts, in parallel with each other and cheap - all indexed by organisation. */
     const [everyGround, reportsOut, tookPart] = await Promise.all([
@@ -1236,7 +1254,7 @@ export class BillingService {
         ? (invoices ?? []).map((i: any) => ({ paidOn: i.periodStart, amountCents: i.amountCents, currency: i.currency }))
         : undefined,
       startedWith: includeUsage ? theSizeItStartedWith(org as any) : undefined,
-      month: includeUsage && (await this.pricing.getFreeTrial?.().catch(() => null))?.on ? await this.whatAMonthSays(organizationId, peopleCount, covers, org.name).catch((err: any) => { this.logger.warn(`Could not work out this month for ${organizationId}: ${err?.message}`); return null; }) : undefined,
+      month: includeUsage && (await this.pricing.getFreeTrial?.().catch(() => null))?.on ? await this.whatAMonthSays(organizationId, peopleCount, covers, org.name, covers.covers === 'on the house' && !!org.freeTrialStartedAt).catch((err: any) => { this.logger.warn(`Could not work out this month for ${organizationId}: ${err?.message}`); return null; }) : undefined,
     };
   }
 

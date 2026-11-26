@@ -8,7 +8,6 @@ import { GroundworkEvents, type OrgSizeSaidEvent, type OrgSignedUpEvent, type An
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { aFreeRunEndsOn, whatCoversThem, WHAT_COVER_READS } from '../../common/subscription';
 import { theGraceInForce } from './the-trial-grace';
-import { seatsIn } from '../../common/seats';
 
 /**
  * THE FREE TRIAL, GIVEN FOR REAL (U.19). Hafsah's decision of 26 September: teams of fewer than 20
@@ -20,9 +19,9 @@ import { seatsIn } from '../../common/seats';
  * together, and while it is off nothing here does anything at all. It is on by default (22 November 2026), and it is
  * the only free plan: billing gives it to any organisation that has never had it, the first time it needs cover.
  *
- * WHEN. "Create an organisation" asks whether the team is fewer than the trial's size, and only while
- * the trial is on. The answer "fewer" is what grants it; "Teams of 20 or more start on a plan", as the
- * prototype's pricing page says, so "more" grants nothing.
+ * WHEN. Every organisation, whatever its size, from the day it signs up or says its size, or the first time billing
+ * reads its cover (Hafsah, 25 November 2026: "everyone gets that for a month regardless of what plan they choose").
+ * There is no size test: the month is for teams of any size, with WhatsApp free for the trial's number of people.
  *
  * WHAT. The months are an ordinary free run (`freeUntil` and `freePlan`), which every gate already
  * reads as cover, and nothing touches Stripe: no customer, no card, no subscription, no charge. When
@@ -115,13 +114,12 @@ export class TheFreeTrialService {
       /*
        * NEVER SHORTER THAN THE REGULAR TRIAL (review of piece 34). Where the organisation would also be given the regular
        * trial today, it is given the longer of the two, and that counts as its regular trial. Where it would not (the
-       * regular trial is off, or the team is not under its size), the anchor month is given on its own and does not use
+       * regular trial is off), the anchor month is given on its own and does not use
        * up the regular trial: `freeTrialStartedAt` stays empty, so the regular trial can still be given later, and then
        * it runs its full length from that day (see grantIfItApplies).
        */
       const regular = this.pricing.getFreeTrial ? await this.pricing.getFreeTrial().catch(() => null) : null;
-      const seats: number = regular?.on ? ((await (this.prisma as any).user?.count?.({ where: seatsIn(organizationId) })?.catch?.(() => Infinity)) ?? Infinity) : Infinity;
-      const alsoTheRegular = !!regular?.on && seats < regular.teamsUnder;
+      const alsoTheRegular = !!regular?.on;
       const months = alsoTheRegular ? Math.max(trial.months, regular!.months) : trial.months;
       const until = aFreeRunEndsOn(now, months);
       const written = await this.prisma.organization.updateMany({
@@ -139,14 +137,13 @@ export class TheFreeTrialService {
 
   @OnEvent(GroundworkEvents.ORG_SIZE_SAID)
   async whenTheySayTheirSize(event: OrgSizeSaidEvent): Promise<void> {
-    await this.grantIfItApplies(event.organizationId, event.said);
+    await this.grantIfItApplies(event.organizationId);
   }
 
   /**
    * AN ORGANISATION NAMED ON THE SIGN-UP FORM IS NEVER ASKED ITS SIZE (clean-install run, 6 October). Once billing is
-   * on, that left it with no plan and no trial, and unable to open a check-in. So the server applies the rule itself:
-   * the sign-up form promises the month to "teams of fewer than 20 people", and `grantIfItApplies` checks that against
-   * who is really in the organisation. One that says its size later, on `/org-new?naming=1`, is handled as before.
+   * on, that left it with no plan and no trial, and unable to open a check-in. So it is given the month here, as every
+   * organisation is.
    * The event is sent from inside the transaction that creates the organisation, so it is looked for again for a moment.
    */
   @OnEvent(GroundworkEvents.ORG_SIGNED_UP)
@@ -159,7 +156,7 @@ export class TheFreeTrialService {
       if (found) break;
       await new Promise((r) => setTimeout(r, 100));
     }
-    await this.grantIfItApplies(event.organizationId, 'fewer');
+    await this.grantIfItApplies(event.organizationId);
   }
 
   /**
@@ -168,13 +165,11 @@ export class TheFreeTrialService {
    */
   async grantIfItApplies(
     organizationId: string,
-    said: 'fewer' | 'more',
     now: Date = new Date(),
   ): Promise<{ granted: false; why: string } | { granted: true; plan: SubscriptionPlan; until: Date }> {
     try {
       const trial = await this.pricing.getFreeTrial();
       if (!trial.on) return { granted: false, why: 'the free trial is off' };
-      if (said !== 'fewer') return { granted: false, why: 'the team is not under the trial size' };
 
       const org = await this.prisma.organization.findUnique({
         where: { id: organizationId },
@@ -194,10 +189,6 @@ export class TheFreeTrialService {
       const anchorMonth = await this.theAnchorMonthOf(organizationId, org, now);
       const aFreeRunIsGoing = !!org.freeUntil && new Date(org.freeUntil).getTime() > now.getTime();
       if (aFreeRunIsGoing && !anchorMonth) return { granted: false, why: 'it has a free run of its own' };
-
-      /* What they said is checked against who is really here, counted as billing counts a seat. */
-      const seats = await this.prisma.user.count({ where: seatsIn(organizationId) });
-      if (seats >= trial.teamsUnder) return { granted: false, why: 'the team is not under the trial size' };
 
       const plan = await this.thePlanItCovers(trial.teamsUnder);
       if (!plan) {

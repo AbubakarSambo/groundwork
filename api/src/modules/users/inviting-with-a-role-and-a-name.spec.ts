@@ -48,6 +48,17 @@ describe('the role an invitation gives', () => {
   });
 });
 
+describe('the box\'s own "name, email, phone", with a first name alone (Hafsah, 26 November 2026)', () => {
+  const pasted = 'Rhea, rhea@x.com, +254 700 100 001\nPerson 01, p01@x.com, +254 700 100 002\nperson 02, p02@x.com';
+  it('keeps every name, and no line comes back as "Not an email address"', () => {
+    expect(planFor(pasted, () => false, null)).toEqual([
+      { email: 'rhea@x.com', result: 'invited', name: 'Rhea', phone: '+254 700 100 001' },
+      { email: 'p01@x.com', result: 'invited', name: 'Person 01', phone: '+254 700 100 002' },
+      { email: 'p02@x.com', result: 'invited', name: 'person 02' },
+    ]);
+  });
+});
+
 describe('a typo beside an address is still a typo', () => {
   it('"oops, b@x.com" is not somebody called Oops', () => {
     expect(namesIn('oops, b@x.com').size).toBe(0);

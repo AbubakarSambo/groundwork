@@ -585,7 +585,7 @@ export function FreeTrialRow() {
         <div>
           <div style={{ fontSize: 13, fontWeight: 700 }}>The free trial</div>
           <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
-            Teams of fewer than {data.teamsUnder} people get {length} free.
+            Every team gets {length} free, for as many people as they like, with WhatsApp for up to {data.teamsUnder} of them.
           </div>
           {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
         </div>

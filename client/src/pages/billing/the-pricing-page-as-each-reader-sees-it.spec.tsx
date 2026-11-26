@@ -69,7 +69,7 @@ describe('a visitor who is not signed in', () => {
   it('reads nothing about a free trial while it is off, and none of the lines that were not true', async () => {
     renderIt()
     await waitFor(() => expect(text()).toContain('$410 a month'))
-    expect(text()).not.toMatch(/months free|Teams of fewer than/)
+    expect(text()).not.toMatch(/months free|Every team gets/)
     expect(text()).not.toMatch(/no trial that expires|No proration surprises/)
   })
 
@@ -91,12 +91,14 @@ describe('a visitor who is not signed in', () => {
   it('reads the one shared sentence and the trial’s card once it is switched on', async () => {
     m.pricing = { ...m.pricing, trial: { on: true, teamsUnder: 20, months: 1 } }
     renderIt()
-    await waitFor(() => expect(text()).toContain('Teams of fewer than 20 people get 1 month free, WhatsApp included, no card required. Subscribe as your team grows.'))
+    await waitFor(() => expect(text()).toContain('Every team gets 1 month free, with WhatsApp for up to 20 people. No card required. Subscribe as your team grows.'))
     expect(text()).toContain('1 month free')
     expect(text()).toContain('$0 for 1 month')
     /* Changed 15 October (fix list item 6): the light prototype's own button, "Start your free month". */
     expect(text()).toContain('Start your free month')
-    expect(text()).toContain('Everything on every plan, WhatsApp included, free for your first month. No card required.')
+    /* It opens Sign up, not Sign in (Hafsah, 26 November 2026). */
+    expect(screen.getByRole('link', { name: 'Start your free month' })).toHaveAttribute('href', '/auth?mode=signup')
+    expect(text()).toContain('Everything on every plan, for as many people as you like, free for your first month. WhatsApp is free for up to 20 of them. No card required.')
   })
 
   it('reads the seats each plan includes, +$5 an extra seat and WhatsApp at $4 a person, in the light prototype\'s words (fix list item 6)', async () => {

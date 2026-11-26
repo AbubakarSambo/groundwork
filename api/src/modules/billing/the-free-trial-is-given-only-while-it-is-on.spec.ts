@@ -49,7 +49,7 @@ function baridi(opts: { on?: boolean; teamsUnder?: number; months?: number; seat
 describe('while the free trial is off, which is how it ships', () => {
   it('Grace saying her team is small gives nothing, and writes nothing', async () => {
     const { svc, writes, prisma } = baridi({ on: false });
-    const got = await svc.grantIfItApplies('org-baridi', 'fewer', NOW);
+    const got = await svc.grantIfItApplies('org-baridi', NOW);
     expect(got).toEqual({ granted: false, why: 'the free trial is off' });
     expect(writes).toEqual([]);
     expect(prisma.organization.findUnique).not.toHaveBeenCalled();
@@ -59,7 +59,7 @@ describe('while the free trial is off, which is how it ships', () => {
 describe('once the free trial is switched on', () => {
   it('a team under 20 is given one month on Small Team, from today, with nothing charged (decision 78)', async () => {
     const { svc, writes } = baridi({ on: true, seats: 1 });
-    const got = await svc.grantIfItApplies('org-baridi', 'fewer', NOW);
+    const got = await svc.grantIfItApplies('org-baridi', NOW);
     expect(got).toEqual({ granted: true, plan: 'SMALL_TEAM', until: new Date('2026-10-27T10:00:00Z') });
     expect(writes).toHaveLength(1);
     expect(writes[0].where).toEqual({ id: 'org-baridi', freeTrialStartedAt: null, freeUntil: null });
@@ -70,15 +70,16 @@ describe('once the free trial is switched on', () => {
 
   it('the size and the length come from the setting, and the plan from the table', async () => {
     const { svc } = baridi({ on: true, teamsUnder: 50, months: 2 });
-    const got = await svc.grantIfItApplies('org-baridi', 'fewer', NOW);
+    const got = await svc.grantIfItApplies('org-baridi', NOW);
     expect(got).toEqual({ granted: true, plan: 'GROWTH', until: new Date('2026-11-27T10:00:00Z') });
   });
 
-  it('a team of 20 or more starts on a plan, as the pricing page says', async () => {
-    expect((await baridi({ on: true }).svc.grantIfItApplies('org-baridi', 'more', NOW)).granted).toBe(false);
-    /* What they said is checked against who is really here. */
-    expect((await baridi({ on: true, seats: 20 }).svc.grantIfItApplies('org-baridi', 'fewer', NOW)).granted).toBe(false);
-    expect((await baridi({ on: true, seats: 19 }).svc.grantIfItApplies('org-baridi', 'fewer', NOW)).granted).toBe(true);
+  it('a team of any size is given the month, whatever it said (Hafsah, 25 November 2026)', async () => {
+    /* It was refused at 20 or more, and to anyone who said "more": Rhea's team was held to a plan of 5 people. */
+    for (const seats of [1, 19, 20, 45, 300]) {
+      const got: any = await baridi({ on: true, seats }).svc.grantIfItApplies('org-baridi', NOW);
+      expect(got).toEqual({ granted: true, plan: 'SMALL_TEAM', until: new Date('2026-10-27T10:00:00Z') });
+    }
   });
 
   it('is given once, never over a free run we gave, and never to an organisation that pays', async () => {
@@ -89,7 +90,7 @@ describe('once the free trial is switched on', () => {
     ];
     for (const org of cases) {
       const { svc, writes } = baridi({ on: true, org });
-      expect((await svc.grantIfItApplies('org-baridi', 'fewer', NOW)).granted).toBe(false);
+      expect((await svc.grantIfItApplies('org-baridi', NOW)).granted).toBe(false);
       expect(writes).toEqual([]);
     }
   });
@@ -97,7 +98,7 @@ describe('once the free trial is switched on', () => {
   it('never throws, so naming an organisation can never fail on it', async () => {
     const { svc, prisma } = baridi({ on: true });
     prisma.organization.findUnique.mockRejectedValueOnce(new Error('the database blinked'));
-    await expect(svc.grantIfItApplies('org-baridi', 'fewer', NOW)).resolves.toEqual({ granted: false, why: 'something failed' });
+    await expect(svc.grantIfItApplies('org-baridi', NOW)).resolves.toEqual({ granted: false, why: 'something failed' });
   });
 });
 
@@ -141,7 +142,8 @@ describe('what Plan and billing serves once the trial is given', () => {
     const billing = new BillingService(prisma, { stripe: {} } as any, pricing, {} as any, {} as any, {} as any);
     const status = await billing.getStatus('org-baridi');
     expect(status.onTheHouse).toEqual({ plan: 'SMALL_TEAM', until, freeTrial: true });
-    expect(status.people).toEqual({ count: 12, cap: 20 });
+    /* No people limit in the trial (25 November 2026). */
+    expect(status.people).toEqual({ count: 12, cap: null });
     expect(status.subscription.plan).toBeNull();
   });
 });

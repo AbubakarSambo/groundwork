@@ -62,13 +62,14 @@ const LOOKS_LIKE_AN_ADDRESS = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * columns - is that person, written the way a mail client writes them, "Ada Obi <ada@x.com>". A line
  * with two or more addresses is left alone, so a pasted To field still splits as it did.
  */
-const A_NAME = /^[\p{L}][\p{L}\p{M}' .-]*$/u;
+const A_NAME = /^[\p{L}][\p{L}\p{M}\p{N}' .-]*$/u;
 /*
- * A NAME IS TWO WORDS OR MORE, or one in its own spreadsheet column. "oops, b@x.com" is a typo
- * beside an address, and must still come back as its own "not an email" row rather than become
- * somebody called Oops.
+ * A NAME IS TWO WORDS OR MORE, one in its own spreadsheet column, or one written the way a name is, with a capital: "Rhea,
+ * rhea@x.com, +254 ..." is Rhea (Hafsah, 26 November 2026: a first name alone, in the box's own "name, email, phone", came back as
+ * "Not an email address" and the name was lost, and so was "Person 01", which has a digit). "oops, b@x.com" is a typo beside an
+ * address, and still comes back as its own "not an email" row rather than become somebody called Oops.
  */
-const aFullName = (name: string, fromAColumn: boolean) => A_NAME.test(name) && (fromAColumn || name.includes(' '));
+const aFullName = (name: string, fromAColumn: boolean) => A_NAME.test(name) && (fromAColumn || name.includes(' ') || /^\p{Lu}/u.test(name));
 /*
  * "ONE PER LINE: A NAME AND AN EMAIL, OR A WHATSAPP NUMBER" (A4 people.txt:224). A phone number on the line is that person's,
  * read with their name and address and taken out before the address is read, so it is never mistaken for an address. Hafsah,

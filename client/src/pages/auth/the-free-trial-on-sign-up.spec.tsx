@@ -41,13 +41,13 @@ describe('the free trial on sign-up', () => {
   it('on: the prototype\'s sentence, built from the server\'s numbers', async () => {
     ;(billingApi.getPricing as any).mockResolvedValue(pricing({ on: true, teamsUnder: 20, months: 1 }))
     renderSignUp()
-    expect(await screen.findByText('Teams of fewer than 20 people get 1 month free, WhatsApp included, no card required.')).toBeTruthy()
+    expect(await screen.findByText('Every team gets 1 month free, with WhatsApp for up to 20 people. No card required.')).toBeTruthy()
   })
 
   it('with other numbers, the same sentence with those numbers', async () => {
     ;(billingApi.getPricing as any).mockResolvedValue(pricing({ on: true, teamsUnder: 30, months: 2 }))
     renderSignUp()
-    expect(await screen.findByText('Teams of fewer than 30 people get 2 months free, WhatsApp included, no card required.')).toBeTruthy()
+    expect(await screen.findByText('Every team gets 2 months free, with WhatsApp for up to 30 people. No card required.')).toBeTruthy()
   })
 
   it('a failed read says nothing about a trial', async () => {

@@ -151,23 +151,20 @@ export function PricingPage() {
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 220 }}>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-navy)', margin: '0 0 4px' }}>{trialLength} free</h2>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 'var(--gw-space-block)' }}>{`Teams of fewer than ${trialShown.teamsUnder} people`}</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 'var(--gw-space-block)' }}>{`Every team, any size, with WhatsApp for up to ${trialShown.teamsUnder} people`}</div>
                 <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', margin: 0 }}>
                   {oneMonth
-                    ? `Everything on every plan, WhatsApp included, free for your first month. No card required. Unlimited check-ins and reports. After your free month, subscribe to keep going. Teams of ${trialShown.teamsUnder} or more start on a plan.`
+                    ? `Everything on every plan, for as many people as you like, free for your first month. WhatsApp is free for up to ${trialShown.teamsUnder} of them. No card required. Unlimited check-ins and reports. After your free month, subscribe to keep going.`
                     : `${trialSentence} After ${trialLength}, subscribe to keep going.`}
                 </p>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>{`$0 for ${trialLength}`}</div>
                 {!user && (
-                  <button className="btn pri"
-                    type="button"
-                    onClick={() => navigate('/auth?next=/pricing')}
-                    style={{ marginTop: 'var(--gw-space-block)' }}
-                  >
+                  /* Sign up, not Sign in: the free month starts with a new organisation (Hafsah, 26 November 2026). */
+                  <Link to="/auth?mode=signup" className="btn pri" style={{ marginTop: 'var(--gw-space-block)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
                     {oneMonth ? 'Start your free month' : `Start your free ${trialLength}`}
-                  </button>
+                  </Link>
                 )}
               </div>
             </div>

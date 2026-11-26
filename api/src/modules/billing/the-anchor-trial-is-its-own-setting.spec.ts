@@ -95,7 +95,7 @@ describe('the anchor month and the regular trial', () => {
       user: { count: jest.fn(async () => 4) },
       ground: { findMany: jest.fn(async () => (anchorStartedOn ? [{ createdAt: anchorStartedOn }] : [])) },
     };
-    return new TheFreeTrialService(prisma, pricing).grantIfItApplies('org-baridi', 'fewer', at);
+    return new TheFreeTrialService(prisma, pricing).grantIfItApplies('org-baridi', at);
   };
   const anAnchorMonth = () => ({ subscriptionPlan: null, subscriptionStatus: null, freeUntil: new Date('2026-11-05T10:00:00Z'), freePlan: 'GROWTH', freeTrialStartedAt: null });
 
@@ -125,7 +125,7 @@ describe('the anchor month and the regular trial', () => {
       user: { count: jest.fn(async () => 4) },
       ground: { findMany: jest.fn(async (a: any) => { asked.push(a.where); return rows.filter((r) => a.where.OR.some((c: any) => Object.entries(c).every(([k, v]) => (r as any)[k] === v))); }) },
     };
-    const got: any = await new TheFreeTrialService(prisma, pricing).grantIfItApplies('org-baridi', 'fewer', new Date('2026-10-20T10:00:00Z'));
+    const got: any = await new TheFreeTrialService(prisma, pricing).grantIfItApplies('org-baridi', new Date('2026-10-20T10:00:00Z'));
     expect(got.granted).toBe(true);
     expect(asked[0].OR).toEqual([{ startedFrom: 'anchor' }, { scenario: 'HELP_TEAM_UNDERSTAND' }]);
   });
@@ -154,7 +154,7 @@ describe('the anchor month and the regular trial', () => {
       ground: { findMany: jest.fn(async () => []) },
     };
     const pricing: any = { getFreeTrial: jest.fn(async () => ({ on: true, teamsUnder: 20, months: 1 })), listPlans: jest.fn(async () => PLANS) };
-    expect(await new TheFreeTrialService(prisma, pricing).grantIfItApplies('o', 'fewer', NOW)).toEqual({ granted: false, why: 'it has a free run of its own' });
+    expect(await new TheFreeTrialService(prisma, pricing).grantIfItApplies('o', NOW)).toEqual({ granted: false, why: 'it has a free run of its own' });
   });
 });
 

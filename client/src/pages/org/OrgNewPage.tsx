@@ -36,7 +36,6 @@ export function OrgNewPage() {
   const setAuth = useAuthStore(s => s.setAuth)
 
   const [name, setName] = useState('')
-  const [size, setSize] = useState<'fewer' | 'more'>('fewer')
   const [billingEmail, setBillingEmail] = useState('')
   const [problem, setProblem] = useState('')
 
@@ -49,7 +48,9 @@ export function OrgNewPage() {
   const trialSentence = theFreeTrialSentence(pricing?.trial)
   const line = pricing?.trial?.teamsUnder
 
-  const teamSize: TeamSizeSaid | undefined = trialSentence && line ? { said: size, line } : undefined
+  /* The size is not asked any more: every team gets the month, whatever its size (Hafsah, 25 November 2026). Saying it still
+     gives the month the moment the organisation is made. */
+  const teamSize: TeamSizeSaid | undefined = trialSentence && line ? { said: 'fewer', line } : undefined
 
   const create = useMutation({
     mutationFn: () => {
@@ -117,16 +118,7 @@ export function OrgNewPage() {
           autoFocus
         />
 
-        {teamSize && (
-          <div className="gw-auth-fld">
-            <label className="gw-auth-label" htmlFor="org-new-size">How many people will use it?</label>
-            <select id="org-new-size" className="gw-auth-input" value={size} onChange={e => setSize(e.target.value as 'fewer' | 'more')}>
-              <option value="fewer">Fewer than {line}</option>
-              <option value="more">{line} or more</option>
-            </select>
-            <p className="gw-auth-small" style={{ margin: '6px 0 0' }}>{trialSentence}</p>
-          </div>
-        )}
+        {trialSentence && <p className="gw-auth-small" style={{ margin: '0 0 12px' }}>{trialSentence}</p>}
 
         <AuthField
           id="org-new-billing"

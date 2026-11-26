@@ -131,10 +131,10 @@ describe('Grace, an admin, on Growth', () => {
   it('reads how it began, when the server serves it', async () => {
     m.status = {
       ...m.status,
-      startedWith: { said: 'more', line: 20, says: 'When Baridi Appliances was set up, it had 20 or more people, so it began on a plan.' },
+      startedWith: { said: 'more', line: 20, says: 'When Baridi Appliances was set up, it had 20 or more people.' },
     }
     renderIt()
-    await waitFor(() => expect(text()).toContain('When Baridi Appliances was set up, it had 20 or more people, so it began on a plan.'))
+    await waitFor(() => expect(text()).toContain('When Baridi Appliances was set up, it had 20 or more people.'))
   })
 
   it('says nothing about how it began when the server has not served it', async () => {
@@ -225,7 +225,7 @@ describe('Grace, with nothing covering her organisation', () => {
   it('reads the one shared trial sentence once the trial is switched on', async () => {
     m.pricing = { ...m.pricing, trial: TRIAL_ON }
     renderIt()
-    await waitFor(() => expect(text()).toContain('Teams of fewer than 20 people get 3 months free, WhatsApp included, no card required.'))
+    await waitFor(() => expect(text()).toContain('Every team gets 3 months free, with WhatsApp for up to 20 people. No card required.'))
   })
 })
 
@@ -283,12 +283,12 @@ describe('Grace, inside the free trial’s months', () => {
     expect(screen.getByText('See every plan')).toBeTruthy()
   })
 
-  it('past the trial’s size, reads that the trial carries on and what comes after', async () => {
+  it('a team of 20 or more reads nothing about its size: the month is for any size (25 November 2026)', async () => {
     m.pricing = { ...m.pricing, trial: TRIAL_ON }
-    m.status = { subscription: { plan: null, status: null, periodEnd: null, endsAt: null, freeExtensionUsed: false }, people: { count: 20, cap: 20 }, onTheHouse: { plan: 'SMALL_TEAM', until: inDays(40), freeTrial: true }, activeGrounds: [], card: null, invoices: [] }
+    m.status = { subscription: { plan: null, status: null, periodEnd: null, endsAt: null, freeExtensionUsed: false }, people: { count: 45, cap: 20 }, onTheHouse: { plan: 'SMALL_TEAM', until: inDays(40), freeTrial: true }, activeGrounds: [], card: null, invoices: [] }
     renderIt()
-    await waitFor(() => expect(text()).toContain('You now have 20 people'))
-    expect(text()).toContain('The free 3 months are for teams of fewer than 20. Your trial carries on until its end date; after that you’ll need Small Team, $90 a month.')
+    await waitFor(() => expect(text()).toMatch(/Small Team, free until/))
+    expect(text()).not.toMatch(/You now have 45 people|for teams of fewer than/)
   })
 
   it('reads nothing about the trial if the setting is switched off again', async () => {
@@ -296,7 +296,7 @@ describe('Grace, inside the free trial’s months', () => {
     m.status = { subscription: { plan: null, status: null, periodEnd: null, endsAt: null, freeExtensionUsed: false }, people: { count: 12, cap: 20 }, onTheHouse: { plan: 'SMALL_TEAM', until: inDays(5), freeTrial: true }, activeGrounds: [], card: null, invoices: [] }
     renderIt()
     await waitFor(() => expect(text()).toMatch(/Small Team, free until/))
-    expect(text()).not.toMatch(/free 3 months|Teams of fewer than/)
+    expect(text()).not.toMatch(/free 3 months|Every team gets/)
   })
 })
 

@@ -41,7 +41,7 @@ function baridi(opts: { anchorGround: boolean; people: number; anchorOn?: boolea
 describe('an anchor team of 20 people and the lead, on the ordinary trial', () => {
   it('is given the 21st seat when it said its size after the anchor check-in began', async () => {
     const { org, trial, billing } = baridi({ anchorGround: true, people: 4 });
-    expect((await trial.grantIfItApplies('org-baridi', 'fewer', NOW)).granted).toBe(true);
+    expect((await trial.grantIfItApplies('org-baridi', NOW)).granted).toBe(true);
     expect(org.freePlan).not.toBe('SMALL_TEAM');
     (billing as any).seatsTaken = async () => 20;
     expect((await billing.canInviteMember('org-baridi')).allowed).toBe(true);
@@ -49,7 +49,7 @@ describe('an anchor team of 20 people and the lead, on the ordinary trial', () =
 
   it('is given it when the anchor check-in begins after the ordinary trial was already given, and the end day does not move', async () => {
     const { org, trial, billing } = baridi({ anchorGround: false, people: 4 });
-    await trial.grantIfItApplies('org-baridi', 'fewer', NOW);
+    await trial.grantIfItApplies('org-baridi', NOW);
     expect(org.freePlan).toBe('SMALL_TEAM');
     const ends = org.freeUntil;
     await trial.whenAnAnchorCheckInStarts({ organizationId: 'org-baridi', groundId: 'g-anchor' } as any);
@@ -59,12 +59,12 @@ describe('an anchor team of 20 people and the lead, on the ordinary trial', () =
     expect((await billing.canInviteMember('org-baridi')).allowed).toBe(true);
   });
 
-  it('an ordinary team that is not an anchor team stays on Small Team, which holds 20 in all', async () => {
+  it('an ordinary team that is not an anchor team stays on Small Team, and in the trial it may add anybody (25 November 2026)', async () => {
     const { org, trial, billing } = baridi({ anchorGround: false, people: 4 });
-    await trial.grantIfItApplies('org-baridi', 'fewer', NOW);
+    await trial.grantIfItApplies('org-baridi', NOW);
     expect(org.freePlan).toBe('SMALL_TEAM');
     (billing as any).seatsTaken = async () => 20;
-    expect((await billing.canInviteMember('org-baridi')).allowed).toBe(false);
+    expect((await billing.canInviteMember('org-baridi')).allowed).toBe(true);
   });
 
   it('a team that is paying is left alone', async () => {

@@ -44,7 +44,7 @@ export const WHATSAPP_NOT_TURNED_ON = 'Your organisation has not turned on Whats
 export const WHATSAPP_REMINDERS_ARE_OFF = 'Your organisation has not turned on WhatsApp, so Groundwork does not send you reminders or summaries on WhatsApp.';
 export const WHATSAPP_NOT_ON_A_PAID_PLAN = 'Your organisation is not on a paid plan at the moment, so this check-in stays in the app.';
 
-export type WhyHeld = 'not turned on' | 'not on a paid plan' | 'at the limit';
+export type WhyHeld = 'not turned on' | 'not on a paid plan' | 'at the limit' | 'past the free people';
 
 /** The calendar month a message counts towards, in UTC, as "2026-10". */
 export function monthOf(now: Date): string {
@@ -77,10 +77,16 @@ function aNumber(n: number): string {
 }
 
 /** What a person reads when a message to them was not sent by WhatsApp. */
-export function whatThePersonReads(why: WhyHeld, now: Date): string {
+export function whatThePersonReads(why: WhyHeld, now: Date, freePeople: number | null = null): string {
   if (why === 'not turned on') return WHATSAPP_NOT_TURNED_ON;
+  if (why === 'past the free people') return theFreePeopleAreTaken(freePeople ?? 20);
   if (why === 'not on a paid plan') return WHATSAPP_NOT_ON_A_PAID_PLAN;
   return `Your organisation has used all its WhatsApp messages for this month, so this check-in stays in the app. WhatsApp starts again on ${aDay(theNextMonthStarts(now))}.`;
+}
+
+/** What a person past the free month's WhatsApp people reads (Hafsah, 25 November 2026). */
+export function theFreePeopleAreTaken(n: number): string {
+  return `Your organisation's free month includes WhatsApp for ${n} people, and ${n} people already use it, so this check-in stays in the app. An admin can add WhatsApp to a plan so everybody gets it.`;
 }
 
 /** What the organisation's admins are told, once, when the month's limit is reached. */
@@ -120,6 +126,8 @@ export interface WhatsAppStanding {
   /** Whether a WhatsApp message for this organisation may go now. */
   sending: boolean;
   heldBecause: WhyHeld | null;
+  /** While WhatsApp is free (the free month, or the trial), how many people may get it, and since when they are counted. Null when it is paid for. */
+  freePeople: { up: number; since: Date } | null;
 }
 
 const ORG_FIELDS = {
@@ -171,7 +179,7 @@ export class WhatsAppAddOnService {
        2026): the same grant billing makes, so WhatsApp and the check-ins never disagree about whether a team is covered. */
     const graceNow = await theGraceInForce(this.prisma).catch(() => null);
     if (whatCoversThem(org, now).covers === 'free tier' && !isPaused(org, graceNow)) {
-      const got = await new TheFreeTrialService(this.prisma, this.pricing).grantIfItApplies(organizationId, 'fewer', now).catch(() => null);
+      const got = await new TheFreeTrialService(this.prisma, this.pricing).grantIfItApplies(organizationId, now).catch(() => null);
       if (got?.granted) org = (await this.prisma.organization.findUnique({ where: { id: organizationId }, select: ORG_FIELDS })) ?? org;
     }
     const [trial, plans, use] = await Promise.all([
@@ -216,6 +224,14 @@ export class WhatsAppAddOnService {
       else if (cover.covers !== 'paid') heldBecause = 'not on a paid plan';
     }
     if (!heldBecause && limit !== null && sent >= limit) heldBecause = 'at the limit';
+    /* WHATSAPP IS FREE FOR UP TO 20 PEOPLE IN THE MONTH (Hafsah, 25 November 2026). Counted from when the free month began. */
+    let freePeople: { up: number; since: Date } | null = null;
+    if (!charged && (freeMonth || inAFreeRun)) {
+      const ends = freeMonth && org.whatsappFreeUntil ? new Date(org.whatsappFreeUntil) : new Date(org.freeUntil as Date);
+      const began = new Date(ends);
+      began.setUTCMonth(began.getUTCMonth() - trial.months);
+      freePeople = { up: trial.teamsUnder, since: began };
+    }
 
     return {
       switchOn,
@@ -238,6 +254,7 @@ export class WhatsAppAddOnService {
       since,
       sending: heldBecause === null,
       heldBecause,
+      freePeople,
     };
   }
 
@@ -248,16 +265,21 @@ export class WhatsAppAddOnService {
    * counts too. Never throws: an unreadable record counts nobody.
    */
   async peopleWhoUsedIt(organizationId: string, since: Date): Promise<number> {
+    return (await this.numbersOnWhatsAppSince(organizationId, since)).size;
+  }
+
+  /** Each different number Groundwork wrote to on WhatsApp since then, the free "held" notice left out. Never throws. */
+  async numbersOnWhatsAppSince(organizationId: string, since: Date): Promise<Set<string>> {
     try {
       const rows: Array<{ phone: string }> = await (this.prisma.whatsAppSend as any).findMany({
         where: { organizationId, sentAt: { gte: since }, OR: [{ kind: null }, { kind: { not: 'held-told' } }] },
         select: { phone: true },
         distinct: ['phone'],
       });
-      return new Set((rows ?? []).map((r) => onePersonsNumber(r.phone)).filter(Boolean)).size;
+      return new Set((rows ?? []).map((r) => onePersonsNumber(r.phone)).filter(Boolean) as string[]);
     } catch (err: any) {
       this.logger.warn(`Could not count the people on WhatsApp for ${organizationId}: ${err?.message}`);
-      return 0;
+      return new Set();
     }
   }
 
@@ -273,10 +295,17 @@ export class WhatsAppAddOnService {
    * WHETHER A WHATSAPP MESSAGE FOR THIS ORGANISATION MAY GO. Never throws: if the answer cannot be
    * read, the message goes as it does today, and the failure is logged.
    */
-  async mayWeSend(organizationId: string, now: Date = new Date()): Promise<{ send: true } | { send: false; why: WhyHeld; saying: string }> {
+  async mayWeSend(organizationId: string, now: Date = new Date(), to?: string | null): Promise<{ send: true } | { send: false; why: WhyHeld; saying: string }> {
     try {
       const s = await this.standing(organizationId, now);
-      if (s.sending) return { send: true };
+      if (s.sending) {
+        /* A person already on WhatsApp this free month keeps it; a new one goes only while fewer than the free number use it. */
+        const person = to ? onePersonsNumber(to) : null;
+        if (!s.freePeople || !person) return { send: true };
+        const numbers = await this.numbersOnWhatsAppSince(organizationId, s.freePeople.since);
+        if (numbers.has(person) || numbers.size < s.freePeople.up) return { send: true };
+        return { send: false, why: 'past the free people', saying: theFreePeopleAreTaken(s.freePeople.up) };
+      }
       return { send: false, why: s.heldBecause as WhyHeld, saying: whatThePersonReads(s.heldBecause as WhyHeld, now) };
     } catch (err: any) {
       this.logger.warn(`Could not read WhatsApp standing for ${organizationId}, so the message goes as today: ${err?.message}`);
@@ -509,7 +538,9 @@ export class WhatsAppAddOnService {
           : 'WhatsApp is off for your organisation, so check-ins stay in the app.',
       /* The free month, in a sentence, with what keeps WhatsApp on after it. */
       freeMonth: s.inTheFreeWhatsAppMonth && s.whatsappFreeUntil
-        ? (s.addOnOn
+        ? (s.freePeople && !s.addOnOn
+          ? `WhatsApp is free for up to ${aNumber(s.freePeople.up)} people until ${aDay(s.whatsappFreeUntil)}. To keep it after that, add it to your subscription with the switch above.`
+          : s.addOnOn
           ? `WhatsApp is free until ${aDay(s.whatsappFreeUntil)}. After that it is paid as part of your subscription.`
           : `WhatsApp is free until ${aDay(s.whatsappFreeUntil)}. To keep it after that, add it to your subscription with the switch above.`)
         : null,
@@ -522,7 +553,7 @@ export class WhatsAppAddOnService {
             : s.plan ? `WhatsApp is not sold by itself on your ${label} plan. Contact us to arrange it.` : null,
       /* s73's WhatsApp card, word for word. */
       whoIsCharged: s.flatKept ? null : 'Charged only for people who use it',
-      whoIsChargedMore: s.flatKept ? null : 'Anyone who checks in or gets messages on WhatsApp in a month. Never more than your number of people. Free during your free month.',
+      whoIsChargedMore: s.flatKept ? null : `Anyone who checks in or gets messages on WhatsApp in a month. Never more than your number of people. Free during your free month${s.freePeople ? `, for up to ${aNumber(s.freePeople.up)} people` : ''}.`,
       people: s.addOnOn || s.inTheFreeWhatsAppMonth
         ? `${aNumber(s.peopleUsedIt)} ${s.peopleUsedIt === 1 ? 'person has' : 'people have'} used WhatsApp this month.`
         : null,

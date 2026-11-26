@@ -105,7 +105,7 @@ export function thePlanThatHolds(count: number, pricing: LivePricing | undefined
 }
 
 export interface ATrialNotice {
-  key: 'ending' | 'past the size'
+  key: 'ending'
   heading: string
   body: string
   choose: SubscriptionPlan | null
@@ -116,8 +116,8 @@ export interface ATrialNotice {
  * organisation inside the free trial's months (not a free run given by hand), and only while the
  * trial setting is on, so the size and the length are the setting's.
  *
- *   7 days before: "Your free month ends on 14 October", and the plan that keeps it running.
- *   Past the size: "You now have 20 people", and the plan needed after the end date.
+ *   7 days before: "Your free month ends on 14 October", and the plan that keeps it running. The month is for a team of any
+ *   size (25 November 2026), so nothing is said about its size.
  */
 export function theTrialNotices(status: BillingStatus | undefined, pricing: LivePricing | undefined, now: Date = new Date()): ATrialNotice[] {
   const free = status?.onTheHouse
@@ -132,14 +132,6 @@ export function theTrialNotices(status: BillingStatus | undefined, pricing: Live
   const plan = thePlanThatHolds(count, pricing)
   const planWords = plan ? `${nameOf(plan)}${aMonth(pricing, plan) ? `, ${aMonth(pricing, plan)}` : ''}` : null
 
-  if (count >= trial.teamsUnder) {
-    out.push({
-      key: 'past the size',
-      heading: `You now have ${count} people`,
-      body: `The ${theFree} ${one ? 'is' : 'are'} for teams of fewer than ${trial.teamsUnder}. Your trial carries on until its end date${planWords ? `; after that you’ll need ${planWords}.` : '.'}`,
-      choose: null,
-    })
-  }
   const daysLeft = (until.getTime() - now.getTime()) / (24 * 3600 * 1000)
   if (daysLeft <= 7 && daysLeft > 0) {
     out.push({

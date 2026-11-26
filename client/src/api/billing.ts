@@ -44,7 +44,7 @@ export interface BillingStatus {
   usage?: { checkIns: number; reportsReleased: number; peopleTakingPart: number }
   /**
    * Admin only: what it began on, when it was set up - a plain sentence, never a figure.
-   * "When Baridi Appliances was set up, it had 20 or more people, so it began on a plan."
+   * "When Baridi Appliances was set up, it had 20 or more people."
    */
   startedWith?: { said: 'fewer' | 'more'; line: number; says: string } | null
   /** Admin only (fix list item 6): this month, line by line, each plan for your people, and a cheaper plan. Every sentence is the server's. */

@@ -78,7 +78,8 @@ describe('ILRI on live: made before the trial, its free check-ins used, nothing 
     const { svc } = billing({});
     expect(await svc.canInviteMember('org-1')).toEqual({ allowed: true });
     const status = await svc.getStatus('org-1');
-    expect(status.people).toEqual({ count: 6, cap: 20 });
+    /* No people limit in the trial (25 November 2026). */
+    expect(status.people).toEqual({ count: 6, cap: null });
     expect(status.onTheHouse).toMatchObject({ plan: 'SMALL_TEAM', freeTrial: true });
     expect(status).not.toHaveProperty('onTheFreePlan');
   });
@@ -117,11 +118,11 @@ describe('while paying is not wired (no Stripe key), nobody is refused for havin
     expect(await svc.canCreateGround('org-1')).toEqual({ allowed: true });
     expect(org.freeTrialStartedAt).toBeInstanceOf(Date);
   });
-  it('a team at or over the trial size can open a check-in and add people, and is not given the trial', async () => {
+  it('a team of 20 or more can open a check-in and add people, and is given the trial too (25 November 2026)', async () => {
     const { svc, org } = billing({ seats: 20 });
     expect(await svc.canCreateGround('org-1')).toEqual({ allowed: true });
     expect(await svc.canInviteMember('org-1')).toEqual({ allowed: true });
-    expect(org.freeTrialStartedAt).toBeNull();
+    expect(org.freeTrialStartedAt).toBeInstanceOf(Date);
   });
   it('after the trial and its four weeks, a check-in can still be opened', async () => {
     const { svc } = billing({
@@ -132,14 +133,14 @@ describe('while paying is not wired (no Stripe key), nobody is refused for havin
   });
 });
 
-describe('a team at or over the trial size starts on a plan, once paying is possible', () => {
+describe('a team of 20 or more is given the month like any other, once paying is possible (Hafsah, 25 November 2026)', () => {
   withAKey();
-  it('is not given the trial, and is told plainly how to go on', async () => {
+  it('is given the trial, and can open a check-in and add people', async () => {
     const { svc, org } = billing({ seats: 20 });
-    expect(await svc.canCreateGround('org-1')).toEqual({ allowed: false, reason: NO_PLAN_TO_OPEN, noPlan: true });
-    expect(org.freeTrialStartedAt).toBeNull();
-    expect(await svc.canInviteMember('org-1')).toEqual({ allowed: false, reason: NO_PLAN_TO_ADD });
-    expect(NO_PLAN_TO_OPEN).toBe('Your organisation has no plan yet. Choose one on Plan and billing to open a check-in.');
+    expect(await svc.canCreateGround('org-1')).toEqual({ allowed: true });
+    expect(org.freeTrialStartedAt).toBeInstanceOf(Date);
+    expect(org.freePlan).toBe('SMALL_TEAM');
+    expect(await svc.canInviteMember('org-1')).toMatchObject({ allowed: true });
   });
 
   it('a check-in it opened free before keeps running, with unlimited sessions', async () => {
@@ -147,9 +148,9 @@ describe('a team at or over the trial size starts on a plan, once paying is poss
     expect(await svc.canStartSession('g-1')).toEqual({ allowed: true, sessionsBalance: -1 });
   });
 
-  it('a check-in with nothing in hand is paused in the prototype’s words, with no free extension offered', async () => {
+  it('a check-in in a team of 25 can start its session in the month', async () => {
     const { svc } = billing({ seats: 25 });
-    expect(await svc.canStartSession('g-1')).toEqual({ allowed: false, reason: PAUSED_UNTIL_THEY_SUBSCRIBE, sessionsBalance: 0 });
+    expect(await svc.canStartSession('g-1')).toMatchObject({ allowed: true });
   });
 });
 
