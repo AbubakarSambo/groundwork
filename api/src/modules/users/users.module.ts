@@ -25,6 +25,6 @@ import { PersonDetailsService } from './person-details.service';
   /* The door service is registered here rather than exported from a participants module: it is
      used by this controller only, and the accept path writes the queue itself. */
   providers: [UsersService, MyOwnRecordService, WhoIsWaitingAtTheDoorService, TheOrganisationInviteLinkService, PersonDetailsService],
-  exports: [UsersService],
+  exports: [UsersService, WhoIsWaitingAtTheDoorService],
 })
 export class UsersModule {}

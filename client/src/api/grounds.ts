@@ -618,6 +618,9 @@ export const groundsApi = {
       }[]>('/grounds/awaiting-approval', { skipForbiddenToast: true })
       .then(r => r.data),
 
+  /* Who approving it gives a seat to, and what that adds to the bill (Hafsah, 26 November 2026). */
+  approvingGives: (groundId: string) =>
+    apiClient.get<{ says: string | null }>(`/grounds/${groundId}/approving-gives`).then(r => ((r.data as any)?.data ?? r.data) as { says: string | null }),
   approve: (groundId: string) =>
     apiClient.post<{ id: string; status: string; alreadyDecided: boolean }>(`/grounds/${groundId}/approve`, {}).then(r => r.data),
 

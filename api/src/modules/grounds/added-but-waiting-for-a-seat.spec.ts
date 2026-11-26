@@ -64,13 +64,15 @@ describe('the service adds them rather than refusing', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('asks the seat question before creating the row', () => {
-    expect(SRC).toMatch(/waitingForASeat = whetherThereIsRoomForOneMore\(\{ seatsTaken, seatsIncluded \}\)/);
+    /* One seat question now, asked wherever an admin's yes gives a seat (isThereASeatFor, 26 November 2026). */
+    expect(SRC).toMatch(/return whetherThereIsRoomForOneMore\(\{ seatsTaken, seatsIncluded \}\)/);
+    expect(SRC).toMatch(/const waitingForASeat: SeatAnswer = addedByAnAdmin \? await this\.isThereASeatFor\(/);
   });
 
   /** An existing member already holds a seat; adding them to a second check-in costs nothing. */
   it('and only asks it about somebody who would need a seat', () => {
-    expect(SRC).toMatch(/const alreadyHereWithASeat = await this\.prisma\.user\.count\(/);
-    expect(SRC).toMatch(/if \(!alreadyHereWithASeat\) \{/);
+    expect(SRC).toMatch(/const alreadyHereWithASeat = await db\.user\.count\(/);
+    expect(SRC).toMatch(/if \(alreadyHereWithASeat\) return \{ room: true \};/);
   });
 
   it('and adds them anyway, marked', () => {

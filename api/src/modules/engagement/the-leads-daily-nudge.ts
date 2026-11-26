@@ -17,7 +17,7 @@ import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsa
 import { A_TEMPLATE_BODY_LIMIT, TEMPLATES, oneLine, NOT_TODAY, THEY_SAID_NOT_NOW, NOT_TURNED_ON_QUIETLY } from '../whatsapp/a-message-outside-the-window';
 import { ITS_OWN_WORDS_AT_MOST } from '../whatsapp/the-first-message-to-a-number';
 import { whatWaitsForYouToDecide, type TheBoards } from '../suites/what-waits-for-you-to-decide';
-import type { AWaitingRequest } from '../suites/a-request-in-words';
+import type { AWaitingRequest, AWaitingDecision } from '../suites/a-request-in-words';
 import { THEY_HAD_ONE_TODAY } from './one-routine-message-a-day';
 import { theirApprovedLeave, fallsInLeave, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { theirRosterEntry } from '../suites/a-roster-entry-and-its-sign-in';
@@ -383,7 +383,7 @@ export async function whatIsOutstandingFor(
   const kept = (groundId: string) => keptOffThePhone(grounds.find((g) => g.id === groundId));
 
   /* NEEDS YOU, first: what waits for her to approve. */
-  const waiting = await whatWaitsForYouToDecide({ userId: lead.userId, organizationId: lead.organizationId }, deps.boards).catch(() => []);
+  const waiting = (await whatWaitsForYouToDecide({ userId: lead.userId, organizationId: lead.organizationId }, deps.boards).catch(() => [] as AWaitingDecision[])).filter((w): w is AWaitingRequest => w.kind !== 'seat');
   const approvals = whatWaitsInASentence(waiting);
   if (approvals) out.needsYou.push({ text: approvals, group: 0, about: { kind: 'requests', ids: waiting.map((w) => `${w.kind}:${w.ref}`) } });
 

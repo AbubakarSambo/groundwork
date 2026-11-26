@@ -1,3 +1,4 @@
+import { theWeekSays, theWeeksSay } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
 import { whenTheseOrganisationsPaused } from '../billing/the-trial-grace';
 import { herOwnDecisions, theMattersSheActsOn } from '../outstanding/what-an-assistant-acts-on';
 import { theQuietHoursNow } from '../../common/the-clock';
@@ -236,7 +237,7 @@ export class WhatNeedsYouService {
     const rows = await Promise.resolve().then(() => this.prisma.membershipRequest.findMany({
       where: { organizationId, status: 'PENDING' as any },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, email: true, groundId: true, requestedByUserId: true, user: { select: { firstName: true, lastName: true } } },
+      select: { id: true, email: true, groundId: true, requestedByUserId: true, createdAt: true, user: { select: { firstName: true, lastName: true } } },
     })).catch(() => [] as any[]);
     const waiting = (rows as any[]).filter((r) => !!r);
     if (!waiting.length) return [];
@@ -244,7 +245,8 @@ export class WhatNeedsYouService {
     const org = await Promise.resolve().then(() => this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } })).catch(() => null);
     const orgName = (org as any)?.name?.trim() || 'your organisation';
     if (waiting.length >= 3) {
-      return [{ ...base, key: 'let-in-many', title: `${waiting.length} people are waiting for you to let them into ${orgName}.`, detail: null }];
+      /* The first week to run out, said once (Hafsah, 26 November 2026). */
+      return [{ ...base, key: 'let-in-many', title: `${waiting.length} people are waiting for you to let them into ${orgName}.`, detail: theWeeksSay(waiting.filter((r) => r.groundId).map((r) => r.createdAt)) }];
     }
     const askerIds = [...new Set(waiting.map((r) => r.requestedByUserId).filter((x): x is string => !!x))];
     const groundIds = [...new Set(waiting.map((r) => r.groundId).filter((x): x is string => !!x))];
@@ -257,12 +259,39 @@ export class WhatNeedsYouService {
       const by = (askers as any[]).find((a) => a.id === r.requestedByUserId)?.firstName ?? null;
       const label = (grounds as any[]).find((g) => g.id === r.groundId)?.label ?? null;
       const detail = by && label ? `${by} invited ${name === 'Someone' ? 'them' : name.split(' ')[0]} to ${label}.` : by ? `${by} invited ${name === 'Someone' ? 'them' : name.split(' ')[0]}.` : null;
-      return { ...base, key: `let-in-${r.id}`, title: `${name} is waiting for you to let them into ${orgName}.`, detail };
+      return { ...base, key: `let-in-${r.id}`, title: `${name} is waiting for you to let them into ${orgName}.`, detail: [detail, r.groundId ? theWeekSays(r.createdAt) : null].filter(Boolean).join(' ') || null };
     });
   }
 
+  /**
+   * TARGETS WAITING FOR THE LEAD TO CONFIRM, ON TODAY (Rhea call, 25 November 2026: Clinton and Leah could not find where to approve their
+   * targets). What Groundwork read from a plan or from her own check-in waits for her yes; one card per check-in she runs, to the check-in,
+   * where they are listed at the top. Never an error on Today.
+   */
+  private async targetsWaitingForYou(userId: string, organizationId: string): Promise<Need[]> {
+    const rows: any[] = await Promise.resolve().then(() => (this.prisma as any).planProposal.findMany({
+      where: { status: 'PENDING', ground: { organizationId, initiatorId: userId } },
+      select: { groundId: true, ground: { select: { label: true } } },
+    })).catch(() => []);
+    const byGround = new Map<string, { label: string; n: number }>();
+    for (const r of rows) {
+      const g = byGround.get(r.groundId) ?? { label: r.ground?.label ?? 'your check-in', n: 0 };
+      g.n += 1;
+      byGround.set(r.groundId, g);
+    }
+    return [...byGround.entries()].map(([groundId, g]) => ({
+      key: `targets-${groundId}`,
+      kind: 'decide' as const,
+      title: g.n === 1 ? `One thing for ${g.label} is waiting for you to confirm.` : `${g.n} things for ${g.label} are waiting for you to confirm.`,
+      detail: 'Nothing goes on record until you confirm it.',
+      action: { label: 'Confirm them', to: `/grounds/${groundId}` },
+      groundId,
+      organizationId,
+    }));
+  }
+
   async forReader(userId: string, email: string, organizationId: string, role: string): Promise<WhatNeedsYou> {
-    const [list, waiting, me, toApprove, reviews, leaveQuestions, spendQuestions, finance, hours, letIn, directionPast] = await Promise.all([
+    const [list, waiting, me, toApprove, reviews, leaveQuestions, spendQuestions, finance, hours, letIn, directionPast, targets] = await Promise.all([
       this.grounds.list(organizationId, userId, email, role),
       role === 'ADMIN' ? this.grounds.listAwaitingApproval(organizationId, userId) : Promise.resolve([]),
       /**
@@ -281,6 +310,7 @@ export class WhatNeedsYouService {
       this.hoursFor(userId, organizationId),
       this.peopleWaitingToBeLetIn(userId, organizationId, role),
       this.aDirectionPastItsDayFor(organizationId, role),
+      this.targetsWaitingForYou(userId, organizationId),
     ]);
     /*
      * ONLY THIS ORGANISATION'S (U.5 review). The list also carries check-ins in other organisations
@@ -310,7 +340,7 @@ export class WhatNeedsYouService {
     /* On approved leave today (week 23): their own check-in says the round does not wait for them. Dates only. */
     const awayUntil = (await whoIsAwayOn(this.prisma, [userId], organizationId).catch(() => new Map<string, string>())).get(userId) ?? null;
     const pausedFrom = (await whenTheseOrganisationsPaused(this.prisma, [organizationId], new Date()).catch(() => new Map<string, Date>())).get(organizationId) ?? null;
-    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil, pausedFrom }, waiting.map((w) => ({ ...w, organizationId })), theQuietHoursNow(), [...(await this.whatTheirBoardsAsk(userId, here as any[])), ...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove, ...finance, ...hours, ...letIn, ...directionPast]);
+    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil, pausedFrom }, waiting.map((w) => ({ ...w, organizationId })), theQuietHoursNow(), [...(await this.whatTheirBoardsAsk(userId, here as any[])), ...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove, ...finance, ...hours, ...letIn, ...directionPast, ...targets]);
     /* A net: no address stands in for a name in any sentence on Today (week 12c). */
     const called = new Map<string, string>();
     for (const g of here as any[]) {

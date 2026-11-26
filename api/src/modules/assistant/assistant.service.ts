@@ -1,3 +1,4 @@
+import { WhoIsWaitingAtTheDoorService } from '../participants/who-is-waiting-at-the-door.service';
 import { aDaySaidInFull } from '../board/a-day-said-in-full';
 import { theRolesTheyMayGive, howPeopleJoinHere } from '../users/the-role-an-invitation-gives';
 import { cleanText } from '../reports/what-the-record-actually-holds';
@@ -125,7 +126,7 @@ import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended
 import { onWhatsApp, askedOnWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 /** The parked kinds that belong to the app's setup conversation (Add context), never to a message on WhatsApp. */
 const THE_APPS_OWN_SETUP_KINDS = new Set(['context', 'context_turn', 'context_line', 'lead_note', 'which_context_check_in']);
-import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
+import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest, type AWaitingDecision } from '../suites/a-request-in-words';
 import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
 import { whoApprovesFor } from '../suites/who-approves';
 import {
@@ -408,6 +409,8 @@ export class AssistantService {
     /* The conversation's set-up readers, so a check-in set up here is read from her words as one set up on /start is (22 November 2026). */
     @Optional() private readonly conversation?: ConversationService,
     @Optional() private readonly events?: EventEmitter2,
+    /* People waiting to be let in, approved here as on People (Hafsah, 26 November 2026). Without it, Ask does not list them. */
+    @Optional() private readonly door?: WhoIsWaitingAtTheDoorService,
   ) {}
 
   /**
@@ -5230,8 +5233,17 @@ export class AssistantService {
    * board this reader may not open, or a suite that is off, gives nothing.
    */
   /** Public so that the daily briefing of a senior person (principal-work/) reads what waits for her the way Ask does. */
-  async waitingForYouToDecide(organizationId: string, userId: string): Promise<AWaitingRequest[]> {
-    return whatWaitsForYouToDecide({ userId, organizationId }, { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending as any });
+  async waitingForYouToDecide(organizationId: string, userId: string): Promise<AWaitingDecision[]> {
+    /* People a lead added, waiting for an admin to let them in: an admin's to decide here as on People (Hafsah, 26 November 2026). */
+    const door = this.door ? {
+      waitingFor: async (reader: { userId: string; organizationId: string }) => {
+        const standing = await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId: reader.userId, organizationId: reader.organizationId } }, select: { role: true } });
+        if (standing?.role !== 'ADMIN') return { organisationName: '', waiting: [] };
+        const org = await this.prisma.organization.findUnique({ where: { id: reader.organizationId }, select: { name: true } });
+        return { organisationName: org?.name ?? 'the organisation', waiting: (await this.door!.waiting(reader.organizationId)).filter((w: any) => w.kind === 'MEMBERSHIP') };
+      },
+    } : undefined;
+    return whatWaitsForYouToDecide({ userId, organizationId }, { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending as any, door });
   }
 
   /**
@@ -6011,7 +6023,7 @@ export class AssistantService {
     /* "peters leave" names Peter as well as "Peter's leave" does. */
     const byName = all.filter((r) => r.firstName && new RegExp(`\\b${r.firstName.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:['\u2019]?s)?\\b`).test(said));
     const named = byName.length ? byName : all;
-    const kinds = { leave: /\b(leave|time off|days? off)\b/, hours: /\b(hours?|time ?sheets?)\b/, spend: /\b(spend|spending|money|budget|expense)\b/ };
+    const kinds = { leave: /\b(leave|time off|days? off)\b/, hours: /\b(hours?|time ?sheets?)\b/, spend: /\b(spend|spending|money|budget|expense)\b/, seat: /\b(seats?|let (?:\w+ )?in|place|join(?:ing)?|them)\b/ };
     const byKind = named.filter((r) => kinds[r.kind].test(said));
     let left = byKind.length ? byKind : named;
     /* Which one is meant, where the words do not say it to the rules ("ok approve peters fuel"), is read by the model from the list, and must be in it (round 2, T1). */
@@ -6042,7 +6054,8 @@ export class AssistantService {
   /** The approver's question about a request, said back before it goes. Null when what was written is not about a request waiting for them. */
   private async proposeAQuestionAboutARequest(organizationId: string, who: string, userId: string, asked: { name: string | null; kind: 'leave' | 'spend' | 'hours' | null; question: string }): Promise<Reply | null> {
     const lane = 'decide_a_request';
-    const all = await this.waitingForYouToDecide(organizationId, userId);
+    /* Questions go to a person who asked for something; somebody waiting to be let in asked for nothing. */
+    const all = (await this.waitingForYouToDecide(organizationId, userId)).filter((r): r is AWaitingRequest => r.kind !== 'seat');
     if (!all.length) return asked.name || asked.kind ? rules(lane, text(NOTHING_TO_ASK_ABOUT)) : null;
     const byName = asked.name ? all.filter((r) => r.firstName?.toLowerCase() === asked.name!.toLowerCase()) : all;
     if (asked.name && !byName.length) return null;
@@ -6070,7 +6083,8 @@ export class AssistantService {
     const said = asked ? await this.proposeAQuestionAboutARequest(organizationId, who, userId, asked) : null;
     if (said) return said;
     const lane = 'decide_a_request';
-    const all: AWaitingRequest[] = await this.waitingForYouToDecide(organizationId, userId).catch(() => []);
+    /* A question goes to the person who asked for something; somebody waiting to be let in asked for nothing, so is not asked about here. */
+    const all = (await this.waitingForYouToDecide(organizationId, userId).catch(() => [] as AWaitingDecision[])).filter((r): r is AWaitingRequest => r.kind !== 'seat');
     if (!all.length) return rules(lane, text(NOTHING_TO_ASK_ABOUT));
     /* Whose request, by the first names of the people whose requests wait for this reader, and which kind, where the message says. */
     const words = new Set(message.toLowerCase().split(/[^\p{L}'’-]+/u));
@@ -6111,7 +6125,7 @@ export class AssistantService {
    * person what was decided. A no changes nothing.
    */
   private async resolveParkedDecision(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
-    const { request, outcome, reason } = (parked.payload ?? {}) as { request: AWaitingRequest; outcome: 'approved' | 'declined'; reason?: string };
+    const { request, outcome, reason } = (parked.payload ?? {}) as { request: AWaitingDecision; outcome: 'approved' | 'declined'; reason?: string };
     if (decision === 'decline' || !request?.ref) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
       return rules('decide_a_request', text(request?.ref ? aDecisionNotMade(request) : NOTHING_TO_DECIDE));
@@ -6123,7 +6137,12 @@ export class AssistantService {
       const reader = { userId: me.linkedUserId, organizationId };
       /* An approval at a step that is not the last sends it on (decision 85, build step 4): say to whom. */
       let nowWaitsFor: string | null = null;
-      if (request.kind === 'leave') {
+      if (request.kind === 'seat') {
+        /* The same two calls as People's "Let them in" and "Don't let them in", which check again that it is still waiting here. */
+        if (!this.door) throw new Error(NOTHING_TO_DECIDE);
+        if (outcome === 'approved') await this.door.approve(organizationId, request.ref, me.linkedUserId);
+        else await this.door.decline(organizationId, request.ref, me.linkedUserId, reason);
+      } else if (request.kind === 'leave') {
         if (!this.leave) throw new Error(NOTHING_TO_DECIDE);
         await (reason ? this.leave.decide(reader, request.ref, outcome, reason) : this.leave.decide(reader, request.ref, outcome));
         nowWaitsFor = await Promise.resolve(this.leave.nowWaitingFor?.(organizationId, request.ref)).catch(() => null) ?? null;

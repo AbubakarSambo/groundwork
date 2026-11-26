@@ -40,9 +40,11 @@ describe('the join and let-in emails name the check-in', () => {
     const svc: any = Object.create(WhoIsWaitingAtTheDoorService.prototype);
     svc.logger = { warn: jest.fn(), log: jest.fn() };
     svc.email = email;
+    /* Letting somebody in asks for room on the plan (Hafsah, 26 November 2026). */
+    svc.billing = { canInviteMember: async () => ({ allowed: true }), seatsMayHaveChanged: () => undefined };
     svc.mine = jest.fn(async () => ({ id: 'r', groundId: 'g', userId: 'u-amos', email: 'amos@dropaccess.test', requestedByUserId: null, viaInvitation: false, organization: { name: 'Drop Access (test)' } }));
     svc.prisma = {
-      $transaction: async (fn: any) => fn({ membershipRequest: { update: async () => ({}) }, user: { update: async () => ({}) }, organizationMembership: { upsert: async () => ({}) } }),
+      $transaction: async (fn: any) => fn({ membershipRequest: { update: async () => ({}), updateMany: async () => ({ count: 1 }) }, user: { update: async () => ({}) }, organizationMembership: { upsert: async () => ({}), updateMany: async () => ({ count: 1 }) }, groundParticipant: { updateMany: async () => ({ count: 0 }) } }),
       user: { findUnique: jest.fn(async ({ where }: any) => (where.id === 'u-amos' ? { firstName: 'Amos', lastName: 'Kiprono' } : where.id === 'u-grace' ? { firstName: 'Grace', lastName: 'Achieng' } : null)) },
       ground: { findUnique: jest.fn(async () => ({ label: 'Sales team, Q4' })) },
     };

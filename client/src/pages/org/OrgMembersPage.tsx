@@ -115,7 +115,7 @@ export function OrgMembersPage() {
   /* The same count query the head count reads, so the no-seat card knows when there is room (U.4 fourth review). */
   const seatCount = useQuery({
     queryKey: ['billing-status-people'],
-    queryFn: () => apiClient.get('/billing/status').then((r: any) => (r.data.data ?? r.data) as { people?: { count: number; cap: number | null } }),
+    queryFn: () => apiClient.get('/billing/status').then((r: any) => (r.data.data ?? r.data) as { people?: { count: number; cap: number | null }; onTheHouse?: { freeTrial?: boolean } | null }),
     enabled: isAdmin,
     retry: false,
   })
@@ -279,7 +279,7 @@ export function OrgMembersPage() {
               <li className="dp-row">
                 <span className="dp-row-main">
                   <span className="dp-row-title">Put your whole team on</span>
-                  <span className="dp-row-line">{`Everyone at ${orgName} on one plan, so nobody waits for a seat.`}</span>
+                  <span className="dp-row-line">{wholeTeamSays(orgName, !!seatCount.data?.onTheHouse?.freeTrial)}</span>
                 </span>
                 <span className="dp-row-acts"><Link className="gwui-plain-link" to="/billing">See the plans</Link></span>
               </li>
@@ -328,7 +328,7 @@ export function OrgMembersPage() {
           <Panel>
             <Stack gap={10}>
               <p className="gwui-panel-text"><b>Put your whole team on</b></p>
-              <p className="gwui-panel-text-muted">{`Everyone at ${orgName} on one plan, so nobody waits for a seat.`}</p>
+              <p className="gwui-panel-text-muted">{wholeTeamSays(orgName, !!seatCount.data?.onTheHouse?.freeTrial)}</p>
               <Button kind="quiet" onClick={() => navigate('/billing')}>See the plans</Button>
             </Stack>
           </Panel>
@@ -338,4 +338,14 @@ export function OrgMembersPage() {
       </Held>
     </Page>
   )
+}
+
+/*
+ * "PUT YOUR WHOLE TEAM ON" SAYS WHAT IS TRUE NOW (Hafsah, 26 November 2026). In the free month nobody waits for a seat, so "so nobody waits
+ * for a seat" promised something already true and read as if somebody did. It says the month has no limit, and what one plan does after it.
+ */
+export function wholeTeamSays(orgName: string, inTheFreeMonth: boolean): string {
+  return inTheFreeMonth
+    ? `During your free month there is no limit on people. After it, putting everyone at ${orgName} on one plan means nobody waits for a seat.`
+    : `Everyone at ${orgName} on one plan, so nobody waits for a seat.`
 }

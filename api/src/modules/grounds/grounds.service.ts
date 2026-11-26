@@ -24,7 +24,7 @@ import { aShortQuestionForAPerson, askedBackToTheLead, theQuestionTheyWereShown 
 import { aFindingThatReadsRight } from './a-finding-reads-right';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { refuseSomeoneAwaitingTheOrganisation, refuseSomeoneHeldForASeat, theCheckInsHeldForASeat, theHeldPersonWhoHasAnswered, whatSomeoneHeldForASeatReads } from '../participants/held-for-a-seat';
-import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { CANNOT_CHECK_IN_YET, isAnAdminOf, howTheyStandIn } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theRoomForThisReader } from '../board/the-room-for-this-reader';
 import { aGoalTheLeadSetAndHasNotTold, goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
@@ -32,7 +32,7 @@ import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { theirHome } from '../participants/where-somebody-is-from';
-import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
+import { aGuestHereIfTheyAreFromElsewhere, theirPlaceHereOnceAdded } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
 import { theColleaguePickedById, NOT_SOMEONE_HERE, theMemberWithThisAddress, withTheirNamesFromTheOrganisation } from '../../common/colleagues';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, runsItForAPattern, type APatternReader, type AServedPattern } from '../patterns/who-reads-a-pattern';
@@ -1055,6 +1055,9 @@ export class GroundsService {
       // would otherwise reject this call.
       for (const p of dto.participants ?? []) {
         const inviteToken = crypto.randomBytes(32).toString('hex');
+        /* The admin setting it up is the yes, so each takes a seat now, or is held with no invitation when there is none
+           (Hafsah, 26 November 2026). This path asked about seats nowhere before. */
+        const seat = await this.isThereASeatFor(tx, organizationId, p.email);
         const participant = await tx.groundParticipant.create({
           data: {
             groundId: ground.id,
@@ -1063,14 +1066,14 @@ export class GroundsService {
             roleAsDescribed: p.roleAsDescribed,
             /* The admin setting this up added them, so they do not wait for an admin (U.4). */
             addedByUserId: adminUserId,
-            invitedAt: new Date(),
+            awaitingSeat: !seat.room,
+            invitedAt: seat.room ? new Date() : null,
             inviteToken,
             inviteTokenExpiresAt: inviteExpiryFrom(),
           },
         });
-        pendingInvites.push({ email: p.email.toLowerCase(), token: inviteToken, participantId: participant.id });
-        /* A guest here from the moment they are added, when their account lives elsewhere (U.4 review). */
-        await aGuestHereIfTheyAreFromElsewhere(tx as any, organizationId, p.email);
+        if (seat.room) pendingInvites.push({ email: p.email.toLowerCase(), token: inviteToken, participantId: participant.id });
+        await theirPlaceHereOnceAdded(tx as any, organizationId, p.email, { held: !seat.room, byAnAdmin: true, addedBy: adminUserId, groundId: ground.id });
         // SEQUENTIAL: lock session 1 until the lead completes their own -
         // the lead has no completed session yet at ground-creation time, so
         // this is unconditional here (unlike addParticipant(), which checks).
@@ -3286,7 +3289,7 @@ export class GroundsService {
       if (viewerRunsThisGround || !myFirstName) return out;
       return { ...out, label: theirOwnFirstNameAsYour(out.label, myFirstName), brief: theirOwnFirstNameAsYour(out.brief, myFirstName), ...(out.briefAsEveryoneReadsIt !== undefined ? { briefAsEveryoneReadsIt: theirOwnFirstNameAsYour(out.briefAsEveryoneReadsIt, myFirstName) } : {}) };
     };
-    if (heldButAnswered && requestingUserId) return whatSomeoneHeldForASeatReads(asAMemberReadsIt(thePage), requestingUserId) as any;
+    if (heldButAnswered && requestingUserId) return whatSomeoneHeldForASeatReads(asAMemberReadsIt(thePage), requestingUserId, heldButAnswered) as any;
     if (!Array.isArray((thePage as any).participants)) return asAMemberReadsIt(thePage);
     return asAMemberReadsIt({
       ...thePage,
@@ -6145,6 +6148,26 @@ export class GroundsService {
     );
   }
 
+  /**
+   * IS THERE A SEAT FOR THIS PERSON. One question, asked wherever an admin's yes gives somebody a seat: adding them to a check-in,
+   * setting one up with them on it, and approving one they are named on (Hafsah, 26 November 2026). An existing member here
+   * already holds one, and adding them to a second check-in costs nothing. `db` is the transaction when there is one, so the
+   * people given a seat a moment ago in the same set-up are counted.
+   */
+  private async isThereASeatFor(db: any, organizationId: string, email: string): Promise<SeatAnswer> {
+    const alreadyHereWithASeat = await db.user.count({ where: { email: email.toLowerCase(), ...seatsIn(organizationId) } });
+    if (alreadyHereWithASeat) return { room: true };
+    /* Fix list item 6: on a plan that can add seats there is no limit (`seatsLeft` is null); the person is an extra seat. */
+    const noLimit = typeof (this.billing as any).seatsMayHaveChanged === 'function'
+      && (await this.billing.seatsLeft(organizationId).catch(() => 0)) === null;
+    if (noLimit) { this.billing.seatsMayHaveChanged(organizationId); return { room: true }; }
+    const [seatsTaken, seatsIncluded] = await Promise.all([
+      db.user.count({ where: seatsIn(organizationId) }),
+      this.billing.seatsIncludedFor(organizationId),
+    ]);
+    return whetherThereIsRoomForOneMore({ seatsTaken, seatsIncluded });
+  }
+
   async addParticipant(groundId: string, organizationId: string, initiatorId: string, dto: AddParticipantDto) {
     /* A colleague picked by id (U.4): their address is looked up here, never sent to the page. */
     /**
@@ -6411,23 +6434,9 @@ export class GroundsService {
      * Only asked about somebody who would NEED a seat. An existing member of this organisation
      * already holds one, and adding them to a second check-in costs nothing.
      */
-    const alreadyHereWithASeat = await this.prisma.user.count({
-      where: { email: dto.email.toLowerCase(), ...seatsIn(organizationId) },
-    });
-    let waitingForASeat: SeatAnswer = { room: true };
-    if (!alreadyHereWithASeat) {
-      /* Fix list item 6: on a plan that can add seats there is no limit (`seatsLeft` is null); the person is an extra seat. */
-      const noLimit = typeof (this.billing as any).seatsMayHaveChanged === 'function'
-        && (await this.billing.seatsLeft(organizationId).catch(() => 0)) === null;
-      if (noLimit) this.billing.seatsMayHaveChanged(organizationId);
-      else {
-        const [seatsTaken, seatsIncluded] = await Promise.all([
-          this.prisma.user.count({ where: seatsIn(organizationId) }),
-          this.billing.seatsIncludedFor(organizationId),
-        ]);
-        waitingForASeat = whetherThereIsRoomForOneMore({ seatsTaken, seatsIncluded });
-      }
-    }
+    /* An admin adding them is the yes; anybody else's addition of somebody new here waits a week for one, checking in meanwhile, so no seat is asked about yet (Hafsah, 26 November 2026). */
+    const addedByAnAdmin = isAnAdminOf(organizationId, await howTheyStandIn(this.prisma, initiatorId, organizationId));
+    const waitingForASeat: SeatAnswer = addedByAnAdmin ? await this.isThereASeatFor(this.prisma, organizationId, dto.email) : { room: true };
 
     // SEQUENTIAL cadence: the lead's own session 1 must complete before a newly
     // added participant's session 1 opens - otherwise the team could check in
@@ -6472,7 +6481,8 @@ export class GroundsService {
 
     /* After every refusal above, so a refused add leaves nothing behind (U.4 review). Held when there
        is no seat for them: a guest with an account takes a seat (U.4 re-review). */
-    await aGuestHereIfTheyAreFromElsewhere(this.prisma as any, ground.organizationId, dto.email, !waitingForASeat.room);
+    /* Placed here now, whoever added them: a seat at an admin's yes, or in with no seat yet and a week for an admin to say yes (Hafsah, 26 November 2026). */
+    await theirPlaceHereOnceAdded(this.prisma as any, ground.organizationId, dto.email, { name: colleagueName ?? dto.displayName ?? null, held: !waitingForASeat.room, byAnAdmin: addedByAnAdmin, addedBy: initiatorId, groundId });
     const participant = await this.prisma.$transaction(async (tx) => {
       const participant = await tx.groundParticipant.create({
         data: {
@@ -7713,6 +7723,20 @@ export class GroundsService {
    * Idempotent on purpose: two admins opening the same list and both clicking accept
    * is a normal race, and the second one should not see an error for agreeing.
    */
+  /** The people named on a check-in waiting for approval who would take a seat by it, by name, and what that adds, in one sentence. */
+  async whatApprovingGives(groundId: string, organizationId: string): Promise<string | null> {
+    const rows = await this.prisma.groundParticipant.findMany({
+      where: { groundId, ground: { organizationId }, partyType: PartyType.PARTICIPANT, leftAt: null, awaitingSeat: false },
+      select: { email: true, nameGiven: true },
+    });
+    const names: string[] = [];
+    for (const r of rows) {
+      if (await this.prisma.user.count({ where: { email: r.email.toLowerCase(), ...seatsIn(organizationId) } })) continue;
+      names.push(r.nameGiven?.trim() || r.email);
+    }
+    return this.billing.whatApprovingCosts(organizationId, names);
+  }
+
   async approve(groundId: string, organizationId: string, adminUserId: string) {
     await this.refuseAnEvaluationTheAdminWasNotGivenAccessTo(groundId, organizationId, adminUserId);
     const ground = await this.prisma.ground.findFirst({
@@ -7730,6 +7754,17 @@ export class GroundsService {
       data: { status: GroundStatus.OPEN, approvedById: adminUserId, approvedAt: new Date() },
       select: { id: true, status: true },
     });
+    /* Everybody named on it is let in by this approval, so each takes a seat now, or is held with no invitation when there is
+       none (Hafsah, 26 November 2026). The admin read who they are on the check-in before saying yes. */
+    const named = await this.prisma.groundParticipant.findMany({
+      where: { groundId, partyType: PartyType.PARTICIPANT, leftAt: null, awaitingSeat: false },
+      select: { id: true, email: true, nameGiven: true },
+    });
+    for (const p of named) {
+      const seat = await this.isThereASeatFor(this.prisma, organizationId, p.email);
+      await theirPlaceHereOnceAdded(this.prisma as any, organizationId, p.email, { name: p.nameGiven, held: !seat.room, byAnAdmin: true, addedBy: adminUserId, groundId });
+      if (!seat.room) await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { awaitingSeat: true } });
+    }
     /* The people the lead named while it waited are invited now, once each (known issue B5). */
     const invitedNow = await this.sendTheInvitationsHeldForApproval(groundId, organizationId).catch((err: any) => { this.logger.error(`Held invitations for ground ${groundId} failed: ${err?.message}`); return 0; });
 

@@ -1,3 +1,4 @@
+import { letThemIn, theWeekSays } from './a-guest-is-a-guest-from-the-moment-they-are-added';
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { theRoleTheLinkGives } from '../users/the-role-an-invitation-gives';
 import { MembershipRequestStatus } from '@prisma/client';
@@ -42,8 +43,10 @@ export class WhoIsWaitingAtTheDoorService {
    * admin who has been one longest. "Remind" reaches that same person.
    */
   async myOwnRequest(userId: string) {
+    /* Only a request that keeps them out: an account still waiting at the door, or a join by the organisation's link. Somebody a lead
+       added checks in during the admin's week, so their request is the admin's to answer and never a wall in front of them (26 November 2026). */
     const request = await this.prisma.membershipRequest.findFirst({
-      where: { userId, status: MembershipRequestStatus.PENDING },
+      where: { userId, status: MembershipRequestStatus.PENDING, OR: [{ groundId: null }, { user: { awaitingOrgApproval: true } }] },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true, email: true, createdAt: true, lastRemindedAt: true, viaInvitation: true, organizationId: true, requestedByUserId: true,
@@ -181,6 +184,8 @@ export class WhoIsWaitingAtTheDoorService {
         onTheOrganisationsOwnAddress: !!ownDomain && theDomainOf(r.email) === ownDomain,
         /* Two things wait at this door now. See `waitingForASeat` below. */
         kind: 'MEMBERSHIP' as const,
+        /* The week an admin has (Hafsah, 26 November 2026), said once here for People, Today and Ask. */
+        saying: r.groundId ? theWeekSays(r.createdAt) : null,
       };
     });
   }
@@ -199,7 +204,8 @@ export class WhoIsWaitingAtTheDoorService {
    */
   async waitingForASeat(organizationId: string) {
     const rows = await this.prisma.groundParticipant.findMany({
-      where: { awaitingSeat: true, ground: { organizationId } },
+      /* Not somebody whose week for a yes ran out: they are on the list above, waiting to be let in, and letting them in starts them again. */
+      where: { awaitingSeat: true, ground: { organizationId }, NOT: { user: { membershipRequests: { some: { organizationId, status: MembershipRequestStatus.PENDING } } } } },
       orderBy: { createdAt: 'asc' },
       select: {
         id: true, email: true, createdAt: true, addedByUserId: true,
@@ -246,11 +252,10 @@ export class WhoIsWaitingAtTheDoorService {
     const request = await this.mine(organizationId, requestId);
     const isASecondOrganisationRequest = request.groundId === null;
 
-    if (isASecondOrganisationRequest) {
-      const room = await this.billing.canInviteMember(organizationId);
-      if (!room.allowed) {
-        throw new BadRequestException(`${request.organization.name} has no room for another person on its plan right now. Make room, then let them in.`);
-      }
+    /* Letting somebody in gives them a seat (Hafsah, 26 November 2026), so it is asked for every request, not only the invite link's. */
+    const room = await this.billing.canInviteMember(organizationId);
+    if (!room.allowed) {
+      throw new BadRequestException(`${request.organization.name} has no room for another person on its plan right now. Make room, then let them in.`);
     }
 
     const linkGives = isASecondOrganisationRequest
@@ -270,8 +275,11 @@ export class WhoIsWaitingAtTheDoorService {
         });
       } else {
         await tx.user.update({ where: { id: request.userId }, data: { awaitingOrgApproval: false } });
+        /* Their seat, and any check-in the week paused started again: the one write of an admin's yes. */
+        await letThemIn(tx, organizationId, request.userId, adminUserId);
       }
     });
+    this.billing.seatsMayHaveChanged?.(organizationId);
 
     /* By name, which check-in, and who let them in (messages test, 19 October, finding 15). */
     const [them, admin, theCheckIn] = await Promise.all([
@@ -313,6 +321,10 @@ export class WhoIsWaitingAtTheDoorService {
   async decline(organizationId: string, requestId: string, adminUserId: string, reason?: string) {
     const request = await this.mine(organizationId, requestId);
 
+    /* Not let in: their check-ins here stop now, rather than at the end of the week, and what they said stays theirs (Hafsah, 26 November 2026). */
+    if (request.groundId) {
+      await this.prisma.groundParticipant.updateMany({ where: { userId: request.userId, awaitingSeat: false, leftAt: null, ground: { organizationId } }, data: { awaitingSeat: true } });
+    }
     await this.prisma.membershipRequest.update({
       where: { id: request.id },
       data: {
@@ -364,3 +376,4 @@ export class WhoIsWaitingAtTheDoorService {
     return request;
   }
 }
+

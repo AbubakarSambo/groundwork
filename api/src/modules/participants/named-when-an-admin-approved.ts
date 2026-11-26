@@ -21,8 +21,14 @@ export function namedWhenAnAdminApproved(ground: TheGround, row: TheRow, approve
 }
 
 /** Whether this person, arriving now, waits for an admin. The same rule accept() applies. */
-export async function theyWaitForAnAdmin(db: any, ground: TheGround, row: TheRow & { email: string }): Promise<boolean> {
+export async function theyWaitForAnAdmin(db: any, ground: TheGround, row: TheRow & { email: string }): Promise<boolean | 'a week'> {
   const user = await db.user.findUnique({ where: { email: row.email.toLowerCase() }, select: { id: true, organizationId: true } }).catch(() => null);
+  /* Added by somebody who is not an admin, new here or a guest: they check in at once, and an admin has a week (Hafsah, 26 November 2026). */
+  if (user) {
+    const here = await Promise.resolve(db.organizationMembership?.findUnique?.({ where: { userId_organizationId: { userId: user.id, organizationId: ground.organizationId } }, select: { heldForASeat: true } })).catch(() => null);
+    const asked = here?.heldForASeat ? await Promise.resolve(db.membershipRequest?.findFirst?.({ where: { userId: user.id, organizationId: ground.organizationId, status: 'PENDING' }, select: { id: true } })).catch(() => null) : null;
+    if (asked) return 'a week';
+  }
   const alreadyAMemberHere = user
     ? user.organizationId === ground.organizationId
       || !!(await db.organizationMembership?.findUnique?.({ where: { userId_organizationId: { userId: user.id, organizationId: ground.organizationId } }, select: { id: true } }).catch(() => null))
@@ -39,8 +45,9 @@ export async function theyWaitForAnAdmin(db: any, ground: TheGround, row: TheRow
 }
 
 /** The one plain sentence the invitation and the invite page say. */
-export function whatHappensWhenYouJoin(waits: boolean, organisationName: string | null): string {
+export function whatHappensWhenYouJoin(waits: boolean | 'a week', organisationName: string | null): string {
   const org = organisationName?.trim() || 'the organisation';
+  if (waits === 'a week') return `When you join, you can check in at once. An admin at ${org} has a week to let you in, and the board and the reports open once they do.`;
   return waits
     ? `When you join, an admin at ${org} has to let you in before you can check in, and you will be told by email when they have.`
     : 'When you join, you go straight in and can check in at once.';

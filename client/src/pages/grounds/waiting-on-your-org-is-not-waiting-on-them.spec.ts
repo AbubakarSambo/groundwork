@@ -44,8 +44,8 @@ describe('a person the organisation has not let in yet', () => {
 
 describe('before anybody is added', () => {
   it('the rule is on the control that adds them', () => {
-    expect(ROSTER).toContain('an admin here')
-    expect(ROSTER).toContain('has to let them in before they can check in')
+    /* The rule changed (Hafsah, 26 November 2026): they check in at once, and an admin has a week to let them in. */
+    expect(ROSTER).toContain('can check in at once. An admin here has a week to let them in')
   })
 
   it('and it is the rule, not a lookup on the address they typed', () => {

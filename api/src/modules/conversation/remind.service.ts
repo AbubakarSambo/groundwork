@@ -295,6 +295,7 @@ export class RemindService {
             userId: true,
             lastNudgedAt: true,
             nameGiven: true,
+            inviteToken: true,
             user: { select: { firstName: true, lastName: true, emailNotifications: true, isActive: true, deletedAt: true } },
           },
         },
@@ -397,7 +398,12 @@ export class RemindService {
       });
       const otherPartyCompleted = everyoneElseHasAnswered(participant.id, theRound as any);
 
-      const checkInUrl = this.email.buildCheckInUrl(checkIn.id);
+      /* SOMEBODY WHO HAS NOT OPENED THEIR INVITATION GETS ITS LINK AGAIN (Rhea, 25 November 2026: two people "Not joined yet" a week on). The check-in's own
+         address needs a sign-in they do not have yet, so the reminder sent them to a sign-in page with nothing to sign in to. The invitation link is the one door
+         that lets them in; once they have joined, the check-in's own address. */
+      const checkInUrl = !participant.userId && (participant as any).inviteToken
+        ? this.email.buildInviteUrl((participant as any).inviteToken)
+        : this.email.buildCheckInUrl(checkIn.id);
 
       /* THE LEAD WHO MADE IT AND ADDED NOBODY is not chased as if somebody had invited her (decision 109, journey 1). */
       const isTheLead = !!participant.userId && participant.userId === (checkIn.ground as any).initiatorId;

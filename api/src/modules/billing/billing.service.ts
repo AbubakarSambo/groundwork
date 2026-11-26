@@ -5,7 +5,7 @@ import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
 import { PricingService, PLAN_LABELS, WHATSAPP_ADD_ON_KIND, EXTRA_SEAT_KIND, WHATSAPP_PERSON_KIND } from './pricing.service';
-import { extraSeatsOn, thisAddsASeat, whatAddingSomebodySays, thisMonth, aCheaperPlan, seatsCost, dollarsOf, type AMonth } from './what-a-month-costs';
+import { extraSeatsOn, thisAddsASeat, whatAddingSomebodySays, whatApprovingSays, thisMonth, aCheaperPlan, seatsCost, dollarsOf, type AMonth } from './what-a-month-costs';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { aReceiptLine } from '../email/email.service';
 
@@ -194,7 +194,8 @@ export class BillingService {
    * +$5 a month" when the next person goes past the plan's included seats. Read by the screen before it sends, so every
    * invite point says the same thing the bill does. Null `says` when it adds nothing to the bill.
    */
-  async theNextSeat(organizationId: string, name: string | null = null): Promise<{ addsASeat: boolean; extraSeatCents: number | null; says: string | null; included: number | null; taken: number; line: string; needsAYes: boolean; whatsappLine: string | null }> {
+  /** The figures every seat sentence reads: what is taken, what the plan includes, the price of one more, and whether it is charged. */
+  private async theSeatFigures(organizationId: string) {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: { ...WHAT_COVER_READS, createdAt: true, whatsappAddOnOn: true, whatsappFlatAddOnKept: true },
@@ -205,22 +206,35 @@ export class BillingService {
     const paying = !!org && isSubscribed(org as any);
     const extra = org ? await this.extraSeatsFor(org) : null;
     const included = extra ? extra.cap : await this.seatsIncludedFor(organizationId);
-    const plan = extra?.plan ?? (org as any)?.subscriptionPlan ?? null;
-    const prices = plan ? await (this.prisma.pricingPlan as any)?.findUnique?.({ where: { plan }, select: { whatsappPersonCents: true } }).catch(() => null) : null;
-    const said = whatAddingSomebodySays({
+    const asked = {
       charged: !!trial?.on && paying,
-      whyFree: !trial?.on ? 'free trial' : 'not paying',
+      whyFree: (!trial?.on ? 'free trial' : 'not paying') as 'free trial' | 'not paying',
       taken,
       included: included ?? null,
       extraSeatCents: extra?.extraSeatCents ?? null,
+    };
+    return { org, extra, asked };
+  }
+
+  async theNextSeat(organizationId: string, name: string | null = null): Promise<{ addsASeat: boolean; extraSeatCents: number | null; says: string | null; included: number | null; taken: number; line: string; needsAYes: boolean; whatsappLine: string | null }> {
+    const { org, extra, asked } = await this.theSeatFigures(organizationId);
+    const plan = extra?.plan ?? (org as any)?.subscriptionPlan ?? null;
+    const prices = plan ? await (this.prisma.pricingPlan as any)?.findUnique?.({ where: { plan }, select: { whatsappPersonCents: true } }).catch(() => null) : null;
+    const said = whatAddingSomebodySays({
+      ...asked,
       name,
       whatsapp: (org as any)?.whatsappAddOnOn && !(org as any)?.whatsappFlatAddOnKept ? { personCents: prices?.whatsappPersonCents ?? null, alreadyCounted: false } : null,
     });
-    const adds = !!extra && taken >= extra.cap;
+    const adds = !!extra && asked.taken >= extra.cap;
     return {
-      addsASeat: adds, extraSeatCents: extra?.extraSeatCents ?? null, says: adds && extra ? thisAddsASeat(extra.extraSeatCents) : null, included: included ?? null, taken,
+      addsASeat: adds, extraSeatCents: extra?.extraSeatCents ?? null, says: adds && extra ? thisAddsASeat(extra.extraSeatCents) : null, included: asked.included, taken: asked.taken,
       line: said.line, needsAYes: said.needsAYes, whatsappLine: said.whatsappLine,
     };
+  }
+
+  /** What approving a check-in gives the people new here, and what it adds to the bill (Hafsah, 26 November 2026). */
+  async whatApprovingCosts(organizationId: string, names: string[]): Promise<string | null> {
+    return whatApprovingSays({ ...(await this.theSeatFigures(organizationId)).asked, names });
   }
 
 

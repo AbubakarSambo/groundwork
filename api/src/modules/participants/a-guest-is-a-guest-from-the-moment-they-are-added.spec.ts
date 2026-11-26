@@ -53,9 +53,11 @@ describe('every door that adds a person writes it, after its refusals', () => {
   const grounds = strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.service.ts'), 'utf8'));
   it('adding one person (and so the setup commit, which calls it), and an admin setting a check-in up for a lead', () => {
     const add = grounds.slice(grounds.indexOf('async addParticipant('), grounds.indexOf('const participant = await this.prisma.$transaction(async (tx) => {', grounds.indexOf('async addParticipant(')));
+    /* Where they stand is written in one place now, a guest included (theirPlaceHereOnceAdded, 26 November 2026); a re-add still uses the guest write. */
     expect(add).toContain('await aGuestHereIfTheyAreFromElsewhere(this.prisma as any, ground.organizationId, dto.email);');
-    /* The last refusal before the row is written comes before the guest membership. */
-    expect(add.lastIndexOf('throw new')).toBeLessThan(add.lastIndexOf('aGuestHereIfTheyAreFromElsewhere'));
-    expect(grounds).toContain('await aGuestHereIfTheyAreFromElsewhere(tx as any, organizationId, p.email);');
+    expect(add).toContain('await theirPlaceHereOnceAdded(this.prisma as any, ground.organizationId, dto.email,');
+    /* The last refusal before the row is written comes before the place is written. */
+    expect(add.lastIndexOf('throw new')).toBeLessThan(add.lastIndexOf('theirPlaceHereOnceAdded'));
+    expect(grounds).toContain('await theirPlaceHereOnceAdded(tx as any, organizationId, p.email,');
   });
 });
