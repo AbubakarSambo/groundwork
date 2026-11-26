@@ -161,13 +161,10 @@ export function PricingPage() {
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>{`$0 for ${trialLength}`}</div>
                 {!user && (
-                  <button className="btn pri"
-                    type="button"
-                    onClick={() => navigate('/auth?next=/pricing')}
-                    style={{ marginTop: 'var(--gw-space-block)' }}
-                  >
+                  /* Sign up, not Sign in: the free month starts with a new organisation (Hafsah, 26 November 2026). */
+                  <Link to="/auth?mode=signup" className="btn pri" style={{ marginTop: 'var(--gw-space-block)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
                     {oneMonth ? 'Start your free month' : `Start your free ${trialLength}`}
-                  </button>
+                  </Link>
                 )}
               </div>
             </div>

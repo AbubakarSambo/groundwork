@@ -96,6 +96,8 @@ describe('a visitor who is not signed in', () => {
     expect(text()).toContain('$0 for 1 month')
     /* Changed 15 October (fix list item 6): the light prototype's own button, "Start your free month". */
     expect(text()).toContain('Start your free month')
+    /* It opens Sign up, not Sign in (Hafsah, 26 November 2026). */
+    expect(screen.getByRole('link', { name: 'Start your free month' })).toHaveAttribute('href', '/auth?mode=signup')
     expect(text()).toContain('Everything on every plan, for as many people as you like, free for your first month. WhatsApp is free for up to 20 of them. No card required.')
   })
 
