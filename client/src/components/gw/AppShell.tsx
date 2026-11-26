@@ -23,7 +23,7 @@ import { useAskStore } from '@/stores/ask'
 import { useEntryFillsInPanelStore } from '@/stores/entry-fills-in-panel'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { AskGroundwork, checkInOnThisPage } from './AskGroundwork'
-import { askNameFor } from '@/lib/ask-name'
+import { theAssistantsTitle } from '@/lib/ask-name'
 import { hasEnded } from '@/lib/a-ground-that-has-ended'
 import { Button } from './kit'
 import { sidebarWasFolded, rememberSidebarFolded } from './where-the-sidebar-was-left'
@@ -1093,8 +1093,8 @@ export function AppSidebar() {
               type="button"
               className="gw-rl-ic gw-ask-open"
               onClick={toggleAsk}
-              title={askNameFor(orgName)}
-              aria-label={askNameFor(orgName)}
+              title={theAssistantsTitle(user?.firstName)}
+              aria-label={theAssistantsTitle(user?.firstName)}
               aria-expanded={askOpen}
               style={collapsed ? undefined : { marginLeft: 'auto' }}
             >

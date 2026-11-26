@@ -290,12 +290,12 @@ export const THE_WORDS = (ask: string = askName(null)) => `You can write "ask" a
 export const NOW_ASKING = (ask: string = askName(null), fromOutside = false) => fromOutside
   ? `You are now talking to ${ask}. Ask me about your own check-ins and what you have sent. Write "back" to return to your check-in.`
   : `You are now talking to ${ask}. Ask me anything about the company, your work or your check-ins. Write "back" to return to your check-in.`;
-export const ASKING_NEEDS_A_ROSTER_ENTRY = (ask: string = askName(null)) => `${ask} needs your number on your organisation's roster. Ask your admin to add it, then write "ask" again.`;
-export const ASK_READS_WORDS = (ask: string = askName(null)) => `${ask} reads words here. Write "back" first, and then send the file to put it on your check-in.`;
+export const ASKING_NEEDS_A_ROSTER_ENTRY = (ask: string = askName(null)) => `${ask.charAt(0).toUpperCase()}${ask.slice(1)} needs your number on your organisation's roster. Ask your admin to add it, then write "ask" again.`;
+export const ASK_READS_WORDS = (ask: string = askName(null)) => `${ask.charAt(0).toUpperCase()}${ask.slice(1)} reads words here. Write "back" first, and then send the file to put it on your check-in.`;
 export const ONLY_ONE_OPEN = (label: string, ask: string = askName(null)) => `You have one check-in open, "${label}". Carry on here, or write "ask" to talk to ${ask}.`;
 export const NONE_OPEN = (ask: string = askName(null)) => `You have no check-in open right now. Write "ask" to talk to ${ask}.`;
 export const BACK_IN = (c: { label: string; sessionNumber: number }) => `You are back in your check-in. ${sessionHeader(c)} Carry on where you left off.`;
-export const BACK_TO_NOTHING = (ask: string = askName(null)) => `You have no check-in open right now, so there is nothing to go back to. ${ask} is still here.`;
+export const BACK_TO_NOTHING = (ask: string = askName(null)) => `You have no check-in open right now, so there is nothing to go back to. ${ask.charAt(0).toUpperCase()}${ask.slice(1)} is still here.`;
 
 /** The thread remembers Ask Groundwork as "ask:" and the check-in to go back to, when there was one. */
 export const ASKING = 'ask:';

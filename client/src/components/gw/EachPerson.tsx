@@ -89,7 +89,7 @@ export function EachPerson({
   leadFirstName = null,
   groundLabel = 'this check-in',
   oldChatIsOpen = true,
-  askName = 'Ask Groundwork',
+  askName = 'your assistant',
   onChangeInChat,
   onUploadFor,
   onSetToDo,

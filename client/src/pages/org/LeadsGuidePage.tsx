@@ -4,8 +4,6 @@ import { toast } from 'sonner'
 import { HOW_TO_STEPS } from '@/components/gw/how-a-check-in-is-run'
 import { TextAction } from '@/components/gw/kit'
 import { copy } from '@/components/gw/copying-can-fail'
-import { useAuthStore } from '@/stores/auth'
-import { askNameFor } from '@/lib/ask-name'
 import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-cannot-read-without-access'
 
 /**
@@ -27,8 +25,6 @@ import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-ca
 export function LeadsGuidePage() {
   const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
-  const { user } = useAuthStore()
-  const realOrgName = user?.organization?.name?.trim() || user?.organizationName
 
   /**
    * "SEND THIS LINK TO YOUR TEAM" WAS AN INSTRUCTION WITH NO CONTROL. The page told you to send it and
@@ -100,7 +96,7 @@ export function LeadsGuidePage() {
         */}
         <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', margin: 0 }}>
           An admin can see every board and report, including what people said in them. An admin
-          never sees anyone's questions to {askNameFor(realOrgName)}, anyone's own report, or a
+          never sees anyone's questions to their assistant, anyone's own report, or a
           lead's private notes, and never {WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS} unless given
           access to that check-in.
         </p>

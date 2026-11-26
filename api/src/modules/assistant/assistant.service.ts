@@ -5475,7 +5475,7 @@ export class AssistantService {
     if (asked === 'next') {
       if (!needs.length) return this.whatNext(organizationId, who, userId);
       const [first, ...rest] = needs;
-      return rules(lane, text([`Do this first. ${aNeedSaid(first)}`, ...(rest.length ? [`After that, ${rest.length === 1 ? 'one more thing waits' : `${rest.length} more things wait`} for you on your Today page.`] : [])].join('\n\n')));
+      return rules(lane, text([`The first thing to do is this. ${aNeedSaid(first)}`, ...(rest.length ? [`After that, ${rest.length === 1 ? 'one more thing waits' : `${rest.length} more things wait`} for you on your Today page.`] : [])].join('\n\n')));
     }
     /* What Today holds and who waits on whom, both: one never stands in for the other. */
     const waits = await this.theWaitsSaid(organizationId, who, userId);

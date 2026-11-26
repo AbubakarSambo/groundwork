@@ -15,7 +15,7 @@ export function whatFilingARequestSays(error: unknown, organizationName?: string
   const resp = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
   if (resp?.data?.message) return resp.data.message
   if (resp?.status === 404) {
-    return `This request could not be sent from here yet. You can ask for it in ${askNameFor(organizationName)} instead.`
+    return `This request could not be sent from here yet. You can ask ${askNameFor(organizationName)} for it instead.`
   }
   return 'That did not go through, and nothing has changed. Try again.'
 }

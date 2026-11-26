@@ -124,7 +124,7 @@ describe('T3. a question Ask answers is answered by its own answer', () => {
   it('"what next" reads what Today reads: an open check-in comes first', async () => {
     const a = asSomebody(aModel({ 'what next': { kind: 'question', guide: 'what_next' } }));
     a.s.whatNeedsYou = { forReader: jest.fn(async () => ({ needs: [{ key: 'k', kind: 'your_turn', title: 'Your next check-in for Sales team, Q4', detail: null, action: { label: 'Start', to: '/checkin/c1' }, groundId: 'g1', organizationId: 'org-a' }] })) };
-    expect(await a.say('what next')).toBe('Do this first. Your next check-in for Sales team, Q4.');
+    expect(await a.say('what next')).toBe('The first thing to do is this. Your next check-in for Sales team, Q4.'); /* A full sentence, not a clipped one (journey 6, 23 November 2026). */
   });
 
   it('"whats stuck" says everything waiting for a lead, from the same source', async () => {
