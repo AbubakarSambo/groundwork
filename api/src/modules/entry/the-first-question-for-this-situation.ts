@@ -125,9 +125,14 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
    * no aim to agree and nothing to set up - somebody who wanted those opened a different card - so
    * this is the shortest `until` in the file on purpose.
    */
+  /*
+   * PROPOSED, NOT ASKED FOR (evaluation, 23 November 2026). "What is the one thing you want to ask them?" made a busy lead write the questions,
+   * after she had said what she wanted ("tell me what's happening and what needs my attention"). Groundwork proposes what it will ask, fitted to
+   * the work and each person's part, from her words, and asks only whether that is right.
+   */
   TEAM_UPDATES: {
-    ask: 'What is the one thing you want to ask them? They will answer exactly what you write.',
-    until: 'the one line they are answering, who is answering it, and how often you want it',
+    ask: 'I will ask each of them what moved this week against what they own, what changed, what is in their way, and what needs your attention. Is that right, or is there something else you want to hear each week?',
+    until: 'who is answering, how often, and what they will be asked: from the lead\'s own words where she gave them, fitted to the work and to each person\'s part (sales against target, milestones against a plan, bills and dates for a legislature), and otherwise the proposal above, which she only has to agree to',
   },
   REALIGN_TEAM: {
     ask: 'Who do you need to get on the same page with, and what do you think you each see differently?',

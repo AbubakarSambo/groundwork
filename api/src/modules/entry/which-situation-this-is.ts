@@ -22,7 +22,8 @@ import { theScenarioAKindImplies } from '../board/the-switchboard';
  */
 
 export const PRECEDENCE_RULE =
-  'RULE, not a hint: a situation that names a new hire, a joiner, onboarding, a first ninety days or a probation is NEW_HIRE, even when it also describes a performance concern. PIP is for somebody established in the role. A new hire\'s check-in is about that person, so it has no kind of work, whatever work they will do and wherever they will do it.';
+  'RULE, not a hint: a situation that names a new hire, a joiner, onboarding, a first ninety days or a probation is NEW_HIRE, even when it also describes a performance concern. PIP is for somebody established in the role. A new hire\'s check-in is about that person, so it has no kind of work, whatever work they will do and wherever they will do it.\n' +
+  'RULE, not a hint: asking people to send their reports, updates or documents, once for a past period or every week from now, is TEAM_UPDATES, whatever the reports are about (bills, hearings, costs, production, reconciliations). COLLECTIONS is only money that people owe the organisation.';
 
 /**
  * EVERY SCENARIO THE PRODUCT HAS, BY ITS OWN KEY, IN THE WORDS ITS CARD SAYS (release test, 21 November 2026, bug 3). This list had its

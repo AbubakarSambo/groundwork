@@ -52,9 +52,13 @@ export function whatTheBoardAsksOfTheLead(board: any, check: { id: string; organ
     }
     return out;
   }
+  /* One wait, one line (Fatima's Today, 25 January 2027: "Halima is waiting for … and nobody has been named" and "You need to find out who can provide …
+     that Halima is waiting for" were two items). Where the board's own action for the wait is there, it is the one kept: it says what to do. */
+  const actedOn = new Set((Array.isArray(board.leadActions) ? board.leadActions : []).map((a: any) => /^nobody-named-(.+)$/.exec(String(a?.id ?? ''))?.[1]).filter(Boolean));
   for (const d of Array.isArray(board.decisions) ? board.decisions : []) {
     const title = said(d?.question);
     if (!title || !isNew(title)) continue;
+    if (d?.source === 'blocker' && actedOn.has(/^wait-(.+)$/.exec(String(d?.ref ?? ''))?.[1])) continue;
     out.push({ ...base, key: `board-decision-${check.id}-${out.length}`, kind: 'decide', title, detail: said(d?.why) });
   }
   for (const a of Array.isArray(board.leadActions) ? board.leadActions : []) {

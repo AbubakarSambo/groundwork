@@ -7,9 +7,12 @@
  */
 import * as crypto from 'crypto';
 import { currencyIn, readMoney, type AMoney } from './the-money';
+import { rowsOf, type TheCells } from '../documents/a-file-as-cells';
 
 export interface ATrackerLine {
   rowNumber: number;
+  /** The sheet the row is on, by its own name. */
+  sheet?: string | null;
   paymentKey: string;
   payee: string;
   reference: string | null;
@@ -143,27 +146,42 @@ export const paymentKeyOf = (payee: string, reference: string | null, dueOn: Dat
 
 const sectionsOf = (body: string) => { const xs = body.split(/^--- Sheet: .+? ---$/m).map((x) => x.trim()).filter(Boolean); return xs.length ? xs : [body]; };
 
-/** The sheet, with its headings read by the model where there is one. The lines themselves are always read by the code below. */
-export async function readTheTrackerReadingItsHeadings(text: string | null | undefined, readHeadings?: AHeadingReader | null): Promise<TheTrackerRead> {
-  if (!readHeadings) return readTheTracker(text);
-  const read = await Promise.all(sectionsOf(String(text ?? '')).map((x) => readHeadings(parseCsv(x).slice(0, 8)).catch(() => null)));
-  return readTheTracker(text, read);
+/**
+ * ONE SHEET AS ROWS, EACH WITH THE ROW NUMBER THE FILE GIVES IT (Dangote brief, change 1). Read from the workbook's own cells where the bytes are
+ * kept (documents/a-file-as-cells.ts): Excel's row, the sheet's own name. From text only where there are no cells, where the number is the CSV
+ * line, which is the sheet's row only when its used range starts at row 1.
+ */
+export interface ASection { sheet: string | null; rows: string[][]; rowNumbers: number[] }
+function theSections(text: string | null | undefined, cells?: TheCells | null): ASection[] {
+  if (cells?.kind === 'workbook' && cells.sheets.some((s) => s.cells.length)) {
+    return cells.sheets.filter((s) => s.cells.length).map((s) => { const rs = rowsOf(s.cells); return { sheet: s.name, rows: rs.map((r) => r.values), rowNumbers: rs.map((r) => r.row) }; });
+  }
+  const body = String(text ?? '');
+  const names = [...body.matchAll(/^--- Sheet: (.+?) ---$/gm)].map((m) => m[1]);
+  return sectionsOf(body).map((x, i) => { const rows = parseCsv(x); return { sheet: names[i] ?? null, rows, rowNumbers: rows.map((_, j) => j + 1) }; });
 }
 
-export function readTheTracker(text: string | null | undefined, headingsRead: ({ row: number; columns: TheColumns } | null)[] = []): TheTrackerRead {
-  const body = String(text ?? '');
-  const sheet = /^--- Sheet: (.+?) ---$/m.exec(body)?.[1] ?? null;
+/** The sheet, with its headings read by the model where there is one. The lines themselves are always read by the code below. */
+export async function readTheTrackerReadingItsHeadings(text: string | null | undefined, readHeadings?: AHeadingReader | null, cells?: TheCells | null): Promise<TheTrackerRead> {
+  if (!readHeadings) return readTheTracker(text, [], cells);
+  const read = await Promise.all(theSections(text, cells).map((x) => readHeadings(x.rows.slice(0, 8)).catch(() => null)));
+  return readTheTracker(text, read, cells);
+}
+
+export function readTheTracker(text: string | null | undefined, headingsRead: ({ row: number; columns: TheColumns } | null)[] = [], cells?: TheCells | null): TheTrackerRead {
+  const sections = theSections(text, cells);
+  const sheet = sections[0]?.sheet ?? null;
   const lines: ATrackerLine[] = [];
   const unreadable: { rowNumber: number; because: string }[] = [];
-  for (const [n, section] of sectionsOf(body).entries()) {
-    const rows = parseCsv(section);
+  for (const [n, section] of sections.entries()) {
+    const rows = section.rows;
     const header = findTheHeader(rows, headingsRead[n]);
     if (!header) continue;
     const cell = (r: string[], k: string) => (k in header.cols ? (r[header.cols[k]] ?? '').trim() : '');
     for (let i = header.at + 1; i < rows.length; i++) {
       const r = rows[i];
       if (r.every((c) => !c.trim())) continue;
-      const rowNumber = i + 1;
+      const rowNumber = section.rowNumbers[i] ?? i + 1;
       const payee = cell(r, 'payee') || cell(r, 'description');
       const currencyText = cell(r, 'currency');
       const amount = readMoney(cell(r, 'amount'), currencyText || null);
@@ -178,7 +196,7 @@ export function readTheTracker(text: string | null | undefined, headingsRead: ({
       const raw: Record<string, string> = {};
       rows[header.at].forEach((h, j) => { if (h.trim() && (r[j] ?? '').trim()) raw[h.trim()] = (r[j] ?? '').trim(); });
       lines.push({
-        rowNumber, paymentKey: paymentKeyOf(payee, reference, dueOn), payee, reference, description: cell(r, 'description') || null, amount: { ...amount, currency: amount.currency ?? currencyIn(currencyText) },
+        rowNumber, sheet: section.sheet, paymentKey: paymentKeyOf(payee, reference, dueOn), payee, reference, description: cell(r, 'description') || null, amount: { ...amount, currency: amount.currency ?? currencyIn(currencyText) },
         owner: cell(r, 'owner') || null, dueOn, statedStatus: normaliseStatus(cell(r, 'status')), statedApproval: normaliseApproval(approvalCell), evidence: nothing(evidence) ? null : evidence, confirmation: nothing(confirmation) ? null : confirmation, raw,
       });
     }
@@ -186,4 +204,5 @@ export function readTheTracker(text: string | null | undefined, headingsRead: ({
   return { lines, unreadable, sheet };
 }
 
-export const lineKeyOf = (fileHash: string | null, fileName: string, rowNumber: number): string => crypto.createHash('sha256').update(`${fileHash ?? fileName}:${rowNumber}`).digest('hex').slice(0, 40);
+/** One row of one file, once. The sheet is in the key only where it is known, so rows kept before sheets were read keep their keys. */
+export const lineKeyOf = (fileHash: string | null, fileName: string, rowNumber: number, sheet?: string | null): string => crypto.createHash('sha256').update(`${fileHash ?? fileName}:${sheet ? `${sheet}:` : ''}${rowNumber}`).digest('hex').slice(0, 40);

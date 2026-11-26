@@ -22,7 +22,7 @@ Who: **M** member, **L** lead (runs a check-in), **A** admin, **H** HR or financ
 | # | Use case | Who | Example | Where it works | Ask can do it |
 | --- | --- | --- | --- | --- | --- |
 | 9 | Ask what you said you would do | All | "What did I say I would do?" | The web and WhatsApp | Yes, by answering |
-| 10 | Ask what is due | All | "What is due this week?" | The web and WhatsApp | Yes, by answering |
+| 10 | Ask what is due on your own commitments and to-dos, not bills before a legislature or what the team reported | All | "What is due this week?" | The web and WhatsApp | Yes, by answering |
 | 11 | Put something on your own to-do list | All | "Remind me to book the room on Friday." | The web and WhatsApp | Yes, said back first and done on your yes |
 | 12 | Ask what to do next, and why it comes first | All | "what next" | The web and WhatsApp | Yes, by answering |
 | 13 | Ask where you are needed | All | "where am i needed" | The web and WhatsApp | Yes, by answering |

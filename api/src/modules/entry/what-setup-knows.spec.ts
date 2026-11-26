@@ -150,3 +150,16 @@ describe('what setup knows now', () => {
     expect(block).toContain('- What they want out of it: 20 schools signed up, 1000 parents making payments');
   });
 });
+
+describe('what saving this makes, and who "you" is (Fatima, 23 November 2026)', () => {
+  it('every setup turn with anything known says one setup makes one check-in, never from a past date, and that her "you" is Groundwork', () => {
+    const block = whatIsSettledAndWhatIsNot({ initial: 'Collect the National Assembly reports for 2026', peopleNamed: ['Ibrahim Danjuma'] });
+    expect(block).toContain('One setup makes one check-in');
+    expect(block).toContain('never collects from a past date by itself');
+    expect(block).toContain('Never say more than one check-in is set up');
+    expect(block).toContain('"you", "yourself" and "Groundwork" mean Groundwork');
+  });
+  it('and the first turn, with nothing known, still has no block', () => {
+    expect(whatIsSettledAndWhatIsNot({})).toBe('');
+  });
+});

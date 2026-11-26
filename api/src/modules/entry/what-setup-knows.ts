@@ -146,6 +146,19 @@ function onePerson(name: string, k: WhatSetupKnows): string {
 }
 
 /**
+ * WHAT SAVING THIS MAKES, AND WHO "YOU" IS (Fatima's Dangote office, 23 November 2026). Setup told her "You have set up four collections ...
+ * from January until now, and then weekly from 2027", and saved one weekly check-in. And "follow up with him yourself, not through me" was
+ * said back, in four setups, as "you will follow up with him directly". Both are facts about the product, not judgements, so they are told
+ * to the model here, the one block every setup turn reads, rather than matched in its words afterwards.
+ */
+export const WHAT_SAVING_THIS_MAKES = [
+  'WHAT SAVING THIS MAKES. One setup makes one check-in, with the people listed, on the schedule in the panel. It opens on its start day or later and never collects from a past date by itself: to gather what already happened, the people are asked for it in that check-in.',
+  'If they want several check-ins (one for each team, area or period), say plainly that this conversation sets up the first one, and that each of the others is set up the same way with Start a check-in once this one is saved. Never say more than one check-in is set up, never promise to group, sort or split the answers, and never say back anything the panel does not hold.',
+  'WHO IS WHO. Above, "Groundwork" is you, the one writing, and "the lead" is the person you are talking to: say "I" for Groundwork and "you" for the lead, so "Groundwork follows up, not the lead" is said "I will follow up, not you".',
+  'WHO "YOU" IS. In what they write, "you", "yourself" and "Groundwork" mean Groundwork, and "I" and "me" mean them. Say back what they asked Groundwork to do as yours ("I will follow up with them about anything missing"), never as theirs.',
+];
+
+/**
  * The block the model reads above the transcript: everything setup knows, and what it has not read from their words yet. Empty on the
  * first turn, when there is nothing known and a heading saying so would be noise.
  */
@@ -165,6 +178,7 @@ export function knownDontAsk(soFar?: WhatSetupKnows | null): string {
     ...(people.length ? ['- The team, as they gave it:', ...people.map((p) => `  - ${onePerson(p, known)}`)] : []),
   ];
   if (known.noAimAndTheySaidSo) lines.push('- They have said there is no target to work to. Do not ask for one again.');
+  lines.push('', ...WHAT_SAVING_THIS_MAKES);
 
   /* The team they named answers who else is in it. */
   const missing = WHAT_SETUP_IS_FOR.filter((k) => !itIsThere(known[k]) && !(k === 'whoInvolved' && people.length))

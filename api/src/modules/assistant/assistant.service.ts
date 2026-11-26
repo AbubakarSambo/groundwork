@@ -5,6 +5,9 @@ import { cleanText } from '../reports/what-the-record-actually-holds';
 import { understandTheMessage, theTitlesTheyMean, type TheMessageUnderstood } from './ask-understands-with-the-model';
 import { GUIDE_BY_KEY, isSwitchedOn, mayUse, theDescriptionFor, whoDoesIt, type TheReader } from './what-the-assistant-can-do';
 import { REPORT_GAPS_KIND, ReportsOnRequestService, REPORT_ON_REQUEST_KIND, type WhatWasSaid } from '../reports-on-request/reports-on-request.service';
+import { FOLLOW_UP_KIND, whoStillOwesAnAnswer, theFollowUpSaidBack, whatBecameOfTheReminders, type SomebodyToFollowUp } from './follow-up-with-whoever-has-not-answered';
+import { TheLeadsOwnNudgeService } from '../engagement/the-leads-own-nudge';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 const DELEGATE_GRANT_KIND = 'delegate_grant';
 const DELEGATE_REVOKE_KIND = 'delegate_revoke';
 const NO_REGISTER_FOR_YOU = 'I do not keep an outstanding list for you. It is kept for people who run check-ins, and for the people they let act for them.';
@@ -409,6 +412,8 @@ export class AssistantService {
     /* The conversation's set-up readers, so a check-in set up here is read from her words as one set up on /start is (22 November 2026). */
     @Optional() private readonly conversation?: ConversationService,
     @Optional() private readonly events?: EventEmitter2,
+    /* The board's own nudge, for "follow up with the people who haven't responded" (follow-up-with-whoever-has-not-answered.ts). */
+    @Optional() private readonly whatsapp?: WhatsAppService,
     /* People waiting to be let in, approved here as on People (Hafsah, 26 November 2026). Without it, Ask does not list them. */
     @Optional() private readonly door?: WhoIsWaitingAtTheDoorService,
   ) {}
@@ -568,6 +573,14 @@ export class AssistantService {
     }
     /* "That's right, finish." with nothing open is a finish like "finish": the model reads it, and it is answered the same plain way (run 10: six "I cannot answer that one yet"). */
     if (userId && understood?.kind === 'finished') return endWithNothingOpen();
+    /* "Follow up with the people who haven't responded": who still owes an answer is said back, and only her yes sends (follow-up-with-whoever-has-not-answered.ts). */
+    if (userId && understood?.kind === 'follow_up') {
+      const owing = await whoStillOwesAnAnswer(this.prisma, organizationId, userId);
+      const said = theFollowUpSaidBack(owing);
+      if (!owing.length || !who) return rules('follow_up_the_team', text(said));
+      const proposal = await this.prisma.assistantProposal.create({ data: { organizationId, personExternalId: who, kind: FOLLOW_UP_KIND, summary: said, payload: { people: owing } as any } });
+      return rules('follow_up_the_team', text(said), { type: 'proposal', proposalId: proposal.id, summary: said });
+    }
     /* A question that asks more than one thing is answered whole, from the record and the documents, never by one lane (S12). */
     if (userId && understood?.kind === 'question' && understood.parts > 1) return this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, groundId ?? null, message);
     /* A correction, in any words, is checked like a claim against their own record (a-correction-is-checked-like-a-claim.ts). */
@@ -597,6 +610,9 @@ export class AssistantService {
     const shrugged = (reply as any)?.blocks?.[0]?.type === 'text' && /^I cannot answer that one yet\./.test((reply as any).blocks[0].body ?? '');
     /* A yes or "nothing is wrong" with nothing waiting for it is agreement, not words to file (round 2, C19, C27): it is met as a colleague would meet it. */
     if (shrugged && understood?.kind === 'agreement') reply = rules('an_agreement', text(NOTHING_NEEDS_CHANGING));
+    else if (shrugged && askedOnWhatsApp() && understood?.kind === 'update') reply = rules('an_update', text(NO_CHECK_IN_OPEN_SO_NOT_ADDED));
+    /* A question no lane could answer is read against the record and the files, never met with a menu (Fatima, 25 January 2027: "Who is responsible for the unresolved issues?" was taken as a person to look up, found nobody, and said it could not answer). */
+    else if (shrugged && userId && isAQuestion(message)) reply = await this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, groundId ?? null, message);
     const waitingNamed = shrugged && userId ? aWaitingRequestNamed(message, await this.waitingForYouToDecide(organizationId, userId).catch(() => [])) : null;
     if (waitingNamed) reply = rules('decide_a_request', text(stillWaitingSaid(waitingNamed)));
     else if (shrugged && userId && understood?.kind !== 'agreement' && aChangeOfTheirs(message) && !(askedOnWhatsApp() && understood?.kind === 'update')) {
@@ -3636,6 +3652,18 @@ export class AssistantService {
     }
 
     /* "Shall I do it for you?" after a how-to (Batch S, S5): a yes goes into that thing's own lane, which asks or says back before anything is written. */
+    if (parked.kind === FOLLOW_UP_KIND) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: decision === 'accept' ? 'ACCEPTED' : 'DECLINED', resolvedAt: new Date() } });
+      if (decision !== 'accept') return rules('follow_up_the_team', text('All right. I have not sent anybody a reminder.'));
+      const userId = where?.userId ?? (await this.signedInAs(organizationId, who));
+      const nudge = new TheLeadsOwnNudgeService(this.prisma as any, this.email, this.whatsapp);
+      const results: { name: string; says: string; nudged: boolean; channel?: string | null }[] = [];
+      for (const p of (((parked.payload as any)?.people ?? []) as SomebodyToFollowUp[])) {
+        const r = userId ? await nudge.nudge(p.groundId, p.participantId, userId).catch((err: any) => ({ nudged: false, at: null, channel: null, says: `The reminder to ${p.name} could not be sent (${String(err?.message ?? 'an error')}).` })) : { nudged: false, at: null, channel: null, says: `The reminder to ${p.name} could not be sent.` };
+        results.push({ name: p.name, says: r.says, nudged: !!r.nudged && !/^Nudged at/.test(r.says ?? '') ? true : !!r.nudged, channel: (r as any).channel ?? null });
+      }
+      return rules('follow_up_the_team', text(whatBecameOfTheReminders(results)));
+    }
     if (parked.kind === DO_IT_FOR_YOU_KIND) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: decision === 'accept' ? 'ACCEPTED' : 'DECLINED', resolvedAt: new Date() } });
       const done = decision === 'accept' ? await this.doItForYou(organizationId, personId, who, where?.userId ?? null, String((parked.payload as any)?.key ?? '')) : null;

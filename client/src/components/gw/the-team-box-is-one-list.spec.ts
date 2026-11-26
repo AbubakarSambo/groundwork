@@ -28,3 +28,11 @@ describe('the people box, as the lead reads it after the conversation names peop
     expect(withTheNamedAdded('Ruth, ruth@msingi.test', ['Rita'])).toBe('Ruth, ruth@msingi.test\nRita')
   })
 })
+
+describe('a first name in the box takes the fuller line the conversation gives later (evaluation lead, 23 November 2026)', () => {
+  it('"Catherine" becomes "Catherine Mwangi, catherine@..., +254..." and nobody is added twice', async () => {
+    const { withTheNamedAdded } = await import('./TheTeamBox')
+    const out = withTheNamedAdded('Catherine\nNafiu\nMaureen', ['Catherine Mwangi, catherine@rollout.test, +254711000001', 'Nafiu Bello, nafiu@rollout.test, +2348021000002', 'Maureen Achieng, maureen@rollout.test, +254711000003'])
+    expect(out.split('\n')).toEqual(['Catherine Mwangi, catherine@rollout.test, +254711000001', 'Nafiu Bello, nafiu@rollout.test, +2348021000002', 'Maureen Achieng, maureen@rollout.test, +254711000003'])
+  })
+})

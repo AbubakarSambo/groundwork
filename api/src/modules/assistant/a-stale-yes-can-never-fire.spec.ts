@@ -65,7 +65,7 @@ describe('noticing something said in passing', () => {
 
 describe('a stale yes can never fire', () => {
   it('accepts a plain yes', () => {
-    for (const y of ['yes', 'Yes', 'yep', 'sure', 'ok', 'go ahead', 'do it', "that's right"]) {
+    for (const y of ['yes', 'Yes', 'yep', 'sure', 'ok', 'go ahead', 'do it', "that's right", 'Yes please.', 'yes, thanks', 'OK thank you']) {
       expect(resolveConfirmation(y)).toBe('accept');
     }
   });

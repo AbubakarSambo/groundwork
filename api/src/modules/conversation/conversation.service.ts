@@ -626,6 +626,13 @@ function theDoorsTheirTurnsCameThrough(svc: any, checkInId: string | null): any 
 /* What carries on from one check-in to the next: the work, the promises, the waits and the decisions (the check-in's memory). */
 const WHAT_CARRIES_ON: ReadonlySet<string> = new Set(['workUpdates', 'promises', 'blockers', 'decisions', 'compared.promisesDue', 'compared.blockers', 'compared.workMoved']);
 
+/**
+ * A REPORT THEY POINT TO IS ASKED FOR (Fatima's Dangote office, 23 November 2026). Musa wrote "We were at 70% capacity because of raw material
+ * shortages. The October report has the details." and was asked which mill he meant; the October report was never asked for. Said to the model each
+ * turn: what they point to is what the record needs, unless it is already among the documents this session can read.
+ */
+const A_REPORT_THEY_POINT_TO = 'WHEN THEY POINT TO A REPORT, FILE OR EMAIL FOR THE DETAILS ("the October report has the details", "it is in the spreadsheet I sent Fatima"), and it is not among the documents this session can read, ask them to send it here, naming it in their words, once. If it is among them, use what it says. WHEN THEY SAY THEY ALREADY SENT IT TO SOMEBODY ("I already sent this to Fatima"), thank them and ask them kindly to send the same file here too, so it is on the record and nobody asks again; never move on as if it had been sent here.';
+
 @Injectable()
 export class ConversationService {
   /** Answers being worked on right now, so the same answer arriving twice is answered once. See sendMessage. */
@@ -1400,7 +1407,12 @@ export class ConversationService {
       where: { checkInId: checkIn.id, role: TurnRole.AI },
       orderBy: { createdAt: 'asc' },
     });
-    if (existingAiTurn) {
+    /*
+     * ONLY A SESSION ALREADY STARTED. A file sent before the check-in was opened, by WhatsApp or email, is read back as a turn of
+     * Groundwork's; read as "opened", it left the check-in NOT_STARTED for good, and every answer after it was refused with "This
+     * session has not been opened yet" (evaluation, 23 November 2026). A concurrent open in this process is held by opensInFlight.
+     */
+    if (existingAiTurn && checkIn.status !== CheckInStatus.NOT_STARTED) {
       return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)) };
     }
     /*
@@ -6430,7 +6442,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return [THE_LEAN_CORE, theirLanguage, aComplaintBlock, intakeBlock, recordAlreadyHolds, managingBlock, alreadyGiven, owedBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, finalSessionContext, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, directionBlock, theJob, theJobThisTurn, roleConfirmationBlock, coachingBlock, patternProbeBlock, dynamicContext, docContext, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday]
         .filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theLeanRules, calledHere));
     }
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, aComplaintBlock, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, managingBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, directionBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, aComplaintBlock, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, managingBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, directionBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, A_REPORT_THEY_POINT_TO, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
   }
 
   /**
@@ -11340,8 +11352,33 @@ ${told}` : '';
 
     const openForThisPerson = await this.prisma.groundDependency.findMany({
       where: { groundId, fromParticipantId: participantId },
-      select: { id: true, what: true, onParticipantId: true, onLabel: true, status: true },
+      select: { id: true, what: true, onParticipantId: true, onLabel: true, status: true, sourceCheckInId: true },
     });
+    /*
+     * THE SAME WAIT, AS THE MODEL READ IT (evaluation, 24 November 2026). The assessment says when a wait is the one from last time
+     * (previousItem), but the rows were matched on words alone: "the Kano state ministry" was not "Kano state ministry", so Nafiu's
+     * one stuck MoU became three open rows and Today said it three times; Catherine's Nakuru wait, now on the county's legal team,
+     * was closed as cleared and opened again. A wait the model links to last time's item is that item's row, whatever the words.
+     */
+    /* Never "her approval" about the person waited on (Drop Access run 1, A7; theThingWaitedFor), behind Release 1's switch. */
+    const asStored = (what: string, onParticipantId: string | null) => (releaseOneHere ? theThingWaitedFor(what, onParticipantId) : what.trim());
+    const thisOne: any = await Promise.resolve().then(() => this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { sessionNumber: true } })).catch(() => null);
+    /* Last time is the last session they had a conversation in, as the assessment counts it (a missed one holds nothing). */
+    const before: any[] = thisOne ? (await Promise.resolve().then(() => this.prisma.checkIn.findMany({
+      where: { participantId, sessionNumber: { lt: thisOne.sessionNumber } }, orderBy: { sessionNumber: 'desc' }, select: { id: true }, take: 4,
+    })).catch(() => [])) ?? [] : [];
+    let lastTime: { id: string } | null = null;
+    let lastAssessment: Awaited<ReturnType<typeof theAssessmentOf>> = null;
+    for (const c of before) {
+      lastAssessment = await Promise.resolve().then(() => theAssessmentOf(this.prisma, c.id)).catch(() => null);
+      if (lastAssessment) { lastTime = c; break; }
+    }
+    const lastTimesWaits = whatTheyAreWaitingOn(lastAssessment);
+    const theRowItCarriesOn = (previousItem?: string | null) => {
+      if (!lastTime) return null;
+      const was = previousItem ? lastTimesWaits.find((w) => w.id === previousItem)?.what : null;
+      return was ? openForThisPerson.find((e) => e.sourceCheckInId === lastTime!.id && e.what.trim().toLowerCase() === asStored(was, e.onParticipantId).toLowerCase()) ?? null : null;
+    };
 
     /*
      * WHAT THEY SAID ABOUT WHEN, ONLY IF THOSE EXACT WORDS ARE IN THE TRANSCRIPT (request 18). The
@@ -11380,8 +11417,8 @@ ${told}` : '';
       if (aWaitForTheirCheckIn({ what: d.what, onParticipantId, onLabel }, ground.participants.map((p) => [p.user?.firstName ?? '', p.user?.lastName ?? ''].filter(Boolean)))) continue;
       const key = normalise(d.what);
 
-      // Same person waiting on the same party for roughly the same thing.
-      const existing = openForThisPerson.find(
+      // The wait the model says this carries on; else the same person waiting on the same party for roughly the same thing.
+      const existing = theRowItCarriesOn(d.previousItem) ?? openForThisPerson.find(
         (e) =>
           e.onParticipantId === onParticipantId &&
           (e.onLabel ?? null) === onLabel &&
@@ -11398,6 +11435,10 @@ ${told}` : '';
           where: { id: existing.id },
           data: {
             status,
+            /* The newest words for what it is and who it is on, so next time's link finds this row by them. */
+            what: asStored(d.what, onParticipantId),
+            onParticipantId,
+            onLabel,
             then: d.then?.trim() || undefined,
             /* What they said they did, this time. Undefined leaves what an earlier round heard:
                somebody who chased last week and says nothing this week still chased. */
@@ -11433,7 +11474,7 @@ ${told}` : '';
           // external blocker is still visible instead of silently dropped.
           onLabel,
           /* Never "her approval" about the person waited on (Drop Access run 1, A7; theThingWaitedFor), behind Release 1's switch. */
-          what: releaseOneHere ? theThingWaitedFor(d.what, onParticipantId) : d.what.trim(),
+          what: asStored(d.what, onParticipantId),
           then: d.then?.trim() || null,
           /* Their own words for what they have already done about it. Null means they did not say,
              which is what "nothing said yet" on the board honestly means. */
@@ -11457,7 +11498,7 @@ ${told}` : '';
           /* The other check-in it waits on, only when that is certain from the names (request 18). */
           waitingOnGroundId: await waitingOnCheckIn(d, onParticipantId),
         },
-        select: { id: true, what: true, onParticipantId: true, onLabel: true, status: true, namedTheThing: true },
+        select: { id: true, what: true, onParticipantId: true, onLabel: true, status: true, namedTheThing: true, sourceCheckInId: true },
       });
       touched.push(created.id);
       // So a second mention within the SAME extraction also dedupes.
@@ -11861,10 +11902,13 @@ ${told}` : '';
        * WHAT IS IN IT IS SAID BACK, AND USED (Hafsah, 26 October 2026: "document synthesize needs to happen each chat where it tells them
        * whats in the doc and uses it as context, we used to have that"). This said "Do not summarise the document."
        */
-      'You are Groundwork. A document has just been attached to this check-in. Name it, then say in two to four short sentences what is in it that matters to this check-in, from the whole of it and not only its start: the names, amounts, dates and items, exactly as the document writes them. Then ask one question: what does it confirm about what they have told you? Plain, full sentences. Do not make a judgement. Do not list questions.';
+      'You are Groundwork. A document has just been attached to this check-in. Name it, then say in two to four short sentences what is in it that matters to this check-in, from the whole of it and not only its start: the names, amounts, dates and items, exactly as the document writes them, and a change only as the document states it (a fall from last week is not a gap to target; never work out a comparison it does not make). You are writing to the person who sent it, so call them "you". If what they said just before sending it says what it is, and the document is something else (they said the October Hadejia mill report and it is a Kano warehouse stock list), say so plainly and kindly and ask them to send the one they meant; ask nothing else. Otherwise ask them one question about it that this check-in still needs answered, never for a figure the document already gives: where it shows how much, ask why, using what it shows ("Your sheet shows orders down 12% and the average order down 7%. What drove that?"). Plain, full sentences. Do not make a judgement. Do not list questions.';
 
+    /* What they said just before sending it, so a file that is not what they said it is gets noticed (Ngozi's "Here is the October Hadejia report", a Kano stock list; 23 November 2026). */
+    const justBefore: any[] = await Promise.resolve((this.prisma as any).conversationTurn?.findMany?.({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, orderBy: { createdAt: 'desc' }, take: 1, select: { content: true } })).catch(() => []) ?? [];
+    const theySaid = justBefore.map((t) => String(t.content ?? '').trim()).filter(Boolean).reverse().join(' / ').slice(0, 600);
     const docContext = doc && whole
-      ? `[Document attached: "${doc.fileName}"]\n${whatADocumentSays(whole, undefined, { stillReading: notReadWholeYet(whole) && isBeingRead(doc.id) })}`
+      ? `${theySaid ? `What they said just before sending it: "${theySaid}"\n\n` : ''}[Document attached: "${doc.fileName}"]\n${whatADocumentSays(whole, undefined, { stillReading: notReadWholeYet(whole) && isBeingRead(doc.id) })}`
       : '[A document was attached but could not be read.]';
 
     const reply = await this.anthropic.respond(systemPrompt, [{ role: 'user', content: docContext }]);

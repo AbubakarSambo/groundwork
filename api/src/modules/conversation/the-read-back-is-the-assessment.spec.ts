@@ -45,6 +45,19 @@ describe('the read-back is the assessment, said once', () => {
     expect(back.lines.map((l) => l.id)).toEqual(['c-rita#r1.promises.0', 'c-rita#r1.dates.0']);
     expect(theLinesReadBackIn(theReadBackKeptOn(ritas, back.lines))).toEqual(back.lines);
   });
+  it('a piece read before the whole line it belongs to is not said again (Catherine, evaluation, 24 November 2026)', () => {
+    const cath = new Map<number, string>([[1, 'The remaining six need county approval. Nakuru county has not signed, I sent it on 2 November.']]);
+    const parts = thePartsFrom({
+      summary: 'Catherine is waiting on county approvals.', nothingToRecord: [],
+      dates: [{ words: 'I sent it on 2 November', from: [1], when: '2 November', what: 'sent' }],
+      blockers: [{ words: 'The remaining six', from: [1], what: 'county approval' }, { words: 'The remaining six need county approval', from: [1], what: 'county approval' }, { words: 'Nakuru county has not signed, I sent it on 2 November', from: [1], what: 'Nakuru county' }],
+    } as any, cath, { hasSetup: false, previous: null, givenRole: null, read: 1, isTheLead: false });
+    const text = theReadBackFrom({ ...ritas, ...parts, promises: parts.promises ?? [] })?.text ?? '';
+    expect(text).not.toContain('“The remaining six”');
+    expect(text).not.toContain('“I sent it on 2 November”');
+    expect(text).toContain('Nakuru county has not signed');
+  });
+
   it('nothing of theirs means no read-back', () => {
     expect(theReadBackFrom({ ...ritas, promises: [], dates: [] })).toBeNull();
     expect(theReadBackFrom(null)).toBeNull();

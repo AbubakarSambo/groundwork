@@ -18,7 +18,8 @@ function makeService() {
   };
   const prisma: any = {
     groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1' }]) },
-    checkIn: { findUnique: jest.fn(async () => checkIn), update: jest.fn(async () => ({})) },
+    /* Its update changes the row, as the database does, so an opened session reads as opened. */
+    checkIn: { findUnique: jest.fn(async () => ({ ...checkIn })), update: jest.fn(async ({ data }: any) => { Object.assign(checkIn, data ?? {}); return checkIn; }) },
     ground: {
       findUnique: jest.fn(async () => ({ status: 'ACTIVE', organizationId: 'org1', brief: 'A short brief.', subjectsToCover: null, whatACompleteAnswerHolds: null })),
       update: jest.fn(async () => ({})),
@@ -61,6 +62,14 @@ describe('two opens of the same session at once', () => {
     const again = await service.open('ci-1', 'user1');
     expect(again.reply).toBe(first.reply);
     expect(anthropic.respond).toHaveBeenCalledTimes(1);
+  });
+
+  it('a file read back before the session was opened does not count as opening it (evaluation, 23 November 2026)', async () => {
+    const { service, anthropic, turns } = makeService();
+    turns.push({ id: 't0', role: 'AI', content: 'The document shows three delayed payments.', createdAt: new Date() });
+    const opened = await service.open('ci-1', 'user1');
+    expect(anthropic.respond).toHaveBeenCalledTimes(1);
+    expect(opened.reply).toMatch(/^First question number/);
   });
 
   it('a failed open is not remembered: the next open tries again', async () => {

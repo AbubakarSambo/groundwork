@@ -1213,7 +1213,7 @@ Fields:
   LEAVE IT OUT. An empty field is honest and the screen says so; a paraphrase of another field is
   the product inventing content and it teaches people the summary cannot be trusted.
 - goals: array of what they need from this
-- brief: anything specific to focus on or probe
+- brief: anything specific to focus on or probe. Write who does what in plain words: the person setting this up is "the lead" and the assistant is "Groundwork". Their "you" or "yourself" means Groundwork: "follow up with him yourself, not through me" is "Groundwork follows up with Ibrahim about missing months, not the lead."
 - cadence: how often they check in, IF they said. One of "DAILY", "WEEKLY", "FORTNIGHTLY", "MONTHLY", "ONE_TIME". Map their own words: "daily", "every day", "every working day" or "each day" -> DAILY; "weekly" or "every week" -> WEEKLY; "every two weeks", "fortnightly", "every other week" -> FORTNIGHTLY; "monthly" or "once a month" -> MONTHLY; "just once", "a single check-in" -> ONE_TIME. Only words about how often THIS CHECK-IN happens count: "I own the weekly review" or "our monthly target" names another meeting or a number, not the check-in's rhythm, and never changes a rhythm they already gave. Omit it entirely if they did not say.
 - cadenceDays: ONLY when they said the check-in happens more than once a week on days they named ("twice a week, on Monday and Thursday", "Mondays and Thursdays"): those weekdays as numbers, 0 is Sunday and 6 is Saturday, with cadence "WEEKLY". Omit it for once a week, or when they named no days.
 - runsUntilEnded: true ONLY if they said it runs until they end it themselves ("when I end it", "until I stop it", "no end date"). Then leave timelineDays out.

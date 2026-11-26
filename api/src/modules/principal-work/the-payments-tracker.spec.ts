@@ -82,9 +82,9 @@ describe('a tracker forwarded with its approval email', () => {
     expect(ngoziGot[0].text).toBe([
       'Ngozi, I read Payments tracker Nov.xlsx. I need your help with 4 payments.',
       '1. The tracker says the payment of NGN 1,250,000 to Kilele Logistics Ltd, reference INV-0042, due on 20 November 2026 was paid. I have not been sent a receipt or a bank confirmation, so I have not recorded it as paid. Can you send the proof, or tell me if it has not been paid?',
-      '2. The payment to Abuja Printing Press, reference INV-0108, appears with two different amounts: NGN 480,000 (Payments tracker Nov.xlsx, row 3) and NGN 520,000 (Payments tracker Nov.xlsx, row 4). Which amount is right?',
+      '2. The payment to Abuja Printing Press, reference INV-0108, appears with two different amounts: NGN 480,000 (Payments tracker Nov.xlsx, sheet Payments, row 3) and NGN 520,000 (Payments tracker Nov.xlsx, sheet Payments, row 4). Which amount is right?',
       '3. The tracker says the payment of NGN 90,000 to Zenith Cleaners, reference INV-77, due on 12 November 2026 was paid, and it names "Bank advice 77" as the proof. I have not been sent that document, so I have not recorded it as paid. Can you send the proof, or tell me if it has not been paid?',
-      '4. The payment of NGN 60,000 to Wuse Security Ltd, reference WS-5, is shown in two different ways: pending (Payments tracker Nov.xlsx, row 8) and paid (Payments tracker Nov.xlsx, row 9). I have not been sent a receipt or a bank confirmation, so I have not recorded it as paid. Which one is right, and if it was paid, can you send the proof?',
+      '4. The payment of NGN 60,000 to Wuse Security Ltd, reference WS-5, is shown in two different ways: pending (Payments tracker Nov.xlsx, sheet Payments, row 8) and paid (Payments tracker Nov.xlsx, sheet Payments, row 9). I have not been sent a receipt or a bank confirmation, so I have not recorded it as paid. Which one is right, and if it was paid, can you send the proof?',
       'Please reply to this message. I have not approved or paid anything.',
     ].join('\n\n'));
     /* the approval is hers to answer, and is not put to Ngozi */

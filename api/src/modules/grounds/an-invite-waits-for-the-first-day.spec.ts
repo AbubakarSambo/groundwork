@@ -93,6 +93,13 @@ describe('and the invite that was held back', () => {
     expect(stamp).toBeGreaterThan(send);
   });
 
+  it('and its link lasts from the day it is sent, not the day the lead set it up', () => {
+    /* Fatima set up 2027's weekly check-ins on 22 November; every invitation of 4 January arrived already expired. */
+    const fresh = CRON.indexOf('inviteTokenExpiresAt: inviteExpiryFrom(now)');
+    expect(fresh).toBeGreaterThan(-1);
+    expect(fresh).toBeLessThan(CRON.indexOf('sendTheInviteThisGroundSends'));
+  });
+
   it('and takes its own lock, so two instances do not both send', () => {
     expect(CRON).toMatch(/CronLock\.DEFERRED_INVITES/);
   });

@@ -1,6 +1,10 @@
 import { YearEndService } from '../year-end/year-end.service';
 import { ReportsOnRequestService } from '../reports-on-request/reports-on-request.service';
 import { ExecutiveOnboardingService } from '../executive-onboarding/executive-onboarding.service';
+import { AssistantService } from '../assistant/assistant.service';
+import { AskService } from '../ask/ask.service';
+import { asATextMessage } from './a-reply-reads-as-a-text-message';
+import { WHAT_WOULD_YOU_LIKE_TO_ADD } from '../conversation/add-something';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,10 +19,10 @@ import { theAssistantsAddress } from '../email/the-assistants-address';
 import { INBOUND_MAIL_CLIENT, InboundMailClient, ResendInboundMailClient } from '../email/inbound-mail-client';
 import {
   AForward, aFirstName, theHashOfAForward, theHashOfBytes, theMessageAsAFile, theSubjectOfOurReply, whatAForwardIs,
-  whatWeSayWhenItWasKept, whatWeSayWhenNothingIsOpen, whatWeSayWhenWeCannotTellWhoItIs, whatWeSayWhenWeNeedToKnowWhich, whichOneDidTheySay, type WhatWasHeard,
+  whatWeSayToTheirAnswer, whatWeSayWhenItWasKept, whatWeSayWhenNothingIsOpen, whatWeSayWhenWeCannotTellWhoItIs, whatWeSayWhenWeNeedToKnowWhich, whichOneDidTheySay, type WhatWasHeard,
 } from '../email/a-forward-from-a-team-member';
 
-export type WhatBecameOfAForward = 'ignored' | 'already seen' | 'not matched' | 'kept' | 'nothing open' | 'asked which' | 'year-end' | 'her words' | 'kept for her' | 'kept for a team member' | 'report';
+export type WhatBecameOfAForward = 'ignored' | 'already seen' | 'not matched' | 'kept' | 'nothing open' | 'asked which' | 'year-end' | 'her words' | 'kept for her' | 'kept for a team member' | 'report' | 'ask';
 
 /** A question about which check-in stands for three days; a later reply that names one is read as its answer. */
 const THE_QUESTION_STANDS_FOR_MS = 3 * 24 * 60 * 60 * 1000;
@@ -58,6 +62,10 @@ export class AForwardFromATeamMemberService {
     @Optional() private readonly executive?: ExecutiveOnboardingService,
     /* A report they asked for: what they forward or attach is kept for it, and their words take it a step on (reports-on-request, S8). Last and optional, so what builds this positionally still compiles. */
     @Optional() private readonly reportsOnRequest?: ReportsOnRequestService,
+    /* Ask, the same lanes a WhatsApp message with nothing open goes to. Last and optional, so what builds this positionally still compiles. */
+    @Optional() private readonly assistant?: AssistantService,
+    /* Ask for somebody who signs in: the same door the panel uses, which knows who they are, a guest included. */
+    @Optional() private readonly ask?: AskService,
   ) {
     this.client = client ?? new ResendInboundMailClient();
     this.transcriber = transcriber ?? new GeminiTranscriber(anthropic as AnthropicService);
@@ -148,6 +156,18 @@ export class AForwardFromATeamMemberService {
     const meta = files.map((x) => ({ id: x.id, fileName: x.fileName, mimeType: x.mimeType, hash: x.hash }));
     const base = { organizationId: org.id, personId: who.personId, userId, providerId: f.providerId, contentHash, fromAddress: f.fromAddress, toAddress: f.toAddress, subject: f.subject, body: f.body, attachments: meta, receivedAt: f.receivedAt };
 
+    /*
+     * THEIR OWN WORDS ARE A MESSAGE TO ASK, as on WhatsApp (whereThisGoes): a request, a question, a yes. With a check-in open, a reply in
+     * its thread ("Re:") is their answer there (keep, below), and a new mail is a new message: Amina's "Which payments are overdue?" went
+     * into her own check-in and was told "I need to understand your own part" (evaluation, 24 November 2026). A forward is material.
+     */
+    if ((!open.length || !/^\s*re:/i.test(f.subject ?? '')) && !files.length && f.body && !/^\s*fwd?:/i.test(f.subject ?? '')) {
+      const words = theNewWordsOnly(f.body);
+      const reply = userId && this.ask ? await this.ask.ask({ userId, email: f.fromAddress, organizationId: org.id }, { message: words }).catch(() => null)
+        : who.personId && this.assistant ? await this.assistant.respondOnWhatsApp(org.id, who.personId, words).catch(() => null) : null;
+      const answered = (reply as any)?.blocks ? asATextMessage(reply as any) : '';
+      if (answered) { await this.email.sendTheAssistantsReply(f.fromAddress, subject, answered, theAssistantsAddress(org)); return 'ask'; }
+    }
     if (!open.length || !userId) {
       if (!before) await db.inboundForward.create({ data: { ...base, status: 'NO_CHECK_IN' } }).catch((err: any) => this.logger.warn(`Storing a forward failed: ${err?.message}`));
       await this.email.sendTheAssistantsReply(f.fromAddress, subject, whatWeSayWhenNothingIsOpen(first), theAssistantsAddress(org));
@@ -185,7 +205,28 @@ export class AForwardFromATeamMemberService {
     const replyTo = theAssistantsAddress(org);
     const first = aFirstName(who.firstName);
     const subject = theSubjectOfOurReply(f.subject);
-    const checkIn = await this.prisma.checkIn.findUnique({ where: { id: current.id }, select: { groundId: true } });
+    const checkIn = await this.prisma.checkIn.findUnique({ where: { id: current.id }, select: { groundId: true, status: true } });
+    /*
+     * THEIR OWN REPLY IS THEIR ANSWER, AS ON WHATSAPP (evaluation, 23 November 2026). Eric answered the check-in's question by email, and his
+     * words were filed as "a document, an email from Eric Kariuki", and the next question asked for an amount already in his file. A reply
+     * with words and nothing attached goes into the conversation the way a WhatsApp message does. A forward, and anything with files, is
+     * material and is kept below.
+     */
+    const theirWords = /^\s*fwd?:/i.test(f.subject ?? '') || files.length ? '' : theNewWordsOnly(f.body ?? '');
+    if (theirWords && checkIn) {
+      const opened: any = checkIn.status === 'NOT_STARTED' ? await this.conversation.open(current.id, userId, WHAT_WOULD_YOU_LIKE_TO_ADD) : null;
+      const r: any = await this.conversation.sendMessage(opened?.checkInId ?? current.id, userId, theirWords);
+      const data = {
+        organizationId: org.id, personId: who.personId, userId, providerId: f.providerId,
+        contentHash: theHashOfAForward({ fromAddress: f.fromAddress, subject: f.subject, body: f.body, fileHashes: [] }),
+        fromAddress: f.fromAddress, toAddress: f.toAddress, subject: f.subject, body: f.body, attachments: [], receivedAt: f.receivedAt,
+        status: 'KEPT', groundId: checkIn.groundId, checkInId: current.id, documentIds: [],
+      };
+      if (before) await db.inboundForward.update({ where: { id: before.id }, data: { status: 'KEPT', groundId: data.groundId, checkInId: data.checkInId } });
+      else await db.inboundForward.create({ data }).catch((err: any) => this.logger.warn(`Storing a forward failed: ${err?.message}`));
+      await this.email.sendTheAssistantsReply(f.fromAddress, subject, whatWeSayToTheirAnswer(first, String(r?.reply ?? '')), replyTo);
+      return 'kept';
+    }
     const documentIds: string[] = [];
     const kept: string[] = [];
     const couldNotOpen: string[] = [];

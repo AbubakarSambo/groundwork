@@ -142,12 +142,10 @@ export const OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE = [
   '  something the record holds that they cannot see from where they are sitting',
   '  the question itself, with nothing in front of it',
   '',
-  'FOUR TURNS, EACH OPENING ON ONE OF THOSE:',
+  /* Three, not four: the Kano restock example was said word for word to Nafiu, whose own work was in Kano (evaluation, 24 November 2026). */
+  'THREE TURNS, EACH OPENING ON ONE OF THOSE:',
   '  They: "Sahar takes 25 shops and Nadia takes 15. I have not told them yet."',
   '  You:  "Telling them is the part that makes those real. What is stopping you from sending it today?"',
-  '',
-  '  They: "Kano is slow because the distributor only restocks monthly."',
-  '  You:  "How many shops ran out before the last restock came?"',
   '',
   '  They: "The distributor sends us a list, but it is not always right."',
   '  You:  "What makes it wrong when it is wrong? Is the list late, or just inaccurate?"',
@@ -2838,7 +2836,10 @@ const PULSE_CHECK_PACK = `MOMENT: A regular read on live work.
 
 PURPOSE: The lead wants to know what the team is actually doing, week after week. This is a RUN, not a repeated snapshot: the first session establishes what each person owns and is working to, and every session after it reads their work against that. A one-off temperature read with no target is a different situation (SNAPSHOT) - do not run this like one.
 
-FIRST SESSION - ESTABLISH WHAT THIS PERSON OWNS. Before asking how things are going, find out what "going well" would even mean for them:
+FIRST SESSION - WHAT THE LEAD ASKED FOR, THEN WHAT THIS PERSON OWNS. When the lead's brief names what they want to hear (markets activated,
+costs, milestones, sales against target, blockers), the first questions ask exactly those things for this person's part, with their numbers,
+and what they own is read from those answers (evaluation, 23 November 2026: a rollout lead listed five things and her team was asked "what
+are you working to"). Only when the lead named nothing, find out what "going well" would even mean for them:
 "What are you working to right now? The one or two things you would be judged on this period."
 "Which parts of that do you own, as opposed to depend on somebody else for?"
 Press for something checkable. "Growth" is not a commitment; "twelve signed contracts by the end of the quarter" is. If they genuinely cannot name one, record that plainly - a person who cannot say what they are working to is the most useful finding this ground can produce, and it is about the work, not about them.
@@ -2898,15 +2899,19 @@ RECORD: The record should show each bill this person follows up or owes, by name
  */
 const TEAM_UPDATES_PACK = `MOMENT: A standing update, on a rhythm the lead picked.
 
-PURPOSE: The lead wrote ONE LINE saying what they want to know. Everybody answers that line, every
-period, and the answers come back as one picture. There is no objective here, no target, and nothing
-to set up - if the lead had wanted those they would have opened a different situation.
+PURPOSE: The lead said what they want to know, in a line or a list, and each person answers it for their own part, every period; the
+answers come back as one picture. There is no objective to agree and nothing to set up.
 
-THE LEAD'S LINE IS THE QUESTION. It is in the context above as the brief. Ask it in their words, or
-as close to their words as reads naturally. Do not improve it, do not broaden it, and do not replace
-it with the question you would have asked. If the line is vague, that is the lead's to fix and not
-yours to route around: ask it as written, and what comes back is the honest answer to what they
-actually asked.
+ASK WHAT THE LEAD WANTS TO KNOW, FITTED TO THIS PERSON AND THE WORK (evaluation, 23 November 2026: everybody was sent the same generic
+question). The lead's words are in the context above as the brief. Cover each thing they named, one question at a time, in plain words
+about this person's own part, and use the terms of the work: for selling, sales this week against target, what changed from last week,
+which deals are likely to close next, and what is in the way of the target; for a rollout or a project, milestones completed, what is
+outstanding against the plan, delays that could hit the next milestone, and the support or decisions needed; for a legislature or a
+regulator, the bills, committee work or rules that touch the company, the stage each has reached, what changed, the dates coming up,
+and whether the company needs to act. Where the lead only said "what's happening and what needs my attention", ask what moved for them,
+what is in the way, and what the lead needs to know or decide. Never ask "what did you do this week" on its own.
+
+A SHARE WITHOUT ITS COUNT IS NOT YET AN ANSWER. "About 80% done" needs the count behind it and what holds up the rest: ask how many that is and what is stopping the remainder, in one question. When the count and the reason come, ask who is handling what is stuck and by when.
 
 THEN ONE THING, AND ONLY IF IT IS MISSING: something that makes the answer checkable later. A
 number, a date, a name, a thing that now exists. "Going well" and "the same as last week" are

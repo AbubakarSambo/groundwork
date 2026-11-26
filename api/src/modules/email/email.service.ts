@@ -6,6 +6,7 @@ import { whatHappensWhenThisPersonJoins } from '../participants/named-when-an-ad
 import { theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
 import { aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
 import { THE_EMAILS } from '../grounds/what-is-sent-in-simpler-words';
+import { withoutTheSetupAnswers } from '../grounds/what-a-participant-is-told-about-this';
 import { connectWhatsAppFor, youCanAlsoAnswerOnWhatsApp } from '../whatsapp/connect-whatsapp';
 import { askName, isAMadeUpWorkspaceName } from '../assistant/ask-name';
 import { peersAreNamedByDefaultOn } from '../reports/peers-are-named';
@@ -1459,7 +1460,9 @@ export class EmailService implements OnModuleInit {
     if (await this.isAnAnchorCheckIn(theCheckIn as { startedFrom?: string | null; scenario?: unknown }, context)) {
       return this.sendTheAnchorInvitation(email, leadName, theCheckIn.label, this.buildInviteUrl(token), context);
     }
-    const theOneLine = theCheckIn.scenario === 'TEAM_UPDATES' ? theCheckIn.brief?.trim() : '';
+    /* The one line is what the brief says before the lead's own setup answers: a team update set up by talking keeps those answers in its brief, and they
+       reached the team word for word ("When asked why this matters now, the answer was taken to mean this. ..."; Fatima's office, 23 November 2026). */
+    const theOneLine = theCheckIn.scenario === 'TEAM_UPDATES' ? withoutTheSetupAnswers(theCheckIn.brief) : '';
     if (!theOneLine) return this.sendParticipantInvite(email, leadName, theCheckIn.label, token, note, context);
     /* The trial line is carried on the note, which is where the setup form puts her sentence. */
     return this.sendTeamUpdateAsk(

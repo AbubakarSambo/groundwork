@@ -476,7 +476,12 @@ export class WhatsAppForAnOrganisationService {
         ? wasIn(thread?.checkInId)
         : (open.find((c) => c.id === thread?.checkInId) ?? (open.length === 1 ? open[0] : null))?.id ?? null;
       await this.rememberAsking(organizationId, from, goBackTo);
-      await say(NOW_ASKING(ask));
+      /* Not a member here (no membership, or a guest's): offered only their own check-ins. */
+      const look = (this.prisma as any).organizationMembership?.findFirst;
+      const fromOutside = typeof look === 'function' && !!userId
+        ? await Promise.resolve(look.call((this.prisma as any).organizationMembership, { where: { organizationId, userId }, select: { role: true } })).then((m: any) => !m || String(m.role) === 'GUEST').catch(() => false)
+        : false;
+      await say(NOW_ASKING(ask, fromOutside));
       return;
     }
     if (isAsking(thread?.checkInId) && who.personId) {
@@ -540,7 +545,26 @@ export class WhatsAppForAnOrganisationService {
       if (arrived.kind === 'text' && A_BACK_WORD.test(said)) { await say(BACK_TO_NOTHING(ask)); return; }
       const waiting = await this.invitationWaitingFor(organizationId, who.personId);
       if (waiting) { await say(`You are invited to "${waiting}" and the invitation has not been accepted yet. Open the email, accept it, then reply here and your answers go straight in.`); return; }
-      if (arrived.kind === 'media' && userId && who.personId && (await this.aFileHasArrived(organizationId, who.personId, userId, arrived, out.fetchMedia, null, say)).said) return;
+      /*
+       * A FILE WITH NOTHING OPEN GOES WITH THEIR LATEST CHECK-IN (Fatima's office, 23 November 2026). Her aide's 2026 collection was finished when he
+       * sent the HB 412 bill; it was asked "what is it for?" and then lost. Their most recent check-in that has started is where their work is, so a
+       * file about their work goes there, shared with it as a file sent during a check-in is, and is said so.
+       */
+      if (arrived.kind === 'media' && userId && who.personId) {
+        const latest = await this.theirLatestCheckIn(organizationId, userId);
+        const placed = await this.aFileHasArrived(organizationId, who.personId, userId, arrived, out.fetchMedia, latest, say);
+        if (placed.said) return;
+        if (latest && placed.fetched) {
+          const row = await this.prisma.checkIn.findUnique({ where: { id: latest.id }, select: { groundId: true } });
+          try {
+            const doc: any = await this.documents.upload(row!.groundId, userId, { originalname: arrived.fileName, mimetype: placed.fetched.mimeType, buffer: placed.fetched.buffer, size: placed.fetched.buffer.length } as any, false, arrived.caption || undefined, { sharedWithTheCheckIn: true });
+            if (doc?.couldNotRead) { await say(I_COULD_NOT_OPEN_THAT_FILE); return; }
+            if (doc?.alreadyHad) { await say(`You sent ${whatTheFileIsCalled(arrived)} already, so I kept the first copy and did not count it twice.`); return; }
+            await say(`${whatTheFileIsCalled(arrived)} is now with what you sent for ${latest.label}, so it is read with the rest of it. No check-in of yours is open right now.`);
+          } catch (err: any) { await say(aFileProblemInWords(err)); }
+          return;
+        }
+      }
       if (arrived.kind === 'media' || arrived.kind === 'location') { await say('There is no check-in open to put that on. I will message you here when the next one opens; send it again then.'); return; }
       if (who.personId && arrived.kind === 'text') { await say(asATextMessage(await this.assistant.respondOnWhatsApp(organizationId, who.personId, arrived.text)) || 'Noted.'); return; }
       await say('You have no check-in open right now. I will message you here when the next one is ready.');
@@ -592,6 +616,8 @@ export class WhatsAppForAnOrganisationService {
         const doc: any = await this.documents.upload(ground!.groundId, userId!, { originalname: arrived.fileName, mimetype: fetched.mimeType, buffer: fetched.buffer, size: fetched.buffer.length } as any, false, arrived.caption || undefined, { sharedWithTheCheckIn: true });
         /* Where the file went, and nothing about who can see it or how it is read. Who can see it is unchanged. */
         if (doc?.couldNotRead) { await say(I_COULD_NOT_OPEN_THAT_FILE); return; }
+        /* The same file again is the copy already kept, said once, and not read back as new (documents.service, `alreadyHad`). */
+        if (doc?.alreadyHad) { await say(`You sent ${whatTheFileIsCalled(arrived)} already, on ${new Date(doc.firstSentAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Africa/Lagos' })}, so I kept the first copy and did not count it twice.`); return; }
         /* What is in it, said back, as in the check-in on the web (Hafsah, 26 October 2026). Said instead of only "it is on your check-in". */
         const readBack: string = await Promise.resolve().then(() => (this.conversation as any).documentReceived?.(current.id, userId!)).then((r: any) => String(r?.reply ?? '').trim()).catch(() => '');
         await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? `, with your note "${arrived.caption.replace(/[.\s]+$/, '')}"` : ''}.${readBack ? `\n\n${readBack}` : ''}`);
@@ -1102,12 +1128,25 @@ export class WhatsAppForAnOrganisationService {
     return user.id;
   }
 
+  /** Their most recent check-in here that has started, open or finished, for a file sent when nothing is open. Never one that has not started or that was ended. */
+  private async theirLatestCheckIn(organizationId: string, userId: string): Promise<AnOpenCheckIn | null> {
+    const now = new Date();
+    const c: any = await Promise.resolve(this.prisma.checkIn.findFirst({
+      where: { participant: { userId }, isSetup: false, ground: { organizationId, status: { notIn: ['CLOSED', 'STALLED'] as any }, OR: [{ startsAt: null }, { startsAt: { lte: now } }] } },
+      orderBy: [{ completedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+      select: { id: true, status: true, sessionNumber: true, ground: { select: { label: true } } },
+    } as any)).catch(() => null);
+    return c ? { id: c.id, status: String(c.status), sessionNumber: c.sessionNumber ?? 1, label: c.ground?.label ?? 'your check-in' } : null;
+  }
+
   private async invitationWaitingFor(organizationId: string, personId: string | null): Promise<string | null> {
     if (!personId) return null;
     const person = await this.prisma.person.findFirst({ where: { id: personId }, select: { email: true } });
     if (!person?.email) return null;
     const waiting = await this.prisma.groundParticipant.findFirst({
-      where: { email: person.email, userId: null, ground: { organizationId, status: { notIn: ['RESOLVED', 'STALLED'] } } },
+      /* Only a check-in that has started: the aide's 2027 weekly check-in, set up in November, took his file in November and told him to accept an
+         email for it, and the HB 412 bill he sent was lost (Fatima's office, 23 November 2026). Before it starts there is nothing to accept. */
+      where: { email: person.email, userId: null, OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }], ground: { organizationId, status: { notIn: ['RESOLVED', 'STALLED', 'CLOSED'] }, OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] } },
       select: { ground: { select: { label: true } } },
       orderBy: { createdAt: 'desc' },
     }).catch(() => null);

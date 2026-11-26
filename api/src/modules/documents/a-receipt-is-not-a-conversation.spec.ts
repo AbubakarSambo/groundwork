@@ -90,4 +90,9 @@ describe('a real conversation is still a conversation', () => {
   it('a file named as a transcript stays one even if it says invoice', () => {
     expect(looksLikeAConversation('invoice dispute call transcript.txt', A_TRANSCRIPT)).toBe(true);
   });
+  it('a weekly report whose lines open with the week is a report, not a conversation, and a transcript still is one', () => {
+    const report = ['National Assembly monitoring report, March 2026', '', 'Week of 2 March: Hearing date for HB 412 fixed for 18 March.', 'Week of 9 March: Position paper drafted.', 'Week of 16 March: Public hearing on HB 412 held on 18 March.', 'Week of 23 March: Committee report not yet laid.', 'Week of 30 March: No further movement.', 'Pending at month end: HB 412 committee report.'].join('\n');
+    expect(looksLikeAConversation('NASS-update-2026-03-March.docx', report)).toBe(false);
+    expect(looksLikeAConversation('notes.txt', A_TRANSCRIPT)).toBe(true);
+  });
 });
