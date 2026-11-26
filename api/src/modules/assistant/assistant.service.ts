@@ -3,7 +3,7 @@ import { theRolesTheyMayGive, howPeopleJoinHere } from '../users/the-role-an-inv
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { understandTheMessage, theTitlesTheyMean, type TheMessageUnderstood } from './ask-understands-with-the-model';
 import { GUIDE_BY_KEY, isSwitchedOn, mayUse, theDescriptionFor, whoDoesIt, type TheReader } from './what-the-assistant-can-do';
-import { ReportsOnRequestService, REPORT_ON_REQUEST_KIND, type WhatWasSaid } from '../reports-on-request/reports-on-request.service';
+import { REPORT_GAPS_KIND, ReportsOnRequestService, REPORT_ON_REQUEST_KIND, type WhatWasSaid } from '../reports-on-request/reports-on-request.service';
 const DELEGATE_GRANT_KIND = 'delegate_grant';
 const DELEGATE_REVOKE_KIND = 'delegate_revoke';
 const NO_REGISTER_FOR_YOU = 'I do not keep an outstanding list for you. It is kept for people who run check-ins, and for the people they let act for them.';
@@ -3499,7 +3499,7 @@ export class AssistantService {
     /* A report on request: its steps are read by meaning there; words about something else let the step go and are answered as themselves (S8). */
     if (parked.kind === REPORT_ON_REQUEST_KIND && this.reportsOnRequest) {
       const userId = where?.userId ?? (await this.signedInAs(organizationId, who));
-      const heard = userId ? await this.reportsOnRequest.hear({ organizationId, userId, message, channel: askedOnWhatsApp() ? 'whatsapp' : 'chat' }).catch(() => null) : null;
+      const heard = userId ? await this.reportsOnRequest.hear({ organizationId, userId, message, channel: askedOnWhatsApp() ? 'whatsapp' : 'chat' }).catch((err) => { this.logger.error(`A report's step failed, so the words were answered as a question: ${err?.message}`); return null; }) : null;
       if (heard) return aReportStep(heard);
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } }).catch(() => undefined);
       return this.answer(organizationId, personId, who, message, true, where?.groundId, where?.userId);
@@ -3577,6 +3577,19 @@ export class AssistantService {
     /* THE ROLE INTERVIEW (request 25): what is typed is an answer to its question, not a yes or a no. */
     if (parked.kind === ROLE_INTERVIEW_KIND) {
       return this.resolveParkedInterview(organizationId, personId, who, parked, message);
+    }
+
+    /*
+     * AFTER A REPORT, THE CHECK-INS THAT CLOSE ITS GAPS (the documents test, 24 November 2026). A no ends it. A yes, or names, starts the
+     * set-up by talking with each gap and who can close it already said, so it asks only for what is missing, and opens nothing before her yes.
+     */
+    if (parked.kind === REPORT_GAPS_KIND && this.reportsOnRequest) {
+      const decision = await this.theirAnswerToWhatWasAsked(parked, message);
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: decision === 'decline' ? 'DECLINED' : 'ACCEPTED', resolvedAt: new Date() } });
+      if (decision === 'decline') return rules('report_on_request', text('All right. I have not set up any check-ins for it.'));
+      const forWhat = await this.reportsOnRequest.whatTheCheckInsAreFor(String((parked.payload as any)?.requestId ?? ''));
+      if (!forWhat) return this.answer(organizationId, personId, who, message, true, where?.groundId, where?.userId, where?.forceAddContext);
+      return this.offerToOpenOne(organizationId, personId, who, decision === 'accept' ? forWhat : `${forWhat} ${message}`);
     }
 
     /* After a first check-in: may the role map show what they own (decision 129). Not dropped by another message. */

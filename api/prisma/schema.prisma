@@ -9654,6 +9654,9 @@ model ReportOnRequest {
   /// The sources they may use, as they were read when the outline was made, and which they chose.
   sources         Json?
   report          String?   @db.Text
+  /// The report as written, section by section with its tables, the short note, the actions register and the gaps, each line with
+  /// its sources. The chat text and the Word and Excel files are all laid out from this one record.
+  written         Json?
   /// The stored prompt version that wrote the report, when one ran.
   promptVersionId String?   @map("prompt_version_id")
   builtAt         DateTime? @map("built_at")
@@ -9676,6 +9679,12 @@ model ReportMaterial {
   text           String   @db.Text
   contentHash    String   @map("content_hash")
   receivedAt     DateTime @default(now()) @map("received_at")
+  /// The file as it came, so a workbook can be read as data (its sheets, cells and formulas), not only as words.
+  bytes          Bytes?
+  mimeType       String?  @map("mime_type")
+  /// The model's one full reading of this document (reading-a-document.ts). Every later step reads this, never the words again.
+  reading        Json?
+  readAt         DateTime? @map("read_at")
 
   @@unique([requestId, contentHash])
   @@index([requestId])

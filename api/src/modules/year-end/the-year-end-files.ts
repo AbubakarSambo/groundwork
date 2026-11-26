@@ -28,7 +28,8 @@ export const PDF_TYPE = 'application/pdf';
 
 export interface TheVersion { version: number; status: string }
 
-type Block = { t: 'h1' | 'h2' | 'h3' | 'p' | 'li'; text: string };
+/** A paragraph, a heading, a list item, a small source line, or a table. The report on request writes tables too (reports-on-request/the-report-files.ts). */
+export type Block = { t: 'h1' | 'h2' | 'h3' | 'p' | 'li' | 'small' | 'table'; text: string; columns?: string[]; rows?: string[][] };
 
 const esc = (s: string) => plain(String(s ?? '')).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const oneLine = (s: string) => String(s ?? '').replace(/\s+/g, ' ').trim();
@@ -224,8 +225,17 @@ const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles
 <w:style w:type="paragraph" w:styleId="ListParagraph"><w:name w:val="List Paragraph"/><w:basedOn w:val="Normal"/></w:style>
 </w:styles>`;
 
-async function docxOf(blocks: Block[], title: string): Promise<Buffer> {
+const tableXml = (columns: string[], rows: string[][]) => {
+  const cell = (t: string, head: boolean) => `<w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/>${head ? '<w:shd w:val="clear" w:color="auto" w:fill="E7ECF3"/>' : ''}</w:tcPr><w:p><w:r>${head ? '<w:rPr><w:b/></w:rPr>' : ''}<w:t xml:space="preserve">${esc(t)}</w:t></w:r></w:p></w:tc>`;
+  const border = '<w:top w:val="single" w:sz="4" w:color="BFC7D2"/><w:left w:val="single" w:sz="4" w:color="BFC7D2"/><w:bottom w:val="single" w:sz="4" w:color="BFC7D2"/><w:right w:val="single" w:sz="4" w:color="BFC7D2"/><w:insideH w:val="single" w:sz="4" w:color="BFC7D2"/><w:insideV w:val="single" w:sz="4" w:color="BFC7D2"/>';
+  const row = (cells: string[], head: boolean) => `<w:tr>${columns.map((_, i) => cell(cells[i] ?? '', head)).join('')}</w:tr>`;
+  return `<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblBorders>${border}</w:tblBorders></w:tblPr>${row(columns, true)}${rows.map((r) => row(r, false)).join('')}</w:tbl><w:p/>`;
+};
+
+export async function docxOf(blocks: Block[], title: string): Promise<Buffer> {
   const para = (b: Block) => {
+    if (b.t === 'table') return tableXml(b.columns ?? [], b.rows ?? []);
+    if (b.t === 'small') return `<w:p><w:r><w:rPr><w:color w:val="5B6472"/><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">${esc(b.text)}</w:t></w:r></w:p>`;
     const style = b.t === 'h1' ? '<w:pPr><w:pStyle w:val="Heading1"/></w:pPr>' : b.t === 'h2' ? '<w:pPr><w:pStyle w:val="Heading2"/></w:pPr>' : b.t === 'h3' ? '<w:pPr><w:pStyle w:val="Heading3"/></w:pPr>' : b.t === 'li' ? '<w:pPr><w:pStyle w:val="ListParagraph"/><w:ind w:left="360" w:hanging="260"/></w:pPr>' : '';
     const text = b.t === 'li' ? `• ${b.text}` : b.text;
     return `<w:p>${style}<w:r><w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`;
@@ -250,7 +260,9 @@ function pdfOf(blocks: Block[], title: string): Promise<Buffer> {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
     for (const b of blocks) {
-      if (b.t === 'h1') doc.font('Helvetica-Bold').fontSize(20).text(b.text, { paragraphGap: 8 });
+      if (b.t === 'table') { const head = b.columns ?? []; for (const r of [head, ...(b.rows ?? [])]) doc.font(r === head ? 'Helvetica-Bold' : 'Helvetica').fontSize(9.5).text(r.join('   |   '), { paragraphGap: 3 }); doc.moveDown(0.4); }
+      else if (b.t === 'small') doc.font('Helvetica').fontSize(8.5).fillColor('#5B6472').text(b.text, { paragraphGap: 6 }).fillColor('black');
+      else if (b.t === 'h1') doc.font('Helvetica-Bold').fontSize(20).text(b.text, { paragraphGap: 8 });
       else if (b.t === 'h2') doc.moveDown(0.6).font('Helvetica-Bold').fontSize(14).text(b.text, { paragraphGap: 4 });
       else if (b.t === 'h3') doc.moveDown(0.3).font('Helvetica-Bold').fontSize(12).text(b.text, { paragraphGap: 2 });
       else if (b.t === 'li') doc.font('Helvetica').fontSize(10.5).text(`• ${b.text}`, { indent: 0, paragraphGap: 4 });

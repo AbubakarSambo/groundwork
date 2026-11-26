@@ -90,8 +90,9 @@ export async function theSourcesThisReaderMayUse(prisma: any, grounds: any, read
   const desk = await theDeskInOneSentence(prisma, grounds, { userId: reader.userId, email: reader.email ?? '', organizationId: reader.organizationId, role: reader.role ?? 'MEMBER' }).catch(() => null);
   if (desk) out.push({ id: 'desk', kind: 'desk', name: 'the Desk', label: 'the Desk', text: `On the Desk, ${desk}` });
   if (a.requestId) {
-    const added: any[] = (await prisma.reportMaterial.findMany({ where: { requestId: a.requestId, userId: reader.userId }, orderBy: { receivedAt: 'asc' } }).catch(() => [])) ?? [];
-    for (const m of added) out.push({ id: `material:${m.id}`, kind: 'material', name: m.name, label: aMaterialLabel(m.via, m.name), text: String(m.text ?? '') });
+    /* Not the file's bytes: a source is its words and its one reading (reading-a-document.ts). */
+    const added: any[] = (await prisma.reportMaterial.findMany({ where: { requestId: a.requestId, userId: reader.userId }, orderBy: { receivedAt: 'asc' }, select: { id: true, via: true, name: true, text: true, reading: true } }).catch(() => [])) ?? [];
+    for (const m of added) out.push({ id: `material:${m.id}`, kind: 'material', name: m.name, label: aMaterialLabel(m.via, m.name), text: String(m.text ?? ''), reading: m.reading ?? null });
   }
   return out;
 }
